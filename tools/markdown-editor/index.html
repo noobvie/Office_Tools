@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Markdown Editor — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .md-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      min-height: 520px;
+    }
+    @media (max-width: 700px) { .md-layout { grid-template-columns: 1fr; } }
+
+    .md-pane { display: flex; flex-direction: column; }
+    .md-pane + .md-pane { border-left: 1px solid var(--border); }
+    @media (max-width: 700px) { .md-pane + .md-pane { border-left: none; border-top: 1px solid var(--border); } }
+
+    .md-pane-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .5rem .85rem;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      font-size: .8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-muted);
+    }
+
+    #mdInput {
+      flex: 1;
+      border: none;
+      outline: none;
+      resize: none;
+      padding: 1rem;
+      font-family: 'Courier New', monospace;
+      font-size: .9rem;
+      line-height: 1.7;
+      background: var(--bg);
+      color: var(--text);
+      tab-size: 2;
+    }
+
+    .md-preview {
+      flex: 1;
+      padding: 1.25rem 1.5rem;
+      overflow-y: auto;
+      background: var(--bg-card);
+    }
+
+    /* GitHub-style markdown preview */
+    .md-preview h1, .md-preview h2, .md-preview h3,
+    .md-preview h4, .md-preview h5, .md-preview h6 {
+      margin: 1.2em 0 .5em; font-weight: 700; line-height: 1.3; color: var(--text);
+    }
+    .md-preview h1 { font-size: 1.7rem; border-bottom: 2px solid var(--border); padding-bottom: .35rem; }
+    .md-preview h2 { font-size: 1.35rem; border-bottom: 1px solid var(--border); padding-bottom: .25rem; }
+    .md-preview h3 { font-size: 1.1rem; }
+    .md-preview p  { margin: .75em 0; }
+    .md-preview ul, .md-preview ol { padding-left: 1.8em; margin: .5em 0; }
+    .md-preview li { margin: .25em 0; }
+    .md-preview blockquote {
+      border-left: 4px solid var(--primary);
+      padding: .5rem 1rem;
+      margin: 1em 0;
+      background: var(--primary-dim);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      color: var(--text-muted);
+    }
+    .md-preview code {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: .1em .4em;
+      font-family: 'Courier New', monospace;
+      font-size: .88em;
+    }
+    .md-preview pre {
+      background: #282c34;
+      border-radius: var(--radius);
+      padding: 1rem;
+      overflow-x: auto;
+      margin: 1em 0;
+    }
+    .md-preview pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      color: #abb2bf;
+      font-size: .85rem;
+    }
+    .md-preview table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+    .md-preview th, .md-preview td { border: 1px solid var(--border); padding: .5rem .75rem; }
+    .md-preview th { background: var(--bg-secondary); font-weight: 700; }
+    .md-preview a { color: var(--primary); }
+    .md-preview a:hover { text-decoration: underline; }
+    .md-preview img { max-width: 100%; border-radius: var(--radius); }
+    .md-preview hr { border: none; border-top: 2px solid var(--border); margin: 1.5em 0; }
+    .md-preview input[type="checkbox"] { margin-right: .4rem; }
+
+    /* Toolbar */
+    .md-toolbar {
+      display: flex;
+      gap: .25rem;
+      padding: .4rem .75rem;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .tb-btn {
+      padding: .3rem .5rem;
+      border: none;
+      background: transparent;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: .85rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      transition: background .12s, color .12s;
+      line-height: 1;
+    }
+    .tb-btn:hover { background: var(--border); color: var(--text); }
+    .tb-sep { width: 1px; background: var(--border); margin: .2rem .15rem; }
+
+    .word-count-bar {
+      padding: .35rem .85rem;
+      font-size: .75rem;
+      color: var(--text-muted);
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Markdown Editor</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main" style="max-width:1100px">
+  <div class="tool-header">
+    <h1>✍️ Markdown Editor</h1>
+    <p>Live split-pane Markdown editor with real-time HTML preview.</p>
+  </div>
+
+  <!-- Top actions -->
+  <div class="card" style="padding:.6rem 1rem;margin-bottom:.75rem">
+    <div class="flex" style="gap:.5rem;flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm" id="clearBtn">🗑 Clear</button>
+      <button class="btn btn-secondary btn-sm" id="sampleBtn">📄 Sample</button>
+      <div style="margin-left:auto;display:flex;gap:.5rem">
+        <button class="btn btn-secondary btn-sm" id="copyMdBtn">Copy Markdown</button>
+        <button class="btn btn-primary btn-sm" id="copyHtmlBtn">Copy HTML</button>
+        <button class="btn btn-secondary btn-sm" id="downloadMdBtn">Download .md</button>
+        <button class="btn btn-secondary btn-sm" id="downloadHtmlBtn">Download .html</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Editor -->
+  <div class="card" style="padding:0">
+    <!-- Toolbar -->
+    <div class="md-toolbar">
+      <button class="tb-btn" data-action="h1" title="Heading 1">H1</button>
+      <button class="tb-btn" data-action="h2" title="Heading 2">H2</button>
+      <button class="tb-btn" data-action="h3" title="Heading 3">H3</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" data-action="bold" title="Bold"><b>B</b></button>
+      <button class="tb-btn" data-action="italic" title="Italic"><i>I</i></button>
+      <button class="tb-btn" data-action="strike" title="Strikethrough"><s>S</s></button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" data-action="link" title="Link">🔗</button>
+      <button class="tb-btn" data-action="image" title="Image">🖼</button>
+      <button class="tb-btn" data-action="code" title="Inline Code">`code`</button>
+      <button class="tb-btn" data-action="codeblock" title="Code Block">```</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" data-action="ul" title="Bullet List">• List</button>
+      <button class="tb-btn" data-action="ol" title="Numbered List">1. List</button>
+      <button class="tb-btn" data-action="task" title="Task List">☑ Task</button>
+      <button class="tb-btn" data-action="blockquote" title="Blockquote">" Quote</button>
+      <button class="tb-btn" data-action="hr" title="Horizontal Rule">──</button>
+      <button class="tb-btn" data-action="table" title="Table">⊞ Table</button>
+    </div>
+
+    <div class="md-layout">
+      <!-- Input -->
+      <div class="md-pane">
+        <div class="md-pane-header">
+          <span>✏️ Markdown</span>
+        </div>
+        <textarea id="mdInput" spellcheck="false" placeholder="# Hello World&#10;&#10;Start writing **Markdown** here…"></textarea>
+        <div class="word-count-bar">
+          <span id="wcWords">0 words</span>
+          <span id="wcChars">0 chars</span>
+          <span id="wcLines">0 lines</span>
+          <span id="wcReadTime">~0 min read</span>
+        </div>
+      </div>
+
+      <!-- Preview -->
+      <div class="md-pane">
+        <div class="md-pane-header">
+          <span>👁️ Preview</span>
+          <label style="font-size:.75rem;font-weight:400;cursor:pointer;display:flex;align-items:center;gap:.3rem;margin:0">
+            <input type="checkbox" id="syncScroll" checked style="margin:0"> Sync scroll
+          </label>
+        </div>
+        <div class="md-preview" id="mdPreview"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js" crossorigin="anonymous"></script>
+<script src="../../js/common.js"></script>
+<script>
+const input   = document.getElementById('mdInput');
+const preview = document.getElementById('mdPreview');
+
+marked.setOptions({ gfm: true, breaks: true });
+
+function render() {
+  const md = input.value;
+  preview.innerHTML = marked.parse(md);
+  // Word count
+  const words = md.trim() ? md.trim().split(/\s+/).length : 0;
+  document.getElementById('wcWords').textContent = words + ' words';
+  document.getElementById('wcChars').textContent = md.length + ' chars';
+  document.getElementById('wcLines').textContent = md.split('\n').length + ' lines';
+  document.getElementById('wcReadTime').textContent = '~' + Math.max(1, Math.round(words / 238)) + ' min read';
+}
+
+input.addEventListener('input', render);
+
+// Sync scroll
+input.addEventListener('scroll', () => {
+  if (!document.getElementById('syncScroll').checked) return;
+  const pct = input.scrollTop / (input.scrollHeight - input.clientHeight);
+  preview.scrollTop = pct * (preview.scrollHeight - preview.clientHeight);
+});
+
+// Toolbar actions
+const ACTIONS = {
+  h1: { wrap: '# ', block: true },
+  h2: { wrap: '## ', block: true },
+  h3: { wrap: '### ', block: true },
+  bold: { wrap: '**', both: true },
+  italic: { wrap: '_', both: true },
+  strike: { wrap: '~~', both: true },
+  code: { wrap: '`', both: true },
+  codeblock: { insert: '\n```\n\n```\n', offset: 4 },
+  link: { insert: '[link text](url)' },
+  image: { insert: '![alt text](image-url)' },
+  ul: { prefix: '- ', block: true },
+  ol: { prefix: '1. ', block: true },
+  task: { prefix: '- [ ] ', block: true },
+  blockquote: { prefix: '> ', block: true },
+  hr: { insert: '\n\n---\n\n' },
+  table: { insert: '\n| Header 1 | Header 2 | Header 3 |\n|----------|----------|----------|\n| Cell 1   | Cell 2   | Cell 3   |\n| Cell 4   | Cell 5   | Cell 6   |\n' },
+};
+
+document.querySelectorAll('.tb-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const action = btn.dataset.action;
+    const def = ACTIONS[action];
+    if (!def) return;
+    const s = input.selectionStart, e = input.selectionEnd;
+    const val = input.value;
+    const selected = val.substring(s, e);
+    let newVal, newS, newE;
+
+    if (def.insert !== undefined) {
+      newVal = val.substring(0, s) + def.insert + val.substring(e);
+      newS = newE = s + (def.offset ?? def.insert.length);
+    } else if (def.both) {
+      if (selected) {
+        newVal = val.substring(0, s) + def.wrap + selected + def.wrap + val.substring(e);
+        newS = s + def.wrap.length;
+        newE = newS + selected.length;
+      } else {
+        newVal = val.substring(0, s) + def.wrap + 'text' + def.wrap + val.substring(e);
+        newS = s + def.wrap.length;
+        newE = newS + 4;
+      }
+    } else if (def.block && def.wrap) {
+      const lineStart = val.lastIndexOf('\n', s - 1) + 1;
+      newVal = val.substring(0, lineStart) + def.wrap + val.substring(lineStart);
+      newS = newE = s + def.wrap.length;
+    } else if (def.prefix) {
+      const lineStart = val.lastIndexOf('\n', s - 1) + 1;
+      newVal = val.substring(0, lineStart) + def.prefix + val.substring(lineStart);
+      newS = newE = s + def.prefix.length;
+    }
+
+    input.value = newVal;
+    input.focus();
+    input.setSelectionRange(newS, newE);
+    render();
+  });
+});
+
+// Keyboard shortcuts
+input.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey) {
+    const map = { b: 'bold', i: 'italic', k: 'link' };
+    if (map[e.key]) { e.preventDefault(); document.querySelector(`[data-action="${map[e.key]}"]`).click(); }
+  }
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const s = input.selectionStart;
+    input.value = input.value.substring(0, s) + '  ' + input.value.substring(s);
+    input.setSelectionRange(s + 2, s + 2);
+    render();
+  }
+});
+
+// Actions
+document.getElementById('clearBtn').addEventListener('click', () => { input.value = ''; render(); });
+document.getElementById('sampleBtn').addEventListener('click', () => {
+  input.value = `# Welcome to Markdown Editor
+
+A free, open-source Markdown editor that renders a **live preview** as you type.
+
+## Features
+
+- Real-time HTML preview
+- Toolbar with common formatting
+- Export to **Markdown** or **HTML**
+- Dark mode support
+- Word count & reading time
+
+## Code Example
+
+\`\`\`javascript
+function greet(name) {
+  return \`Hello, \${name}!\`;
+}
+console.log(greet('World'));
+\`\`\`
+
+## Table
+
+| Feature | Supported |
+|---------|-----------|
+| Bold    | ✅ Yes    |
+| Tables  | ✅ Yes    |
+| Code    | ✅ Yes    |
+
+> **Tip:** Use the toolbar above or keyboard shortcuts Ctrl+B, Ctrl+I.
+
+---
+
+*Happy writing!*`;
+  render();
+});
+
+document.getElementById('copyMdBtn').addEventListener('click', function() { copyText(input.value, this); });
+document.getElementById('copyHtmlBtn').addEventListener('click', function() { copyText(preview.innerHTML, this); });
+
+document.getElementById('downloadMdBtn').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.href = 'data:text/markdown;charset=utf-8,' + encodeURIComponent(input.value);
+  a.download = 'document.md'; a.click();
+});
+document.getElementById('downloadHtmlBtn').addEventListener('click', () => {
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Document</title></head><body style="font-family:sans-serif;max-width:800px;margin:2rem auto;padding:0 1rem">${preview.innerHTML}</body></html>`;
+  const a = document.createElement('a');
+  a.href = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
+  a.download = 'document.html'; a.click();
+});
+
+render();
+</script>
+</body>
+</html>

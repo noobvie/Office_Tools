@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UUID Generator — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .uuid-display {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.5rem;
+      font-family: 'Courier New', monospace;
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-align: center;
+      color: var(--primary);
+      word-break: break-all;
+      margin: 1rem 0;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .uuid-display:hover { background: var(--primary-dim); }
+    .uuid-part { color: var(--text-muted); }
+    .uuid-version-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      padding: .25rem .7rem;
+      border-radius: 50px;
+      font-size: .78rem;
+      font-weight: 700;
+      background: var(--primary-dim);
+      color: var(--primary);
+      margin-bottom: .5rem;
+    }
+    .nil-uuid { color: var(--text-muted) !important; font-size: .95rem !important; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">UUID Generator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🆔 UUID Generator</h1>
+    <p>Generate universally unique identifiers. Uses the browser's built-in <code>crypto.randomUUID()</code>.</p>
+  </div>
+
+  <!-- Single -->
+  <div class="card">
+    <div class="flex-between">
+      <strong>Single UUID</strong>
+      <div class="flex" style="gap:.5rem">
+        <select id="versionSelect" style="padding:.35rem .6rem;font-size:.85rem">
+          <option value="v4">v4 — Random</option>
+          <option value="v7">v7 — Time-ordered</option>
+          <option value="nil">NIL UUID</option>
+        </select>
+      </div>
+    </div>
+    <div id="versionBadge" class="uuid-version-badge mt-2">v4 · Random</div>
+    <div class="uuid-display" id="uuidDisplay" title="Click to copy">Click Generate</div>
+    <div class="btn-group" style="justify-content:center">
+      <button class="btn btn-primary btn-lg" id="genBtn">🔁 Generate</button>
+      <button class="btn btn-secondary" id="copyBtn">Copy</button>
+    </div>
+    <p class="text-muted mt-2" style="font-size:.8rem;text-align:center">Click the UUID directly to copy · Press <kbd style="background:var(--bg-secondary);padding:.1rem .35rem;border-radius:4px;border:1px solid var(--border)">G</kbd> to regenerate</p>
+  </div>
+
+  <!-- Bulk -->
+  <div class="card mt-2">
+    <strong>Bulk Generation</strong>
+    <div class="form-row mt-2">
+      <div class="form-group">
+        <label>Count (max 1000)</label>
+        <input type="number" id="bulkCount" value="10" min="1" max="1000">
+      </div>
+      <div class="form-group">
+        <label>Version</label>
+        <select id="bulkVersion">
+          <option value="v4">v4 — Random</option>
+          <option value="v7">v7 — Time-ordered</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="checkbox-row"><input type="checkbox" id="bulkUppercase"><label for="bulkUppercase">Uppercase</label></label>
+      <label class="checkbox-row"><input type="checkbox" id="bulkNoBraces"><label for="bulkNoBraces">No hyphens</label></label>
+    </div>
+    <button class="btn btn-primary" id="bulkGenBtn">Generate</button>
+
+    <div id="bulkWrap" class="hidden mt-2">
+      <div class="scroll-list" id="bulkList" style="max-height:300px"></div>
+      <div class="btn-group mt-2">
+        <button class="btn btn-secondary btn-sm" id="copyAllBtn">Copy All</button>
+        <button class="btn btn-secondary btn-sm" id="downloadBtn">Download .txt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Validate -->
+  <div class="card mt-2">
+    <strong>Validate UUID</strong>
+    <div class="form-group mt-2">
+      <label>Paste a UUID to validate</label>
+      <input type="text" id="validateInput" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+    </div>
+    <button class="btn btn-secondary" id="validateBtn">Validate</button>
+    <div id="validateResult" class="hidden mt-2"></div>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+function uuidV4() { return crypto.randomUUID(); }
+
+function uuidV7() {
+  // UUID v7: Unix timestamp in ms in the high bits
+  const now = Date.now();
+  const tsHex = now.toString(16).padStart(12, '0');
+  const arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  // Set timestamp (48 bits)
+  for (let i = 0; i < 6; i++) arr[i] = parseInt(tsHex.slice(i*2, i*2+2), 16);
+  arr[6] = (arr[6] & 0x0f) | 0x70; // version 7
+  arr[8] = (arr[8] & 0x3f) | 0x80; // variant
+  const hex = Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join('');
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+}
+
+const BADGES = {
+  v4:  'v4 · Random',
+  v7:  'v7 · Time-ordered',
+  nil: 'NIL · All zeros',
+};
+
+function generateOne(version) {
+  if (version === 'nil') return '00000000-0000-0000-0000-000000000000';
+  if (version === 'v7') return uuidV7();
+  return uuidV4();
+}
+
+function doGenerate() {
+  const v = document.getElementById('versionSelect').value;
+  const uuid = generateOne(v);
+  const display = document.getElementById('uuidDisplay');
+  if (v === 'nil') display.classList.add('nil-uuid'); else display.classList.remove('nil-uuid');
+  display.textContent = uuid;
+  document.getElementById('versionBadge').textContent = BADGES[v];
+  return uuid;
+}
+
+document.getElementById('genBtn').addEventListener('click', doGenerate);
+document.getElementById('uuidDisplay').addEventListener('click', function() {
+  const t = this.textContent;
+  if (t === 'Click Generate' || !t) { doGenerate(); return; }
+  copyText(t, this);
+  const orig = this.style.color;
+  this.style.color = 'var(--success)';
+  setTimeout(() => this.style.color = orig, 1000);
+});
+document.getElementById('copyBtn').addEventListener('click', function() {
+  const t = document.getElementById('uuidDisplay').textContent;
+  copyText(t, this);
+});
+document.getElementById('versionSelect').addEventListener('change', doGenerate);
+document.addEventListener('keydown', e => {
+  if (e.key === 'g' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') doGenerate();
+});
+
+// Bulk
+document.getElementById('bulkGenBtn').addEventListener('click', () => {
+  const count = Math.min(1000, Math.max(1, parseInt(document.getElementById('bulkCount').value) || 10));
+  const version = document.getElementById('bulkVersion').value;
+  const upper = document.getElementById('bulkUppercase').checked;
+  const noHyphens = document.getElementById('bulkNoBraces').checked;
+
+  const uuids = Array.from({length: count}, () => {
+    let u = generateOne(version);
+    if (noHyphens) u = u.replace(/-/g, '');
+    if (upper) u = u.toUpperCase();
+    return u;
+  });
+
+  const list = document.getElementById('bulkList');
+  list.innerHTML = uuids.map(u =>
+    `<div class="scroll-list-item"><span class="mono">${escHtml(u)}</span><button class="btn btn-ghost btn-sm" onclick="copyText('${escHtml(u)}',this)">Copy</button></div>`
+  ).join('');
+  document.getElementById('bulkWrap').classList.remove('hidden');
+
+  document.getElementById('copyAllBtn').onclick = () => copyText(uuids.join('\n'), document.getElementById('copyAllBtn'));
+  document.getElementById('downloadBtn').onclick = () => {
+    const a = document.createElement('a');
+    a.download = `uuids-${version}-${count}.txt`;
+    a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(uuids.join('\n'));
+    a.click();
+  };
+});
+
+// Validate
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const NIL_RE  = /^0{8}-0{4}-0{4}-0{4}-0{12}$/;
+
+document.getElementById('validateBtn').addEventListener('click', () => {
+  const val = document.getElementById('validateInput').value.trim();
+  const result = document.getElementById('validateResult');
+  result.classList.remove('hidden');
+  if (!val) { result.className = 'alert alert-danger mt-2'; result.textContent = 'Enter a UUID to validate.'; return; }
+
+  if (NIL_RE.test(val)) {
+    result.className = 'alert alert-success mt-2';
+    result.textContent = '✓ Valid NIL UUID (all zeros)';
+    return;
+  }
+  if (!UUID_RE.test(val)) {
+    result.className = 'alert alert-danger mt-2';
+    result.textContent = '✗ Invalid UUID format';
+    return;
+  }
+  const version = val[14];
+  const variant = val[19].toLowerCase();
+  const variantStr = ['8','9','a','b'].includes(variant) ? 'RFC 4122' : 'Non-standard';
+  result.className = 'alert alert-success mt-2';
+  result.textContent = `✓ Valid UUID v${version} · ${variantStr} variant`;
+});
+
+doGenerate();
+</script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log In — Office Tools</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .auth-wrap {
+      min-height: calc(100vh - 56px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    .auth-card {
+      background: var(--bg-card);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 2.25rem 2rem;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.1);
+    }
+    .auth-logo { text-align: center; font-size: 2rem; margin-bottom: .5rem; }
+    .auth-title { text-align: center; font-size: 1.4rem; font-weight: 900; margin-bottom: .25rem; }
+    .auth-sub   { text-align: center; font-size: .85rem; color: var(--text-muted); margin-bottom: 1.75rem; }
+    .auth-footer { text-align: center; margin-top: 1.25rem; font-size: .83rem; color: var(--text-muted); }
+    .auth-footer a { color: var(--primary); text-decoration: none; font-weight: 700; }
+    #errorMsg { display: none; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <div class="header-actions">
+    <div id="authNav" style="display:flex;gap:.5rem;align-items:center"></div>
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">🛠️</div>
+    <div class="auth-title">Welcome back</div>
+    <div class="auth-sub">Sign in to your Office Tools account</div>
+
+    <div id="errorMsg" class="alert alert-danger"></div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="emailInput" placeholder="you@example.com" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label style="display:flex;justify-content:space-between">
+          Password
+          <a href="#" id="forgotLink" style="font-size:.78rem;color:var(--primary);font-weight:600;text-decoration:none">Forgot?</a>
+        </label>
+        <input type="password" id="passwordInput" placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-primary" id="submitBtn" style="width:100%;margin-top:.5rem">
+        Sign In
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      Don't have an account? <a href="register.html">Create one — it's free</a>
+    </div>
+  </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="../js/common.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+  // Redirect if already logged in
+  if (OTAuth.isLoggedIn()) {
+    window.location.href = 'dashboard.html';
+  }
+
+  const form     = document.getElementById('loginForm');
+  const errorMsg = document.getElementById('errorMsg');
+  const submitBtn = document.getElementById('submitBtn');
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    errorMsg.style.display = 'none';
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Signing in…';
+    try {
+      await OTAuth.login(
+        document.getElementById('emailInput').value.trim(),
+        document.getElementById('passwordInput').value,
+      );
+      // Redirect back or to dashboard
+      const next = new URLSearchParams(window.location.search).get('next');
+      window.location.href = next ? decodeURIComponent(next) : 'dashboard.html';
+    } catch(err) {
+      errorMsg.textContent = err.message || 'Login failed. Check your credentials.';
+      errorMsg.style.display = '';
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Sign In';
+    }
+  });
+
+  document.getElementById('forgotLink').addEventListener('click', e => {
+    e.preventDefault();
+    const email = document.getElementById('emailInput').value.trim();
+    if (!email) { alert('Enter your email first.'); return; }
+    fetch(OT_CONFIG.PB_URL + '/api/collections/users/request-password-reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    }).then(() => alert('Password reset email sent if that account exists.'))
+      .catch(() => alert('Could not reach server.'));
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Office Tools</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    body { font-size: .88rem; }
+
+    .admin-layout { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 56px); }
+    @media(max-width:720px){ .admin-layout { grid-template-columns: 1fr; } }
+
+    .admin-sidebar {
+      background: var(--bg-secondary);
+      border-right: 1.5px solid var(--border);
+      padding: 1.25rem 0;
+    }
+    .sidebar-section { padding: .4rem 1rem; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); margin-top: .75rem; }
+    .sidebar-link {
+      display: flex; align-items: center; gap: .55rem;
+      padding: .55rem 1.25rem; font-size: .83rem; cursor: pointer;
+      color: var(--text-muted); text-decoration: none; border-left: 3px solid transparent;
+      transition: color .12s, border-color .12s, background .12s;
+    }
+    .sidebar-link:hover  { color: var(--text); background: rgba(255,255,255,.04); }
+    .sidebar-link.active { color: var(--primary); border-left-color: var(--primary); background: var(--primary-dim); }
+
+    .admin-content { padding: 1.5rem; overflow-y: auto; }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* Stats */
+    .stat-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .75rem; margin-bottom: 1.5rem; }
+    .stat-box { background: var(--bg-card); border: 1.5px solid var(--border); border-radius: var(--radius); padding: .85rem 1rem; }
+    .stat-box .sv { font-size: 1.8rem; font-weight: 900; color: var(--primary); }
+    .stat-box .sl { font-size: .68rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-top: .15rem; }
+
+    /* Table */
+    .data-table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1.5px solid var(--border); }
+    table.dt { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    table.dt th { background: var(--bg-secondary); padding: .5rem .75rem; text-align: left; font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); border-bottom: 1.5px solid var(--border); white-space: nowrap; }
+    table.dt td { padding: .5rem .75rem; border-bottom: 1px solid var(--border); }
+    table.dt tr:last-child td { border-bottom: none; }
+    table.dt tr:hover td { background: var(--bg-secondary); }
+
+    /* Badges */
+    .badge-pro  { background: rgba(99,102,241,.2); color: #818cf8; padding: .15rem .55rem; border-radius: 50px; font-size: .7rem; font-weight: 800; }
+    .badge-free { background: var(--bg-secondary); color: var(--text-muted); padding: .15rem .55rem; border-radius: 50px; font-size: .7rem; font-weight: 800; border: 1px solid var(--border); }
+    .badge-pending  { background: rgba(245,158,11,.15); color: #f59e0b; padding: .15rem .55rem; border-radius: 50px; font-size: .7rem; font-weight: 800; }
+    .badge-confirmed{ background: rgba(34,197,94,.15); color: #22c55e; padding: .15rem .55rem; border-radius: 50px; font-size: .7rem; font-weight: 800; }
+    .badge-expired  { background: rgba(239,68,68,.12); color: #ef4444; padding: .15rem .55rem; border-radius: 50px; font-size: .7rem; font-weight: 800; }
+
+    /* Chart */
+    .bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 80px; margin-top: .75rem; padding: 0 .25rem; }
+    .bar-chart .bar { flex: 1; background: var(--primary); opacity: .6; border-radius: 3px 3px 0 0; min-height: 4px; cursor: pointer; position: relative; transition: opacity .12s; }
+    .bar-chart .bar:hover { opacity: 1; }
+    .bar-chart .bar::after { content: attr(data-tip); position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: .15rem .4rem; border-radius: 4px; font-size: .68rem; white-space: nowrap; display: none; pointer-events: none; }
+    .bar-chart .bar:hover::after { display: block; }
+
+    /* Login form */
+    .admin-login { max-width: 380px; margin: 3rem auto; }
+
+    .search-row { display: flex; gap: .5rem; margin-bottom: .75rem; align-items: center; }
+    .search-row input { flex: 1; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name" style="color:#f59e0b">⚙️ Admin</span>
+  <div class="header-actions">
+    <button class="btn btn-ghost btn-sm" id="logoutAdminBtn" style="display:none">Sign Out</button>
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<!-- Admin login -->
+<div id="adminLoginWrap" style="padding:2rem 1rem">
+  <div class="card admin-login">
+    <h2 style="margin-bottom:1rem;text-align:center">🔐 Admin Login</h2>
+    <div id="adminLoginErr" class="alert alert-danger" style="display:none"></div>
+    <form id="adminLoginForm">
+      <div class="form-group">
+        <label>Admin Email</label>
+        <input type="email" id="adminEmail" required placeholder="admin@yourdomain.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="adminPassword" required placeholder="••••••••">
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%" id="adminLoginBtn">Sign In as Admin</button>
+    </form>
+  </div>
+</div>
+
+<!-- Admin dashboard -->
+<div id="adminDash" style="display:none">
+  <div class="admin-layout">
+    <!-- Sidebar -->
+    <nav class="admin-sidebar">
+      <div class="sidebar-section">Overview</div>
+      <a class="sidebar-link active" data-page="overview">📊 Dashboard</a>
+      <div class="sidebar-section">Users</div>
+      <a class="sidebar-link" data-page="users">👥 All Users</a>
+      <a class="sidebar-link" data-page="subscriptions">💫 Subscriptions</a>
+      <div class="sidebar-section">Payments</div>
+      <a class="sidebar-link" data-page="payments">⛏️ Grin Payments</a>
+      <div class="sidebar-section">Analytics</div>
+      <a class="sidebar-link" data-page="usage">📈 Tool Usage</a>
+    </nav>
+
+    <!-- Content -->
+    <div class="admin-content">
+
+      <!-- Overview -->
+      <div class="page active" id="page-overview">
+        <h2 style="margin-bottom:1rem">Dashboard Overview</h2>
+        <div class="stat-row" id="overviewStats">
+          <div class="stat-box"><div class="sv" id="statTotalUsers">—</div><div class="sl">Total Users</div></div>
+          <div class="stat-box"><div class="sv" id="statProUsers">—</div><div class="sl">Pro Subscribers</div></div>
+          <div class="stat-box"><div class="sv" id="statPendingPayments">—</div><div class="sl">Pending Payments</div></div>
+          <div class="stat-box"><div class="sv" id="statRevenue">—</div><div class="sl">GRIN Received</div></div>
+        </div>
+        <div class="card">
+          <strong>New Users — Last 7 Days</strong>
+          <div class="bar-chart" id="userChart"></div>
+          <div style="display:flex;gap:1rem;font-size:.7rem;color:var(--text-muted);margin-top:.3rem" id="userChartLabels"></div>
+        </div>
+        <div class="card mt-2" id="recentActivity">
+          <strong>Recent Signups</strong>
+          <div class="data-table-wrap mt-2">
+            <table class="dt"><thead><tr><th>Name</th><th>Email</th><th>Plan</th><th>Joined</th></tr></thead>
+            <tbody id="recentUsersBody"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Users -->
+      <div class="page" id="page-users">
+        <h2 style="margin-bottom:.75rem">All Users</h2>
+        <div class="search-row">
+          <input type="text" id="userSearch" placeholder="Search by name or email…">
+          <button class="btn btn-secondary btn-sm" id="refreshUsersBtn">↺ Refresh</button>
+        </div>
+        <div class="data-table-wrap">
+          <table class="dt">
+            <thead><tr><th>Name</th><th>Email</th><th>Plan</th><th>Joined</th><th>Actions</th></tr></thead>
+            <tbody id="usersTableBody"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:.5rem;font-size:.78rem;color:var(--text-muted)" id="usersPager"></div>
+      </div>
+
+      <!-- Subscriptions -->
+      <div class="page" id="page-subscriptions">
+        <h2 style="margin-bottom:.75rem">Subscriptions</h2>
+        <div class="search-row">
+          <select id="subFilter" style="width:160px">
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="expired">Expired</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" id="refreshSubsBtn">↺ Refresh</button>
+          <button class="btn btn-primary btn-sm" id="grantSubBtn">+ Grant Manual Sub</button>
+        </div>
+        <div class="data-table-wrap">
+          <table class="dt">
+            <thead><tr><th>User</th><th>Plan</th><th>Status</th><th>Expires</th><th>Method</th><th>Actions</th></tr></thead>
+            <tbody id="subsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Grin Payments -->
+      <div class="page" id="page-payments">
+        <h2 style="margin-bottom:.75rem">Grin Payments</h2>
+        <div class="search-row">
+          <select id="payFilter" style="width:160px">
+            <option value="">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="expired">Expired</option>
+            <option value="failed">Failed</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" id="refreshPayBtn">↺ Refresh</button>
+        </div>
+        <div class="data-table-wrap">
+          <table class="dt">
+            <thead><tr><th>User</th><th>Plan</th><th>Amount (GRIN)</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+            <tbody id="paymentsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Usage analytics -->
+      <div class="page" id="page-usage">
+        <h2 style="margin-bottom:.75rem">Tool Usage (Server-side logs)</h2>
+        <div class="data-table-wrap">
+          <table class="dt">
+            <thead><tr><th>#</th><th>Tool</th><th>Total Uses</th><th>Unique Users</th></tr></thead>
+            <tbody id="usageTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /admin-content -->
+  </div><!-- /admin-layout -->
+</div>
+
+<div id="grantModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:1rem">
+  <div class="card" style="max-width:400px;width:100%">
+    <h3>Grant Manual Subscription</h3>
+    <div class="form-group mt-2">
+      <label>User Email</label>
+      <input type="email" id="grantEmail" placeholder="user@example.com">
+    </div>
+    <div class="form-group">
+      <label>Plan</label>
+      <select id="grantPlan">
+        <option value="pro_monthly">Pro Monthly</option>
+        <option value="pro_yearly">Pro Yearly</option>
+        <option value="lifetime">Lifetime</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Expires At (leave blank for lifetime)</label>
+      <input type="datetime-local" id="grantExpiry">
+    </div>
+    <div class="btn-group mt-2">
+      <button class="btn btn-primary" id="confirmGrantBtn">Grant</button>
+      <button class="btn btn-ghost btn-sm" id="cancelGrantBtn">Cancel</button>
+    </div>
+    <div id="grantMsg" style="display:none;font-size:.8rem;margin-top:.5rem"></div>
+  </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="../js/common.js"></script>
+<script>
+  const PB = OT_CONFIG.PB_URL;
+  let adminToken = sessionStorage.getItem('ot_admin_token');
+  let usersCache = [];
+
+  function pb(path) { return PB + path; }
+
+  async function adminFetch(path, opts = {}) {
+    const res = await fetch(pb(path), {
+      ...opts,
+      headers: { 'Content-Type': 'application/json', 'Authorization': adminToken, ...(opts.headers || {}) },
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Request failed');
+    return json;
+  }
+
+  function showDash() {
+    document.getElementById('adminLoginWrap').style.display = 'none';
+    document.getElementById('adminDash').style.display = '';
+    document.getElementById('logoutAdminBtn').style.display = '';
+    loadOverview();
+  }
+
+  if (adminToken) showDash();
+
+  document.getElementById('adminLoginForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const errEl = document.getElementById('adminLoginErr');
+    const btn   = document.getElementById('adminLoginBtn');
+    errEl.style.display = 'none'; btn.disabled = true; btn.textContent = 'Signing in…';
+    try {
+      const data = await (await fetch(pb('/api/admins/auth-with-password'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identity: document.getElementById('adminEmail').value, password: document.getElementById('adminPassword').value }),
+      })).json();
+      if (!data.token) throw new Error(data.message || 'Login failed');
+      adminToken = data.token;
+      sessionStorage.setItem('ot_admin_token', adminToken);
+      showDash();
+    } catch(err) {
+      errEl.textContent = err.message; errEl.style.display = '';
+    }
+    btn.disabled = false; btn.textContent = 'Sign In as Admin';
+  });
+
+  document.getElementById('logoutAdminBtn').addEventListener('click', () => {
+    sessionStorage.removeItem('ot_admin_token');
+    window.location.reload();
+  });
+
+  // Navigation
+  document.querySelectorAll('.sidebar-link').forEach(link => {
+    link.addEventListener('click', () => {
+      document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      link.classList.add('active');
+      const page = document.getElementById('page-' + link.dataset.page);
+      if (page) page.classList.add('active');
+      // Lazy load
+      if (link.dataset.page === 'users') loadUsers();
+      if (link.dataset.page === 'subscriptions') loadSubscriptions();
+      if (link.dataset.page === 'payments') loadPayments();
+      if (link.dataset.page === 'usage') loadUsage();
+    });
+  });
+
+  // ── Overview ─────────────────────────────────────────────────
+  async function loadOverview() {
+    try {
+      const [usersData, subsData, paymentsData] = await Promise.all([
+        adminFetch('/api/collections/users/records?perPage=1'),
+        adminFetch('/api/collections/subscriptions/records?filter=(status="active")&perPage=1'),
+        adminFetch('/api/collections/grin_payments/records?filter=(status="pending")&perPage=1'),
+      ]);
+      document.getElementById('statTotalUsers').textContent = usersData.totalItems ?? '—';
+      document.getElementById('statProUsers').textContent   = subsData.totalItems  ?? '—';
+      document.getElementById('statPendingPayments').textContent = paymentsData.totalItems ?? '—';
+
+      // Revenue: sum confirmed payments
+      const rev = await adminFetch('/api/collections/grin_payments/records?filter=(status="confirmed")&perPage=200');
+      const total = (rev.items || []).reduce((s, p) => s + (p.amount_grin || 0), 0);
+      document.getElementById('statRevenue').textContent = total.toFixed(1);
+
+      // Recent users
+      const recent = await adminFetch('/api/collections/users/records?sort=-created&perPage=10');
+      usersCache = recent.items || [];
+      const tbody = document.getElementById('recentUsersBody');
+      tbody.innerHTML = usersCache.map(u => `<tr>
+        <td>${escHtml(u.name || '—')}</td>
+        <td>${escHtml(u.email)}</td>
+        <td><span class="badge-free">Free</span></td>
+        <td>${new Date(u.created).toLocaleDateString()}</td>
+      </tr>`).join('');
+
+      // Simple bar chart (last 7 days signups)
+      const now = new Date();
+      const dayCounts = Array(7).fill(0);
+      const dayLabels = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now); d.setDate(d.getDate() - i);
+        dayLabels.push(d.toLocaleDateString('en', {weekday:'short'}));
+      }
+      const all = await adminFetch('/api/collections/users/records?sort=-created&perPage=200');
+      (all.items || []).forEach(u => {
+        const d = new Date(u.created);
+        const diff = Math.floor((now - d) / 86400000);
+        if (diff < 7) dayCounts[6 - diff]++;
+      });
+      const maxC = Math.max(...dayCounts, 1);
+      document.getElementById('userChart').innerHTML = dayCounts
+        .map((c,i) => `<div class="bar" style="height:${Math.round(c/maxC*100)}%" data-tip="${dayLabels[i]}: ${c}"></div>`)
+        .join('');
+      document.getElementById('userChartLabels').innerHTML = dayLabels.map(l => `<span style="flex:1;text-align:center">${l}</span>`).join('');
+    } catch(e) { console.error('Overview error:', e); }
+  }
+
+  // ── Users ─────────────────────────────────────────────────────
+  async function loadUsers(search = '') {
+    try {
+      const filter = search ? `(name~"${search}"||email~"${search}")` : '';
+      const q = filter ? `?filter=${encodeURIComponent(filter)}&sort=-created&perPage=50` : '?sort=-created&perPage=50';
+      const data = await adminFetch('/api/collections/users/records' + q);
+      usersCache = data.items || [];
+      const tbody = document.getElementById('usersTableBody');
+      document.getElementById('usersPager').textContent = `Showing ${usersCache.length} of ${data.totalItems} users`;
+      tbody.innerHTML = usersCache.map(u => `<tr>
+        <td>${escHtml(u.name || '—')}</td>
+        <td>${escHtml(u.email)}</td>
+        <td><span class="badge-free">Free</span></td>
+        <td>${new Date(u.created).toLocaleDateString()}</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="grantSub('${u.id}','${escHtml(u.email)}')">Grant Sub</button></td>
+      </tr>`).join('');
+    } catch(e) { console.error(e); }
+  }
+
+  document.getElementById('userSearch').addEventListener('input', e => loadUsers(e.target.value));
+  document.getElementById('refreshUsersBtn').addEventListener('click', () => loadUsers());
+
+  // ── Subscriptions ─────────────────────────────────────────────
+  async function loadSubscriptions() {
+    const f = document.getElementById('subFilter').value;
+    const filter = f ? `(status="${f}")` : '';
+    const q = filter ? `?filter=${encodeURIComponent(filter)}&sort=-created&perPage=50&expand=user` : '?sort=-created&perPage=50&expand=user';
+    try {
+      const data = await adminFetch('/api/collections/subscriptions/records' + q);
+      const tbody = document.getElementById('subsTableBody');
+      tbody.innerHTML = (data.items || []).map(s => `<tr>
+        <td>${escHtml(s.expand?.user?.email || s.user)}</td>
+        <td>${s.plan}</td>
+        <td><span class="badge-${s.status}">${s.status}</span></td>
+        <td>${s.expires_at ? new Date(s.expires_at).toLocaleDateString() : '∞'}</td>
+        <td>${s.payment_method || 'manual'}</td>
+        <td>
+          ${s.status === 'active' ? `<button class="btn btn-ghost btn-sm" style="color:#dc2626" onclick="revokeSub('${s.id}')">Revoke</button>` : ''}
+        </td>
+      </tr>`).join('');
+    } catch(e) { console.error(e); }
+  }
+  document.getElementById('subFilter').addEventListener('change', loadSubscriptions);
+  document.getElementById('refreshSubsBtn').addEventListener('click', loadSubscriptions);
+
+  // ── Grin Payments ─────────────────────────────────────────────
+  async function loadPayments() {
+    const f = document.getElementById('payFilter').value;
+    const filter = f ? `(status="${f}")` : '';
+    const q = filter ? `?filter=${encodeURIComponent(filter)}&sort=-created&perPage=50&expand=user` : '?sort=-created&perPage=50&expand=user';
+    try {
+      const data = await adminFetch('/api/collections/grin_payments/records' + q);
+      const tbody = document.getElementById('paymentsTableBody');
+      tbody.innerHTML = (data.items || []).map(p => `<tr>
+        <td>${escHtml(p.expand?.user?.email || p.user)}</td>
+        <td>${p.plan}</td>
+        <td>${p.amount_grin ?? '—'}</td>
+        <td><span class="badge-${p.status}">${p.status}</span></td>
+        <td>${new Date(p.created).toLocaleString()}</td>
+        <td>
+          ${p.status === 'pending' ? `<button class="btn btn-ghost btn-sm" onclick="confirmPayment('${p.id}','${p.user}','${p.plan}')">✓ Confirm</button>` : ''}
+          ${p.status === 'pending' ? `<button class="btn btn-ghost btn-sm" style="color:#dc2626" onclick="expirePayment('${p.id}')">Expire</button>` : ''}
+        </td>
+      </tr>`).join('');
+    } catch(e) { console.error(e); }
+  }
+  document.getElementById('payFilter').addEventListener('change', loadPayments);
+  document.getElementById('refreshPayBtn').addEventListener('click', loadPayments);
+
+  async function confirmPayment(paymentId, userId, plan) {
+    if (!confirm('Manually confirm this payment and activate subscription?')) return;
+    try {
+      await adminFetch(`/api/collections/grin_payments/records/${paymentId}`, {
+        method: 'PATCH', body: JSON.stringify({ status: 'confirmed', confirmed_at: new Date().toISOString() }),
+      });
+      // Create subscription
+      const expires = plan === 'lifetime' ? null : plan === 'pro_yearly'
+        ? new Date(Date.now() + 365 * 86400000).toISOString()
+        : new Date(Date.now() + 30 * 86400000).toISOString();
+      await adminFetch('/api/collections/subscriptions/records', {
+        method: 'POST', body: JSON.stringify({ user: userId, plan, status: 'active', payment_method: 'grin', grin_payment_id: paymentId, starts_at: new Date().toISOString(), expires_at: expires }),
+      });
+      loadPayments();
+    } catch(e) { alert('Error: ' + e.message); }
+  }
+
+  async function expirePayment(id) {
+    await adminFetch(`/api/collections/grin_payments/records/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'expired' }) });
+    loadPayments();
+  }
+
+  async function revokeSub(id) {
+    if (!confirm('Revoke this subscription?')) return;
+    await adminFetch(`/api/collections/subscriptions/records/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'cancelled' }) });
+    loadSubscriptions();
+  }
+
+  // ── Usage Analytics ───────────────────────────────────────────
+  async function loadUsage() {
+    try {
+      const data = await adminFetch('/api/collections/usage_logs/records?perPage=500&sort=-created');
+      const tally = {};
+      const users = {};
+      (data.items || []).forEach(r => {
+        tally[r.tool] = (tally[r.tool] || 0) + 1;
+        if (!users[r.tool]) users[r.tool] = new Set();
+        if (r.user) users[r.tool].add(r.user);
+      });
+      const sorted = Object.entries(tally).sort((a,b) => b[1]-a[1]);
+      document.getElementById('usageTableBody').innerHTML = sorted.map(([tool, count], i) => `<tr>
+        <td style="color:var(--text-muted)">${i+1}</td>
+        <td>${escHtml(tool)}</td>
+        <td style="font-weight:700;color:var(--primary)">${count}</td>
+        <td>${users[tool]?.size ?? '—'}</td>
+      </tr>`).join('');
+    } catch(e) { console.error(e); }
+  }
+
+  // ── Grant sub modal ───────────────────────────────────────────
+  function grantSub(userId, email) {
+    document.getElementById('grantEmail').value = email;
+    document.getElementById('grantEmail').dataset.userId = userId;
+    document.getElementById('grantModal').style.display = 'flex';
+  }
+  document.getElementById('grantSubBtn').addEventListener('click', () => {
+    document.getElementById('grantEmail').value = '';
+    document.getElementById('grantEmail').dataset.userId = '';
+    document.getElementById('grantModal').style.display = 'flex';
+  });
+  document.getElementById('cancelGrantBtn').addEventListener('click', () => {
+    document.getElementById('grantModal').style.display = 'none';
+  });
+  document.getElementById('confirmGrantBtn').addEventListener('click', async () => {
+    const email  = document.getElementById('grantEmail').value.trim();
+    const plan   = document.getElementById('grantPlan').value;
+    const expiry = document.getElementById('grantExpiry').value;
+    const msgEl  = document.getElementById('grantMsg');
+    let userId   = document.getElementById('grantEmail').dataset.userId;
+
+    if (!userId) {
+      try {
+        const u = await adminFetch(`/api/collections/users/records?filter=(email="${email}")&perPage=1`);
+        userId = u.items?.[0]?.id;
+        if (!userId) { msgEl.textContent = 'User not found.'; msgEl.style.color = '#dc2626'; msgEl.style.display = ''; return; }
+      } catch(e) { msgEl.textContent = e.message; msgEl.style.display = ''; return; }
+    }
+    try {
+      await adminFetch('/api/collections/subscriptions/records', {
+        method: 'POST',
+        body: JSON.stringify({ user: userId, plan, status: 'active', payment_method: 'manual', starts_at: new Date().toISOString(), expires_at: expiry ? new Date(expiry).toISOString() : null }),
+      });
+      msgEl.textContent = '✓ Subscription granted.'; msgEl.style.color = '#16a34a'; msgEl.style.display = '';
+      setTimeout(() => { document.getElementById('grantModal').style.display = 'none'; loadSubscriptions(); }, 1500);
+    } catch(e) { msgEl.textContent = e.message; msgEl.style.color = '#dc2626'; msgEl.style.display = ''; }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Text Diff — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .diff-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media (max-width: 650px) { .diff-layout { grid-template-columns: 1fr; } }
+    .diff-layout textarea { min-height: 200px; font-family: 'Courier New', monospace; font-size: .85rem; }
+
+    .diff-output {
+      background: var(--bg-secondary);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      overflow: auto;
+      font-family: 'Courier New', monospace;
+      font-size: .85rem;
+      line-height: 1.6;
+    }
+    .diff-line {
+      display: flex;
+      min-height: 1.6em;
+    }
+    .diff-line-num {
+      min-width: 3rem;
+      padding: 0 .6rem;
+      text-align: right;
+      color: var(--text-light);
+      font-size: .75rem;
+      border-right: 1px solid var(--border);
+      user-select: none;
+      flex-shrink: 0;
+      line-height: 1.6;
+    }
+    .diff-line-content {
+      padding: 0 .75rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      flex: 1;
+    }
+    .diff-add    { background: #d1fae5; color: #064e3b; }
+    .diff-add .diff-line-num    { background: #a7f3d0; }
+    .diff-remove { background: #fee2e2; color: #450a0a; }
+    .diff-remove .diff-line-num { background: #fecaca; }
+    .diff-equal  { }
+    [data-theme="dark"] .diff-add    { background: #064e3b; color: #a7f3d0; }
+    [data-theme="dark"] .diff-add .diff-line-num    { background: #065f46; }
+    [data-theme="dark"] .diff-remove { background: #450a0a; color: #fecaca; }
+    [data-theme="dark"] .diff-remove .diff-line-num { background: #7f1d1d; }
+
+    .diff-sign {
+      padding: 0 .5rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .diff-add    .diff-sign { color: var(--success); }
+    .diff-remove .diff-sign { color: var(--danger); }
+
+    .diff-stats {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: .75rem;
+    }
+    .diff-stat { display: flex; align-items: center; gap: .35rem; font-size: .85rem; }
+
+    .char-diff-wrap { position: relative; }
+    .char-add    { background: #6ee7b7; border-radius: 2px; }
+    .char-remove { background: #fca5a5; border-radius: 2px; text-decoration: line-through; }
+    [data-theme="dark"] .char-add    { background: #065f46; color: #a7f3d0; }
+    [data-theme="dark"] .char-remove { background: #7f1d1d; color: #fecaca; }
+
+    .empty-diff {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Text Diff</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main" style="max-width:1100px">
+  <div class="tool-header">
+    <h1>🔀 Text Diff</h1>
+    <p>Compare two blocks of text and highlight additions, deletions and changes.</p>
+  </div>
+
+  <!-- Inputs -->
+  <div class="card">
+    <div class="diff-layout">
+      <div class="form-group">
+        <label>Original Text</label>
+        <textarea id="origInput" placeholder="Paste original text here…" spellcheck="false"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Modified Text</label>
+        <textarea id="modInput" placeholder="Paste modified text here…" spellcheck="false"></textarea>
+      </div>
+    </div>
+    <div class="btn-group mt-2">
+      <button class="btn btn-primary" id="diffBtn">Compare</button>
+      <button class="btn btn-secondary btn-sm" id="swapBtn">⇄ Swap</button>
+      <button class="btn btn-secondary btn-sm" id="clearBtn">Clear</button>
+      <button class="btn btn-secondary btn-sm" id="sampleBtn">Sample</button>
+      <div style="margin-left:auto;display:flex;gap:.5rem;align-items:center">
+        <label style="font-size:.82rem;margin:0">Mode:</label>
+        <select id="diffMode" style="padding:.3rem .5rem;font-size:.82rem;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text)">
+          <option value="lines">Line by line</option>
+          <option value="words">Word by word</option>
+          <option value="chars">Character by character</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div id="diffStats" class="diff-stats hidden mt-2">
+    <div class="diff-stat"><span style="width:10px;height:10px;border-radius:2px;background:var(--success);display:inline-block"></span><span id="statAdded">0 additions</span></div>
+    <div class="diff-stat"><span style="width:10px;height:10px;border-radius:2px;background:var(--danger);display:inline-block"></span><span id="statRemoved">0 deletions</span></div>
+    <div class="diff-stat"><span id="statUnchanged" class="text-muted"></span></div>
+    <div class="diff-stat"><span id="statSimilarity" class="badge badge-primary"></span></div>
+  </div>
+
+  <!-- Output -->
+  <div class="card mt-2">
+    <div id="diffResult">
+      <div class="empty-diff">📄 Paste text in both boxes and click <strong>Compare</strong></div>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/diff/5.2.0/diff.min.js" crossorigin="anonymous"></script>
+<script src="../../js/common.js"></script>
+<script>
+document.getElementById('swapBtn').addEventListener('click', () => {
+  const a = document.getElementById('origInput').value;
+  document.getElementById('origInput').value = document.getElementById('modInput').value;
+  document.getElementById('modInput').value = a;
+});
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.getElementById('origInput').value = '';
+  document.getElementById('modInput').value = '';
+  document.getElementById('diffResult').innerHTML = '<div class="empty-diff">📄 Paste text in both boxes and click <strong>Compare</strong></div>';
+  document.getElementById('diffStats').classList.add('hidden');
+});
+document.getElementById('sampleBtn').addEventListener('click', () => {
+  document.getElementById('origInput').value = `The quick brown fox jumps over the lazy dog.
+This is the original text.
+Line three stays the same.
+This line will be removed.
+Another unchanged line here.`;
+  document.getElementById('modInput').value = `The quick brown fox leaps over the lazy dog.
+This is the modified text with some changes.
+Line three stays the same.
+A brand new line was inserted here.
+Another unchanged line here.
+And this line was added at the end.`;
+  document.getElementById('diffBtn').click();
+});
+
+function escHtmlLocal(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+document.getElementById('diffBtn').addEventListener('click', () => {
+  const orig = document.getElementById('origInput').value;
+  const mod  = document.getElementById('modInput').value;
+  const mode = document.getElementById('diffMode').value;
+
+  if (!window.Diff) { alert('Diff library not loaded. Check your internet connection.'); return; }
+
+  let parts;
+  if (mode === 'lines')  parts = Diff.diffLines(orig, mod);
+  else if (mode === 'words') parts = Diff.diffWords(orig, mod);
+  else parts = Diff.diffChars(orig, mod);
+
+  let added = 0, removed = 0, equal = 0;
+  const result = document.getElementById('diffResult');
+  result.innerHTML = '';
+  const container = document.createElement('div');
+  container.className = 'diff-output';
+
+  if (mode === 'lines') {
+    let lineNum = 0;
+    parts.forEach(part => {
+      const lines = part.value.split('\n');
+      if (lines[lines.length - 1] === '') lines.pop();
+      lines.forEach(line => {
+        lineNum++;
+        const row = document.createElement('div');
+        row.className = 'diff-line ' + (part.added ? 'diff-add' : part.removed ? 'diff-remove' : 'diff-equal');
+        row.innerHTML = `<span class="diff-line-num">${lineNum}</span><span class="diff-sign">${part.added ? '+' : part.removed ? '−' : ' '}</span><span class="diff-line-content">${escHtmlLocal(line)}</span>`;
+        container.appendChild(row);
+        if (part.added) added++;
+        else if (part.removed) removed++;
+        else equal++;
+      });
+    });
+  } else {
+    // Word/char mode: render inline
+    const row = document.createElement('div');
+    row.className = 'diff-line';
+    const content = document.createElement('span');
+    content.className = 'diff-line-content char-diff-wrap';
+    content.style.display = 'block';
+    parts.forEach(part => {
+      const span = document.createElement('span');
+      span.textContent = part.value;
+      if (part.added)   { span.className = 'char-add'; added += part.value.length; }
+      else if (part.removed) { span.className = 'char-remove'; removed += part.value.length; }
+      else { equal += part.value.length; }
+      content.appendChild(span);
+    });
+    row.appendChild(content);
+    container.appendChild(row);
+  }
+
+  result.appendChild(container);
+
+  // Stats
+  const total = added + removed + equal;
+  const similarity = total > 0 ? Math.round((equal / total) * 100) : 100;
+  document.getElementById('statAdded').textContent = added + (mode === 'lines' ? ' added lines' : ' added chars');
+  document.getElementById('statRemoved').textContent = removed + (mode === 'lines' ? ' removed lines' : ' removed chars');
+  document.getElementById('statUnchanged').textContent = equal + ' unchanged';
+  document.getElementById('statSimilarity').textContent = similarity + '% similar';
+  document.getElementById('diffStats').classList.remove('hidden');
+});
+</script>
+</body>
+</html>

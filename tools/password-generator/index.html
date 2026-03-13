@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Password Generator — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .pw-display {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .pw-display #pwOutput {
+      flex: 1;
+      font-family: 'Courier New', monospace;
+      font-size: 1.1rem;
+      font-weight: 700;
+      word-break: break-all;
+      color: var(--text);
+    }
+    .pw-display .pw-actions { display: flex; gap: .5rem; flex-shrink: 0; }
+    .strength-label { font-size: .82rem; font-weight: 700; margin-top: .3rem; }
+    .slider-val { font-weight: 700; color: var(--primary); }
+    .options-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .5rem .5rem;
+      margin-top: .75rem;
+    }
+    @media (max-width: 440px) { .options-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Password Generator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔐 Password Generator</h1>
+    <p>Generate secure random passwords with custom character options.</p>
+  </div>
+
+  <div class="card">
+    <div class="pw-display">
+      <span id="pwOutput">Click Generate</span>
+      <div class="pw-actions">
+        <button class="btn btn-ghost btn-sm" id="refreshBtn" title="Regenerate">🔁</button>
+        <button class="btn btn-secondary btn-sm" id="copyBtn">Copy</button>
+      </div>
+    </div>
+
+    <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+    <div class="flex-between mt-1">
+      <span class="strength-label" id="strengthLabel">—</span>
+      <span class="text-muted" style="font-size:.8rem" id="entropyLabel"></span>
+    </div>
+
+    <hr class="divider">
+
+    <div class="form-group">
+      <label>Length: <span class="slider-val" id="lenVal">16</span></label>
+      <input type="range" id="lengthSlider" min="4" max="128" value="16">
+    </div>
+
+    <div class="options-grid">
+      <label class="checkbox-row"><input type="checkbox" id="optUpper" checked><label for="optUpper">Uppercase (A–Z)</label></label>
+      <label class="checkbox-row"><input type="checkbox" id="optLower" checked><label for="optLower">Lowercase (a–z)</label></label>
+      <label class="checkbox-row"><input type="checkbox" id="optNumbers" checked><label for="optNumbers">Numbers (0–9)</label></label>
+      <label class="checkbox-row"><input type="checkbox" id="optSymbols" checked><label for="optSymbols">Symbols (!@#$…)</label></label>
+      <label class="checkbox-row"><input type="checkbox" id="optExcludeAmbig"><label for="optExcludeAmbig">Exclude ambiguous (0O1Il)</label></label>
+    </div>
+
+    <hr class="divider">
+
+    <div class="form-group">
+      <label>Exclude specific characters</label>
+      <input type="text" id="excludeInput" placeholder="e.g. @#%">
+    </div>
+
+    <div class="btn-group">
+      <button class="btn btn-primary btn-lg" id="generateBtn">Generate Password</button>
+    </div>
+  </div>
+
+  <div class="card mt-2">
+    <div class="flex-between">
+      <strong>Batch Generate</strong>
+      <span class="text-muted" style="font-size:.85rem">Generate multiple passwords at once</span>
+    </div>
+    <div class="form-row mt-2">
+      <div class="form-group">
+        <label>Count</label>
+        <input type="number" id="batchCount" value="5" min="1" max="50">
+      </div>
+      <div class="form-group" style="display:flex;align-items:flex-end;">
+        <button class="btn btn-secondary btn-full" id="batchBtn">Generate Batch</button>
+      </div>
+    </div>
+    <div id="batchList" class="scroll-list hidden"></div>
+    <div id="batchActions" class="btn-group hidden">
+      <button class="btn btn-secondary btn-sm" id="copyAllBtn">Copy All</button>
+    </div>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+const UPPER   = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const LOWER   = 'abcdefghijklmnopqrstuvwxyz';
+const NUMBERS = '0123456789';
+const SYMBOLS = '!@#$%^&*()-_=+[]{}|;:,.<>?';
+const AMBIG   = '0O1Il';
+
+function getCharset() {
+  let cs = '';
+  const exclude = document.getElementById('excludeInput').value;
+  const excAmbig = document.getElementById('optExcludeAmbig').checked;
+  if (document.getElementById('optUpper').checked)   cs += UPPER;
+  if (document.getElementById('optLower').checked)   cs += LOWER;
+  if (document.getElementById('optNumbers').checked) cs += NUMBERS;
+  if (document.getElementById('optSymbols').checked) cs += SYMBOLS;
+  if (excAmbig) cs = cs.split('').filter(c => !AMBIG.includes(c)).join('');
+  if (exclude)  cs = cs.split('').filter(c => !exclude.includes(c)).join('');
+  return cs;
+}
+
+function generate() {
+  const len = parseInt(document.getElementById('lengthSlider').value);
+  const cs  = getCharset();
+  if (!cs) return '⚠ Select at least one character type';
+  const arr = new Uint32Array(len);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(n => cs[n % cs.length]).join('');
+}
+
+function calcEntropy(len, csLen) {
+  if (!csLen) return 0;
+  return Math.round(len * Math.log2(csLen));
+}
+
+function updateStrength(pw) {
+  const fill = document.getElementById('strengthFill');
+  const label = document.getElementById('strengthLabel');
+  const entropy = document.getElementById('entropyLabel');
+  const len = parseInt(document.getElementById('lengthSlider').value);
+  const csLen = getCharset().length;
+  const bits = calcEntropy(len, csLen);
+  entropy.textContent = bits + ' bits entropy';
+
+  let pct, col, text;
+  if (bits < 40)       { pct=20; col='#ef4444'; text='Very Weak'; }
+  else if (bits < 60)  { pct=40; col='#f59e0b'; text='Weak'; }
+  else if (bits < 80)  { pct=60; col='#f59e0b'; text='Fair'; }
+  else if (bits < 100) { pct=80; col='#10b981'; text='Strong'; }
+  else                 { pct=100; col='#6366f1'; text='Very Strong'; }
+
+  fill.style.width = pct + '%';
+  fill.style.background = col;
+  label.textContent = text;
+  label.style.color = col;
+}
+
+function doGenerate() {
+  const pw = generate();
+  document.getElementById('pwOutput').textContent = pw;
+  updateStrength(pw);
+}
+
+document.getElementById('lengthSlider').addEventListener('input', e => {
+  document.getElementById('lenVal').textContent = e.target.value;
+  doGenerate();
+});
+document.getElementById('generateBtn').addEventListener('click', doGenerate);
+document.getElementById('refreshBtn').addEventListener('click', doGenerate);
+document.getElementById('copyBtn').addEventListener('click', () => {
+  const pw = document.getElementById('pwOutput').textContent;
+  copyText(pw, document.getElementById('copyBtn'));
+});
+['optUpper','optLower','optNumbers','optSymbols','optExcludeAmbig','excludeInput'].forEach(id => {
+  document.getElementById(id).addEventListener('change', doGenerate);
+});
+
+document.getElementById('batchBtn').addEventListener('click', () => {
+  const count = Math.min(50, Math.max(1, parseInt(document.getElementById('batchCount').value) || 5));
+  const list = document.getElementById('batchList');
+  const actions = document.getElementById('batchActions');
+  list.innerHTML = '';
+  const passwords = [];
+  for (let i = 0; i < count; i++) {
+    const pw = generate();
+    passwords.push(pw);
+    const row = document.createElement('div');
+    row.className = 'scroll-list-item';
+    row.innerHTML = `<span class="mono">${escHtml(pw)}</span><button class="btn btn-ghost btn-sm" data-pw="${escHtml(pw)}">Copy</button>`;
+    row.querySelector('button').addEventListener('click', function() {
+      copyText(this.dataset.pw, this);
+    });
+    list.appendChild(row);
+  }
+  list.classList.remove('hidden');
+  actions.classList.remove('hidden');
+
+  document.getElementById('copyAllBtn').onclick = () => copyText(passwords.join('\n'), document.getElementById('copyAllBtn'));
+});
+
+doGenerate();
+</script>
+</body>
+</html>

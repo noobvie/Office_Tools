@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crontab Explainer — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .cron-input-wrap {
+      display: flex;
+      gap: .5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .cron-input {
+      font-family: 'Courier New', monospace;
+      font-size: 1.1rem;
+      letter-spacing: .05em;
+      flex: 1;
+      min-width: 200px;
+    }
+    .cron-parts {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: .4rem;
+      margin-top: .75rem;
+    }
+    @media (max-width: 500px) { .cron-parts { grid-template-columns: repeat(3, 1fr); } }
+    .cron-part {
+      text-align: center;
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      padding: .5rem .3rem;
+    }
+    .cron-part .val  { font-family: monospace; font-size: 1.1rem; font-weight: 800; color: var(--primary); }
+    .cron-part .lbl  { font-size: .7rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-top: .2rem; }
+    .cron-part .hint { font-size: .68rem; color: var(--text-light); margin-top: .1rem; }
+
+    .explanation-box {
+      background: var(--primary-dim);
+      border: 1.5px solid var(--primary);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.5rem;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--primary);
+      text-align: center;
+      margin: 1rem 0;
+    }
+
+    .next-runs { margin-top: .75rem; }
+    .run-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: .5rem .75rem;
+      border-bottom: 1px solid var(--border);
+      font-size: .88rem;
+    }
+    .run-row:last-child { border-bottom: none; }
+    .run-row .dt   { font-family: monospace; }
+    .run-row .rel  { color: var(--text-muted); font-size: .8rem; }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: .5rem;
+    }
+    .preset-item {
+      background: var(--bg-secondary);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: .65rem .85rem;
+      cursor: pointer;
+      transition: border-color .12s, background .12s;
+    }
+    .preset-item:hover { border-color: var(--primary); background: var(--primary-dim); }
+    .preset-item .expr { font-family: monospace; font-size: .88rem; font-weight: 800; color: var(--primary); }
+    .preset-item .desc { font-size: .78rem; color: var(--text-muted); margin-top: .2rem; }
+
+    .field-ref td { padding: .35rem .5rem; font-size: .82rem; }
+    .field-ref tr:nth-child(even) td { background: var(--bg-secondary); }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Crontab Explainer</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>⏰ Crontab Explainer</h1>
+    <p>Parse any cron expression, get a human-readable description, and see the next scheduled run times.</p>
+  </div>
+
+  <!-- Input -->
+  <div class="card">
+    <label>Cron Expression</label>
+    <div class="cron-input-wrap mt-1">
+      <input type="text" class="cron-input" id="cronInput" value="0 9 * * 1-5" spellcheck="false" placeholder="* * * * *">
+      <button class="btn btn-primary" id="explainBtn">Explain</button>
+      <button class="btn btn-secondary btn-sm" id="clearCronBtn">Clear</button>
+    </div>
+
+    <div class="cron-parts" id="cronParts">
+      <div class="cron-part"><div class="val" id="p0">0</div><div class="lbl">Minute</div><div class="hint">0–59</div></div>
+      <div class="cron-part"><div class="val" id="p1">9</div><div class="lbl">Hour</div><div class="hint">0–23</div></div>
+      <div class="cron-part"><div class="val" id="p2">*</div><div class="lbl">Day of Month</div><div class="hint">1–31</div></div>
+      <div class="cron-part"><div class="val" id="p3">*</div><div class="lbl">Month</div><div class="hint">1–12</div></div>
+      <div class="cron-part"><div class="val" id="p4">1-5</div><div class="lbl">Day of Week</div><div class="hint">0–6 (Sun=0)</div></div>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div id="resultSection" class="hidden">
+    <div class="explanation-box" id="explanationBox"></div>
+
+    <div class="card">
+      <div class="flex-between">
+        <strong>Next 10 Run Times</strong>
+        <span class="text-muted" style="font-size:.8rem">Based on current local time</span>
+      </div>
+      <div class="next-runs" id="nextRuns"></div>
+    </div>
+  </div>
+
+  <div id="errorBox" class="hidden mt-2"></div>
+
+  <!-- Presets -->
+  <div class="card mt-2">
+    <strong>Common Expressions</strong>
+    <div class="preset-grid mt-2" id="presetGrid"></div>
+  </div>
+
+  <!-- Field Reference -->
+  <div class="card mt-2">
+    <strong>Field Reference</strong>
+    <div style="overflow-x:auto;margin-top:.75rem">
+      <table class="field-ref" style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="border-bottom:1.5px solid var(--border)">
+            <th style="padding:.35rem .5rem;text-align:left">Field</th>
+            <th style="padding:.35rem .5rem;text-align:left">Range</th>
+            <th style="padding:.35rem .5rem;text-align:left">Special chars</th>
+            <th style="padding:.35rem .5rem;text-align:left">Example</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Minute</td><td>0–59</td><td>* , - /</td><td><code>*/15</code> = every 15 min</td></tr>
+          <tr><td>Hour</td><td>0–23</td><td>* , - /</td><td><code>0,12</code> = midnight & noon</td></tr>
+          <tr><td>Day of Month</td><td>1–31</td><td>* , - /</td><td><code>1,15</code> = 1st & 15th</td></tr>
+          <tr><td>Month</td><td>1–12</td><td>* , - /</td><td><code>*/3</code> = every quarter</td></tr>
+          <tr><td>Day of Week</td><td>0–7 (0,7=Sun)</td><td>* , - /</td><td><code>1-5</code> = weekdays</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem;font-size:.8rem">
+      <span><code>*</code> = any value</span>
+      <span><code>,</code> = list (1,2,3)</span>
+      <span><code>-</code> = range (1-5)</span>
+      <span><code>/</code> = step (*/5)</span>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cronstrue/2.50.0/cronstrue.min.js" crossorigin="anonymous"></script>
+<script src="../../js/common.js"></script>
+<script>
+const PRESETS = [
+  { expr: '* * * * *',       desc: 'Every minute' },
+  { expr: '*/5 * * * *',     desc: 'Every 5 minutes' },
+  { expr: '*/15 * * * *',    desc: 'Every 15 minutes' },
+  { expr: '*/30 * * * *',    desc: 'Every 30 minutes' },
+  { expr: '0 * * * *',       desc: 'Every hour' },
+  { expr: '0 0 * * *',       desc: 'Every day at midnight' },
+  { expr: '0 9 * * *',       desc: 'Every day at 9 AM' },
+  { expr: '0 9 * * 1-5',     desc: 'Weekdays at 9 AM' },
+  { expr: '0 0 * * 0',       desc: 'Every Sunday midnight' },
+  { expr: '0 0 1 * *',       desc: 'First day of each month' },
+  { expr: '0 0 1 1 *',       desc: 'Once a year (Jan 1)' },
+  { expr: '0 0,12 * * *',    desc: 'Twice daily (midnight & noon)' },
+  { expr: '0 9-17 * * 1-5',  desc: 'Hourly, business hours' },
+  { expr: '30 23 * * *',     desc: 'Daily at 11:30 PM' },
+  { expr: '0 6 1,15 * *',    desc: '1st & 15th at 6 AM' },
+];
+
+// Render presets
+const presetGrid = document.getElementById('presetGrid');
+PRESETS.forEach(p => {
+  const div = document.createElement('div');
+  div.className = 'preset-item';
+  div.innerHTML = `<div class="expr">${p.expr}</div><div class="desc">${p.desc}</div>`;
+  div.addEventListener('click', () => {
+    document.getElementById('cronInput').value = p.expr;
+    doExplain();
+  });
+  presetGrid.appendChild(div);
+});
+
+// Parse cron field to get matching values
+function parseCronField(field, min, max) {
+  const values = new Set();
+  const parts = field.split(',');
+  for (const part of parts) {
+    if (part === '*') { for (let i = min; i <= max; i++) values.add(i); continue; }
+    const stepMatch = part.match(/^(\*|(\d+)-(\d+)|(\d+))\/(\d+)$/);
+    if (stepMatch) {
+      let start = stepMatch[1] === '*' ? min : parseInt(stepMatch[2] || stepMatch[4]);
+      const end = stepMatch[3] ? parseInt(stepMatch[3]) : max;
+      const step = parseInt(stepMatch[5]);
+      for (let i = start; i <= end; i += step) values.add(i);
+      continue;
+    }
+    const rangeMatch = part.match(/^(\d+)-(\d+)$/);
+    if (rangeMatch) { for (let i = parseInt(rangeMatch[1]); i <= parseInt(rangeMatch[2]); i++) values.add(i); continue; }
+    if (/^\d+$/.test(part)) values.add(parseInt(part));
+  }
+  return [...values].sort((a,b) => a-b);
+}
+
+function getNextRuns(expr, count = 10) {
+  const parts = expr.trim().split(/\s+/);
+  if (parts.length !== 5) return [];
+
+  const [mField, hField, domField, monField, dowField] = parts;
+  const minutes = parseCronField(mField, 0, 59);
+  const hours   = parseCronField(hField, 0, 23);
+  const doms    = parseCronField(domField, 1, 31);
+  const months  = parseCronField(monField, 1, 12);
+  const dows    = parseCronField(dowField, 0, 6).map(d => d === 7 ? 0 : d);
+
+  const runs = [];
+  const now = new Date();
+  now.setSeconds(0, 0);
+  now.setMinutes(now.getMinutes() + 1);
+
+  let d = new Date(now);
+  let iterations = 0;
+  const maxIter = 525600; // 1 year of minutes
+
+  while (runs.length < count && iterations++ < maxIter) {
+    const month = d.getMonth() + 1; // 1-12
+    const dom   = d.getDate();
+    const dow   = d.getDay(); // 0=Sun
+    const hour  = d.getHours();
+    const min   = d.getMinutes();
+
+    if (months.includes(month) && doms.includes(dom) && dows.includes(dow) &&
+        hours.includes(hour) && minutes.includes(min)) {
+      runs.push(new Date(d));
+    }
+    d.setMinutes(d.getMinutes() + 1);
+  }
+  return runs;
+}
+
+function relTime(date) {
+  const diff = date - new Date();
+  const m = Math.round(diff / 60000);
+  if (m < 60) return `in ${m} min`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `in ${h}h`;
+  return `in ${Math.round(h / 24)}d`;
+}
+
+function doExplain() {
+  const expr = document.getElementById('cronInput').value.trim();
+  const errBox = document.getElementById('errorBox');
+  const resultSection = document.getElementById('resultSection');
+  errBox.className = 'hidden';
+  resultSection.classList.add('hidden');
+
+  // Update part display
+  const parts = expr.split(/\s+/);
+  ['p0','p1','p2','p3','p4'].forEach((id, i) => {
+    document.getElementById(id).textContent = parts[i] || '?';
+  });
+
+  if (!window.cronstrue) { errBox.className = 'alert alert-danger mt-2'; errBox.textContent = 'cronstrue library not loaded. Check internet connection.'; return; }
+
+  try {
+    const desc = cronstrue.toString(expr, { use24HourTimeFormat: false, verbose: true });
+    document.getElementById('explanationBox').textContent = desc;
+
+    // Next runs
+    const runs = getNextRuns(expr, 10);
+    const runContainer = document.getElementById('nextRuns');
+    if (runs.length) {
+      runContainer.innerHTML = runs.map((r, i) => `
+        <div class="run-row">
+          <span class="dt">${r.toLocaleString()}</span>
+          <span class="rel">${relTime(r)}</span>
+        </div>`).join('');
+    } else {
+      runContainer.innerHTML = '<div class="run-row text-muted">Could not calculate next runs (expression may be too infrequent).</div>';
+    }
+    resultSection.classList.remove('hidden');
+  } catch(e) {
+    errBox.className = 'alert alert-danger mt-2';
+    errBox.textContent = '✗ Invalid cron expression: ' + e;
+  }
+}
+
+document.getElementById('explainBtn').addEventListener('click', doExplain);
+document.getElementById('cronInput').addEventListener('keydown', e => { if (e.key === 'Enter') doExplain(); });
+document.getElementById('clearCronBtn').addEventListener('click', () => {
+  document.getElementById('cronInput').value = '';
+  ['p0','p1','p2','p3','p4'].forEach(id => document.getElementById(id).textContent = '*');
+  document.getElementById('resultSection').classList.add('hidden');
+  document.getElementById('errorBox').className = 'hidden';
+});
+
+// Auto-explain on load
+document.addEventListener('DOMContentLoaded', () => setTimeout(doExplain, 500));
+</script>
+</body>
+</html>

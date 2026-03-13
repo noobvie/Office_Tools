@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Typing Speed Test — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .passage-display {
+      font-size: 1.1rem;
+      line-height: 1.9;
+      padding: 1.25rem;
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      font-family: 'Georgia', serif;
+      letter-spacing: .01em;
+      min-height: 140px;
+      user-select: none;
+      position: relative;
+    }
+
+    .char { display: inline; }
+    .char.correct { color: var(--success); }
+    .char.incorrect { color: var(--danger); background: rgba(239,68,68,.15); border-radius: 2px; }
+    .char.current { background: var(--primary); color: #fff; border-radius: 2px; }
+    .char.untyped  { color: var(--text-muted); }
+
+    #typingInput {
+      width: 100%;
+      font-size: 1rem;
+      font-family: 'Courier New', monospace;
+      padding: .75rem 1rem;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      transition: border-color .18s;
+      resize: none;
+      min-height: 80px;
+    }
+    #typingInput:focus { border-color: var(--primary); }
+    #typingInput:disabled { opacity: .5; cursor: not-allowed; }
+
+    .live-stats {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .live-stat .val { font-size: 1.8rem; font-weight: 900; color: var(--primary); font-family: 'Courier New', monospace; }
+    .live-stat .lbl { font-size: .72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+
+    .timer-display {
+      font-size: 2rem;
+      font-weight: 900;
+      font-family: 'Courier New', monospace;
+      color: var(--text);
+    }
+    .timer-display.warning { color: var(--warning); }
+    .timer-display.urgent  { color: var(--danger); animation: pulse .5s infinite alternate; }
+    @keyframes pulse { to { opacity: .5; } }
+
+    .result-card {
+      text-align: center;
+      padding: 2rem;
+    }
+    .result-wpm {
+      font-size: 4rem;
+      font-weight: 900;
+      color: var(--primary);
+      line-height: 1;
+    }
+    .result-label { color: var(--text-muted); font-size: .9rem; margin-top: .25rem; }
+    .grade-badge {
+      display: inline-block;
+      margin: .75rem 0;
+      padding: .35rem 1.2rem;
+      border-radius: 50px;
+      font-size: 1rem;
+      font-weight: 800;
+    }
+
+    .history-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: .45rem .75rem;
+      border-bottom: 1px solid var(--border);
+      font-size: .85rem;
+    }
+    .history-row:last-child { border-bottom: none; }
+
+    .progress-bar-wrap {
+      height: 5px;
+      background: var(--border);
+      border-radius: 50px;
+      overflow: hidden;
+      margin-bottom: .75rem;
+    }
+    .progress-bar-fill { height: 100%; background: var(--primary); transition: width .2s; border-radius: 50px; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Typing Speed Test</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>⌨️ Typing Speed Test</h1>
+    <p>Measure your typing speed (WPM) and accuracy. Press any key to start.</p>
+  </div>
+
+  <!-- Settings -->
+  <div class="card" style="padding:.75rem 1rem">
+    <div class="flex" style="gap:.75rem;flex-wrap:wrap;align-items:center">
+      <div class="form-group" style="margin:0">
+        <label style="margin-bottom:.2rem">Duration</label>
+        <select id="duration" style="padding:.3rem .6rem;font-size:.85rem">
+          <option value="30">30 seconds</option>
+          <option value="60" selected>1 minute</option>
+          <option value="120">2 minutes</option>
+          <option value="180">3 minutes</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label style="margin-bottom:.2rem">Passage</label>
+        <select id="passageSelect" style="padding:.3rem .6rem;font-size:.85rem">
+          <option value="0">Common Words</option>
+          <option value="1">Programming</option>
+          <option value="2">Literature</option>
+          <option value="3">Science</option>
+        </select>
+      </div>
+      <button class="btn btn-secondary btn-sm" id="newPassageBtn">🔀 New Passage</button>
+      <div style="margin-left:auto">
+        <button class="btn btn-primary" id="restartBtn">↺ Restart</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test area -->
+  <div class="card mt-2" id="testCard">
+    <!-- Live stats + timer -->
+    <div class="flex-between" style="margin-bottom:.75rem">
+      <div class="live-stats">
+        <div class="live-stat"><div class="val" id="liveWpm">0</div><div class="lbl">WPM</div></div>
+        <div class="live-stat"><div class="val" id="liveAcc">—</div><div class="lbl">Accuracy</div></div>
+        <div class="live-stat"><div class="val" id="liveErrors">0</div><div class="lbl">Errors</div></div>
+      </div>
+      <div>
+        <div class="timer-display" id="timerDisplay">1:00</div>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+
+    <!-- Passage -->
+    <div class="passage-display" id="passageDisplay"></div>
+
+    <!-- Input -->
+    <textarea id="typingInput" class="mt-2" placeholder="Start typing here to begin the test…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+  </div>
+
+  <!-- Result -->
+  <div class="card mt-2 hidden result-card" id="resultCard">
+    <div class="result-wpm" id="resultWpm">0</div>
+    <div class="result-label">Words Per Minute</div>
+    <div class="grade-badge" id="gradeEl"></div>
+    <div class="stats-grid" style="margin-top:1rem">
+      <div class="stat-card"><div class="stat-value" id="resAcc">—</div><div class="stat-label">Accuracy</div></div>
+      <div class="stat-card"><div class="stat-value" id="resCorrect">—</div><div class="stat-label">Correct Words</div></div>
+      <div class="stat-card"><div class="stat-value" id="resErrors">—</div><div class="stat-label">Errors</div></div>
+      <div class="stat-card"><div class="stat-value" id="resTime">—</div><div class="stat-label">Time</div></div>
+    </div>
+    <button class="btn btn-primary btn-lg mt-2" id="retryBtn">Try Again</button>
+  </div>
+
+  <!-- History -->
+  <div class="card mt-2">
+    <div class="flex-between">
+      <strong>Recent Results</strong>
+      <button class="btn btn-ghost btn-sm" id="clearHistory">Clear</button>
+    </div>
+    <div id="historyContainer" style="max-height:200px;overflow-y:auto;margin-top:.5rem">
+      <div class="text-muted" style="font-size:.85rem;padding:.5rem 0" id="historyEmpty">No results yet.</div>
+    </div>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+const PASSAGES = [
+  // 0: Common words
+  [
+    "the quick brown fox jumps over the lazy dog and the dog barked loudly at the fox as it ran away through the dense forest",
+    "she sells sea shells by the sea shore and the shells she sells are surely sea shells from the sea floor",
+    "how much wood would a woodchuck chuck if a woodchuck could chuck wood it would chuck as much wood as it could",
+    "to be or not to be that is the question whether it is nobler in the mind to suffer the slings and arrows of outrageous fortune",
+  ],
+  // 1: Programming
+  [
+    "function fibonacci returns the nth number in the sequence by recursively calling itself with decremented values until reaching the base cases of zero and one",
+    "the event loop processes callbacks from the queue after the call stack is empty allowing javascript to perform non-blocking operations despite being single threaded",
+    "docker containers package applications with their dependencies ensuring consistent environments from development through production using a layered filesystem and namespace isolation",
+    "git branches allow developers to work on features in isolation merging changes back into the main branch after code review and passing all automated tests",
+  ],
+  // 2: Literature
+  [
+    "it was the best of times it was the worst of times it was the age of wisdom it was the age of foolishness it was the epoch of belief",
+    "call me ishmael some years ago never mind how long precisely having little or no money in my purse and nothing particular to interest me on shore",
+    "all happy families are alike each unhappy family is unhappy in its own way everything was in confusion in the oblonskys house",
+    "it is a truth universally acknowledged that a single man in possession of a good fortune must be in want of a wife",
+  ],
+  // 3: Science
+  [
+    "the theory of general relativity describes gravity not as a force but as a curvature of spacetime caused by mass and energy affecting the motion of objects",
+    "deoxyribonucleic acid carries the genetic instructions used in the growth development functioning and reproduction of all known living organisms and many viruses",
+    "quantum entanglement is a phenomenon where two particles become interconnected such that the quantum state of one particle cannot be described independently of the other",
+    "the periodic table organizes chemical elements by their atomic number electron configuration and recurring chemical properties revealing patterns in elemental behavior",
+  ],
+];
+
+let passage = '';
+let charIndex = 0;
+let errors = 0;
+let correctChars = 0;
+let startTime = null;
+let timerInterval = null;
+let testDuration = 60;
+let timeLeft = 60;
+let testActive = false;
+let testDone = false;
+let history = [];
+let totalTyped = 0;
+
+function getPassage() {
+  const cat = parseInt(document.getElementById('passageSelect').value);
+  const arr = PASSAGES[cat];
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function renderPassage() {
+  const display = document.getElementById('passageDisplay');
+  display.innerHTML = passage.split('').map((ch, i) => {
+    let cls = i === charIndex ? 'current' : 'untyped';
+    return `<span class="char ${cls}" id="c${i}">${ch === ' ' ? '&nbsp;' : escHtml(ch)}</span>`;
+  }).join('');
+}
+
+function updatePassageDisplay(typed) {
+  const chars = passage.split('');
+  chars.forEach((ch, i) => {
+    const el = document.getElementById('c' + i);
+    if (!el) return;
+    el.className = 'char';
+    if (i < typed.length) {
+      el.classList.add(typed[i] === ch ? 'correct' : 'incorrect');
+    } else if (i === typed.length) {
+      el.classList.add('current');
+      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } else {
+      el.classList.add('untyped');
+    }
+  });
+}
+
+function calcWpm(correctWords, elapsedSeconds) {
+  if (!elapsedSeconds) return 0;
+  return Math.round((correctWords / elapsedSeconds) * 60);
+}
+
+function updateLive(typed) {
+  const elapsed = startTime ? (Date.now() - startTime) / 1000 : 0;
+  const words = typed.trim().split(/\s+/).filter(Boolean);
+  const passWords = passage.split(/\s+/);
+  let correct = 0, err = 0;
+  words.forEach((w, i) => { if (w === passWords[i]) correct++; else if (i < passWords.length) err++; });
+  const wpm = calcWpm(correct, elapsed);
+  const acc = typed.length ? Math.round(((typed.length - err) / typed.length) * 100) : 100;
+
+  document.getElementById('liveWpm').textContent = wpm;
+  document.getElementById('liveAcc').textContent = (typed.length ? acc : '—') + (typed.length ? '%' : '');
+  document.getElementById('liveErrors').textContent = err;
+  document.getElementById('progressFill').style.width = Math.min(100, (typed.length / passage.length) * 100) + '%';
+}
+
+function startTimer() {
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    updateTimerDisplay();
+    if (timeLeft <= 0) { clearInterval(timerInterval); finishTest(); }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const el = document.getElementById('timerDisplay');
+  const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
+  el.textContent = testDuration >= 60 ? `${m}:${s.toString().padStart(2,'0')}` : `${timeLeft}s`;
+  el.className = 'timer-display' + (timeLeft <= 10 ? ' urgent' : timeLeft <= 20 ? ' warning' : '');
+}
+
+function finishTest() {
+  testActive = false; testDone = true;
+  document.getElementById('typingInput').disabled = true;
+  const typed = document.getElementById('typingInput').value;
+  const elapsed = (Date.now() - startTime) / 1000;
+  const words = typed.trim().split(/\s+/).filter(Boolean);
+  const passWords = passage.split(/\s+/);
+  let correct = 0, err = 0;
+  words.forEach((w, i) => { if (w === passWords[i]) correct++; else if (i < passWords.length) err++; });
+  const wpm = calcWpm(correct, elapsed);
+  const acc = typed.length ? Math.round((1 - err / words.length) * 100) : 0;
+
+  // Grade
+  let grade, gradeColor;
+  if (wpm >= 100) { grade = '🏆 Expert'; gradeColor = '#6366f1'; }
+  else if (wpm >= 70) { grade = '⭐ Advanced'; gradeColor = '#10b981'; }
+  else if (wpm >= 50) { grade = '👍 Intermediate'; gradeColor = '#f59e0b'; }
+  else if (wpm >= 30) { grade = '📈 Beginner'; gradeColor = '#64748b'; }
+  else { grade = '🐢 Novice'; gradeColor = '#94a3b8'; }
+
+  document.getElementById('resultWpm').textContent = wpm;
+  document.getElementById('gradeEl').textContent = grade;
+  document.getElementById('gradeEl').style.background = gradeColor + '22';
+  document.getElementById('gradeEl').style.color = gradeColor;
+  document.getElementById('resAcc').textContent = acc + '%';
+  document.getElementById('resCorrect').textContent = correct;
+  document.getElementById('resErrors').textContent = err;
+  document.getElementById('resTime').textContent = Math.round(elapsed) + 's';
+
+  document.getElementById('testCard').classList.add('hidden');
+  document.getElementById('resultCard').classList.remove('hidden');
+
+  // History
+  history.unshift({ wpm, acc, errors: err, time: new Date().toLocaleTimeString() });
+  if (history.length > 10) history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  const container = document.getElementById('historyContainer');
+  const empty = document.getElementById('historyEmpty');
+  if (!history.length) { if(empty) empty.style.display = ''; return; }
+  if(empty) empty.style.display = 'none';
+  container.innerHTML = (empty ? empty.outerHTML : '') + history.map(h =>
+    `<div class="history-row">
+      <span><strong>${h.wpm} WPM</strong> · ${h.acc}% accuracy</span>
+      <span class="text-muted">${h.errors} errors · ${h.time}</span>
+    </div>`).join('');
+}
+
+function initTest() {
+  clearInterval(timerInterval);
+  testDuration = parseInt(document.getElementById('duration').value);
+  timeLeft = testDuration;
+  startTime = null;
+  testActive = false;
+  testDone = false;
+  passage = getPassage();
+  renderPassage();
+  updateTimerDisplay();
+  document.getElementById('typingInput').value = '';
+  document.getElementById('typingInput').disabled = false;
+  document.getElementById('typingInput').placeholder = 'Start typing here to begin the test…';
+  document.getElementById('liveWpm').textContent = '0';
+  document.getElementById('liveAcc').textContent = '—';
+  document.getElementById('liveErrors').textContent = '0';
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('testCard').classList.remove('hidden');
+  document.getElementById('resultCard').classList.add('hidden');
+  document.getElementById('typingInput').focus();
+}
+
+document.getElementById('typingInput').addEventListener('input', e => {
+  if (testDone) return;
+  const typed = e.target.value;
+
+  if (!testActive && typed.length > 0) {
+    testActive = true;
+    startTime = Date.now();
+    startTimer();
+    document.getElementById('typingInput').placeholder = '';
+  }
+
+  updatePassageDisplay(typed);
+  updateLive(typed);
+
+  // Auto-finish if full passage typed
+  if (typed.length >= passage.length) finishTest();
+});
+
+document.getElementById('restartBtn').addEventListener('click', initTest);
+document.getElementById('retryBtn').addEventListener('click', initTest);
+document.getElementById('newPassageBtn').addEventListener('click', initTest);
+document.getElementById('passageSelect').addEventListener('change', initTest);
+document.getElementById('duration').addEventListener('change', initTest);
+document.getElementById('clearHistory').addEventListener('click', () => { history.length = 0; renderHistory(); });
+
+initTest();
+</script>
+</body>
+</html>

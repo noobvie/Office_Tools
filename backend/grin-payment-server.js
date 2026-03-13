@@ -1,0 +1,303 @@
+/**
+ * Office Tools — Grin Payment Server
+ *
+ * Flow:
+ *   POST /api/payment/initiate  → creates Grin invoice slate, stores pending payment in PocketBase
+ *   POST /api/payment/respond   → finalizes the transaction, activates subscription on success
+ *   GET  /api/payment/status/:id → poll payment status
+ *
+ * Requires: .env (copy from .env.example)
+ */
+
+'use strict';
+require('dotenv').config();
+const express  = require('express');
+const cors     = require('cors');
+const fetch    = require('node-fetch');
+
+const app  = express();
+const PORT = process.env.PORT || 3001;
+
+// ── Config ────────────────────────────────────────────────────
+const PB_URL         = process.env.PB_URL         || 'http://127.0.0.1:8090';
+const GRIN_OWNER_URL = process.env.GRIN_OWNER_URL  || 'http://127.0.0.1:3420/v3/owner';
+const EXPIRY_MINS    = parseInt(process.env.PAYMENT_EXPIRY_MINUTES || '30', 10);
+const CORS_ORIGINS   = (process.env.CORS_ORIGINS || 'http://localhost:8080').split(',').map(s => s.trim());
+
+const PLAN_AMOUNTS = {
+  pro_monthly: parseInt(process.env.PLAN_PRO_MONTHLY_NANOGRIN  || '10000000000',  10),
+  pro_yearly:  parseInt(process.env.PLAN_PRO_YEARLY_NANOGRIN   || '100000000000', 10),
+  lifetime:    parseInt(process.env.PLAN_LIFETIME_NANOGRIN      || '500000000000', 10),
+};
+
+const PLAN_EXPIRES = {
+  pro_monthly: () => new Date(Date.now() + 30  * 86400000).toISOString(),
+  pro_yearly:  () => new Date(Date.now() + 365 * 86400000).toISOString(),
+  lifetime:    () => null,
+};
+
+// ── Middleware ────────────────────────────────────────────────
+app.use(cors({ origin: CORS_ORIGINS, methods: ['GET','POST'], allowedHeaders: ['Content-Type','Authorization'] }));
+app.use(express.json());
+
+// ── PocketBase admin token (cached) ──────────────────────────
+let pbAdminToken = null;
+let pbAdminExpiry = 0;
+
+async function getPbAdminToken() {
+  if (pbAdminToken && Date.now() < pbAdminExpiry) return pbAdminToken;
+  const res  = await fetch(`${PB_URL}/api/admins/auth-with-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identity: process.env.PB_ADMIN_EMAIL, password: process.env.PB_ADMIN_PASSWORD }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error('PocketBase admin auth failed: ' + data.message);
+  pbAdminToken = data.token;
+  pbAdminExpiry = Date.now() + 55 * 60 * 1000; // refresh 5 min before 1hr expiry
+  return pbAdminToken;
+}
+
+async function pbPost(path, body) {
+  const token = await getPbAdminToken();
+  const res   = await fetch(`${PB_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': token },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'PocketBase error');
+  return data;
+}
+
+async function pbPatch(path, body) {
+  const token = await getPbAdminToken();
+  const res   = await fetch(`${PB_URL}${path}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Authorization': token },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'PocketBase error');
+  return data;
+}
+
+async function pbGet(path) {
+  const token = await getPbAdminToken();
+  const res   = await fetch(`${PB_URL}${path}`, {
+    headers: { 'Authorization': token },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'PocketBase error');
+  return data;
+}
+
+// ── Grin wallet helpers (Owner API v3) ───────────────────────
+let walletToken = null;
+
+async function openWallet() {
+  if (walletToken) return walletToken;
+  const res  = await fetch(GRIN_OWNER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0', id: 1,
+      method: 'open_wallet',
+      params: { name: null, slatepack_secret: process.env.GRIN_WALLET_PASS },
+    }),
+  });
+  const data = await res.json();
+  if (data.error) throw new Error('Grin wallet open failed: ' + data.error.message);
+  walletToken = data.result.value;
+  return walletToken;
+}
+
+async function grinRpc(method, params) {
+  const token = await openWallet();
+  const res = await fetch(GRIN_OWNER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params: { token, ...params } }),
+  });
+  const data = await res.json();
+  if (data.error) {
+    // Token may have expired — reset and retry once
+    if (data.error.code === -32099) {
+      walletToken = null;
+      return grinRpc(method, params);
+    }
+    throw new Error(`Grin RPC ${method} failed: ${data.error.message}`);
+  }
+  return data.result.Ok ?? data.result;
+}
+
+// Verify user token against PocketBase
+async function verifyUserToken(authHeader) {
+  if (!authHeader) throw new Error('Missing Authorization header');
+  const token = authHeader.replace(/^Bearer\s+/i, '');
+  // Verify by fetching own user record
+  const res = await fetch(`${PB_URL}/api/collections/users/records`, {
+    headers: { 'Authorization': token },
+  });
+  if (!res.ok) throw new Error('Invalid user token');
+  return token;
+}
+
+async function getUserFromToken(authHeader) {
+  const token = authHeader?.replace(/^Bearer\s+/i, '');
+  if (!token) throw new Error('Missing auth token');
+  // Use admin to find user by token identity — decode JWT sub claim
+  try {
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+    return { id: payload.id, email: payload.email };
+  } catch { throw new Error('Invalid token format'); }
+}
+
+// ── Routes ────────────────────────────────────────────────────
+
+/**
+ * POST /api/payment/initiate
+ * Body: { plan: 'pro_monthly' | 'pro_yearly' | 'lifetime' }
+ * Auth: Bearer <user JWT>
+ */
+app.post('/api/payment/initiate', async (req, res) => {
+  try {
+    const user = await getUserFromToken(req.headers.authorization);
+    const { plan } = req.body;
+
+    if (!PLAN_AMOUNTS[plan]) {
+      return res.status(400).json({ error: 'Invalid plan: ' + plan });
+    }
+
+    const amountNano = PLAN_AMOUNTS[plan];
+    const expiresAt  = new Date(Date.now() + EXPIRY_MINS * 60 * 1000).toISOString();
+
+    // Create Grin invoice slate
+    const slate = await grinRpc('issue_invoice_tx', {
+      args: {
+        amount: amountNano,
+        message: `Office Tools ${plan} subscription`,
+        target_slate_version: null,
+      },
+    });
+
+    // Serialize to slatepack
+    const slatepack = await grinRpc('slate_to_slatepack', {
+      slate,
+      recipients: [],
+      ttl_blocks: null,
+    });
+
+    // Store in PocketBase
+    const payment = await pbPost('/api/collections/grin_payments/records', {
+      user:         user.id,
+      plan,
+      amount_grin:  amountNano / 1e9,
+      amount_nano:  amountNano,
+      status:       'pending',
+      expires_at:   expiresAt,
+      slate_id:     slate.id,
+    });
+
+    res.json({
+      payment_id: payment.id,
+      slatepack,
+      amount_grin: amountNano / 1e9,
+      plan,
+      expires_at: expiresAt,
+    });
+  } catch (err) {
+    console.error('[initiate]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/payment/respond
+ * Body: { payment_id, response_slatepack }
+ * Auth: Bearer <user JWT>
+ */
+app.post('/api/payment/respond', async (req, res) => {
+  try {
+    const user = await getUserFromToken(req.headers.authorization);
+    const { payment_id, response_slatepack } = req.body;
+    if (!payment_id || !response_slatepack) {
+      return res.status(400).json({ error: 'payment_id and response_slatepack required' });
+    }
+
+    // Load payment record
+    const payment = await pbGet(`/api/collections/grin_payments/records/${payment_id}`);
+    if (payment.user !== user.id) return res.status(403).json({ error: 'Forbidden' });
+    if (payment.status !== 'pending') return res.status(409).json({ error: 'Payment already ' + payment.status });
+    if (new Date(payment.expires_at) < new Date()) {
+      await pbPatch(`/api/collections/grin_payments/records/${payment_id}`, { status: 'expired' });
+      return res.status(410).json({ error: 'Payment expired' });
+    }
+
+    // Decode response slatepack back to slate
+    const responseSlate = await grinRpc('slatepack_to_slate', { slatepack: response_slatepack });
+
+    // Finalize the transaction
+    const finalSlate = await grinRpc('finalize_tx', { slate: responseSlate });
+
+    // Post to network
+    await grinRpc('post_tx', { slate: finalSlate, fluff: false });
+
+    const txId = finalSlate.id;
+
+    // Update payment record
+    await pbPatch(`/api/collections/grin_payments/records/${payment_id}`, {
+      status:       'confirmed',
+      confirmed_at: new Date().toISOString(),
+      tx_id:        txId,
+    });
+
+    // Create subscription
+    const expiresAt = PLAN_EXPIRES[payment.plan]?.();
+    await pbPost('/api/collections/subscriptions/records', {
+      user:              user.id,
+      plan:              payment.plan,
+      status:            'active',
+      payment_method:    'grin',
+      grin_payment_id:   payment_id,
+      starts_at:         new Date().toISOString(),
+      expires_at:        expiresAt,
+    });
+
+    res.json({ success: true, tx_id: txId, plan: payment.plan });
+  } catch (err) {
+    console.error('[respond]', err.message);
+    // Mark as failed
+    if (req.body.payment_id) {
+      pbPatch(`/api/collections/grin_payments/records/${req.body.payment_id}`, { status: 'failed' }).catch(() => {});
+    }
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/payment/status/:id
+ * Auth: Bearer <user JWT>
+ */
+app.get('/api/payment/status/:id', async (req, res) => {
+  try {
+    const user    = await getUserFromToken(req.headers.authorization);
+    const payment = await pbGet(`/api/collections/grin_payments/records/${req.params.id}`);
+    if (payment.user !== user.id) return res.status(403).json({ error: 'Forbidden' });
+    res.json({ status: payment.status, confirmed_at: payment.confirmed_at });
+  } catch (err) {
+    res.status(404).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/health
+ */
+app.get('/api/health', (_, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
+
+// ── Start ─────────────────────────────────────────────────────
+app.listen(PORT, () => {
+  console.log(`Grin payment server running on port ${PORT}`);
+  console.log(`PocketBase: ${PB_URL}`);
+  console.log(`Grin Owner API: ${GRIN_OWNER_URL}`);
+});

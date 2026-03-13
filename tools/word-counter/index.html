@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Word Counter — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    #textInput {
+      width: 100%;
+      min-height: 220px;
+      padding: .85rem;
+      font-size: .95rem;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      resize: vertical;
+      line-height: 1.65;
+      outline: none;
+      transition: border-color .18s;
+    }
+    #textInput:focus { border-color: var(--primary); }
+    .keywords-list { margin-top: .75rem; }
+    .kw-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .45rem .75rem;
+      border-bottom: 1px solid var(--border);
+      font-size: .88rem;
+    }
+    .kw-row:last-child { border-bottom: none; }
+    .kw-bar-wrap { flex: 1; margin: 0 1rem; height: 6px; background: var(--border); border-radius: 50px; overflow: hidden; }
+    .kw-bar { height: 100%; background: var(--primary); border-radius: 50px; }
+    .kw-count { color: var(--text-muted); min-width: 40px; text-align: right; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Word Counter</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>📊 Word Counter</h1>
+    <p>Paste or type text to count words, characters, and get reading statistics live.</p>
+  </div>
+
+  <div class="card">
+    <textarea id="textInput" placeholder="Paste or type your text here…"></textarea>
+    <div class="btn-group">
+      <button class="btn btn-secondary btn-sm" id="clearBtn">Clear</button>
+      <button class="btn btn-secondary btn-sm" id="sampleBtn">Load Sample</button>
+    </div>
+  </div>
+
+  <div class="stats-grid mt-2">
+    <div class="stat-card"><div class="stat-value" id="stWords">0</div><div class="stat-label">Words</div></div>
+    <div class="stat-card"><div class="stat-value" id="stChars">0</div><div class="stat-label">Characters</div></div>
+    <div class="stat-card"><div class="stat-value" id="stCharsNoSp">0</div><div class="stat-label">No Spaces</div></div>
+    <div class="stat-card"><div class="stat-value" id="stSentences">0</div><div class="stat-label">Sentences</div></div>
+    <div class="stat-card"><div class="stat-value" id="stParagraphs">0</div><div class="stat-label">Paragraphs</div></div>
+    <div class="stat-card"><div class="stat-value" id="stReadTime">0 sec</div><div class="stat-label">Read Time</div></div>
+    <div class="stat-card"><div class="stat-value" id="stSpeakTime">0 sec</div><div class="stat-label">Speak Time</div></div>
+    <div class="stat-card"><div class="stat-value" id="stLines">0</div><div class="stat-label">Lines</div></div>
+  </div>
+
+  <div class="card mt-2">
+    <div class="flex-between">
+      <strong>Top Keywords</strong>
+      <span class="text-muted" style="font-size:.82rem">Excluding common stop words</span>
+    </div>
+    <div id="keywordsWrap" class="keywords-list">
+      <div class="text-muted" style="padding:.75rem 0;font-size:.88rem">Type something to see keyword density.</div>
+    </div>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+const STOP_WORDS = new Set(['the','a','an','and','or','but','in','on','at','to','for','of','with','by','from','is','are','was','were','be','been','being','have','has','had','do','does','did','will','would','could','should','may','might','shall','this','that','these','those','it','its','i','you','he','she','we','they','me','him','her','us','them','my','your','his','our','their','what','which','who','when','where','how','if','as','so','up','out','not','no','can','all','more','also','just','about','into','than','then','there','here','been','very','only','other','such','some','any','each','both','few','own','same','after','before','between','through','over','under','again','further','back','now','while']);
+
+function readTime(words, wpm) {
+  const secs = Math.round((words / wpm) * 60);
+  if (secs < 60) return secs + ' sec';
+  const m = Math.floor(secs / 60), s = secs % 60;
+  return m + 'm ' + (s ? s + 's' : '');
+}
+
+function analyze(text) {
+  const words = text.trim() === '' ? [] : text.trim().split(/\s+/).filter(w => w.length > 0);
+  const sentences = text.trim() === '' ? 0 : (text.match(/[.!?…]+/g) || []).length;
+  const paragraphs = text.trim() === '' ? 0 : text.split(/\n\s*\n/).filter(p => p.trim().length > 0).length;
+  const lines = text === '' ? 0 : text.split('\n').length;
+
+  document.getElementById('stWords').textContent = fmt(words.length);
+  document.getElementById('stChars').textContent = fmt(text.length);
+  document.getElementById('stCharsNoSp').textContent = fmt(text.replace(/\s/g, '').length);
+  document.getElementById('stSentences').textContent = fmt(sentences);
+  document.getElementById('stParagraphs').textContent = fmt(paragraphs || (text.trim() ? 1 : 0));
+  document.getElementById('stLines').textContent = fmt(lines);
+  document.getElementById('stReadTime').textContent = readTime(words.length, 238);
+  document.getElementById('stSpeakTime').textContent = readTime(words.length, 130);
+
+  // Keywords
+  const freq = {};
+  words.forEach(w => {
+    const clean = w.replace(/[^a-zA-Z']/g, '').toLowerCase();
+    if (clean.length > 2 && !STOP_WORDS.has(clean)) freq[clean] = (freq[clean] || 0) + 1;
+  });
+  const sorted = Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0, 10);
+  const wrap = document.getElementById('keywordsWrap');
+  if (!sorted.length) {
+    wrap.innerHTML = '<div class="text-muted" style="padding:.75rem 0;font-size:.88rem">Type something to see keyword density.</div>';
+    return;
+  }
+  const max = sorted[0][1];
+  wrap.innerHTML = sorted.map(([word, count]) => {
+    const pct = Math.round((count / max) * 100);
+    const density = words.length ? ((count / words.length) * 100).toFixed(1) : 0;
+    return `<div class="kw-row">
+      <span style="min-width:90px;font-weight:600">${escHtml(word)}</span>
+      <div class="kw-bar-wrap"><div class="kw-bar" style="width:${pct}%"></div></div>
+      <span class="kw-count">${count}x</span>
+      <span class="text-muted" style="min-width:42px;text-align:right;font-size:.8rem">${density}%</span>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('textInput').addEventListener('input', e => analyze(e.target.value));
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.getElementById('textInput').value = '';
+  analyze('');
+});
+document.getElementById('sampleBtn').addEventListener('click', () => {
+  const sample = `The quick brown fox jumps over the lazy dog. This classic pangram contains every letter of the English alphabet at least once.
+
+Productivity tools can help people work more efficiently. By automating repetitive tasks, professionals can focus their energy on creative and strategic work that requires human intelligence.
+
+Good writing is clear, concise, and purposeful. Every word should earn its place in your text. Remove unnecessary filler words and passive constructions to make your writing more powerful and direct.`;
+  document.getElementById('textInput').value = sample;
+  analyze(sample);
+});
+
+analyze('');
+</script>
+</body>
+</html>

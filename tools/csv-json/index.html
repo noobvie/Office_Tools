@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSV ↔ JSON Converter — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .io-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      align-items: start;
+    }
+    @media (max-width: 680px) { .io-layout { grid-template-columns: 1fr; } }
+    .io-layout textarea { min-height: 240px; font-family: 'Courier New', monospace; font-size: .82rem; }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      max-height: 400px;
+    }
+    table.preview-table { border-collapse: collapse; width: 100%; font-size: .82rem; white-space: nowrap; }
+    table.preview-table th {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      padding: .4rem .75rem;
+      text-align: left;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+    }
+    table.preview-table td {
+      border: 1px solid var(--border);
+      padding: .35rem .75rem;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    table.preview-table tr:nth-child(even) td { background: var(--bg-secondary); }
+
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      text-align: center;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: .88rem;
+      transition: border-color .15s, background .15s;
+    }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
+    .drop-zone input[type=file] { display: none; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">CSV ↔ JSON Converter</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main" style="max-width:1100px">
+  <div class="tool-header">
+    <h1>📊 CSV ↔ JSON Converter</h1>
+    <p>Convert between CSV and JSON formats with table preview and file upload.</p>
+  </div>
+
+  <div class="card" data-tabs style="padding:.75rem">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="csvToJson">CSV → JSON</button>
+      <button class="tab-btn" data-tab="jsonToCsv">JSON → CSV</button>
+    </div>
+
+    <!-- CSV → JSON -->
+    <div class="tab-pane active" id="csvToJson">
+      <div class="form-row" style="align-items:end">
+        <div class="form-group">
+          <label>Delimiter</label>
+          <select id="delimiter">
+            <option value=",">,  Comma</option>
+            <option value=";">; Semicolon</option>
+            <option value="&#9;">⇥ Tab</option>
+            <option value="|">| Pipe</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Output format</label>
+          <select id="jsonFormat">
+            <option value="array">Array of objects</option>
+            <option value="flat">Array of arrays</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:.4rem">
+          <label class="checkbox-row" style="margin:0"><input type="checkbox" id="hasHeader" checked><label for="hasHeader">First row is header</label></label>
+        </div>
+      </div>
+
+      <div class="drop-zone" id="csvDropZone">
+        📂 Drop CSV file here or <strong>click to browse</strong>
+        <input type="file" id="csvFileInput" accept=".csv,.tsv,.txt">
+      </div>
+
+      <div class="io-layout mt-2">
+        <div class="form-group">
+          <label>CSV Input</label>
+          <textarea id="csvInput" placeholder="name,age,city&#10;Alice,30,New York&#10;Bob,25,London&#10;Charlie,35,Tokyo"></textarea>
+        </div>
+        <div class="form-group">
+          <label>JSON Output</label>
+          <div class="result-box large" style="min-height:240px;font-size:.82rem;white-space:pre" id="jsonOut">—<button class="copy-btn" id="copyCsvJsonBtn">Copy</button></div>
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-primary" id="csvToJsonBtn">Convert →</button>
+        <button class="btn btn-secondary btn-sm" id="csvSampleBtn">Load Sample</button>
+        <button class="btn btn-secondary btn-sm" id="downloadJsonBtn" style="display:none">Download JSON</button>
+      </div>
+
+      <div id="csvPreviewWrap" class="hidden mt-2">
+        <div class="flex-between" style="margin-bottom:.5rem">
+          <strong style="font-size:.88rem">Table Preview</strong>
+          <span class="text-muted" style="font-size:.78rem" id="csvStats"></span>
+        </div>
+        <div class="table-wrap" id="csvTableWrap"></div>
+      </div>
+    </div>
+
+    <!-- JSON → CSV -->
+    <div class="tab-pane" id="jsonToCsv">
+      <div class="form-row" style="align-items:end">
+        <div class="form-group">
+          <label>Delimiter</label>
+          <select id="csvDelimiter">
+            <option value=",">,  Comma</option>
+            <option value=";">; Semicolon</option>
+            <option value="&#9;">⇥ Tab</option>
+            <option value="|">| Pipe</option>
+          </select>
+        </div>
+        <label class="checkbox-row" style="margin-bottom:1rem"><input type="checkbox" id="includeHeader" checked><label for="includeHeader">Include header row</label></label>
+      </div>
+
+      <div class="io-layout">
+        <div class="form-group">
+          <label>JSON Input <span class="text-muted" style="font-weight:400">(array of objects)</span></label>
+          <textarea id="jsonInput" placeholder='[&#10;  {"name":"Alice","age":30},&#10;  {"name":"Bob","age":25}&#10;]'></textarea>
+        </div>
+        <div class="form-group">
+          <label>CSV Output</label>
+          <div class="result-box large" style="min-height:240px;font-size:.82rem;white-space:pre" id="csvOut">—<button class="copy-btn" id="copyJsonCsvBtn">Copy</button></div>
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-primary" id="jsonToCsvBtn">Convert →</button>
+        <button class="btn btn-secondary btn-sm" id="jsonSampleBtn">Load Sample</button>
+        <button class="btn btn-secondary btn-sm" id="downloadCsvBtn" style="display:none">Download CSV</button>
+      </div>
+
+      <div id="jsonPreviewWrap" class="hidden mt-2">
+        <div class="flex-between" style="margin-bottom:.5rem">
+          <strong style="font-size:.88rem">Table Preview</strong>
+          <span class="text-muted" style="font-size:.78rem" id="jsonStats"></span>
+        </div>
+        <div class="table-wrap" id="jsonTableWrap"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" crossorigin="anonymous"></script>
+<script src="../../js/common.js"></script>
+<script>
+// File drop zone
+const csvDrop = document.getElementById('csvDropZone');
+const csvFile = document.getElementById('csvFileInput');
+csvDrop.addEventListener('click', () => csvFile.click());
+csvDrop.addEventListener('dragover', e => { e.preventDefault(); csvDrop.classList.add('dragover'); });
+csvDrop.addEventListener('dragleave', () => csvDrop.classList.remove('dragover'));
+csvDrop.addEventListener('drop', e => {
+  e.preventDefault(); csvDrop.classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => { document.getElementById('csvInput').value = ev.target.result; };
+  reader.readAsText(f);
+});
+csvFile.addEventListener('change', () => {
+  const f = csvFile.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = e => { document.getElementById('csvInput').value = e.target.result; };
+  r.readAsText(f);
+});
+
+// Sample CSV
+document.getElementById('csvSampleBtn').addEventListener('click', () => {
+  document.getElementById('csvInput').value = `name,age,city,score,active
+Alice Johnson,30,New York,95.5,true
+Bob Smith,25,London,87.2,true
+Charlie Brown,35,Tokyo,92.1,false
+Diana Prince,28,Paris,78.9,true
+Eve Wilson,42,Sydney,88.3,false`;
+});
+
+// CSV → JSON
+document.getElementById('csvToJsonBtn').addEventListener('click', () => {
+  const csv = document.getElementById('csvInput').value.trim();
+  if (!csv) return;
+  const delimiter = document.getElementById('delimiter').value;
+  const hasHeader = document.getElementById('hasHeader').checked;
+  const format = document.getElementById('jsonFormat').value;
+
+  const result = Papa.parse(csv, { delimiter, header: hasHeader && format === 'array', skipEmptyLines: true, dynamicTyping: true });
+  const data = result.data;
+
+  const jsonStr = JSON.stringify(data, null, 2);
+  document.getElementById('jsonOut').childNodes[0].textContent = jsonStr;
+
+  // Download
+  const dlBtn = document.getElementById('downloadJsonBtn');
+  dlBtn.style.display = '';
+  dlBtn.onclick = () => {
+    const a = document.createElement('a'); a.download = 'data.json';
+    a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonStr); a.click();
+  };
+
+  // Table preview
+  renderTable(data, hasHeader, 'csvTableWrap', 'csvStats', 'csvPreviewWrap');
+});
+
+document.getElementById('copyCsvJsonBtn').addEventListener('click', function() {
+  copyText(document.getElementById('jsonOut').childNodes[0].textContent, this);
+});
+
+// Sample JSON
+document.getElementById('jsonSampleBtn').addEventListener('click', () => {
+  document.getElementById('jsonInput').value = JSON.stringify([
+    { name: "Alice Johnson", age: 30, city: "New York", score: 95.5, active: true },
+    { name: "Bob Smith", age: 25, city: "London", score: 87.2, active: true },
+    { name: "Charlie Brown", age: 35, city: "Tokyo", score: 92.1, active: false },
+    { name: "Diana Prince", age: 28, city: "Paris", score: 78.9, active: true }
+  ], null, 2);
+});
+
+// JSON → CSV
+document.getElementById('jsonToCsvBtn').addEventListener('click', () => {
+  let data;
+  try { data = JSON.parse(document.getElementById('jsonInput').value.trim()); }
+  catch(e) { alert('Invalid JSON: ' + e.message); return; }
+  if (!Array.isArray(data)) { alert('JSON must be an array of objects or arrays.'); return; }
+
+  const delimiter = document.getElementById('csvDelimiter').value;
+  const includeHeader = document.getElementById('includeHeader').checked;
+  const csv = Papa.unparse(data, { delimiter, header: includeHeader });
+
+  document.getElementById('csvOut').childNodes[0].textContent = csv;
+
+  const dlBtn = document.getElementById('downloadCsvBtn');
+  dlBtn.style.display = '';
+  dlBtn.onclick = () => {
+    const a = document.createElement('a'); a.download = 'data.csv';
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv); a.click();
+  };
+
+  // Table preview
+  const reparsed = Papa.parse(csv, { header: includeHeader, skipEmptyLines: true, dynamicTyping: true });
+  renderTable(reparsed.data, includeHeader, 'jsonTableWrap', 'jsonStats', 'jsonPreviewWrap');
+});
+
+document.getElementById('copyJsonCsvBtn').addEventListener('click', function() {
+  copyText(document.getElementById('csvOut').childNodes[0].textContent, this);
+});
+
+function renderTable(data, hasHeader, tableId, statsId, wrapId) {
+  const wrap = document.getElementById(wrapId);
+  wrap.classList.remove('hidden');
+  const tbody = document.getElementById(tableId);
+  if (!data.length) { tbody.innerHTML = '<p class="text-muted" style="padding:.5rem">No data</p>'; return; }
+
+  let html = '<table class="preview-table">';
+  if (hasHeader && typeof data[0] === 'object' && !Array.isArray(data[0])) {
+    const cols = Object.keys(data[0]);
+    html += '<thead><tr>' + cols.map(c => `<th>${escHtml(String(c))}</th>`).join('') + '</tr></thead><tbody>';
+    data.slice(0, 100).forEach(row => {
+      html += '<tr>' + cols.map(c => `<td>${escHtml(String(row[c] ?? ''))}</td>`).join('') + '</tr>';
+    });
+  } else {
+    html += '<tbody>';
+    data.slice(0, 100).forEach(row => {
+      const cols = Array.isArray(row) ? row : Object.values(row);
+      html += '<tr>' + cols.map(c => `<td>${escHtml(String(c ?? ''))}</td>`).join('') + '</tr>';
+    });
+  }
+  html += '</tbody></table>';
+  tbody.innerHTML = html;
+  document.getElementById(statsId).textContent = `${data.length} rows${data.length > 100 ? ' (showing first 100)' : ''}`;
+}
+</script>
+</body>
+</html>

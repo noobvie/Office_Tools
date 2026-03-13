@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Color Contrast Checker — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .preview-box {
+      border-radius: var(--radius-lg);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      transition: background .2s, color .2s;
+      border: 1.5px solid var(--border);
+    }
+    .preview-box .sample-large  { font-size: 2rem; font-weight: 900; line-height: 1.2; }
+    .preview-box .sample-normal { font-size: 1rem; margin-top: .75rem; }
+    .preview-box .sample-small  { font-size: .75rem; margin-top: .4rem; }
+    .preview-box .sample-ui     { display: inline-block; margin-top: 1rem; padding: .4rem 1.2rem; border-radius: 50px; font-weight: 700; font-size: .88rem; }
+
+    .ratio-display {
+      text-align: center;
+      padding: 1.5rem;
+      background: var(--bg-secondary);
+      border-radius: var(--radius-lg);
+    }
+    .ratio-display .ratio-num { font-size: 3rem; font-weight: 900; color: var(--primary); line-height: 1; }
+    .ratio-display .ratio-label { font-size: .8rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-top: .4rem; }
+
+    .badge-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: .6rem;
+      margin-top: 1rem;
+    }
+    .wcag-badge {
+      border-radius: var(--radius);
+      padding: .6rem 1rem;
+      text-align: center;
+      border: 1.5px solid var(--border);
+    }
+    .wcag-badge .wl { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+    .wcag-badge .ws { font-size: 1.1rem; font-weight: 900; margin-top: .2rem; }
+    .wcag-badge.pass { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.3); }
+    .wcag-badge.fail { background: rgba(239,68,68,.1);  border-color: rgba(239,68,68,.25); }
+    .wcag-badge.pass .ws { color: #16a34a; }
+    .wcag-badge.fail .ws { color: #dc2626; }
+
+    .color-inputs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media(max-width:480px){ .color-inputs { grid-template-columns: 1fr; } }
+
+    .color-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+    }
+    .color-input-wrap input[type="color"] {
+      width: 52px; height: 44px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      padding: 3px;
+      background: var(--bg-card);
+      flex-shrink: 0;
+    }
+    .color-input-wrap input[type="text"] { flex: 1; }
+
+    .swatch-row { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .5rem; }
+    .preset-pair {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      cursor: pointer;
+      border-radius: 6px;
+      padding: 3px 8px;
+      border: 1.5px solid var(--border);
+      font-size: .75rem;
+      font-weight: 700;
+      transition: border-color .12s;
+    }
+    .preset-pair:hover { border-color: var(--primary); }
+    .preset-pair .dot { width: 14px; height: 14px; border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Contrast Checker</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>♿ Color Contrast Checker</h1>
+    <p>Check WCAG AA / AAA accessibility compliance for foreground and background color pairs.</p>
+  </div>
+
+  <div class="card">
+    <div class="color-inputs">
+      <div class="form-group">
+        <label>Foreground (Text)</label>
+        <div class="color-input-wrap">
+          <input type="color" id="fgPicker" value="#ffffff">
+          <input type="text"  id="fgHex"    value="#ffffff" placeholder="#rrggbb">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Background</label>
+        <div class="color-input-wrap">
+          <input type="color" id="bgPicker" value="#6366f1">
+          <input type="text"  id="bgHex"    value="#6366f1" placeholder="#rrggbb">
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-2">
+      <span style="font-size:.78rem;font-weight:700;color:var(--text-muted)">QUICK PRESETS</span>
+      <div class="swatch-row" id="presetRow"></div>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div class="card mt-2" id="resultCard">
+    <div class="ratio-display">
+      <div class="ratio-num" id="ratioNum">—</div>
+      <div class="ratio-label">Contrast Ratio</div>
+    </div>
+
+    <div class="badge-grid" id="badgeGrid"></div>
+
+    <div class="preview-box mt-2" id="previewBox">
+      <div class="sample-large">Heading Text Aa</div>
+      <div class="sample-normal">Normal body text. The quick brown fox jumps over the lazy dog.</div>
+      <div class="sample-small">Small text (12px). Lorem ipsum dolor sit amet, consectetur adipiscing elit.</div>
+      <div><span class="sample-ui" id="previewBtn">Button Label</span></div>
+    </div>
+
+    <div class="btn-group mt-2">
+      <button class="btn btn-secondary btn-sm" id="swapBtn">⇄ Swap Colors</button>
+      <button class="btn btn-ghost btn-sm" id="copyRatioBtn">Copy Ratio</button>
+    </div>
+  </div>
+
+  <div class="card mt-2">
+    <strong>What do the levels mean?</strong>
+    <div style="margin-top:.75rem;font-size:.88rem;line-height:1.7">
+      <p><strong>WCAG AA (4.5:1)</strong> — Minimum for normal text. Required for most accessibility standards.</p>
+      <p><strong>WCAG AA Large (3:1)</strong> — For large text (18pt / 14pt bold) and UI components.</p>
+      <p><strong>WCAG AAA (7:1)</strong> — Enhanced contrast. Best for body text on high-accessibility sites.</p>
+      <p><strong>WCAG AAA Large (4.5:1)</strong> — Enhanced for large text.</p>
+    </div>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+const PRESETS = [
+  { label: 'White/Indigo', fg: '#ffffff', bg: '#6366f1' },
+  { label: 'White/Black',  fg: '#ffffff', bg: '#000000' },
+  { label: 'Black/White',  fg: '#000000', bg: '#ffffff' },
+  { label: 'Black/Yellow', fg: '#000000', bg: '#fbbf24' },
+  { label: 'White/Red',    fg: '#ffffff', bg: '#dc2626' },
+  { label: 'Dark/Light',   fg: '#1e293b', bg: '#f8fafc' },
+  { label: 'Gray/White',   fg: '#64748b', bg: '#ffffff' },
+];
+
+// Build presets
+const presetRow = document.getElementById('presetRow');
+PRESETS.forEach(p => {
+  const el = document.createElement('div');
+  el.className = 'preset-pair';
+  el.innerHTML = `<div class="dot" style="background:${p.bg};border:1px solid rgba(0,0,0,.15)"></div><div class="dot" style="background:${p.fg};border:1px solid rgba(0,0,0,.15)"></div><span>${p.label}</span>`;
+  el.addEventListener('click', () => {
+    setColors(p.fg, p.bg);
+  });
+  presetRow.appendChild(el);
+});
+
+function hexToRgb(hex) {
+  const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex.trim());
+  if (!r) return null;
+  return [parseInt(r[1],16), parseInt(r[2],16), parseInt(r[3],16)];
+}
+
+function sRGB(c) {
+  const v = c / 255;
+  return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+}
+
+function luminance([r,g,b]) {
+  return 0.2126*sRGB(r) + 0.7152*sRGB(g) + 0.0722*sRGB(b);
+}
+
+function contrastRatio(fg, bg) {
+  const l1 = luminance(fg), l2 = luminance(bg);
+  const lighter = Math.max(l1,l2), darker = Math.min(l1,l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function setColors(fg, bg) {
+  document.getElementById('fgPicker').value = fg;
+  document.getElementById('fgHex').value    = fg;
+  document.getElementById('bgPicker').value = bg;
+  document.getElementById('bgHex').value    = bg;
+  update();
+}
+
+function update() {
+  const fgHex = document.getElementById('fgHex').value.trim();
+  const bgHex = document.getElementById('bgHex').value.trim();
+  const fg = hexToRgb(fgHex);
+  const bg = hexToRgb(bgHex);
+  if (!fg || !bg) return;
+
+  document.getElementById('fgPicker').value = fgHex.startsWith('#') ? fgHex : '#' + fgHex;
+  document.getElementById('bgPicker').value = bgHex.startsWith('#') ? bgHex : '#' + bgHex;
+
+  const ratio = contrastRatio(fg, bg);
+  document.getElementById('ratioNum').textContent = ratio.toFixed(2) + ':1';
+
+  const levels = [
+    { label: 'AA — Normal Text',  req: 4.5, key: 'aa_normal' },
+    { label: 'AA — Large Text',   req: 3.0, key: 'aa_large'  },
+    { label: 'AAA — Normal Text', req: 7.0, key: 'aaa_normal' },
+    { label: 'AAA — Large Text',  req: 4.5, key: 'aaa_large'  },
+  ];
+  const grid = document.getElementById('badgeGrid');
+  grid.innerHTML = levels.map(lv => {
+    const pass = ratio >= lv.req;
+    return `<div class="wcag-badge ${pass ? 'pass' : 'fail'}">
+      <div class="wl">${lv.label}</div>
+      <div class="ws">${pass ? '✓ Pass' : '✗ Fail'} <span style="font-size:.8rem;font-weight:600">(${lv.req}:1)</span></div>
+    </div>`;
+  }).join('');
+
+  // Preview
+  const preview = document.getElementById('previewBox');
+  preview.style.background = bgHex.startsWith('#') ? bgHex : '#' + bgHex;
+  preview.style.color      = fgHex.startsWith('#') ? fgHex : '#' + fgHex;
+  document.getElementById('previewBtn').style.background = fgHex.startsWith('#') ? fgHex : '#' + fgHex;
+  document.getElementById('previewBtn').style.color      = bgHex.startsWith('#') ? bgHex : '#' + bgHex;
+}
+
+// Events
+['fgPicker','bgPicker'].forEach(id => {
+  document.getElementById(id).addEventListener('input', e => {
+    const hex = id === 'fgPicker' ? 'fgHex' : 'bgHex';
+    document.getElementById(hex).value = e.target.value;
+    update();
+  });
+});
+['fgHex','bgHex'].forEach(id => {
+  document.getElementById(id).addEventListener('input', e => {
+    const picker = id === 'fgHex' ? 'fgPicker' : 'bgPicker';
+    const val = e.target.value.trim();
+    if (/^#[0-9a-f]{6}$/i.test(val)) document.getElementById(picker).value = val;
+    update();
+  });
+});
+
+document.getElementById('swapBtn').addEventListener('click', () => {
+  const fg = document.getElementById('fgHex').value;
+  const bg = document.getElementById('bgHex').value;
+  setColors(bg, fg);
+});
+
+document.getElementById('copyRatioBtn').addEventListener('click', () => {
+  const ratio = document.getElementById('ratioNum').textContent;
+  copyText(ratio, document.getElementById('copyRatioBtn'));
+});
+
+update();
+</script>
+</body>
+</html>

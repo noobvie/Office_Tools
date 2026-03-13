@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unix Timestamp Converter — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .live-ts {
+      font-size: 2.2rem;
+      font-weight: 800;
+      font-family: 'Courier New', monospace;
+      color: var(--primary);
+      text-align: center;
+      letter-spacing: .05em;
+    }
+    .live-sub { text-align: center; color: var(--text-muted); font-size: .85rem; margin-top: .25rem; }
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: .6rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: .9rem;
+    }
+    .result-row:last-child { border-bottom: none; }
+    .result-row .label { font-weight: 600; color: var(--text-muted); min-width: 140px; }
+    .result-row .value { font-family: monospace; flex: 1; word-break: break-all; }
+    .result-row button { flex-shrink: 0; margin-left: .5rem; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Unix Timestamp</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🕐 Unix Timestamp Converter</h1>
+    <p>Convert between Unix timestamps (epoch) and human-readable dates.</p>
+  </div>
+
+  <!-- Live Clock -->
+  <div class="card" style="text-align:center">
+    <div class="text-muted" style="font-size:.82rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem">Current Unix Timestamp</div>
+    <div class="live-ts" id="liveTs">—</div>
+    <div class="live-sub" id="liveSub">—</div>
+    <div class="btn-group" style="justify-content:center;margin-top:1rem">
+      <button class="btn btn-secondary btn-sm" id="copyLiveBtn">Copy timestamp</button>
+      <button class="btn btn-secondary btn-sm" id="useNowTs">Use in converter ↓</button>
+    </div>
+  </div>
+
+  <!-- Timestamp → Date -->
+  <div class="card mt-2">
+    <strong>Timestamp → Human Date</strong>
+    <div class="form-row mt-2">
+      <div class="form-group">
+        <label>Unix Timestamp</label>
+        <input type="number" id="tsInput" placeholder="e.g. 1700000000">
+      </div>
+      <div class="form-group" style="display:flex;align-items:flex-end">
+        <button class="btn btn-primary btn-full" id="tsConvertBtn">Convert</button>
+      </div>
+    </div>
+    <div id="tsResult" class="hidden">
+      <div class="result-row"><span class="label">UTC</span><span class="value" id="resUtc"></span><button class="btn btn-ghost btn-sm" onclick="copyText(document.getElementById('resUtc').textContent,this)">Copy</button></div>
+      <div class="result-row"><span class="label">Local Time</span><span class="value" id="resLocal"></span><button class="btn btn-ghost btn-sm" onclick="copyText(document.getElementById('resLocal').textContent,this)">Copy</button></div>
+      <div class="result-row"><span class="label">ISO 8601</span><span class="value" id="resIso"></span><button class="btn btn-ghost btn-sm" onclick="copyText(document.getElementById('resIso').textContent,this)">Copy</button></div>
+      <div class="result-row"><span class="label">Relative</span><span class="value" id="resRelative"></span></div>
+      <div class="result-row"><span class="label">Day of Week</span><span class="value" id="resDow"></span></div>
+      <div class="result-row"><span class="label">Week Number</span><span class="value" id="resWeek"></span></div>
+    </div>
+    <div id="tsAlert"></div>
+  </div>
+
+  <!-- Date → Timestamp -->
+  <div class="card mt-2">
+    <strong>Human Date → Timestamp</strong>
+    <div class="form-row mt-2">
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="dateInput">
+      </div>
+      <div class="form-group">
+        <label>Time</label>
+        <input type="time" id="timeInput" value="00:00">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Timezone</label>
+        <select id="tzSelect">
+          <option value="local">Local timezone</option>
+          <option value="utc">UTC</option>
+        </select>
+      </div>
+      <div class="form-group" style="display:flex;align-items:flex-end">
+        <button class="btn btn-primary btn-full" id="dateConvertBtn">Convert</button>
+      </div>
+    </div>
+    <div id="dateResult" class="hidden">
+      <div class="result-row"><span class="label">Unix (seconds)</span><span class="value" id="resTs"></span><button class="btn btn-ghost btn-sm" onclick="copyText(document.getElementById('resTs').textContent,this)">Copy</button></div>
+      <div class="result-row"><span class="label">Unix (milliseconds)</span><span class="value" id="resTsMs"></span><button class="btn btn-ghost btn-sm" onclick="copyText(document.getElementById('resTsMs').textContent,this)">Copy</button></div>
+    </div>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+// Live clock
+function updateClock() {
+  const now = Math.floor(Date.now() / 1000);
+  document.getElementById('liveTs').textContent = now;
+  document.getElementById('liveSub').textContent = new Date().toUTCString();
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+document.getElementById('copyLiveBtn').addEventListener('click', function() {
+  copyText(document.getElementById('liveTs').textContent, this);
+});
+document.getElementById('useNowTs').addEventListener('click', () => {
+  document.getElementById('tsInput').value = Math.floor(Date.now() / 1000);
+  document.getElementById('tsConvertBtn').click();
+});
+
+// Relative time helper
+function relativeTime(date) {
+  const diff = Date.now() - date.getTime();
+  const abs = Math.abs(diff);
+  const future = diff < 0;
+  const fmt = (n, u) => `${n} ${u}${n !== 1 ? 's' : ''} ${future ? 'from now' : 'ago'}`;
+  if (abs < 60000) return 'just now';
+  if (abs < 3600000)  return fmt(Math.round(abs/60000), 'minute');
+  if (abs < 86400000) return fmt(Math.round(abs/3600000), 'hour');
+  if (abs < 2592000000) return fmt(Math.round(abs/86400000), 'day');
+  if (abs < 31536000000) return fmt(Math.round(abs/2592000000), 'month');
+  return fmt(Math.round(abs/31536000000), 'year');
+}
+
+function weekNumber(d) {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+}
+
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+// Timestamp → Date
+document.getElementById('tsConvertBtn').addEventListener('click', () => {
+  const alert = document.getElementById('tsAlert');
+  alert.className = ''; alert.textContent = '';
+  const raw = document.getElementById('tsInput').value.trim();
+  if (!raw) { alert.className='alert alert-danger'; alert.textContent='Enter a timestamp.'; return; }
+  let ts = parseInt(raw);
+  // Auto-detect milliseconds (13 digits)
+  if (raw.length >= 13) ts = Math.floor(ts / 1000);
+  const date = new Date(ts * 1000);
+  if (isNaN(date.getTime())) { alert.className='alert alert-danger'; alert.textContent='Invalid timestamp.'; return; }
+  document.getElementById('resUtc').textContent = date.toUTCString();
+  document.getElementById('resLocal').textContent = date.toLocaleString();
+  document.getElementById('resIso').textContent = date.toISOString();
+  document.getElementById('resRelative').textContent = relativeTime(date);
+  document.getElementById('resDow').textContent = DAYS[date.getDay()];
+  document.getElementById('resWeek').textContent = 'Week ' + weekNumber(date) + ' of ' + date.getFullYear();
+  document.getElementById('tsResult').classList.remove('hidden');
+});
+
+// Date → Timestamp
+const today = new Date();
+document.getElementById('dateInput').value = today.toISOString().split('T')[0];
+
+document.getElementById('dateConvertBtn').addEventListener('click', () => {
+  const d = document.getElementById('dateInput').value;
+  const t = document.getElementById('timeInput').value || '00:00';
+  const tz = document.getElementById('tzSelect').value;
+  if (!d) return;
+  let date;
+  if (tz === 'utc') {
+    date = new Date(d + 'T' + t + ':00Z');
+  } else {
+    date = new Date(d + 'T' + t + ':00');
+  }
+  const ts = Math.floor(date.getTime() / 1000);
+  document.getElementById('resTs').textContent = ts;
+  document.getElementById('resTsMs').textContent = ts * 1000;
+  document.getElementById('dateResult').classList.remove('hidden');
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSON Editor — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <style>
+    .editor-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      align-items: start;
+    }
+    @media (max-width: 700px) { .editor-layout { grid-template-columns: 1fr; } }
+
+    .editor-pane { display: flex; flex-direction: column; gap: .5rem; }
+    .editor-label {
+      font-size: .78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--text-muted);
+    }
+    #jsonInput {
+      width: 100%;
+      min-height: 360px;
+      font-family: 'Courier New', monospace;
+      font-size: .85rem;
+      padding: .85rem;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg);
+      color: var(--text);
+      resize: vertical;
+      line-height: 1.6;
+      outline: none;
+      transition: border-color .18s;
+      tab-size: 2;
+    }
+    #jsonInput:focus { border-color: var(--primary); }
+
+    .output-pane {
+      background: #282c34;
+      border-radius: var(--radius);
+      min-height: 360px;
+      position: relative;
+      overflow: auto;
+    }
+    .output-pane pre {
+      margin: 0;
+      padding: .85rem;
+      font-size: .85rem;
+      line-height: 1.6;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .output-pane .copy-overlay {
+      position: absolute;
+      top: .5rem;
+      right: .5rem;
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .5rem .75rem;
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      font-size: .8rem;
+      flex-wrap: wrap;
+    }
+    .status-ok  { color: var(--success); font-weight: 700; }
+    .status-err { color: var(--danger);  font-weight: 700; }
+
+    .tree-node { font-size: .85rem; font-family: monospace; line-height: 1.7; }
+    .tree-key  { color: #7dd3fc; }
+    .tree-str  { color: #86efac; }
+    .tree-num  { color: #fbbf24; }
+    .tree-bool { color: #f87171; }
+    .tree-null { color: #94a3b8; }
+    .tree-toggle { cursor: pointer; user-select: none; margin-right: .25rem; }
+    .tree-children { margin-left: 1.4rem; }
+    .tree-collapsed > .tree-children { display: none; }
+
+    .path-bar {
+      padding: .4rem .85rem;
+      font-size: .78rem;
+      font-family: monospace;
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      color: var(--text-muted);
+      min-height: 1.8rem;
+    }
+
+    .stat-pill {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: .15rem .6rem;
+      font-size: .75rem;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">JSON Editor</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main" style="max-width:1100px">
+  <div class="tool-header">
+    <h1>📋 JSON Editor</h1>
+    <p>Validate, format, minify and explore JSON with syntax highlighting and a tree viewer.</p>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="card" style="padding:.85rem 1rem">
+    <div class="flex" style="gap:.5rem;flex-wrap:wrap">
+      <button class="btn btn-primary btn-sm" id="formatBtn">✨ Format</button>
+      <button class="btn btn-secondary btn-sm" id="minifyBtn">⚡ Minify</button>
+      <button class="btn btn-secondary btn-sm" id="validateBtn">✓ Validate</button>
+      <button class="btn btn-secondary btn-sm" id="sortBtn">↕ Sort Keys</button>
+      <button class="btn btn-secondary btn-sm" id="clearBtn">🗑 Clear</button>
+      <button class="btn btn-secondary btn-sm" id="sampleBtn">📄 Sample</button>
+      <div style="margin-left:auto;display:flex;gap:.4rem;align-items:center">
+        <label style="font-size:.82rem;margin:0">Indent:</label>
+        <select id="indentSelect" style="padding:.2rem .5rem;font-size:.82rem;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text)">
+          <option value="2" selected>2 spaces</option>
+          <option value="4">4 spaces</option>
+          <option value="tab">Tab</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status -->
+  <div class="status-bar mt-2" id="statusBar">
+    <span id="statusText" class="text-muted">Paste JSON and click Format or Validate</span>
+    <span class="stat-pill hidden" id="statSize"></span>
+    <span class="stat-pill hidden" id="statKeys"></span>
+    <span class="stat-pill hidden" id="statDepth"></span>
+  </div>
+
+  <!-- Main editor area (tabs: editor/tree) -->
+  <div class="card mt-2" style="padding:.75rem">
+    <div class="tabs" style="margin-bottom:.75rem">
+      <button class="tab-btn active" data-tab="editorTab">Editor</button>
+      <button class="tab-btn" data-tab="treeTab">Tree View</button>
+    </div>
+
+    <div class="tab-pane active" id="editorTab">
+      <div class="editor-layout">
+        <div class="editor-pane">
+          <div class="editor-label">Input</div>
+          <textarea id="jsonInput" spellcheck="false" placeholder='{"key": "value", "number": 42}'></textarea>
+        </div>
+        <div class="editor-pane">
+          <div class="editor-label">Output</div>
+          <div class="output-pane" id="outputPane">
+            <pre><code class="language-json" id="jsonOutput">Formatted JSON will appear here…</code></pre>
+            <button class="copy-overlay btn btn-sm" id="copyOutputBtn" style="background:#374151;color:#e5e7eb;border:1px solid #4b5563">Copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-pane" id="treeTab">
+      <div class="path-bar" id="pathBar">Click a node to see its path</div>
+      <div id="treeView" style="padding:.75rem;min-height:300px;overflow:auto">
+        <span class="text-muted" style="font-size:.88rem">Format valid JSON first to see the tree view.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error panel -->
+  <div id="errorPanel" class="hidden mt-2"></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" crossorigin="anonymous"></script>
+<script src="../../js/common.js"></script>
+<script>
+let parsedData = null;
+
+function getIndent() {
+  const v = document.getElementById('indentSelect').value;
+  return v === 'tab' ? '\t' : parseInt(v);
+}
+
+function countKeys(obj, depth = 0) {
+  if (typeof obj !== 'object' || obj === null) return { keys: 0, depth };
+  let keys = 0, maxDepth = depth;
+  for (const v of Object.values(obj instanceof Array ? obj : obj)) {
+    keys++;
+    const sub = countKeys(v, depth + 1);
+    keys += sub.keys;
+    if (sub.depth > maxDepth) maxDepth = sub.depth;
+  }
+  return { keys, depth: maxDepth };
+}
+
+function setStatus(ok, msg, data) {
+  const el = document.getElementById('statusText');
+  el.textContent = msg;
+  el.className = ok ? 'status-ok' : 'status-err';
+  if (data) {
+    const { keys, depth } = countKeys(data);
+    const size = JSON.stringify(data).length;
+    const sz = document.getElementById('statSize');
+    sz.textContent = size > 1024 ? (size/1024).toFixed(1) + ' KB' : size + ' B';
+    sz.classList.remove('hidden');
+    document.getElementById('statKeys').textContent = keys + ' values';
+    document.getElementById('statKeys').classList.remove('hidden');
+    document.getElementById('statDepth').textContent = 'depth ' + depth;
+    document.getElementById('statDepth').classList.remove('hidden');
+  } else {
+    ['statSize','statKeys','statDepth'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  }
+}
+
+function renderOutput(json) {
+  const code = document.getElementById('jsonOutput');
+  code.textContent = json;
+  if (window.hljs) hljs.highlightElement(code);
+}
+
+function parseInput() {
+  const raw = document.getElementById('jsonInput').value.trim();
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch(e) {
+    return e;
+  }
+}
+
+document.getElementById('formatBtn').addEventListener('click', () => {
+  const result = parseInput();
+  if (!result) { setStatus(false, 'Empty input', null); return; }
+  if (result instanceof Error) {
+    setStatus(false, '✗ ' + result.message, null);
+    document.getElementById('errorPanel').className = 'alert alert-danger mt-2';
+    document.getElementById('errorPanel').textContent = result.message;
+    return;
+  }
+  document.getElementById('errorPanel').className = 'hidden';
+  parsedData = result;
+  const formatted = JSON.stringify(result, null, getIndent());
+  renderOutput(formatted);
+  setStatus(true, '✓ Valid JSON', result);
+  buildTree(result);
+});
+
+document.getElementById('minifyBtn').addEventListener('click', () => {
+  const result = parseInput();
+  if (!result || result instanceof Error) { setStatus(false, result instanceof Error ? '✗ ' + result.message : 'Empty', null); return; }
+  renderOutput(JSON.stringify(result));
+  setStatus(true, '✓ Minified', result);
+});
+
+document.getElementById('validateBtn').addEventListener('click', () => {
+  const raw = document.getElementById('jsonInput').value.trim();
+  if (!raw) { setStatus(false, 'Empty input', null); return; }
+  try {
+    const d = JSON.parse(raw);
+    setStatus(true, '✓ Valid JSON', d);
+    document.getElementById('errorPanel').className = 'hidden';
+  } catch(e) {
+    setStatus(false, '✗ Invalid — ' + e.message, null);
+    document.getElementById('errorPanel').className = 'alert alert-danger mt-2';
+    document.getElementById('errorPanel').textContent = e.message;
+  }
+});
+
+document.getElementById('sortBtn').addEventListener('click', () => {
+  const result = parseInput();
+  if (!result || result instanceof Error) return;
+  function sortObj(o) {
+    if (Array.isArray(o)) return o.map(sortObj);
+    if (o && typeof o === 'object') {
+      return Object.fromEntries(Object.keys(o).sort().map(k => [k, sortObj(o[k])]));
+    }
+    return o;
+  }
+  const sorted = sortObj(result);
+  document.getElementById('jsonInput').value = JSON.stringify(sorted, null, getIndent());
+  renderOutput(JSON.stringify(sorted, null, getIndent()));
+  setStatus(true, '✓ Keys sorted', sorted);
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.getElementById('jsonInput').value = '';
+  document.getElementById('jsonOutput').textContent = 'Formatted JSON will appear here…';
+  document.getElementById('treeView').innerHTML = '<span class="text-muted" style="font-size:.88rem">Format valid JSON first to see the tree view.</span>';
+  document.getElementById('errorPanel').className = 'hidden';
+  setStatus(true, 'Cleared', null);
+  parsedData = null;
+});
+
+document.getElementById('sampleBtn').addEventListener('click', () => {
+  const sample = {
+    "name": "Office Tools",
+    "version": "1.0.0",
+    "description": "Free browser-based utility tools",
+    "tools": [
+      { "id": 1, "name": "JSON Editor", "category": "Development", "active": true },
+      { "id": 2, "name": "Word Counter", "category": "Text", "active": true }
+    ],
+    "config": {
+      "theme": "light",
+      "language": "en",
+      "features": { "darkMode": true, "offline": true }
+    },
+    "stats": { "users": 1000, "rating": 4.9, "lastUpdated": null }
+  };
+  document.getElementById('jsonInput').value = JSON.stringify(sample, null, 2);
+  document.getElementById('formatBtn').click();
+});
+
+document.getElementById('copyOutputBtn').addEventListener('click', function() {
+  const text = document.getElementById('jsonOutput').textContent;
+  copyText(text, this);
+});
+
+// Tab hotkey: Ctrl+Shift+F to format
+document.getElementById('jsonInput').addEventListener('keydown', e => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const s = e.target.selectionStart, end = e.target.selectionEnd;
+    e.target.value = e.target.value.substring(0, s) + '  ' + e.target.value.substring(end);
+    e.target.selectionStart = e.target.selectionEnd = s + 2;
+  }
+});
+
+// Tree view
+function buildTree(data) {
+  const container = document.getElementById('treeView');
+  container.innerHTML = '';
+  container.appendChild(renderNode(data, '', 0));
+}
+
+function renderNode(val, path, depth) {
+  const wrap = document.createElement('div');
+  wrap.className = 'tree-node';
+
+  if (val === null) {
+    const s = document.createElement('span');
+    s.className = 'tree-null'; s.textContent = 'null';
+    wrap.appendChild(s);
+  } else if (typeof val === 'boolean') {
+    const s = document.createElement('span');
+    s.className = 'tree-bool'; s.textContent = String(val);
+    wrap.appendChild(s);
+  } else if (typeof val === 'number') {
+    const s = document.createElement('span');
+    s.className = 'tree-num'; s.textContent = val;
+    wrap.appendChild(s);
+  } else if (typeof val === 'string') {
+    const s = document.createElement('span');
+    s.className = 'tree-str'; s.textContent = `"${val}"`;
+    wrap.appendChild(s);
+  } else if (Array.isArray(val)) {
+    const isSmall = val.length === 0;
+    const toggle = document.createElement('span');
+    toggle.className = 'tree-toggle'; toggle.textContent = isSmall ? '' : '▼';
+    const label = document.createElement('span');
+    label.className = 'tree-null'; label.textContent = `Array [${val.length}]`;
+    if (!isSmall) {
+      toggle.style.color = 'var(--warning)';
+      const children = document.createElement('div');
+      children.className = 'tree-children';
+      val.forEach((item, i) => {
+        const row = document.createElement('div');
+        const keySpan = document.createElement('span');
+        keySpan.className = 'tree-key'; keySpan.textContent = `${i}: `;
+        row.appendChild(keySpan);
+        row.appendChild(renderNode(item, `${path}[${i}]`, depth + 1));
+        row.style.cursor = 'default';
+        row.addEventListener('click', e => { e.stopPropagation(); document.getElementById('pathBar').textContent = `${path}[${i}]`; });
+        children.appendChild(row);
+      });
+      wrap.appendChild(toggle);
+      wrap.appendChild(label);
+      wrap.appendChild(children);
+      toggle.addEventListener('click', e => {
+        e.stopPropagation();
+        const collapsed = wrap.classList.toggle('tree-collapsed');
+        toggle.textContent = collapsed ? '▶' : '▼';
+      });
+    } else {
+      wrap.appendChild(label);
+    }
+  } else if (typeof val === 'object') {
+    const keys = Object.keys(val);
+    const isSmall = keys.length === 0;
+    const toggle = document.createElement('span');
+    toggle.className = 'tree-toggle'; toggle.textContent = isSmall ? '' : '▼';
+    const label = document.createElement('span');
+    label.className = 'tree-null'; label.textContent = `Object {${keys.length}}`;
+    if (!isSmall) {
+      toggle.style.color = 'var(--primary)';
+      const children = document.createElement('div');
+      children.className = 'tree-children';
+      keys.forEach(k => {
+        const row = document.createElement('div');
+        const keySpan = document.createElement('span');
+        keySpan.className = 'tree-key'; keySpan.textContent = `"${k}": `;
+        row.appendChild(keySpan);
+        row.appendChild(renderNode(val[k], `${path}.${k}`, depth + 1));
+        row.addEventListener('click', e => { e.stopPropagation(); document.getElementById('pathBar').textContent = `${path}.${k}`; });
+        children.appendChild(row);
+      });
+      wrap.appendChild(toggle);
+      wrap.appendChild(label);
+      wrap.appendChild(children);
+      toggle.addEventListener('click', e => {
+        e.stopPropagation();
+        const collapsed = wrap.classList.toggle('tree-collapsed');
+        toggle.textContent = collapsed ? '▶' : '▼';
+      });
+    } else {
+      wrap.appendChild(label);
+    }
+  }
+  return wrap;
+}
+</script>
+</body>
+</html>

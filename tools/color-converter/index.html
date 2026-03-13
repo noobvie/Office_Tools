@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Color Converter — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .color-preview-large {
+      width: 100%;
+      height: 120px;
+      border-radius: var(--radius-lg);
+      border: 1.5px solid var(--border);
+      transition: background .2s;
+      display: flex;
+      align-items: flex-end;
+      padding: .75rem;
+      gap: .5rem;
+    }
+    .color-name-badge {
+      background: rgba(0,0,0,.35);
+      color: #fff;
+      border-radius: 50px;
+      padding: .2rem .75rem;
+      font-size: .78rem;
+      font-weight: 700;
+      backdrop-filter: blur(4px);
+    }
+
+    .format-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: .75rem;
+      margin-top: 1rem;
+    }
+    .format-card {
+      background: var(--bg-secondary);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: .75rem 1rem;
+    }
+    .format-card .label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-bottom: .35rem; }
+    .format-card .value {
+      font-family: 'Courier New', monospace;
+      font-size: .9rem;
+      font-weight: 700;
+      color: var(--primary);
+      word-break: break-all;
+    }
+    .format-card .copy-row { display: flex; justify-content: space-between; align-items: center; }
+
+    .palette-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: .3rem;
+      margin-top: .75rem;
+    }
+    .swatch {
+      aspect-ratio: 1;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform .12s, border-color .12s;
+    }
+    .swatch:hover { transform: scale(1.15); border-color: var(--text); }
+
+    .named-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: .4rem;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+    .named-swatch {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .3rem .5rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: .78rem;
+      border: 1px solid transparent;
+      transition: background .12s;
+    }
+    .named-swatch:hover { background: var(--bg-secondary); border-color: var(--border); }
+    .named-swatch .dot { width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0; border: 1px solid rgba(0,0,0,.1); }
+    .named-swatch .name { color: var(--text); }
+
+    input[type="color"]#colorPicker {
+      width: 64px;
+      height: 52px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      padding: 3px;
+      background: var(--bg-card);
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Color Converter</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🎨 Color Converter</h1>
+    <p>Convert colors between HEX, RGB, HSL, HSV, CMYK with live preview and palette generation.</p>
+  </div>
+
+  <!-- Input -->
+  <div class="card">
+    <div class="flex" style="gap:1rem;flex-wrap:wrap;align-items:flex-end">
+      <div>
+        <label>Color Picker</label>
+        <input type="color" id="colorPicker" value="#6366f1">
+      </div>
+      <div style="flex:1;min-width:160px">
+        <label>Hex / CSS value</label>
+        <input type="text" id="hexInput" value="#6366f1" placeholder="#rrggbb or rgb() or hsl()">
+      </div>
+      <button class="btn btn-primary" id="convertBtn">Convert</button>
+    </div>
+    <div class="color-preview-large mt-2" id="colorPreview">
+      <span class="color-name-badge" id="colorNameBadge">—</span>
+    </div>
+  </div>
+
+  <!-- Formats -->
+  <div class="format-grid" id="formatGrid"></div>
+
+  <!-- Shades / Tints -->
+  <div class="card mt-2">
+    <strong>Shades &amp; Tints</strong>
+    <div class="palette-grid" id="shadesGrid"></div>
+  </div>
+
+  <!-- Named Colors -->
+  <div class="card mt-2">
+    <div class="flex-between">
+      <strong>Named CSS Colors</strong>
+      <input type="text" id="namedSearch" placeholder="Search…" style="width:150px;padding:.3rem .6rem;font-size:.82rem">
+    </div>
+    <div class="named-grid mt-2" id="namedGrid"></div>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+// ── Color Math ──────────────────────────────────────────────
+function hexToRgb(hex) {
+  const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex.trim());
+  if (!r) return null;
+  return { r: parseInt(r[1],16), g: parseInt(r[2],16), b: parseInt(r[3],16) };
+}
+function rgbToHex({r,g,b}) { return '#' + [r,g,b].map(v => Math.round(v).toString(16).padStart(2,'0')).join(''); }
+function rgbToHsl({r,g,b}) {
+  r/=255; g/=255; b/=255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min;
+  let h=0,s=0,l=(max+min)/2;
+  if(d){
+    s=d/(1-Math.abs(2*l-1));
+    switch(max){ case r: h=((g-b)/d)%6; break; case g: h=(b-r)/d+2; break; default: h=(r-g)/d+4; }
+    h=Math.round(h*60); if(h<0)h+=360;
+  }
+  return { h: Math.round(h), s: Math.round(s*100), l: Math.round(l*100) };
+}
+function hslToRgb({h,s,l}) {
+  s/=100; l/=100;
+  const c=(1-Math.abs(2*l-1))*s, x=c*(1-Math.abs((h/60)%2-1)), m=l-c/2;
+  let r=0,g=0,b=0;
+  if(h<60){r=c;g=x;}else if(h<120){r=x;g=c;}else if(h<180){g=c;b=x;}
+  else if(h<240){g=x;b=c;}else if(h<300){r=x;b=c;}else{r=c;b=x;}
+  return { r:Math.round((r+m)*255), g:Math.round((g+m)*255), b:Math.round((b+m)*255) };
+}
+function rgbToHsv({r,g,b}) {
+  r/=255; g/=255; b/=255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min;
+  let h=0;
+  if(d){ switch(max){ case r:h=((g-b)/d)%6;break; case g:h=(b-r)/d+2;break; default:h=(r-g)/d+4; } h=Math.round(h*60); if(h<0)h+=360; }
+  return { h, s:max?Math.round(d/max*100):0, v:Math.round(max*100) };
+}
+function rgbToCmyk({r,g,b}) {
+  r/=255; g/=255; b/=255;
+  const k=1-Math.max(r,g,b);
+  if(k===1) return {c:0,m:0,y:0,k:100};
+  return { c:Math.round((1-r-k)/(1-k)*100), m:Math.round((1-g-k)/(1-k)*100), y:Math.round((1-b-k)/(1-k)*100), k:Math.round(k*100) };
+}
+
+function parseInput(val) {
+  val = val.trim();
+  if (/^#?[0-9a-f]{6}$/i.test(val)) return hexToRgb(val.startsWith('#') ? val : '#' + val);
+  if (/^#?[0-9a-f]{3}$/i.test(val)) {
+    const h = val.replace('#','');
+    return hexToRgb('#' + h[0]+h[0]+h[1]+h[1]+h[2]+h[2]);
+  }
+  const rgb = val.match(/rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
+  if (rgb) return { r:+rgb[1], g:+rgb[2], b:+rgb[3] };
+  const hsl = val.match(/hsl\s*\(\s*(\d+)\s*,\s*(\d+)%?\s*,\s*(\d+)%?\s*\)/i);
+  if (hsl) return hslToRgb({ h:+hsl[1], s:+hsl[2], l:+hsl[3] });
+  // Named color
+  const el = document.createElement('div');
+  el.style.color = val;
+  document.body.appendChild(el);
+  const cs = window.getComputedStyle(el).color;
+  document.body.removeChild(el);
+  if (cs && cs !== 'rgba(0, 0, 0, 0)') {
+    const m = cs.match(/\d+/g);
+    if (m) return { r:+m[0], g:+m[1], b:+m[2] };
+  }
+  return null;
+}
+
+function getLuminance({r,g,b}) { return (0.299*r+0.587*g+0.114*b)/255; }
+
+function update(hex) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return;
+  const hsl  = rgbToHsl(rgb);
+  const hsv  = rgbToHsv(rgb);
+  const cmyk = rgbToCmyk(rgb);
+
+  // Preview
+  const preview = document.getElementById('colorPreview');
+  preview.style.background = hex;
+  const lum = getLuminance(rgb);
+  preview.style.color = lum > 0.5 ? '#000' : '#fff';
+
+  // Nearest named color
+  const named = findNearestNamed(rgb);
+  document.getElementById('colorNameBadge').textContent = named;
+
+  // Sync picker + input
+  document.getElementById('colorPicker').value = hex;
+  document.getElementById('hexInput').value = hex;
+
+  // Formats
+  const formats = [
+    { label: 'HEX',   value: hex.toUpperCase() },
+    { label: 'HEX (lowercase)', value: hex },
+    { label: 'RGB',   value: `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})` },
+    { label: 'RGBA',  value: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 1)` },
+    { label: 'HSL',   value: `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)` },
+    { label: 'HSV',   value: `hsv(${hsv.h}, ${hsv.s}%, ${hsv.v}%)` },
+    { label: 'CMYK',  value: `cmyk(${cmyk.c}%, ${cmyk.m}%, ${cmyk.y}%, ${cmyk.k}%)` },
+    { label: 'CSS Filter', value: `brightness(${Math.round(getLuminance(rgb)*100)}%)` },
+  ];
+  const grid = document.getElementById('formatGrid');
+  grid.innerHTML = formats.map(f => `
+    <div class="format-card">
+      <div class="copy-row">
+        <div class="label">${f.label}</div>
+        <button class="btn btn-ghost btn-sm" onclick="copyText('${escHtml(f.value)}',this)">Copy</button>
+      </div>
+      <div class="value">${escHtml(f.value)}</div>
+    </div>`).join('');
+
+  // Shades
+  renderShades(hsl);
+}
+
+function renderShades(hsl) {
+  const grid = document.getElementById('shadesGrid');
+  grid.innerHTML = '';
+  for (let i = 0; i <= 9; i++) {
+    const l = 95 - i * 9;
+    const c = hslToRgb({ h: hsl.h, s: hsl.s, l });
+    const hex = rgbToHex(c);
+    const div = document.createElement('div');
+    div.className = 'swatch';
+    div.style.background = hex;
+    div.title = `L:${l}% · ${hex}`;
+    div.addEventListener('click', () => { update(hex); });
+    grid.appendChild(div);
+  }
+}
+
+// Named colors (subset of CSS named colors)
+const NAMED_COLORS = {
+  'red':'#FF0000','green':'#008000','blue':'#0000FF','yellow':'#FFFF00','orange':'#FFA500',
+  'purple':'#800080','pink':'#FFC0CB','cyan':'#00FFFF','magenta':'#FF00FF','lime':'#00FF00',
+  'teal':'#008080','navy':'#000080','maroon':'#800000','olive':'#808000','aqua':'#00FFFF',
+  'silver':'#C0C0C0','gray':'#808080','black':'#000000','white':'#FFFFFF','brown':'#A52A2A',
+  'coral':'#FF7F50','salmon':'#FA8072','gold':'#FFD700','khaki':'#F0E68C','lavender':'#E6E6FA',
+  'indigo':'#4B0082','violet':'#EE82EE','crimson':'#DC143C','tomato':'#FF6347','chocolate':'#D2691E',
+  'tan':'#D2B48C','beige':'#F5F5DC','ivory':'#FFFFF0','mint':'#98FF98','skyblue':'#87CEEB',
+  'steelblue':'#4682B4','royalblue':'#4169E1','hotpink':'#FF69B4','orchid':'#DA70D6',
+  'turquoise':'#40E0D0','sienna':'#A0522D','forestgreen':'#228B22','limegreen':'#32CD32',
+};
+
+function colorDist(a, b) {
+  const rb = hexToRgb(b);
+  return Math.sqrt((a.r-rb.r)**2+(a.g-rb.g)**2+(a.b-rb.b)**2);
+}
+function findNearestNamed(rgb) {
+  let best = 'custom', bestD = Infinity;
+  for (const [name, hex] of Object.entries(NAMED_COLORS)) {
+    const d = colorDist(rgb, hex);
+    if (d < bestD) { bestD = d; best = name; }
+  }
+  return bestD < 40 ? best : 'custom';
+}
+
+function renderNamedColors(filter = '') {
+  const grid = document.getElementById('namedGrid');
+  const entries = Object.entries(NAMED_COLORS).filter(([name]) => !filter || name.includes(filter.toLowerCase()));
+  grid.innerHTML = entries.map(([name, hex]) => `
+    <div class="named-swatch" onclick="update('${hex}');document.getElementById('hexInput').value='${hex}'">
+      <div class="dot" style="background:${hex}"></div>
+      <span class="name">${name}</span>
+    </div>`).join('');
+}
+
+// Events
+document.getElementById('colorPicker').addEventListener('input', e => update(e.target.value));
+document.getElementById('convertBtn').addEventListener('click', () => {
+  const rgb = parseInput(document.getElementById('hexInput').value);
+  if (!rgb) { alert('Could not parse color. Try #rrggbb, rgb(), or a CSS color name.'); return; }
+  update(rgbToHex(rgb));
+});
+document.getElementById('hexInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('convertBtn').click();
+});
+document.getElementById('namedSearch').addEventListener('input', e => renderNamedColors(e.target.value));
+
+renderNamedColors();
+update('#6366f1');
+</script>
+</body>
+</html>

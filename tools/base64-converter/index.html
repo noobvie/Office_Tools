@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Base64 Converter — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: border-color .18s, background .18s;
+      font-size: .9rem;
+    }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
+    .drop-zone input[type=file] { display: none; }
+    .char-count { font-size: .78rem; color: var(--text-light); text-align: right; margin-top: .25rem; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Base64 Converter</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔄 Base64 Converter</h1>
+    <p>Encode and decode text or files to/from Base64 format.</p>
+  </div>
+
+  <div class="card" data-tabs>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="encodePane">Encode → Base64</button>
+      <button class="tab-btn" data-tab="decodePane">Decode ← Base64</button>
+      <button class="tab-btn" data-tab="filePane">File → Base64</button>
+    </div>
+
+    <!-- Encode -->
+    <div class="tab-pane active" id="encodePane">
+      <div class="form-group">
+        <label>Plain Text</label>
+        <textarea id="encInput" placeholder="Type or paste text to encode…"></textarea>
+        <div class="char-count"><span id="encInputCount">0</span> characters</div>
+      </div>
+      <button class="btn btn-primary" id="encBtn">Encode to Base64</button>
+      <div class="form-group mt-2">
+        <label>Base64 Output</label>
+        <div class="result-box large" id="encOutput">—<button class="copy-btn" id="encCopyBtn">Copy</button></div>
+        <div class="char-count"><span id="encOutputCount">0</span> characters</div>
+      </div>
+    </div>
+
+    <!-- Decode -->
+    <div class="tab-pane" id="decodePane">
+      <div class="form-group">
+        <label>Base64 Input</label>
+        <textarea id="decInput" placeholder="Paste Base64 string to decode…"></textarea>
+        <div class="char-count"><span id="decInputCount">0</span> characters</div>
+      </div>
+      <button class="btn btn-primary" id="decBtn">Decode from Base64</button>
+      <div id="decAlert"></div>
+      <div class="form-group mt-2">
+        <label>Decoded Output</label>
+        <div class="result-box large" id="decOutput">—<button class="copy-btn" id="decCopyBtn">Copy</button></div>
+      </div>
+    </div>
+
+    <!-- File -->
+    <div class="tab-pane" id="filePane">
+      <div class="drop-zone" id="dropZone">
+        <p>🗂️ Drop a file here or <strong>click to browse</strong></p>
+        <p style="font-size:.8rem;margin-top:.4rem">Any file type · Max 5 MB</p>
+        <input type="file" id="fileInput">
+      </div>
+      <div id="fileInfo" class="alert alert-info mt-2 hidden"></div>
+      <div class="form-group mt-2 hidden" id="fileOutputWrap">
+        <label>Base64 Output</label>
+        <div class="result-box large mono" id="fileOutput" style="max-height:200px;overflow-y:auto">—<button class="copy-btn" id="fileCopyBtn">Copy</button></div>
+        <div class="btn-group">
+          <button class="btn btn-secondary btn-sm" id="downloadB64Btn">Download .txt</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-2">
+    <p style="font-size:.85rem;color:var(--text-muted)">
+      <strong>What is Base64?</strong> Base64 encodes binary data as ASCII text using 64 printable characters.
+      It increases size by ~33% but makes binary data safe to include in text formats like JSON, HTML, emails, and URLs.
+    </p>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+// Encode tab
+const encInput  = document.getElementById('encInput');
+const encOutput = document.getElementById('encOutput');
+encInput.addEventListener('input', () => {
+  document.getElementById('encInputCount').textContent = encInput.value.length;
+});
+document.getElementById('encBtn').addEventListener('click', () => {
+  try {
+    const b64 = btoa(unescape(encodeURIComponent(encInput.value)));
+    encOutput.childNodes[0].textContent = b64;
+    document.getElementById('encOutputCount').textContent = b64.length;
+  } catch(e) { encOutput.childNodes[0].textContent = 'Error: ' + e.message; }
+});
+document.getElementById('encCopyBtn').addEventListener('click', function() {
+  copyText(encOutput.childNodes[0].textContent, this);
+});
+
+// Decode tab
+const decInput  = document.getElementById('decInput');
+const decOutput = document.getElementById('decOutput');
+decInput.addEventListener('input', () => {
+  document.getElementById('decInputCount').textContent = decInput.value.length;
+});
+document.getElementById('decBtn').addEventListener('click', () => {
+  const alert = document.getElementById('decAlert');
+  alert.className = '';
+  alert.textContent = '';
+  try {
+    const decoded = decodeURIComponent(escape(atob(decInput.value.trim())));
+    decOutput.childNodes[0].textContent = decoded;
+  } catch(e) {
+    alert.className = 'alert alert-danger';
+    alert.textContent = 'Invalid Base64 — ' + e.message;
+    decOutput.childNodes[0].textContent = '—';
+  }
+});
+document.getElementById('decCopyBtn').addEventListener('click', function() {
+  copyText(decOutput.childNodes[0].textContent, this);
+});
+
+// File tab
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+
+function handleFile(file) {
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    document.getElementById('fileInfo').className = 'alert alert-danger mt-2';
+    document.getElementById('fileInfo').textContent = 'File too large (max 5 MB).';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const b64 = e.target.result;
+    const info = document.getElementById('fileInfo');
+    info.className = 'alert alert-success mt-2';
+    info.textContent = `✓ ${file.name} (${(file.size/1024).toFixed(1)} KB) — ${file.type || 'unknown type'}`;
+    const wrap = document.getElementById('fileOutputWrap');
+    const out = document.getElementById('fileOutput');
+    wrap.classList.remove('hidden');
+    out.childNodes[0].textContent = b64;
+    document.getElementById('fileCopyBtn').onclick = function() { copyText(b64, this); };
+    document.getElementById('downloadB64Btn').onclick = () => {
+      const a = document.createElement('a');
+      a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(b64);
+      a.download = file.name + '.base64.txt';
+      a.click();
+    };
+  };
+  reader.readAsDataURL(file);
+}
+</script>
+</body>
+</html>

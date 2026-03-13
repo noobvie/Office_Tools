@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Office Tools — Free Browser-Based Utilities</title>
+  <meta name="description" content="Free, open-source browser tools for everyday office and productivity use. No login, no tracking, everything runs in your browser.">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .hub-stats {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .hub-stat { text-align: center; }
+    .hub-stat-num { font-size: 1.6rem; font-weight: 800; color: var(--primary); }
+    .hub-stat-label { font-size: .78rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+
+    #noResults { display: none; text-align: center; padding: 3rem; color: var(--text-muted); }
+    #noResults .big { font-size: 2.5rem; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="header-logo">
+    <span class="logo-icon">🛠️</span> Office Tools
+  </a>
+  <div class="header-actions">
+    <div id="authNav" style="display:flex;gap:.5rem;align-items:center"></div>
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<section class="hero">
+  <h1>Free <span>Office Tools</span></h1>
+  <p>Browser-based utilities for everyday work. No login, no tracking — everything runs locally.</p>
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="searchInput" placeholder="Search tools…" autocomplete="off">
+  </div>
+  <div class="hub-stats">
+    <div class="hub-stat"><div class="hub-stat-num">28</div><div class="hub-stat-label">Live Tools</div></div>
+    <div class="hub-stat"><div class="hub-stat-num">100%</div><div class="hub-stat-label">Free</div></div>
+    <div class="hub-stat"><div class="hub-stat-num">0</div><div class="hub-stat-label">Logins</div></div>
+  </div>
+</section>
+
+<main class="hub-main" id="hubMain">
+
+  <!-- ── Productivity & Time ── -->
+  <section class="category-section" data-category="Productivity &amp; Time">
+    <div class="category-title">⏱️ Productivity &amp; Time</div>
+    <div class="tools-grid">
+      <a href="tools/pomodoro/index.html" class="tool-card" data-name="Pomodoro Timer Focus timer work break">
+        <div class="tool-card-icon">🍅</div>
+        <div class="tool-card-name">Pomodoro Timer</div>
+        <div class="tool-card-desc">Focus timer with 25-min work intervals, short and long breaks, session counter.</div>
+      </a>
+      <a href="tools/date-calculator/index.html" class="tool-card" data-name="Date Calculator difference age countdown add subtract">
+        <div class="tool-card-icon">📅</div>
+        <div class="tool-card-name">Date Calculator</div>
+        <div class="tool-card-desc">Date difference, add/subtract days, age calculator and countdown to any date.</div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ── Generators ── -->
+  <section class="category-section" data-category="Generators">
+    <div class="category-title">✨ Generators</div>
+    <div class="tools-grid">
+      <a href="tools/password-generator/index.html" class="tool-card" data-name="Password Generator secure random strong">
+        <div class="tool-card-icon">🔐</div>
+        <div class="tool-card-name">Password Generator</div>
+        <div class="tool-card-desc">Generate secure random passwords with custom length and character options.</div>
+      </a>
+      <a href="tools/qr-generator/index.html" class="tool-card" data-name="QR Code Generator URL text WiFi vCard download">
+        <div class="tool-card-icon">📱</div>
+        <div class="tool-card-name">QR Code Generator</div>
+        <div class="tool-card-desc">Generate QR codes for URLs, text, WiFi, vCard. Download as PNG.</div>
+      </a>
+      <a href="tools/uuid-generator/index.html" class="tool-card" data-name="UUID Generator v4 v7 bulk random identifier">
+        <div class="tool-card-icon">🆔</div>
+        <div class="tool-card-name">UUID Generator</div>
+        <div class="tool-card-desc">Generate UUID v4 and v7 identifiers — single or bulk, with one-click copy.</div>
+      </a>
+      <a href="tools/random-number/index.html" class="tool-card" data-name="Random Number Generator integer decimal bulk range">
+        <div class="tool-card-icon">🎲</div>
+        <div class="tool-card-name">Random Number Generator</div>
+        <div class="tool-card-desc">Generate random integers or decimals in any range. Bulk generation, no duplicates option.</div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ── Text & Content ── -->
+  <section class="category-section" data-category="Text &amp; Content">
+    <div class="category-title">📝 Text &amp; Content</div>
+    <div class="tools-grid">
+      <a href="tools/word-counter/index.html" class="tool-card" data-name="Word Counter characters sentences reading time keyword density">
+        <div class="tool-card-icon">📊</div>
+        <div class="tool-card-name">Word Counter</div>
+        <div class="tool-card-desc">Count words, characters, sentences, reading time and keyword density live.</div>
+      </a>
+      <a href="tools/markdown-editor/index.html" class="tool-card" data-name="Markdown Editor Preview live split pane HTML export">
+        <div class="tool-card-icon">✍️</div>
+        <div class="tool-card-name">Markdown Editor</div>
+        <div class="tool-card-desc">Live split-pane Markdown editor with HTML preview, toolbar and export.</div>
+      </a>
+      <a href="tools/text-diff/index.html" class="tool-card" data-name="Text Diff Compare difference highlight changes line word char">
+        <div class="tool-card-icon">🔀</div>
+        <div class="tool-card-name">Text Diff</div>
+        <div class="tool-card-desc">Side-by-side diff of two text blocks with color-highlighted additions and deletions.</div>
+      </a>
+      <a href="tools/typing-speed/index.html" class="tool-card" data-name="Typing Speed Test WPM accuracy words per minute">
+        <div class="tool-card-icon">⌨️</div>
+        <div class="tool-card-name">Typing Speed Test</div>
+        <div class="tool-card-desc">Measure WPM and accuracy with real-time error tracking and grade rating.</div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ── Encoding & Crypto ── -->
+  <section class="category-section" data-category="Encoding &amp; Crypto">
+    <div class="category-title">🔒 Encoding &amp; Crypto</div>
+    <div class="tools-grid">
+      <a href="tools/base64-converter/index.html" class="tool-card" data-name="Base64 Encoder Decoder encode decode file">
+        <div class="tool-card-icon">🔄</div>
+        <div class="tool-card-name">Base64 Converter</div>
+        <div class="tool-card-desc">Encode and decode text or files to/from Base64 instantly.</div>
+      </a>
+      <a href="tools/url-encoder/index.html" class="tool-card" data-name="URL Encoder Decoder percent encode decode">
+        <div class="tool-card-icon">🔗</div>
+        <div class="tool-card-name">URL Encoder / Decoder</div>
+        <div class="tool-card-desc">Percent-encode and decode URLs with before/after diff view.</div>
+      </a>
+      <a href="tools/unix-timestamp/index.html" class="tool-card" data-name="Unix Timestamp Converter epoch date time">
+        <div class="tool-card-icon">🕐</div>
+        <div class="tool-card-name">Unix Timestamp</div>
+        <div class="tool-card-desc">Convert Unix timestamps to human-readable dates and vice versa. Live current timestamp.</div>
+      </a>
+      <a href="tools/hash-generator/index.html" class="tool-card" data-name="Hash Generator SHA-256 SHA-512 SHA-384 HMAC crypto">
+        <div class="tool-card-icon">🔑</div>
+        <div class="tool-card-name">Hash Generator</div>
+        <div class="tool-card-desc">Generate SHA-1/256/384/512 and HMAC hashes from text or files. 100% local.</div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ── Calculators ── -->
+  <section class="category-section" data-category="Calculators">
+    <div class="category-title">🧮 Calculators</div>
+    <div class="tools-grid">
+      <a href="tools/percentage-calculator/index.html" class="tool-card" data-name="Percentage Calculator percent of what change">
+        <div class="tool-card-icon">💯</div>
+        <div class="tool-card-name">Percentage Calculator</div>
+        <div class="tool-card-desc">What is X% of Y? X is what % of Y? Percentage change between two values.</div>
+      </a>
+      <a href="tools/aspect-ratio/index.html" class="tool-card" data-name="Aspect Ratio Calculator dimension 16:9 4:3 1:1">
+        <div class="tool-card-icon">📐</div>
+        <div class="tool-card-name">Aspect Ratio Calculator</div>
+        <div class="tool-card-desc">Find missing width or height given a ratio. Common presets included.</div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ── Development ── -->
+  <section class="category-section" data-category="Development">
+    <div class="category-title">💻 Development</div>
+    <div class="tools-grid">
+      <a href="tools/json-editor/index.html" class="tool-card" data-name="JSON Editor Formatter Validator Minify Tree View syntax highlight">
+        <div class="tool-card-icon">📋</div>
+        <div class="tool-card-name">JSON Editor</div>
+        <div class="tool-card-desc">Validate, format, minify JSON with syntax highlighting and interactive tree view.</div>
+      </a>
+      <a href="tools/csv-json/index.html" class="tool-card" data-name="CSV JSON Converter table file upload download PapaParse">
+        <div class="tool-card-icon">⇄</div>
+        <div class="tool-card-name">CSV ↔ JSON</div>
+        <div class="tool-card-desc">Convert between CSV and JSON with table preview, file upload and download.</div>
+      </a>
+      <a href="tools/crontab/index.html" class="tool-card" data-name="Crontab Explainer cron expression schedule next run">
+        <div class="tool-card-icon">⏰</div>
+        <div class="tool-card-name">Crontab Explainer</div>
+        <div class="tool-card-desc">Parse cron expressions into plain English. Shows next 10 scheduled run times.</div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ── Design ── -->
+  <section class="category-section" data-category="Design">
+    <div class="category-title">🎨 Design</div>
+    <div class="tools-grid">
+      <a href="tools/color-converter/index.html" class="tool-card" data-name="Color Converter HEX RGB HSL HSV CMYK palette shades tints">
+        <div class="tool-card-icon">🎨</div>
+        <div class="tool-card-name">Color Converter</div>
+        <div class="tool-card-desc">Convert HEX, RGB, HSL, HSV, CMYK with live preview, shades generator and named colors.</div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ── Network & Web ── -->
+  <section class="category-section" data-category="Network &amp; Web">
+    <div class="category-title">🌐 Network &amp; Web</div>
+    <div class="tools-grid">
+      <a href="tools/currency/index.html" class="tool-card" data-name="Currency Converter exchange rate live forex USD EUR GBP JPY">
+        <div class="tool-card-icon">💱</div>
+        <div class="tool-card-name">Currency Converter</div>
+        <div class="tool-card-desc">Convert 40+ currencies with live exchange rates, popular pairs and quick convert table.</div>
+      </a>
+      <a href="tools/my-ip/index.html" class="tool-card" data-name="What Is My IP address public IPv4 IPv6 ISP location geolocation">
+        <div class="tool-card-icon">🌐</div>
+        <div class="tool-card-name">What Is My IP?</div>
+        <div class="tool-card-desc">Show your public IP, ISP, country, city, coordinates and IPv6 support status.</div>
+      </a>
+      <a href="tools/utm-builder/index.html" class="tool-card" data-name="UTM Builder Campaign URL Google Analytics tracking source medium">
+        <div class="tool-card-icon">📎</div>
+        <div class="tool-card-name">Campaign URL Builder</div>
+        <div class="tool-card-desc">Build UTM-tagged URLs for Google Analytics campaign tracking with history and QR.</div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ── Visual & Design ── -->
+  <section class="category-section" data-category="Visual &amp; Design">
+    <div class="category-title">✨ Visual &amp; Design</div>
+    <div class="tools-grid">
+      <a href="tools/screenshot-beautifier/index.html" class="tool-card" data-name="Screenshot Beautifier background gradient shadow padding rounded corners frame">
+        <div class="tool-card-icon">🖼️</div>
+        <div class="tool-card-name">Screenshot Beautifier</div>
+        <div class="tool-card-desc">Add gradient backgrounds, padding, shadows and rounded corners to screenshots. Download PNG.</div>
+      </a>
+      <a href="tools/contrast-checker/index.html" class="tool-card" data-name="Color Contrast Checker WCAG AA AAA accessibility foreground background ratio">
+        <div class="tool-card-icon">♿</div>
+        <div class="tool-card-name">Contrast Checker</div>
+        <div class="tool-card-desc">Check WCAG AA/AAA contrast ratios for foreground/background color pairs with live preview.</div>
+      </a>
+      <a href="tools/palette-extractor/index.html" class="tool-card" data-name="Image Palette Extractor dominant colors HEX CSS variables k-means">
+        <div class="tool-card-icon">🎨</div>
+        <div class="tool-card-name">Palette Extractor</div>
+        <div class="tool-card-desc">Upload an image to extract its dominant color palette as HEX swatches and CSS variables.</div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ── Fun & Productivity ── -->
+  <section class="category-section" data-category="Fun &amp; Productivity">
+    <div class="category-title">🎲 Fun &amp; Productivity</div>
+    <div class="tools-grid">
+      <a href="tools/fake-data/index.html" class="tool-card" data-name="Fake Data Generator test data names emails phones addresses CSV JSON mock">
+        <div class="tool-card-icon">🧪</div>
+        <div class="tool-card-name">Fake Data Generator</div>
+        <div class="tool-card-desc">Generate realistic test data — names, emails, phones, addresses and more. Download CSV or JSON.</div>
+      </a>
+      <a href="tools/wheel-of-names/index.html" class="tool-card" data-name="Wheel of Names random picker spinner winner lucky draw">
+        <div class="tool-card-icon">🎡</div>
+        <div class="tool-card-name">Wheel of Names</div>
+        <div class="tool-card-desc">Animated spinning wheel to randomly pick a winner from your list. Remove or keep winners.</div>
+      </a>
+    </div>
+  </section>
+
+  <div id="noResults">
+    <div class="big">🔍</div>
+    <p>No tools match "<span id="noResultsTerm"></span>"</p>
+  </div>
+
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  // Search / filter
+  const searchInput = document.getElementById('searchInput');
+  const noResults = document.getElementById('noResults');
+  const noResultsTerm = document.getElementById('noResultsTerm');
+
+  searchInput.addEventListener('input', () => {
+    const q = searchInput.value.toLowerCase().trim();
+    let visible = 0;
+    document.querySelectorAll('.tool-card').forEach(card => {
+      const text = (card.dataset.name + ' ' + card.textContent).toLowerCase();
+      const match = !q || text.includes(q);
+      card.style.display = match ? '' : 'none';
+      if (match && !card.classList.contains('coming-soon')) visible++;
+    });
+    document.querySelectorAll('.category-section').forEach(sec => {
+      const anyVisible = [...sec.querySelectorAll('.tool-card')].some(c => c.style.display !== 'none');
+      sec.style.display = anyVisible ? '' : 'none';
+    });
+    noResults.style.display = q && visible === 0 ? '' : 'none';
+    noResultsTerm.textContent = q;
+  });
+</script>
+</body>
+</html>

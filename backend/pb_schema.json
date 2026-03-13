@@ -1,0 +1,58 @@
+[
+  {
+    "name": "subscriptions",
+    "type": "base",
+    "system": false,
+    "schema": [
+      { "name": "user",            "type": "relation", "required": true,  "options": { "collectionId": "_pb_users_auth_", "cascadeDelete": true, "maxSelect": 1, "minSelect": 0 } },
+      { "name": "plan",            "type": "select",   "required": true,  "options": { "maxSelect": 1, "values": ["pro_monthly","pro_yearly","lifetime"] } },
+      { "name": "status",          "type": "select",   "required": true,  "options": { "maxSelect": 1, "values": ["active","expired","cancelled"] } },
+      { "name": "payment_method",  "type": "select",   "required": false, "options": { "maxSelect": 1, "values": ["grin","manual","promo"] } },
+      { "name": "grin_payment_id", "type": "text",     "required": false, "options": {} },
+      { "name": "starts_at",       "type": "date",     "required": false, "options": {} },
+      { "name": "expires_at",      "type": "date",     "required": false, "options": {} }
+    ],
+    "indexes": ["CREATE INDEX idx_sub_user ON subscriptions (user)", "CREATE INDEX idx_sub_status ON subscriptions (status)"],
+    "listRule": "@request.auth.id = user",
+    "viewRule": "@request.auth.id = user",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null
+  },
+  {
+    "name": "grin_payments",
+    "type": "base",
+    "system": false,
+    "schema": [
+      { "name": "user",         "type": "relation", "required": true,  "options": { "collectionId": "_pb_users_auth_", "cascadeDelete": true, "maxSelect": 1 } },
+      { "name": "plan",         "type": "select",   "required": true,  "options": { "maxSelect": 1, "values": ["pro_monthly","pro_yearly","lifetime"] } },
+      { "name": "amount_grin",  "type": "number",   "required": false, "options": {} },
+      { "name": "amount_nano",  "type": "number",   "required": false, "options": {} },
+      { "name": "status",       "type": "select",   "required": true,  "options": { "maxSelect": 1, "values": ["pending","confirmed","expired","failed"] } },
+      { "name": "expires_at",   "type": "date",     "required": false, "options": {} },
+      { "name": "confirmed_at", "type": "date",     "required": false, "options": {} },
+      { "name": "tx_id",        "type": "text",     "required": false, "options": {} },
+      { "name": "slate_id",     "type": "text",     "required": false, "options": {} }
+    ],
+    "listRule": "@request.auth.id = user",
+    "viewRule": "@request.auth.id = user",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null
+  },
+  {
+    "name": "usage_logs",
+    "type": "base",
+    "system": false,
+    "schema": [
+      { "name": "user", "type": "relation", "required": false, "options": { "collectionId": "_pb_users_auth_", "cascadeDelete": true, "maxSelect": 1 } },
+      { "name": "tool", "type": "text",     "required": true,  "options": { "min": 1, "max": 100 } }
+    ],
+    "indexes": ["CREATE INDEX idx_usage_user ON usage_logs (user)", "CREATE INDEX idx_usage_tool ON usage_logs (tool)"],
+    "listRule": null,
+    "viewRule": null,
+    "createRule": "@request.auth.id != ''",
+    "updateRule": null,
+    "deleteRule": null
+  }
+]

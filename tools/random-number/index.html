@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Random Number Generator — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .big-result {
+      text-align: center;
+      padding: 2rem 1rem;
+      background: var(--bg-secondary);
+      border-radius: var(--radius-lg);
+      margin: 1rem 0;
+    }
+    .big-result .num {
+      font-size: 4rem;
+      font-weight: 900;
+      color: var(--primary);
+      font-family: 'Courier New', monospace;
+      line-height: 1;
+      letter-spacing: -.02em;
+      word-break: break-all;
+    }
+    .big-result .range-label { font-size: .82rem; color: var(--text-muted); margin-top: .5rem; }
+    .roll-anim { animation: pop .25s ease; }
+    @keyframes pop { 0%{transform:scale(.85);opacity:.5} 100%{transform:scale(1);opacity:1} }
+    .bulk-nums {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem;
+      padding: .75rem;
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      max-height: 250px;
+      overflow-y: auto;
+    }
+    .num-chip {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .2rem .6rem;
+      font-family: monospace;
+      font-size: .88rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-around;
+      text-align: center;
+      padding: .75rem 0;
+      border-top: 1px solid var(--border);
+      margin-top: .75rem;
+    }
+    .stat-row div .val { font-weight: 800; color: var(--primary); font-size: 1rem; }
+    .stat-row div .lbl { font-size: .72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Random Number Generator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🎲 Random Number Generator</h1>
+    <p>Generate cryptographically random integers or decimals in any range.</p>
+  </div>
+
+  <!-- Single -->
+  <div class="card">
+    <strong>Single Number</strong>
+    <div class="form-row mt-2">
+      <div class="form-group"><label>Minimum</label><input type="number" id="sMin" value="1"></div>
+      <div class="form-group"><label>Maximum</label><input type="number" id="sMax" value="100"></div>
+    </div>
+    <div class="form-row">
+      <label class="checkbox-row"><input type="checkbox" id="sDecimal"><label for="sDecimal">Decimal (float)</label></label>
+      <div class="form-group" id="decPlacesWrap" style="display:none">
+        <label>Decimal places</label>
+        <input type="number" id="sDecPlaces" value="2" min="1" max="10">
+      </div>
+    </div>
+
+    <div class="big-result">
+      <div class="num" id="singleResult">?</div>
+      <div class="range-label" id="singleRange">Click Generate</div>
+    </div>
+
+    <div class="btn-group" style="justify-content:center">
+      <button class="btn btn-primary btn-lg" id="sGenBtn">🎲 Generate</button>
+      <button class="btn btn-secondary" id="sCopyBtn">Copy</button>
+    </div>
+  </div>
+
+  <!-- Bulk -->
+  <div class="card mt-2">
+    <strong>Bulk Generation</strong>
+    <div class="form-row mt-2">
+      <div class="form-group"><label>Min</label><input type="number" id="bMin" value="1"></div>
+      <div class="form-group"><label>Max</label><input type="number" id="bMax" value="100"></div>
+      <div class="form-group"><label>Count</label><input type="number" id="bCount" value="10" min="1" max="1000"></div>
+    </div>
+    <div class="form-row">
+      <label class="checkbox-row"><input type="checkbox" id="bNoDup"><label for="bNoDup">No duplicates</label></label>
+      <label class="checkbox-row"><input type="checkbox" id="bSort"><label for="bSort">Sort ascending</label></label>
+    </div>
+    <button class="btn btn-primary" id="bGenBtn">Generate</button>
+
+    <div id="bulkWrap" class="hidden mt-2">
+      <div class="bulk-nums" id="bulkNums"></div>
+      <div class="stat-row" id="bulkStats"></div>
+      <div class="btn-group">
+        <button class="btn btn-secondary btn-sm" id="bCopyAll">Copy All</button>
+        <button class="btn btn-secondary btn-sm" id="bCopyCsv">Copy CSV</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dice Roller -->
+  <div class="card mt-2">
+    <strong>Dice Roller</strong>
+    <div class="form-row mt-2">
+      <div class="form-group">
+        <label>Dice</label>
+        <select id="diceType">
+          <option value="4">d4</option>
+          <option value="6" selected>d6</option>
+          <option value="8">d8</option>
+          <option value="10">d10</option>
+          <option value="12">d12</option>
+          <option value="20">d20</option>
+          <option value="100">d100</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Number of dice</label><input type="number" id="diceCount" value="1" min="1" max="20"></div>
+    </div>
+    <button class="btn btn-primary" id="diceBtn">🎲 Roll</button>
+    <div id="diceResult" class="hidden mt-2">
+      <div class="bulk-nums" id="diceNums"></div>
+      <div class="stat-row" id="diceStats"></div>
+    </div>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+function randInt(min, max) {
+  const range = max - min + 1;
+  const arr = new Uint32Array(1);
+  crypto.getRandomValues(arr);
+  return min + (arr[0] % range);
+}
+function randFloat(min, max, places) {
+  const arr = new Uint32Array(1);
+  crypto.getRandomValues(arr);
+  const r = min + (arr[0] / 0xFFFFFFFF) * (max - min);
+  return parseFloat(r.toFixed(places));
+}
+
+// Single
+document.getElementById('sDecimal').addEventListener('change', e => {
+  document.getElementById('decPlacesWrap').style.display = e.target.checked ? '' : 'none';
+});
+
+function generateSingle() {
+  const min = parseFloat(document.getElementById('sMin').value);
+  const max = parseFloat(document.getElementById('sMax').value);
+  if (isNaN(min) || isNaN(max) || min > max) return;
+  const isFloat = document.getElementById('sDecimal').checked;
+  const places  = parseInt(document.getElementById('sDecPlaces').value) || 2;
+  const num = isFloat ? randFloat(min, max, places) : randInt(Math.ceil(min), Math.floor(max));
+  const el = document.getElementById('singleResult');
+  el.textContent = num;
+  el.classList.remove('roll-anim');
+  void el.offsetWidth;
+  el.classList.add('roll-anim');
+  document.getElementById('singleRange').textContent = `Range: ${min} – ${max}`;
+}
+
+document.getElementById('sGenBtn').addEventListener('click', generateSingle);
+document.getElementById('sCopyBtn').addEventListener('click', function() {
+  copyText(document.getElementById('singleResult').textContent, this);
+});
+
+// Keyboard shortcut: Space to re-roll
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
+    e.preventDefault();
+    generateSingle();
+  }
+});
+
+// Bulk
+document.getElementById('bGenBtn').addEventListener('click', () => {
+  const min = parseInt(document.getElementById('bMin').value);
+  const max = parseInt(document.getElementById('bMax').value);
+  const count = Math.min(1000, Math.max(1, parseInt(document.getElementById('bCount').value) || 10));
+  const noDup = document.getElementById('bNoDup').checked;
+  const sort  = document.getElementById('bSort').checked;
+  if (isNaN(min) || isNaN(max) || min > max) return;
+  if (noDup && count > (max - min + 1)) {
+    alert(`Can't generate ${count} unique numbers in range ${min}–${max}.`);
+    return;
+  }
+  const nums = [];
+  const used = new Set();
+  while (nums.length < count) {
+    const n = randInt(min, max);
+    if (noDup && used.has(n)) continue;
+    used.add(n);
+    nums.push(n);
+  }
+  if (sort) nums.sort((a,b) => a - b);
+
+  const bulkNums = document.getElementById('bulkNums');
+  bulkNums.innerHTML = nums.map(n => `<span class="num-chip">${n}</span>`).join('');
+  document.getElementById('bulkWrap').classList.remove('hidden');
+
+  // Stats
+  const sum  = nums.reduce((a,b) => a+b, 0);
+  const mean = (sum / nums.length).toFixed(2);
+  const sMin = Math.min(...nums), sMax = Math.max(...nums);
+  const sorted = [...nums].sort((a,b)=>a-b);
+  const median = nums.length % 2 === 0
+    ? ((sorted[nums.length/2-1] + sorted[nums.length/2]) / 2).toFixed(1)
+    : sorted[Math.floor(nums.length/2)];
+  document.getElementById('bulkStats').innerHTML = `
+    <div><div class="val">${sMin}</div><div class="lbl">Min</div></div>
+    <div><div class="val">${sMax}</div><div class="lbl">Max</div></div>
+    <div><div class="val">${mean}</div><div class="lbl">Mean</div></div>
+    <div><div class="val">${median}</div><div class="lbl">Median</div></div>
+    <div><div class="val">${sum}</div><div class="lbl">Sum</div></div>
+  `;
+  document.getElementById('bCopyAll').onclick = () => copyText(nums.join('\n'), document.getElementById('bCopyAll'));
+  document.getElementById('bCopyCsv').onclick = () => copyText(nums.join(', '), document.getElementById('bCopyCsv'));
+});
+
+// Dice
+document.getElementById('diceBtn').addEventListener('click', () => {
+  const sides = parseInt(document.getElementById('diceType').value);
+  const count = Math.min(20, Math.max(1, parseInt(document.getElementById('diceCount').value) || 1));
+  const rolls = Array.from({length: count}, () => randInt(1, sides));
+  document.getElementById('diceNums').innerHTML = rolls.map(r => `<span class="num-chip">${r}</span>`).join('');
+  const total = rolls.reduce((a,b)=>a+b,0);
+  document.getElementById('diceStats').innerHTML = `
+    <div><div class="val">${total}</div><div class="lbl">Total</div></div>
+    <div><div class="val">${Math.min(...rolls)}</div><div class="lbl">Min Roll</div></div>
+    <div><div class="val">${Math.max(...rolls)}</div><div class="lbl">Max Roll</div></div>
+    <div><div class="val">${(total/count).toFixed(1)}</div><div class="lbl">Average</div></div>
+  `;
+  document.getElementById('diceResult').classList.remove('hidden');
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Campaign URL Builder — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .utm-result {
+      background: var(--bg-secondary);
+      border: 2px solid var(--primary);
+      border-radius: var(--radius-lg);
+      padding: 1rem 1.25rem;
+      font-family: 'Courier New', monospace;
+      font-size: .85rem;
+      word-break: break-all;
+      line-height: 1.7;
+      color: var(--text);
+      position: relative;
+    }
+    .utm-base   { color: var(--text-muted); }
+    .utm-sep    { color: var(--warning); }
+    .utm-key    { color: var(--primary); font-weight: 700; }
+    .utm-value  { color: var(--success); }
+
+    .param-row {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .6rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .param-row:last-child { border-bottom: none; }
+    .param-tag {
+      min-width: 160px;
+      font-size: .78rem;
+      font-weight: 700;
+      font-family: monospace;
+      color: var(--primary);
+    }
+    .param-required { color: var(--danger); }
+
+    .preset-btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem;
+      margin-bottom: .75rem;
+    }
+    .preset-chip {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: .2rem .7rem;
+      font-size: .78rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background .12s, border-color .12s;
+    }
+    .preset-chip:hover { background: var(--primary-dim); border-color: var(--primary); color: var(--primary); }
+
+    .history-row {
+      padding: .5rem .75rem;
+      font-size: .8rem;
+      border-bottom: 1px solid var(--border);
+      word-break: break-all;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: .5rem;
+    }
+    .history-row:last-child { border-bottom: none; }
+    .history-url { font-family: monospace; color: var(--primary); flex: 1; }
+
+    .qr-preview {
+      display: flex;
+      justify-content: center;
+      background: #fff;
+      padding: 1rem;
+      border-radius: var(--radius);
+      border: 1.5px solid var(--border);
+      margin-top: .75rem;
+    }
+
+    .char-counter { font-size: .75rem; color: var(--text-muted); text-align: right; margin-top: .2rem; }
+    .char-counter.warn { color: var(--warning); }
+    .char-counter.over { color: var(--danger); }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Campaign URL Builder</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>📣 Campaign URL Builder</h1>
+    <p>Add UTM parameters to any URL for Google Analytics and campaign tracking.</p>
+  </div>
+
+  <!-- Base URL -->
+  <div class="card">
+    <div class="form-group">
+      <label>Website URL <span class="param-required">*</span></label>
+      <input type="url" id="baseUrl" placeholder="https://example.com/landing-page">
+    </div>
+
+    <hr class="divider">
+    <strong style="font-size:.88rem">UTM Parameters</strong>
+    <p class="text-muted mt-1" style="font-size:.8rem">Required: Source + Medium. Campaign is strongly recommended.</p>
+
+    <div class="mt-2">
+      <!-- Source -->
+      <div class="param-row">
+        <span class="param-tag">utm_source <span class="param-required">*</span></span>
+        <div style="flex:1">
+          <input type="text" id="utmSource" placeholder="google, newsletter, facebook…">
+          <div class="preset-btn-row mt-1" data-presets="source">
+            <span class="preset-chip" data-val="google">google</span>
+            <span class="preset-chip" data-val="facebook">facebook</span>
+            <span class="preset-chip" data-val="twitter">twitter</span>
+            <span class="preset-chip" data-val="linkedin">linkedin</span>
+            <span class="preset-chip" data-val="newsletter">newsletter</span>
+            <span class="preset-chip" data-val="email">email</span>
+            <span class="preset-chip" data-val="youtube">youtube</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Medium -->
+      <div class="param-row">
+        <span class="param-tag">utm_medium <span class="param-required">*</span></span>
+        <div style="flex:1">
+          <input type="text" id="utmMedium" placeholder="cpc, email, social, banner…">
+          <div class="preset-btn-row mt-1" data-presets="medium">
+            <span class="preset-chip" data-val="cpc">cpc</span>
+            <span class="preset-chip" data-val="email">email</span>
+            <span class="preset-chip" data-val="social">social</span>
+            <span class="preset-chip" data-val="organic">organic</span>
+            <span class="preset-chip" data-val="referral">referral</span>
+            <span class="preset-chip" data-val="display">display</span>
+            <span class="preset-chip" data-val="affiliate">affiliate</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Campaign -->
+      <div class="param-row">
+        <span class="param-tag">utm_campaign</span>
+        <input type="text" id="utmCampaign" placeholder="spring_sale, product_launch…" style="flex:1">
+      </div>
+
+      <!-- Term -->
+      <div class="param-row">
+        <span class="param-tag">utm_term</span>
+        <input type="text" id="utmTerm" placeholder="keyword (for paid search)" style="flex:1">
+      </div>
+
+      <!-- Content -->
+      <div class="param-row">
+        <span class="param-tag">utm_content</span>
+        <input type="text" id="utmContent" placeholder="banner_v1, cta_button (for A/B tests)" style="flex:1">
+      </div>
+
+      <!-- ID -->
+      <div class="param-row">
+        <span class="param-tag">utm_id</span>
+        <input type="text" id="utmId" placeholder="campaign ID (optional)" style="flex:1">
+      </div>
+    </div>
+
+    <div class="btn-group mt-2">
+      <button class="btn btn-primary btn-lg" id="buildBtn">Build URL</button>
+      <button class="btn btn-secondary btn-sm" id="clearBtn">Clear All</button>
+      <button class="btn btn-secondary btn-sm" id="sampleBtn">Load Sample</button>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div class="card mt-2 hidden" id="resultCard">
+    <div class="flex-between" style="margin-bottom:.75rem">
+      <strong>Generated URL</strong>
+      <div class="char-counter" id="urlLength"></div>
+    </div>
+    <div class="utm-result" id="utmResult"></div>
+    <div class="btn-group mt-2">
+      <button class="btn btn-primary" id="copyUrlBtn">Copy URL</button>
+      <button class="btn btn-secondary btn-sm" id="shortUrlBtn">Shorten URL</button>
+      <button class="btn btn-secondary btn-sm" id="saveHistoryBtn">Save to History</button>
+      <button class="btn btn-secondary btn-sm" id="genQrBtn">QR Code</button>
+    </div>
+    <div id="qrWrap" class="hidden">
+      <div class="qr-preview" id="qrPreview"></div>
+      <div class="btn-group">
+        <button class="btn btn-secondary btn-sm" id="downloadQrBtn">Download PNG</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Parsed params breakdown -->
+  <div class="card mt-2 hidden" id="breakdownCard">
+    <strong>Parameter Breakdown</strong>
+    <div id="breakdownGrid" class="detail-grid mt-2" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.5rem"></div>
+  </div>
+
+  <!-- History -->
+  <div class="card mt-2">
+    <div class="flex-between">
+      <strong>Saved URLs</strong>
+      <button class="btn btn-ghost btn-sm" id="clearHistoryBtn">Clear</button>
+    </div>
+    <div id="historyWrap" style="max-height:260px;overflow-y:auto;margin-top:.5rem">
+      <div class="text-muted" style="font-size:.85rem;padding:.5rem 0" id="historyEmpty">No saved URLs yet.</div>
+    </div>
+  </div>
+
+  <!-- Reference -->
+  <div class="card mt-2">
+    <strong>UTM Parameter Reference</strong>
+    <div style="overflow-x:auto;margin-top:.75rem">
+      <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+        <thead><tr style="border-bottom:1.5px solid var(--border)">
+          <th style="padding:.4rem .6rem;text-align:left">Parameter</th>
+          <th style="padding:.4rem .6rem;text-align:left">Purpose</th>
+          <th style="padding:.4rem .6rem;text-align:left">Example</th>
+        </tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border)"><td style="padding:.4rem .6rem"><code>utm_source</code></td><td style="padding:.4rem .6rem">Traffic origin</td><td style="padding:.4rem .6rem">google, newsletter</td></tr>
+          <tr style="border-bottom:1px solid var(--border);background:var(--bg-secondary)"><td style="padding:.4rem .6rem"><code>utm_medium</code></td><td style="padding:.4rem .6rem">Marketing channel</td><td style="padding:.4rem .6rem">cpc, email, social</td></tr>
+          <tr style="border-bottom:1px solid var(--border)"><td style="padding:.4rem .6rem"><code>utm_campaign</code></td><td style="padding:.4rem .6rem">Campaign name</td><td style="padding:.4rem .6rem">spring_sale_2024</td></tr>
+          <tr style="border-bottom:1px solid var(--border);background:var(--bg-secondary)"><td style="padding:.4rem .6rem"><code>utm_term</code></td><td style="padding:.4rem .6rem">Paid search keyword</td><td style="padding:.4rem .6rem">running+shoes</td></tr>
+          <tr style="border-bottom:1px solid var(--border)"><td style="padding:.4rem .6rem"><code>utm_content</code></td><td style="padding:.4rem .6rem">A/B test identifier</td><td style="padding:.4rem .6rem">hero_banner, sidebar_cta</td></tr>
+          <tr style="background:var(--bg-secondary)"><td style="padding:.4rem .6rem"><code>utm_id</code></td><td style="padding:.4rem .6rem">Campaign ID</td><td style="padding:.4rem .6rem">abc123</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous"></script>
+<script src="../../js/common.js"></script>
+<script>
+let savedHistory = JSON.parse(localStorage.getItem('ot-utm-history') || '[]');
+let builtUrl = '';
+
+// Preset chips
+document.querySelectorAll('.preset-chip').forEach(chip => {
+  const row = chip.closest('[data-presets]');
+  const type = row.dataset.presets;
+  chip.addEventListener('click', () => {
+    const input = document.getElementById('utm' + type.charAt(0).toUpperCase() + type.slice(1));
+    if (input) { input.value = chip.dataset.val; buildUrl(); }
+  });
+});
+
+// Live build on input change
+['baseUrl','utmSource','utmMedium','utmCampaign','utmTerm','utmContent','utmId'].forEach(id => {
+  document.getElementById(id).addEventListener('input', buildUrl);
+});
+
+function buildUrl() {
+  const base = document.getElementById('baseUrl').value.trim();
+  if (!base) { document.getElementById('resultCard').classList.add('hidden'); return; }
+
+  const params = {
+    utm_source:   document.getElementById('utmSource').value.trim(),
+    utm_medium:   document.getElementById('utmMedium').value.trim(),
+    utm_campaign: document.getElementById('utmCampaign').value.trim(),
+    utm_term:     document.getElementById('utmTerm').value.trim(),
+    utm_content:  document.getElementById('utmContent').value.trim(),
+    utm_id:       document.getElementById('utmId').value.trim(),
+  };
+
+  // Validate base URL
+  try { new URL(base); } catch {
+    document.getElementById('resultCard').classList.add('hidden');
+    return;
+  }
+
+  const url = new URL(base);
+  const activeParams = {};
+  Object.entries(params).forEach(([k, v]) => { if (v) { url.searchParams.set(k, v); activeParams[k] = v; } });
+  builtUrl = url.toString();
+
+  // Render coloured URL
+  const result = document.getElementById('utmResult');
+  let html = `<span class="utm-base">${escHtml(base)}</span>`;
+  let first = true;
+  Object.entries(params).forEach(([k, v]) => {
+    if (!v) return;
+    html += `<span class="utm-sep">${first ? '?' : '&'}</span><span class="utm-key">${k}</span><span class="utm-sep">=</span><span class="utm-value">${escHtml(encodeURIComponent(v))}</span>`;
+    first = false;
+  });
+  result.innerHTML = html;
+
+  // Length counter
+  const lenEl = document.getElementById('urlLength');
+  const len = builtUrl.length;
+  lenEl.textContent = `${len} characters`;
+  lenEl.className = 'char-counter' + (len > 2000 ? ' over' : len > 1000 ? ' warn' : '');
+
+  document.getElementById('resultCard').classList.remove('hidden');
+
+  // Breakdown
+  if (Object.keys(activeParams).length) {
+    const grid = document.getElementById('breakdownGrid');
+    const LABELS = { utm_source:'Source', utm_medium:'Medium', utm_campaign:'Campaign', utm_term:'Keyword', utm_content:'Content', utm_id:'Campaign ID' };
+    grid.innerHTML = Object.entries(activeParams).map(([k,v]) => `
+      <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:.6rem .85rem">
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted)">${LABELS[k] || k}</div>
+        <div style="font-weight:700;margin-top:.2rem;color:var(--primary);word-break:break-all;font-size:.88rem">${escHtml(v)}</div>
+      </div>`).join('');
+    document.getElementById('breakdownCard').classList.remove('hidden');
+  }
+
+  // Reset QR
+  document.getElementById('qrWrap').classList.add('hidden');
+  document.getElementById('qrPreview').innerHTML = '';
+}
+
+document.getElementById('copyUrlBtn').addEventListener('click', function() { copyText(builtUrl, this); });
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  ['baseUrl','utmSource','utmMedium','utmCampaign','utmTerm','utmContent','utmId'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('resultCard').classList.add('hidden');
+  document.getElementById('breakdownCard').classList.add('hidden');
+});
+
+document.getElementById('sampleBtn').addEventListener('click', () => {
+  document.getElementById('baseUrl').value    = 'https://example.com/products';
+  document.getElementById('utmSource').value  = 'google';
+  document.getElementById('utmMedium').value  = 'cpc';
+  document.getElementById('utmCampaign').value= 'spring_sale_2024';
+  document.getElementById('utmTerm').value    = 'running+shoes';
+  document.getElementById('utmContent').value = 'hero_banner_v2';
+  buildUrl();
+});
+
+// QR
+document.getElementById('genQrBtn').addEventListener('click', () => {
+  if (!builtUrl || !window.QRCode) return;
+  const wrap = document.getElementById('qrWrap');
+  const preview = document.getElementById('qrPreview');
+  preview.innerHTML = '';
+  wrap.classList.remove('hidden');
+  const qr = new QRCode(preview, { text: builtUrl, width: 180, height: 180, correctLevel: QRCode.CorrectLevel.M });
+  document.getElementById('downloadQrBtn').onclick = () => {
+    setTimeout(() => {
+      const canvas = preview.querySelector('canvas');
+      if (!canvas) return;
+      const a = document.createElement('a');
+      a.download = 'campaign-qr.png';
+      a.href = canvas.toDataURL();
+      a.click();
+    }, 100);
+  };
+});
+
+// History
+document.getElementById('saveHistoryBtn').addEventListener('click', () => {
+  if (!builtUrl) return;
+  savedHistory.unshift({ url: builtUrl, time: new Date().toLocaleString() });
+  if (savedHistory.length > 20) savedHistory.pop();
+  localStorage.setItem('ot-utm-history', JSON.stringify(savedHistory));
+  renderHistory();
+});
+
+function renderHistory() {
+  const wrap = document.getElementById('historyWrap');
+  const empty = document.getElementById('historyEmpty');
+  if (!savedHistory.length) { if(empty) empty.style.display = ''; return; }
+  if(empty) empty.style.display = 'none';
+  wrap.innerHTML = (empty ? empty.outerHTML : '') + savedHistory.map((h, i) => `
+    <div class="history-row">
+      <span class="history-url">${escHtml(h.url)}</span>
+      <div style="display:flex;gap:.3rem;flex-shrink:0">
+        <button class="btn btn-ghost btn-sm" onclick="copyText('${escHtml(h.url)}',this)">Copy</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadFromHistory(${i})">Load</button>
+      </div>
+    </div>`).join('');
+}
+
+function loadFromHistory(i) {
+  const h = savedHistory[i];
+  if (!h) return;
+  try {
+    const u = new URL(h.url);
+    document.getElementById('baseUrl').value     = u.origin + u.pathname;
+    document.getElementById('utmSource').value   = u.searchParams.get('utm_source')   || '';
+    document.getElementById('utmMedium').value   = u.searchParams.get('utm_medium')   || '';
+    document.getElementById('utmCampaign').value = u.searchParams.get('utm_campaign') || '';
+    document.getElementById('utmTerm').value     = u.searchParams.get('utm_term')     || '';
+    document.getElementById('utmContent').value  = u.searchParams.get('utm_content')  || '';
+    document.getElementById('utmId').value       = u.searchParams.get('utm_id')       || '';
+    buildUrl();
+  } catch(e) { alert('Could not parse URL'); }
+}
+
+document.getElementById('clearHistoryBtn').addEventListener('click', () => {
+  savedHistory = [];
+  localStorage.removeItem('ot-utm-history');
+  renderHistory();
+});
+
+document.getElementById('buildBtn').addEventListener('click', buildUrl);
+renderHistory();
+</script>
+</body>
+</html>

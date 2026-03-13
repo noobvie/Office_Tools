@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>URL Encoder / Decoder — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .url-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      align-items: start;
+    }
+    @media (max-width: 580px) { .url-grid { grid-template-columns: 1fr; } }
+    .url-grid textarea { min-height: 160px; }
+    .arrows {
+      text-align: center;
+      padding: .5rem 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: .5rem;
+      justify-content: center;
+    }
+    @media (min-width: 581px) {
+      .url-grid-wrap { display: grid; grid-template-columns: 1fr auto 1fr; gap: .5rem; align-items: start; }
+    }
+    .diff-row { display: flex; font-size: .85rem; margin-bottom: .3rem; word-break: break-all; }
+    .diff-orig { color: var(--danger); text-decoration: line-through; margin-right: .5rem; }
+    .diff-enc  { color: var(--success); }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">URL Encoder / Decoder</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔗 URL Encoder / Decoder</h1>
+    <p>Percent-encode and decode URLs, query strings, or any text.</p>
+  </div>
+
+  <div class="card">
+    <div class="tabs" style="margin-bottom:1.25rem">
+      <button class="tab-btn active" data-tab="encTab">Encode</button>
+      <button class="tab-btn" data-tab="decTab">Decode</button>
+      <button class="tab-btn" data-tab="fullTab">Full URL Parse</button>
+    </div>
+
+    <!-- Encode -->
+    <div class="tab-pane active" id="encTab">
+      <div class="form-group">
+        <label>Plain text / URL</label>
+        <textarea id="encRaw" placeholder="https://example.com/path?name=John Doe&city=New York"></textarea>
+      </div>
+      <div class="form-row">
+        <label class="checkbox-row"><input type="checkbox" id="encFull"><label for="encFull">Encode full URL (preserve ://?&=)</label></label>
+        <div></div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" id="encGo">Encode</button>
+        <button class="btn btn-secondary" id="encClear">Clear</button>
+      </div>
+      <div class="form-group mt-2">
+        <label>Encoded Output</label>
+        <div class="result-box large" id="encOut" style="word-break:break-all">—<button class="copy-btn" id="encCopyBtn">Copy</button></div>
+      </div>
+    </div>
+
+    <!-- Decode -->
+    <div class="tab-pane" id="decTab">
+      <div class="form-group">
+        <label>Encoded URL / string</label>
+        <textarea id="decRaw" placeholder="https%3A%2F%2Fexample.com%2Fpath%3Fname%3DJohn%20Doe"></textarea>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" id="decGo">Decode</button>
+        <button class="btn btn-secondary" id="decClear">Clear</button>
+      </div>
+      <div id="decAlert"></div>
+      <div class="form-group mt-2">
+        <label>Decoded Output</label>
+        <div class="result-box large" id="decOut" style="word-break:break-all">—<button class="copy-btn" id="decCopyBtn">Copy</button></div>
+      </div>
+    </div>
+
+    <!-- Full URL Parse -->
+    <div class="tab-pane" id="fullTab">
+      <div class="form-group">
+        <label>Full URL to parse</label>
+        <input type="text" id="parseInput" placeholder="https://example.com:8080/path/to/page?foo=bar&baz=qux#section">
+      </div>
+      <button class="btn btn-primary" id="parseGo">Parse URL</button>
+      <div id="parseAlert"></div>
+      <div id="parseResult" class="mt-2 hidden">
+        <table style="width:100%;font-size:.88rem;border-collapse:collapse" id="parseTable"></table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-2">
+    <strong style="font-size:.88rem">Common encoded characters</strong>
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem">
+      <span class="badge badge-primary">space → %20</span>
+      <span class="badge badge-primary">/ → %2F</span>
+      <span class="badge badge-primary">? → %3F</span>
+      <span class="badge badge-primary">& → %26</span>
+      <span class="badge badge-primary">= → %3D</span>
+      <span class="badge badge-primary">+ → %2B</span>
+      <span class="badge badge-primary">@ → %40</span>
+      <span class="badge badge-primary"># → %23</span>
+    </div>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+// Encode
+document.getElementById('encGo').addEventListener('click', () => {
+  const raw = document.getElementById('encRaw').value;
+  const full = document.getElementById('encFull').checked;
+  let encoded;
+  if (full) {
+    try { encoded = new URL(raw).href; }
+    catch { encoded = encodeURI(raw); }
+  } else {
+    encoded = encodeURIComponent(raw);
+  }
+  const out = document.getElementById('encOut');
+  out.childNodes[0].textContent = encoded;
+});
+document.getElementById('encClear').addEventListener('click', () => {
+  document.getElementById('encRaw').value = '';
+  document.getElementById('encOut').childNodes[0].textContent = '—';
+});
+document.getElementById('encCopyBtn').addEventListener('click', function() {
+  copyText(document.getElementById('encOut').childNodes[0].textContent, this);
+});
+
+// Decode
+document.getElementById('decGo').addEventListener('click', () => {
+  const alert = document.getElementById('decAlert');
+  alert.className = ''; alert.textContent = '';
+  try {
+    const decoded = decodeURIComponent(document.getElementById('decRaw').value.trim());
+    document.getElementById('decOut').childNodes[0].textContent = decoded;
+  } catch(e) {
+    alert.className = 'alert alert-danger';
+    alert.textContent = 'Invalid encoding: ' + e.message;
+  }
+});
+document.getElementById('decClear').addEventListener('click', () => {
+  document.getElementById('decRaw').value = '';
+  document.getElementById('decOut').childNodes[0].textContent = '—';
+});
+document.getElementById('decCopyBtn').addEventListener('click', function() {
+  copyText(document.getElementById('decOut').childNodes[0].textContent, this);
+});
+
+// Parse URL
+document.getElementById('parseGo').addEventListener('click', () => {
+  const alert = document.getElementById('parseAlert');
+  const result = document.getElementById('parseResult');
+  alert.className = ''; alert.textContent = '';
+  try {
+    const u = new URL(document.getElementById('parseInput').value.trim());
+    const rows = [
+      ['Protocol', u.protocol],
+      ['Host', u.host],
+      ['Hostname', u.hostname],
+      ['Port', u.port || '(default)'],
+      ['Pathname', u.pathname],
+      ['Search', u.search || '(none)'],
+      ['Hash', u.hash || '(none)'],
+      ['Origin', u.origin],
+    ];
+    // Parse query params
+    const params = [...u.searchParams.entries()];
+    if (params.length) {
+      rows.push(['— Query Params —', '']);
+      params.forEach(([k, v]) => rows.push([`  ${k}`, v]));
+    }
+    document.getElementById('parseTable').innerHTML = rows.map(([k, v]) =>
+      `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:.45rem .75rem;font-weight:600;color:var(--text-muted);white-space:nowrap">${escHtml(k)}</td>
+        <td style="padding:.45rem .75rem;word-break:break-all;font-family:monospace">${escHtml(v)}</td>
+      </tr>`
+    ).join('');
+    result.classList.remove('hidden');
+  } catch(e) {
+    alert.className = 'alert alert-danger mt-2';
+    alert.textContent = 'Invalid URL: ' + e.message;
+    result.classList.add('hidden');
+  }
+});
+</script>
+</body>
+</html>

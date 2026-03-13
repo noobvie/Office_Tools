@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Screenshot Beautifier — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .canvas-wrap {
+      background: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 20px 20px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 260px;
+      position: relative;
+    }
+    #outputCanvas { max-width: 100%; display: block; border-radius: var(--radius); }
+
+    .drop-zone {
+      border: 2.5px dashed var(--border);
+      border-radius: var(--radius-lg);
+      padding: 3rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--primary);
+      background: var(--primary-dim);
+    }
+    .drop-zone .icon { font-size: 2.5rem; }
+    .drop-zone p { color: var(--text-muted); margin-top: .5rem; font-size: .88rem; }
+
+    .control-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .75rem;
+    }
+    @media(max-width:540px){ .control-grid { grid-template-columns: 1fr; } }
+
+    .gradient-presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin-top: .5rem;
+    }
+    .grad-swatch {
+      width: 40px; height: 28px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color .12s, transform .12s;
+    }
+    .grad-swatch:hover { transform: scale(1.1); }
+    .grad-swatch.active { border-color: var(--text); }
+
+    input[type="color"] { width: 48px; height: 36px; padding: 2px; cursor: pointer; border: 1.5px solid var(--border); border-radius: var(--radius); background: var(--bg-card); }
+
+    .range-row { display: flex; align-items: center; gap: .75rem; }
+    .range-row input[type="range"] { flex: 1; }
+    .range-row .val { font-weight: 700; color: var(--primary); min-width: 32px; text-align: right; font-size: .88rem; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Screenshot Beautifier</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🖼️ Screenshot Beautifier</h1>
+    <p>Add beautiful backgrounds, padding, shadows and rounded corners to your screenshots.</p>
+  </div>
+
+  <!-- Upload -->
+  <div class="card" id="uploadCard">
+    <div class="drop-zone" id="dropZone">
+      <div class="icon">📸</div>
+      <p><strong>Drop your screenshot here</strong> or click to browse</p>
+      <p>PNG, JPG, GIF, WebP supported</p>
+      <input type="file" id="fileInput" accept="image/*" style="display:none">
+    </div>
+  </div>
+
+  <!-- Controls + Preview (hidden until image loaded) -->
+  <div id="editor" class="hidden">
+    <div class="card mt-2">
+      <strong>Background</strong>
+      <div class="gradient-presets" id="gradientPresets"></div>
+      <div class="control-grid mt-2">
+        <div class="form-group">
+          <label>Custom Color 1</label>
+          <input type="color" id="color1" value="#6366f1">
+        </div>
+        <div class="form-group">
+          <label>Custom Color 2</label>
+          <input type="color" id="color2" value="#8b5cf6">
+        </div>
+        <div class="form-group">
+          <label>Gradient Angle</label>
+          <div class="range-row">
+            <input type="range" id="gradAngle" min="0" max="360" value="135">
+            <span class="val" id="gradAngleVal">135°</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Background Style</label>
+          <select id="bgStyle">
+            <option value="gradient">Gradient</option>
+            <option value="solid">Solid Color 1</option>
+            <option value="mesh">Mesh Pattern</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt-2">
+      <strong>Frame</strong>
+      <div class="control-grid mt-2">
+        <div class="form-group">
+          <label>Padding</label>
+          <div class="range-row">
+            <input type="range" id="padding" min="0" max="120" value="48">
+            <span class="val" id="paddingVal">48px</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Corner Radius</label>
+          <div class="range-row">
+            <input type="range" id="radius" min="0" max="40" value="12">
+            <span class="val" id="radiusVal">12px</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Shadow Blur</label>
+          <div class="range-row">
+            <input type="range" id="shadow" min="0" max="80" value="30">
+            <span class="val" id="shadowVal">30px</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Shadow Opacity</label>
+          <div class="range-row">
+            <input type="range" id="shadowAlpha" min="0" max="100" value="40">
+            <span class="val" id="shadowAlphaVal">40%</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Mac-style Toolbar</label>
+          <select id="toolbar">
+            <option value="none">None</option>
+            <option value="macos" selected>macOS Traffic Lights</option>
+            <option value="browser">Browser Bar</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Aspect Ratio Lock</label>
+          <select id="aspectLock">
+            <option value="free">Free (image size)</option>
+            <option value="16/9">16:9</option>
+            <option value="4/3">4:3</option>
+            <option value="1/1">1:1 (Square)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt-2">
+      <strong>Preview</strong>
+      <div class="canvas-wrap mt-2" id="canvasWrap">
+        <canvas id="outputCanvas"></canvas>
+      </div>
+      <div class="btn-group mt-2">
+        <button class="btn btn-primary" id="downloadBtn">⬇ Download PNG</button>
+        <button class="btn btn-secondary btn-sm" id="copyCanvasBtn">Copy to Clipboard</button>
+        <button class="btn btn-ghost btn-sm" id="resetBtn">↺ New Image</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+const GRADIENTS = [
+  { label: 'Indigo',    c1: '#6366f1', c2: '#8b5cf6', angle: 135 },
+  { label: 'Ocean',     c1: '#0ea5e9', c2: '#6366f1', angle: 135 },
+  { label: 'Sunset',    c1: '#f97316', c2: '#ec4899', angle: 135 },
+  { label: 'Lime',      c1: '#84cc16', c2: '#22d3ee', angle: 135 },
+  { label: 'Rose',      c1: '#f43f5e', c2: '#fb923c', angle: 135 },
+  { label: 'Slate',     c1: '#334155', c2: '#475569', angle: 135 },
+  { label: 'Midnight',  c1: '#0f172a', c2: '#1e3a5f', angle: 135 },
+  { label: 'Peach',     c1: '#fde68a', c2: '#fca5a5', angle: 135 },
+  { label: 'Mint',      c1: '#a7f3d0', c2: '#6ee7b7', angle: 135 },
+  { label: 'Pink Sky',  c1: '#f9a8d4', c2: '#a5b4fc', angle: 135 },
+];
+
+let img = null;
+
+// Build gradient swatches
+const presetsEl = document.getElementById('gradientPresets');
+GRADIENTS.forEach((g, i) => {
+  const div = document.createElement('div');
+  div.className = 'grad-swatch' + (i === 0 ? ' active' : '');
+  div.style.background = `linear-gradient(135deg, ${g.c1}, ${g.c2})`;
+  div.title = g.label;
+  div.addEventListener('click', () => {
+    document.querySelectorAll('.grad-swatch').forEach(s => s.classList.remove('active'));
+    div.classList.add('active');
+    document.getElementById('color1').value = g.c1;
+    document.getElementById('color2').value = g.c2;
+    document.getElementById('gradAngle').value = g.angle;
+    document.getElementById('gradAngleVal').textContent = g.angle + '°';
+    render();
+  });
+  presetsEl.appendChild(div);
+});
+
+// Drop zone
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); loadFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => loadFile(e.target.files[0]));
+
+function loadFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    img = new Image();
+    img.onload = () => {
+      document.getElementById('editor').classList.remove('hidden');
+      document.getElementById('uploadCard').classList.add('hidden');
+      render();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// Controls
+['color1','color2','gradAngle','padding','radius','shadow','shadowAlpha','bgStyle','toolbar','aspectLock'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => {
+    if (id === 'gradAngle')    document.getElementById('gradAngleVal').textContent    = el.value + '°';
+    if (id === 'padding')      document.getElementById('paddingVal').textContent      = el.value + 'px';
+    if (id === 'radius')       document.getElementById('radiusVal').textContent       = el.value + 'px';
+    if (id === 'shadow')       document.getElementById('shadowVal').textContent       = el.value + 'px';
+    if (id === 'shadowAlpha')  document.getElementById('shadowAlphaVal').textContent  = el.value + '%';
+    render();
+  });
+  el.addEventListener('change', render);
+});
+
+function render() {
+  if (!img) return;
+  const pad     = +document.getElementById('padding').value;
+  const rad     = +document.getElementById('radius').value;
+  const shBlur  = +document.getElementById('shadow').value;
+  const shAlpha = +document.getElementById('shadowAlpha').value / 100;
+  const c1      = document.getElementById('color1').value;
+  const c2      = document.getElementById('color2').value;
+  const angle   = +document.getElementById('gradAngle').value;
+  const bgStyle = document.getElementById('bgStyle').value;
+  const toolbar = document.getElementById('toolbar').value;
+  const aspect  = document.getElementById('aspectLock').value;
+
+  const toolbarH = toolbar !== 'none' ? 38 : 0;
+  let cw = img.width  + pad * 2;
+  let ch = img.height + pad * 2 + toolbarH;
+
+  if (aspect !== 'free') {
+    const [wa, ha] = aspect.split('/').map(Number);
+    const ratio = wa / ha;
+    if (cw / ch > ratio) { ch = Math.round(cw / ratio); }
+    else                  { cw = Math.round(ch * ratio); }
+  }
+
+  const canvas = document.getElementById('outputCanvas');
+  canvas.width  = cw;
+  canvas.height = ch;
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  if (bgStyle === 'gradient') {
+    const rad_a = angle * Math.PI / 180;
+    const cx_ = cw / 2, cy_ = ch / 2;
+    const len  = Math.sqrt(cw * cw + ch * ch) / 2;
+    const x0 = cx_ - Math.cos(rad_a) * len, y0 = cy_ - Math.sin(rad_a) * len;
+    const x1 = cx_ + Math.cos(rad_a) * len, y1 = cy_ + Math.sin(rad_a) * len;
+    const grd = ctx.createLinearGradient(x0, y0, x1, y1);
+    grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+    ctx.fillStyle = grd;
+  } else if (bgStyle === 'mesh') {
+    ctx.fillStyle = c1;
+    ctx.fillRect(0, 0, cw, ch);
+    // Dot mesh
+    ctx.fillStyle = c2 + '55';
+    for (let x = 0; x < cw; x += 24) for (let y = 0; y < ch; y += 24) {
+      ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = null;
+  } else {
+    ctx.fillStyle = c1;
+  }
+  if (bgStyle !== 'mesh') ctx.fillRect(0, 0, cw, ch);
+
+  // Image X/Y centering
+  const ix = Math.round((cw - img.width) / 2);
+  const iy = Math.round((ch - img.height - toolbarH) / 2) + toolbarH;
+
+  // Shadow
+  if (shBlur > 0) {
+    ctx.save();
+    ctx.shadowColor   = `rgba(0,0,0,${shAlpha})`;
+    ctx.shadowBlur    = shBlur;
+    ctx.shadowOffsetY = shBlur * 0.4;
+    // Clip path for shadow shape
+    ctx.beginPath();
+    roundRect(ctx, ix, iy, img.width, img.height, rad);
+    ctx.fillStyle = '#000';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Toolbar
+  if (toolbar !== 'none') {
+    ctx.save();
+    ctx.beginPath();
+    roundRect(ctx, ix, iy - toolbarH, img.width, toolbarH + rad, rad);
+    ctx.fillStyle = '#e2e8f0';
+    ctx.fill();
+    ctx.restore();
+
+    if (toolbar === 'macos') {
+      const dots = ['#ff5f57','#febc2e','#28c840'];
+      dots.forEach((col, i) => {
+        ctx.beginPath();
+        ctx.arc(ix + 14 + i * 20, iy - toolbarH / 2, 6, 0, Math.PI * 2);
+        ctx.fillStyle = col;
+        ctx.fill();
+      });
+    } else if (toolbar === 'browser') {
+      ctx.fillStyle = '#cbd5e1';
+      ctx.beginPath();
+      roundRect(ctx, ix + 60, iy - toolbarH + 8, img.width - 80, toolbarH - 16, 4);
+      ctx.fill();
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '11px system-ui';
+      ctx.fillText('🔒 yoursite.com', ix + 72, iy - toolbarH / 2 + 4);
+    }
+  }
+
+  // Screenshot clipped to rounded rect
+  ctx.save();
+  ctx.beginPath();
+  roundRect(ctx, ix, iy, img.width, img.height, rad);
+  ctx.clip();
+  ctx.drawImage(img, ix, iy);
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.href = document.getElementById('outputCanvas').toDataURL('image/png');
+  a.download = 'screenshot-beautified.png';
+  a.click();
+});
+
+document.getElementById('copyCanvasBtn').addEventListener('click', () => {
+  document.getElementById('outputCanvas').toBlob(blob => {
+    navigator.clipboard.write([new ClipboardItem({'image/png': blob})])
+      .then(() => { const btn = document.getElementById('copyCanvasBtn'); btn.textContent = '✓ Copied!'; setTimeout(() => btn.textContent = 'Copy to Clipboard', 1800); })
+      .catch(() => alert('Clipboard write requires HTTPS or localhost.'));
+  });
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  img = null;
+  document.getElementById('editor').classList.add('hidden');
+  document.getElementById('uploadCard').classList.remove('hidden');
+  document.getElementById('fileInput').value = '';
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Palette Extractor — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .drop-zone {
+      border: 2.5px dashed var(--border);
+      border-radius: var(--radius-lg);
+      padding: 3rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--primary);
+      background: var(--primary-dim);
+    }
+    .drop-zone .icon { font-size: 2.5rem; }
+    .drop-zone p { color: var(--text-muted); margin-top: .5rem; font-size: .88rem; }
+
+    #imagePreview {
+      max-width: 100%;
+      max-height: 320px;
+      border-radius: var(--radius);
+      display: block;
+      margin: 0 auto;
+    }
+
+    .palette-row {
+      display: flex;
+      gap: .75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+    .color-tile {
+      border-radius: var(--radius);
+      overflow: hidden;
+      width: 100px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.12);
+      cursor: pointer;
+      transition: transform .12s;
+      text-align: center;
+    }
+    .color-tile:hover { transform: translateY(-2px); }
+    .color-tile .tile-swatch { height: 64px; }
+    .color-tile .tile-hex { font-size: .72rem; font-weight: 700; font-family: monospace; padding: .35rem .25rem; background: var(--bg-card); border-top: 1px solid var(--border); color: var(--text); }
+    .color-tile .tile-pct { font-size: .68rem; color: var(--text-muted); padding-bottom: .3rem; background: var(--bg-card); }
+
+    .copy-hint { font-size: .78rem; color: var(--text-muted); margin-top: .5rem; }
+
+    .css-output {
+      font-family: 'Courier New', monospace;
+      font-size: .8rem;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .75rem 1rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 240px;
+      overflow-y: auto;
+      margin-top: .75rem;
+    }
+
+    .count-row { display: flex; align-items: center; gap: .75rem; }
+    .count-row input[type=range] { flex: 1; }
+    .count-row .val { font-weight: 700; color: var(--primary); min-width: 24px; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Palette Extractor</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🎨 Image Palette Extractor</h1>
+    <p>Upload any image to extract its dominant color palette as HEX swatches.</p>
+  </div>
+
+  <div class="card" id="uploadCard">
+    <div class="drop-zone" id="dropZone">
+      <div class="icon">🖼️</div>
+      <p><strong>Drop an image here</strong> or click to browse</p>
+      <p>PNG, JPG, GIF, WebP supported</p>
+      <input type="file" id="fileInput" accept="image/*" style="display:none">
+    </div>
+  </div>
+
+  <div id="results" class="hidden">
+    <div class="card mt-2">
+      <div class="flex-between">
+        <strong>Image Preview</strong>
+        <button class="btn btn-ghost btn-sm" id="resetBtn">↺ New Image</button>
+      </div>
+      <img id="imagePreview" class="mt-2" alt="Uploaded image preview">
+    </div>
+
+    <div class="card mt-2">
+      <div class="flex-between">
+        <strong>Extracted Palette</strong>
+        <div class="count-row" style="gap:.5rem">
+          <span style="font-size:.8rem;color:var(--text-muted)">Colors:</span>
+          <input type="range" id="colorCount" min="3" max="16" value="8" style="width:80px">
+          <span class="val" id="colorCountVal">8</span>
+        </div>
+      </div>
+      <div class="palette-row" id="paletteRow"></div>
+      <p class="copy-hint">Click any swatch to copy its HEX value.</p>
+    </div>
+
+    <div class="card mt-2">
+      <div class="flex-between">
+        <strong>CSS Variables</strong>
+        <button class="btn btn-ghost btn-sm" id="copyCssBtn">Copy CSS</button>
+      </div>
+      <pre class="css-output" id="cssOutput"></pre>
+    </div>
+
+    <div class="card mt-2">
+      <div class="flex-between">
+        <strong>All Colors (HEX list)</strong>
+        <button class="btn btn-ghost btn-sm" id="copyHexBtn">Copy All HEX</button>
+      </div>
+      <div id="hexList" style="font-family:monospace;font-size:.85rem;margin-top:.5rem;line-height:1.8"></div>
+    </div>
+  </div>
+
+  <canvas id="hiddenCanvas" style="display:none"></canvas>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+let imgEl = null;
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); loadFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => loadFile(e.target.files[0]));
+
+function loadFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    imgEl = new Image();
+    imgEl.onload = () => {
+      document.getElementById('imagePreview').src = ev.target.result;
+      document.getElementById('uploadCard').classList.add('hidden');
+      document.getElementById('results').classList.remove('hidden');
+      extractPalette();
+    };
+    imgEl.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+document.getElementById('colorCount').addEventListener('input', e => {
+  document.getElementById('colorCountVal').textContent = e.target.value;
+  if (imgEl) extractPalette();
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  imgEl = null;
+  document.getElementById('results').classList.add('hidden');
+  document.getElementById('uploadCard').classList.remove('hidden');
+  document.getElementById('fileInput').value = '';
+});
+
+function extractPalette() {
+  const k = +document.getElementById('colorCount').value;
+  const canvas = document.getElementById('hiddenCanvas');
+  const ctx    = canvas.getContext('2d');
+
+  // Scale down for speed
+  const MAX = 200;
+  const scale = Math.min(1, MAX / Math.max(imgEl.width, imgEl.height));
+  canvas.width  = Math.round(imgEl.width  * scale);
+  canvas.height = Math.round(imgEl.height * scale);
+  ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
+
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  const pixels = [];
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i+3] < 128) continue; // skip transparent
+    pixels.push([data[i], data[i+1], data[i+2]]);
+  }
+
+  const palette = kMeans(pixels, k, 20);
+  renderPalette(palette);
+}
+
+// k-means color quantization
+function kMeans(pixels, k, iterations) {
+  // Sample for speed
+  const sample = pixels.filter((_, i) => i % 8 === 0);
+  if (sample.length < k) return sample.slice(0, k).map(p => ({ color: p, count: 1 }));
+
+  // Init centroids randomly from sample
+  let centroids = [];
+  const used = new Set();
+  while (centroids.length < k) {
+    const idx = Math.floor(Math.random() * sample.length);
+    if (!used.has(idx)) { used.add(idx); centroids.push([...sample[idx]]); }
+  }
+
+  let assignments = new Array(sample.length).fill(0);
+
+  for (let iter = 0; iter < iterations; iter++) {
+    // Assign
+    let changed = false;
+    for (let i = 0; i < sample.length; i++) {
+      let best = 0, bestD = Infinity;
+      for (let j = 0; j < k; j++) {
+        const d = colorDist(sample[i], centroids[j]);
+        if (d < bestD) { bestD = d; best = j; }
+      }
+      if (assignments[i] !== best) { assignments[i] = best; changed = true; }
+    }
+    if (!changed) break;
+
+    // Update centroids
+    const sums = Array.from({length: k}, () => [0,0,0,0]);
+    for (let i = 0; i < sample.length; i++) {
+      const j = assignments[i];
+      sums[j][0] += sample[i][0]; sums[j][1] += sample[i][1];
+      sums[j][2] += sample[i][2]; sums[j][3]++;
+    }
+    centroids = sums.map((s,j) => s[3] ? [s[0]/s[3], s[1]/s[3], s[2]/s[3]] : centroids[j]);
+  }
+
+  // Count
+  const counts = new Array(k).fill(0);
+  for (const a of assignments) counts[a]++;
+  const total = sample.length;
+
+  return centroids
+    .map((c, i) => ({ color: c.map(Math.round), count: counts[i] }))
+    .sort((a,b) => b.count - a.count);
+}
+
+function colorDist(a, b) {
+  return (a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2;
+}
+
+function toHex([r,g,b]) {
+  return '#' + [r,g,b].map(v => Math.round(v).toString(16).padStart(2,'0')).join('').toUpperCase();
+}
+
+let currentPalette = [];
+
+function renderPalette(palette) {
+  currentPalette = palette;
+  const total = palette.reduce((s,p) => s + p.count, 0);
+  const row = document.getElementById('paletteRow');
+  row.innerHTML = '';
+  palette.forEach(p => {
+    const hex = toHex(p.color);
+    const pct = Math.round(p.count / total * 100);
+    const tile = document.createElement('div');
+    tile.className = 'color-tile';
+    tile.innerHTML = `<div class="tile-swatch" style="background:${hex}"></div><div class="tile-hex">${hex}</div><div class="tile-pct">${pct}%</div>`;
+    tile.addEventListener('click', () => copyText(hex, tile.querySelector('.tile-hex')));
+    row.appendChild(tile);
+  });
+
+  // CSS output
+  const css = ':root {\n' + palette.map((p,i) => `  --palette-${i+1}: ${toHex(p.color)};`).join('\n') + '\n}';
+  document.getElementById('cssOutput').textContent = css;
+
+  // Hex list
+  document.getElementById('hexList').innerHTML = palette.map((p,i) =>
+    `<span style="margin-right:1rem">${i+1}. ${toHex(p.color)}</span>`
+  ).join('');
+}
+
+document.getElementById('copyCssBtn').addEventListener('click', () => {
+  copyText(document.getElementById('cssOutput').textContent, document.getElementById('copyCssBtn'));
+});
+document.getElementById('copyHexBtn').addEventListener('click', () => {
+  const hex = currentPalette.map(p => toHex(p.color)).join('\n');
+  copyText(hex, document.getElementById('copyHexBtn'));
+});
+</script>
+</body>
+</html>

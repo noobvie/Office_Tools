@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Code Generator — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    #qrPreview {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 220px;
+      background: #fff;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin: 1rem 0;
+      padding: 1.5rem;
+    }
+    #qrPreview canvas, #qrPreview img { max-width: 220px; max-height: 220px; }
+    #qrPlaceholder { color: var(--text-muted); text-align: center; font-size: .9rem; }
+    .color-row { display: flex; align-items: center; gap: .75rem; }
+    .color-row input[type=color] { width: 44px; height: 36px; border: 1.5px solid var(--border); border-radius: 6px; cursor: pointer; padding: 2px; background: var(--bg-card); }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">QR Code Generator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>📱 QR Code Generator</h1>
+    <p>Generate QR codes for URLs, text, WiFi, or vCard contacts.</p>
+  </div>
+
+  <div class="card" data-tabs>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="urlTab">URL / Text</button>
+      <button class="tab-btn" data-tab="wifiTab">WiFi</button>
+      <button class="tab-btn" data-tab="vcardTab">vCard</button>
+    </div>
+
+    <!-- URL / Text -->
+    <div class="tab-pane active" id="urlTab">
+      <div class="form-group">
+        <label>URL or Text</label>
+        <textarea id="urlInput" placeholder="https://example.com" style="min-height:90px"></textarea>
+      </div>
+    </div>
+
+    <!-- WiFi -->
+    <div class="tab-pane" id="wifiTab">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Network Name (SSID)</label>
+          <input type="text" id="wifiSsid" placeholder="MyWiFi">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="text" id="wifiPass" placeholder="password123">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Security Type</label>
+        <select id="wifiSec">
+          <option value="WPA">WPA/WPA2</option>
+          <option value="WEP">WEP</option>
+          <option value="">None (open)</option>
+        </select>
+      </div>
+      <label class="checkbox-row"><input type="checkbox" id="wifiHidden"><label for="wifiHidden">Hidden network</label></label>
+    </div>
+
+    <!-- vCard -->
+    <div class="tab-pane" id="vcardTab">
+      <div class="form-row">
+        <div class="form-group"><label>First Name</label><input type="text" id="vcFirst" placeholder="John"></div>
+        <div class="form-group"><label>Last Name</label><input type="text" id="vcLast" placeholder="Doe"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Phone</label><input type="text" id="vcPhone" placeholder="+1234567890"></div>
+        <div class="form-group"><label>Email</label><input type="text" id="vcEmail" placeholder="john@example.com"></div>
+      </div>
+      <div class="form-group"><label>Website</label><input type="text" id="vcUrl" placeholder="https://example.com"></div>
+      <div class="form-group"><label>Organization</label><input type="text" id="vcOrg" placeholder="Company Inc."></div>
+    </div>
+  </div>
+
+  <!-- Options -->
+  <div class="card mt-2">
+    <strong>Options</strong>
+    <div class="form-row mt-2">
+      <div class="form-group">
+        <label>Size: <span id="sizeVal">200</span>px</label>
+        <input type="range" id="sizeSlider" min="100" max="400" value="200" step="10">
+      </div>
+      <div class="form-group">
+        <label>Error Correction</label>
+        <select id="ecLevel">
+          <option value="L">Low (7%)</option>
+          <option value="M" selected>Medium (15%)</option>
+          <option value="Q">Quartile (25%)</option>
+          <option value="H">High (30%)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Foreground Color</label>
+        <div class="color-row">
+          <input type="color" id="colorFg" value="#000000">
+          <input type="text" id="colorFgHex" value="#000000" style="flex:1">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Background Color</label>
+        <div class="color-row">
+          <input type="color" id="colorBg" value="#ffffff">
+          <input type="text" id="colorBgHex" value="#ffffff" style="flex:1">
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-full mt-2" id="generateBtn">Generate QR Code</button>
+  </div>
+
+  <!-- Preview + Download -->
+  <div class="card mt-2">
+    <strong>Preview</strong>
+    <div id="qrPreview">
+      <div id="qrPlaceholder">📱 QR code will appear here</div>
+      <div id="qrContainer" class="hidden"></div>
+    </div>
+    <div class="btn-group" id="downloadBtns" style="display:none">
+      <button class="btn btn-primary" id="downloadPngBtn">Download PNG</button>
+      <button class="btn btn-secondary" id="downloadSvgBtn">Download SVG</button>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous"></script>
+<script src="../../js/common.js"></script>
+<script>
+document.getElementById('sizeSlider').addEventListener('input', e => {
+  document.getElementById('sizeVal').textContent = e.target.value;
+});
+// Sync color inputs
+['Fg','Bg'].forEach(c => {
+  document.getElementById('color'+c).addEventListener('input', e => {
+    document.getElementById('color'+c+'Hex').value = e.target.value;
+  });
+  document.getElementById('color'+c+'Hex').addEventListener('input', e => {
+    const val = e.target.value;
+    if (/^#[0-9a-fA-F]{6}$/.test(val)) document.getElementById('color'+c).value = val;
+  });
+});
+
+function getContent() {
+  const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+  if (activeTab === 'urlTab') return document.getElementById('urlInput').value.trim();
+  if (activeTab === 'wifiTab') {
+    const ssid = document.getElementById('wifiSsid').value;
+    const pass = document.getElementById('wifiPass').value;
+    const sec  = document.getElementById('wifiSec').value;
+    const hidden = document.getElementById('wifiHidden').checked ? 'true' : 'false';
+    return `WIFI:T:${sec};S:${ssid};P:${pass};H:${hidden};;`;
+  }
+  if (activeTab === 'vcardTab') {
+    const f = id => document.getElementById(id).value;
+    return `BEGIN:VCARD\nVERSION:3.0\nN:${f('vcLast')};${f('vcFirst')}\nFN:${f('vcFirst')} ${f('vcLast')}\nTEL:${f('vcPhone')}\nEMAIL:${f('vcEmail')}\nURL:${f('vcUrl')}\nORG:${f('vcOrg')}\nEND:VCARD`;
+  }
+  return '';
+}
+
+let qrInstance = null;
+document.getElementById('generateBtn').addEventListener('click', () => {
+  const content = getContent();
+  if (!content) { alert('Please enter content to generate a QR code.'); return; }
+  const size = parseInt(document.getElementById('sizeSlider').value);
+  const ec   = document.getElementById('ecLevel').value;
+  const fg   = document.getElementById('colorFgHex').value || '#000000';
+  const bg   = document.getElementById('colorBgHex').value || '#ffffff';
+
+  const container = document.getElementById('qrContainer');
+  container.innerHTML = '';
+  if (qrInstance) { try { qrInstance.clear(); } catch(e){} }
+
+  qrInstance = new QRCode(container, {
+    text: content,
+    width: size,
+    height: size,
+    colorDark: fg,
+    colorLight: bg,
+    correctLevel: QRCode.CorrectLevel[ec] || QRCode.CorrectLevel.M
+  });
+
+  document.getElementById('qrPlaceholder').classList.add('hidden');
+  container.classList.remove('hidden');
+  document.getElementById('downloadBtns').style.display = '';
+
+  document.getElementById('downloadPngBtn').onclick = () => {
+    const canvas = container.querySelector('canvas');
+    if (!canvas) return;
+    const a = document.createElement('a');
+    a.download = 'qrcode.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+  };
+  document.getElementById('downloadSvgBtn').onclick = () => {
+    const canvas = container.querySelector('canvas');
+    if (!canvas) return;
+    const s = size;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}"><image href="${canvas.toDataURL()}" width="${s}" height="${s}"/></svg>`;
+    const a = document.createElement('a');
+    a.download = 'qrcode.svg';
+    a.href = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    a.click();
+  };
+});
+</script>
+</body>
+</html>

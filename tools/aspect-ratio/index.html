@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aspect Ratio Calculator — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .preview-box {
+      background: var(--primary-dim);
+      border: 2px dashed var(--primary);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 1rem auto;
+      max-width: 100%;
+      color: var(--primary);
+      font-weight: 700;
+      font-size: .9rem;
+      transition: all .3s ease;
+    }
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: .5rem;
+      margin-top: .75rem;
+    }
+    .preset-btn {
+      background: var(--bg-secondary);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: .5rem .5rem;
+      cursor: pointer;
+      text-align: center;
+      transition: background .15s, border-color .15s;
+    }
+    .preset-btn:hover { background: var(--primary-dim); border-color: var(--primary); color: var(--primary); }
+    .preset-btn .ratio { font-weight: 800; font-size: .9rem; }
+    .preset-btn .name  { font-size: .72rem; color: var(--text-muted); }
+    .result-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .6rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: .9rem;
+    }
+    .result-row:last-child { border-bottom: none; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Aspect Ratio Calculator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>📐 Aspect Ratio Calculator</h1>
+    <p>Find missing dimensions given a ratio, or calculate the ratio from known dimensions.</p>
+  </div>
+
+  <!-- Presets -->
+  <div class="card">
+    <strong>Common Presets</strong>
+    <div class="preset-grid" id="presetGrid"></div>
+  </div>
+
+  <!-- Calculator -->
+  <div class="card mt-2">
+    <strong>Calculator</strong>
+    <div class="form-row mt-2">
+      <div class="form-group">
+        <label>Ratio W</label>
+        <input type="number" id="ratioW" placeholder="16" min="0.01" step="any">
+      </div>
+      <div class="form-group">
+        <label>Ratio H</label>
+        <input type="number" id="ratioH" placeholder="9" min="0.01" step="any">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Width (px)</label>
+        <input type="number" id="dimW" placeholder="1920" min="1" step="1">
+      </div>
+      <div class="form-group">
+        <label>Height (px)</label>
+        <input type="number" id="dimH" placeholder="leave blank to calculate" min="1" step="1">
+      </div>
+    </div>
+    <p class="text-muted" style="font-size:.82rem;margin-bottom:.75rem">Leave Width or Height blank — it will be calculated from the other and the ratio.</p>
+    <div class="btn-group">
+      <button class="btn btn-primary" id="calcBtn">Calculate</button>
+      <button class="btn btn-secondary" id="resetBtn">Reset</button>
+    </div>
+
+    <div id="calcResult" class="hidden mt-2">
+      <div class="result-row"><span style="font-weight:600;color:var(--text-muted)">Calculated Dimension</span><span id="resCalc" style="font-size:1.3rem;font-weight:800;color:var(--primary)"></span></div>
+      <div class="result-row"><span style="font-weight:600;color:var(--text-muted)">Simplified Ratio</span><span id="resRatio" style="font-weight:700"></span></div>
+      <div class="result-row"><span style="font-weight:600;color:var(--text-muted)">Decimal Ratio</span><span id="resDecimal" style="font-family:monospace"></span></div>
+      <div class="result-row"><span style="font-weight:600;color:var(--text-muted)">Megapixels</span><span id="resMp"></span></div>
+    </div>
+
+    <div id="preview" class="hidden" style="margin-top:1rem">
+      <div style="font-size:.82rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:.5rem">Preview (scaled)</div>
+      <div class="preview-box" id="previewBox"></div>
+    </div>
+  </div>
+
+  <!-- Ratio from dimensions -->
+  <div class="card mt-2">
+    <strong>Find ratio from dimensions</strong>
+    <div class="form-row mt-2">
+      <div class="form-group">
+        <label>Width</label>
+        <input type="number" id="rfdW" placeholder="1920" step="1" min="1">
+      </div>
+      <div class="form-group">
+        <label>Height</label>
+        <input type="number" id="rfdH" placeholder="1080" step="1" min="1">
+      </div>
+    </div>
+    <button class="btn btn-primary" id="rfdBtn">Find Ratio</button>
+    <div id="rfdResult" class="hidden mt-2">
+      <div class="answer-box" style="background:var(--primary-dim);border:1.5px solid var(--primary);border-radius:var(--radius);padding:.85rem 1.1rem;font-size:1.1rem;font-weight:700;color:var(--primary);display:flex;align-items:center;justify-content:space-between">
+        <span id="rfdText"></span>
+        <button class="btn btn-ghost btn-sm" id="rfdCopy">Copy</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+const PRESETS = [
+  { ratio:'16:9',  name:'HD Video',       w:16, h:9  },
+  { ratio:'4:3',   name:'Standard',       w:4,  h:3  },
+  { ratio:'1:1',   name:'Square',         w:1,  h:1  },
+  { ratio:'21:9',  name:'Ultrawide',      w:21, h:9  },
+  { ratio:'3:2',   name:'Camera/DSLR',    w:3,  h:2  },
+  { ratio:'2:3',   name:'Portrait',       w:2,  h:3  },
+  { ratio:'9:16',  name:'Mobile/Reel',    w:9,  h:16 },
+  { ratio:'4:5',   name:'Instagram',      w:4,  h:5  },
+  { ratio:'16:10', name:'Laptop Screen',  w:16, h:10 },
+  { ratio:'5:4',   name:'Print (5×4)',    w:5,  h:4  },
+  { ratio:'8.5:11',name:'US Letter',      w:8.5,h:11 },
+  { ratio:'1.414:1',name:'A4 Paper',      w:1.414,h:1},
+];
+
+const presetGrid = document.getElementById('presetGrid');
+PRESETS.forEach(p => {
+  const btn = document.createElement('div');
+  btn.className = 'preset-btn';
+  btn.innerHTML = `<div class="ratio">${p.ratio}</div><div class="name">${p.name}</div>`;
+  btn.addEventListener('click', () => {
+    document.getElementById('ratioW').value = p.w;
+    document.getElementById('ratioH').value = p.h;
+    document.getElementById('dimH').value = '';
+    document.getElementById('dimW').value = 1920;
+    document.getElementById('calcBtn').click();
+  });
+  presetGrid.appendChild(btn);
+});
+
+function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+
+document.getElementById('calcBtn').addEventListener('click', () => {
+  const rw = parseFloat(document.getElementById('ratioW').value);
+  const rh = parseFloat(document.getElementById('ratioH').value);
+  const w  = parseFloat(document.getElementById('dimW').value);
+  const h  = parseFloat(document.getElementById('dimH').value);
+  if (!rw || !rh || isNaN(rw) || isNaN(rh)) { alert('Enter a ratio first.'); return; }
+  if (isNaN(w) && isNaN(h)) { alert('Enter at least Width or Height.'); return; }
+
+  let calcW = w, calcH = h;
+  let calcLabel = '';
+  if (!isNaN(w) && isNaN(h)) { calcH = Math.round(w * (rh / rw)); calcLabel = `Height = ${calcH}px`; }
+  else if (isNaN(w) && !isNaN(h)) { calcW = Math.round(h * (rw / rh)); calcLabel = `Width = ${calcW}px`; }
+  else { calcLabel = `${calcW} × ${calcH}px`; }
+
+  // Simplified ratio
+  const scaledW = Math.round(rw * 1000), scaledH = Math.round(rh * 1000);
+  const g = gcd(scaledW, scaledH);
+  const simpW = scaledW / g, simpH = scaledH / g;
+
+  document.getElementById('resCalc').textContent = calcLabel;
+  document.getElementById('resRatio').textContent = `${simpW}:${simpH}`;
+  document.getElementById('resDecimal').textContent = (rw / rh).toFixed(4) + ':1';
+  document.getElementById('resMp').textContent = ((calcW * calcH) / 1000000).toFixed(2) + ' MP';
+  document.getElementById('calcResult').classList.remove('hidden');
+
+  // Preview
+  const box = document.getElementById('previewBox');
+  const aspect = calcW / calcH;
+  const maxW = 300, maxH = 180;
+  let pvW, pvH;
+  if (aspect > maxW / maxH) { pvW = maxW; pvH = Math.round(maxW / aspect); }
+  else { pvH = maxH; pvW = Math.round(maxH * aspect); }
+  box.style.width = pvW + 'px';
+  box.style.height = pvH + 'px';
+  box.textContent = `${calcW} × ${calcH}`;
+  document.getElementById('preview').classList.remove('hidden');
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  ['ratioW','ratioH','dimW','dimH'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('calcResult').classList.add('hidden');
+  document.getElementById('preview').classList.add('hidden');
+});
+
+// Find ratio from dims
+document.getElementById('rfdBtn').addEventListener('click', () => {
+  const w = parseInt(document.getElementById('rfdW').value);
+  const h = parseInt(document.getElementById('rfdH').value);
+  if (!w || !h || isNaN(w) || isNaN(h)) return;
+  const g = gcd(w, h);
+  const rw = w / g, rh = h / g;
+  const text = `${rw}:${rh}  (${(w/h).toFixed(4)}:1)`;
+  document.getElementById('rfdText').textContent = text;
+  document.getElementById('rfdResult').classList.remove('hidden');
+  document.getElementById('rfdCopy').onclick = () => copyText(`${rw}:${rh}`, document.getElementById('rfdCopy'));
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Percentage Calculator — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .calc-block { margin-bottom: 1.5rem; }
+    .calc-block:last-child { margin-bottom: 0; }
+    .calc-formula {
+      font-size: .82rem;
+      color: var(--text-muted);
+      background: var(--bg-secondary);
+      padding: .4rem .75rem;
+      border-radius: 6px;
+      margin-bottom: .75rem;
+      font-style: italic;
+    }
+    .inline-row {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      flex-wrap: wrap;
+    }
+    .inline-row input { width: 110px; flex-shrink: 0; }
+    .inline-row span { color: var(--text-muted); font-size: 1rem; white-space: nowrap; }
+    .answer-box {
+      background: var(--primary-dim);
+      border: 1.5px solid var(--primary);
+      border-radius: var(--radius);
+      padding: .85rem 1.1rem;
+      margin-top: .75rem;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .change-up   { color: var(--success); }
+    .change-down { color: var(--danger); }
+    .history-list { max-height: 200px; overflow-y: auto; }
+    .history-row {
+      padding: .45rem .75rem;
+      font-size: .85rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+    }
+    .history-row:last-child { border-bottom: none; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Percentage Calculator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>💯 Percentage Calculator</h1>
+    <p>Three essential percentage calculators in one place.</p>
+  </div>
+
+  <div class="card">
+    <!-- Calculator 1 -->
+    <div class="calc-block">
+      <strong>What is X% of Y?</strong>
+      <div class="calc-formula">result = (X / 100) × Y</div>
+      <div class="inline-row">
+        <span>What is</span>
+        <input type="number" id="c1x" placeholder="X" step="any">
+        <span>% of</span>
+        <input type="number" id="c1y" placeholder="Y" step="any">
+        <span>?</span>
+        <button class="btn btn-primary btn-sm" id="c1btn">Calculate</button>
+      </div>
+      <div class="answer-box hidden" id="c1ans">
+        <span id="c1text"></span>
+        <button class="btn btn-ghost btn-sm" id="c1copy">Copy</button>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Calculator 2 -->
+    <div class="calc-block">
+      <strong>X is what % of Y?</strong>
+      <div class="calc-formula">result = (X / Y) × 100</div>
+      <div class="inline-row">
+        <input type="number" id="c2x" placeholder="X" step="any">
+        <span>is what % of</span>
+        <input type="number" id="c2y" placeholder="Y" step="any">
+        <span>?</span>
+        <button class="btn btn-primary btn-sm" id="c2btn">Calculate</button>
+      </div>
+      <div class="answer-box hidden" id="c2ans">
+        <span id="c2text"></span>
+        <button class="btn btn-ghost btn-sm" id="c2copy">Copy</button>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Calculator 3 -->
+    <div class="calc-block">
+      <strong>Percentage Change</strong>
+      <div class="calc-formula">change = ((new − old) / |old|) × 100</div>
+      <div class="inline-row">
+        <span>From</span>
+        <input type="number" id="c3old" placeholder="Old value" step="any">
+        <span>to</span>
+        <input type="number" id="c3new" placeholder="New value" step="any">
+        <button class="btn btn-primary btn-sm" id="c3btn">Calculate</button>
+      </div>
+      <div class="answer-box hidden" id="c3ans">
+        <span id="c3text"></span>
+        <button class="btn btn-ghost btn-sm" id="c3copy">Copy</button>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Calculator 4 -->
+    <div class="calc-block">
+      <strong>Find original value (reverse %)</strong>
+      <div class="calc-formula">original = result / (percentage / 100)</div>
+      <div class="inline-row">
+        <input type="number" id="c4val" placeholder="Result" step="any">
+        <span>is</span>
+        <input type="number" id="c4pct" placeholder="%" step="any">
+        <span>% of what?</span>
+        <button class="btn btn-primary btn-sm" id="c4btn">Calculate</button>
+      </div>
+      <div class="answer-box hidden" id="c4ans">
+        <span id="c4text"></span>
+        <button class="btn btn-ghost btn-sm" id="c4copy">Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-2">
+    <div class="flex-between">
+      <strong>Calculation History</strong>
+      <button class="btn btn-ghost btn-sm" id="clearHistory">Clear</button>
+    </div>
+    <div id="historyList" class="history-list mt-2">
+      <div class="text-muted" style="padding:.5rem 0;font-size:.85rem" id="historyEmpty">No calculations yet.</div>
+    </div>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+const history = [];
+function addHistory(expr, result) {
+  history.unshift({ expr, result });
+  if (history.length > 20) history.pop();
+  renderHistory();
+}
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  const empty = document.getElementById('historyEmpty');
+  if (!history.length) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  list.innerHTML = '' + empty.outerHTML + history.map(h =>
+    `<div class="history-row"><span>${escHtml(h.expr)}</span><strong>${escHtml(h.result)}</strong></div>`
+  ).join('');
+}
+
+function showAns(id, text, copyId, val) {
+  const box = document.getElementById(id);
+  box.classList.remove('hidden');
+  document.getElementById(id.replace('ans','text')).textContent = text;
+  document.getElementById(copyId).onclick = () => copyText(String(val), document.getElementById(copyId));
+}
+
+function numFmt(n) { return parseFloat(n.toFixed(6)).toLocaleString(); }
+
+// C1
+document.getElementById('c1btn').addEventListener('click', () => {
+  const x = parseFloat(document.getElementById('c1x').value);
+  const y = parseFloat(document.getElementById('c1y').value);
+  if (isNaN(x) || isNaN(y)) return;
+  const r = (x / 100) * y;
+  const text = `${x}% of ${numFmt(y)} = ${numFmt(r)}`;
+  showAns('c1ans', text, 'c1copy', numFmt(r));
+  addHistory(text, numFmt(r));
+});
+
+// C2
+document.getElementById('c2btn').addEventListener('click', () => {
+  const x = parseFloat(document.getElementById('c2x').value);
+  const y = parseFloat(document.getElementById('c2y').value);
+  if (isNaN(x) || isNaN(y) || y === 0) return;
+  const r = (x / y) * 100;
+  const text = `${numFmt(x)} is ${numFmt(r)}% of ${numFmt(y)}`;
+  showAns('c2ans', text, 'c2copy', numFmt(r));
+  addHistory(text, numFmt(r) + '%');
+});
+
+// C3 — percentage change
+document.getElementById('c3btn').addEventListener('click', () => {
+  const oldV = parseFloat(document.getElementById('c3old').value);
+  const newV = parseFloat(document.getElementById('c3new').value);
+  if (isNaN(oldV) || isNaN(newV) || oldV === 0) return;
+  const r = ((newV - oldV) / Math.abs(oldV)) * 100;
+  const dir = r > 0 ? '▲ increase' : r < 0 ? '▼ decrease' : 'no change';
+  const ans = document.getElementById('c3ans');
+  ans.classList.remove('hidden');
+  const t = document.getElementById('c3text');
+  t.textContent = `${numFmt(Math.abs(r))}% ${dir} (${numFmt(oldV)} → ${numFmt(newV)})`;
+  t.className = r > 0 ? 'change-up' : r < 0 ? 'change-down' : '';
+  document.getElementById('c3copy').onclick = () => copyText(numFmt(r) + '%', document.getElementById('c3copy'));
+  addHistory(`Change ${numFmt(oldV)} → ${numFmt(newV)}`, numFmt(r) + '%');
+});
+
+// C4
+document.getElementById('c4btn').addEventListener('click', () => {
+  const val = parseFloat(document.getElementById('c4val').value);
+  const pct = parseFloat(document.getElementById('c4pct').value);
+  if (isNaN(val) || isNaN(pct) || pct === 0) return;
+  const r = val / (pct / 100);
+  const text = `${numFmt(val)} is ${pct}% of ${numFmt(r)}`;
+  showAns('c4ans', text, 'c4copy', numFmt(r));
+  addHistory(text, numFmt(r));
+});
+
+document.getElementById('clearHistory').addEventListener('click', () => {
+  history.length = 0; renderHistory();
+});
+
+// Enter key support
+document.querySelectorAll('input[type=number]').forEach(inp => {
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') inp.closest('.calc-block').querySelector('button').click();
+  });
+});
+</script>
+</body>
+</html>

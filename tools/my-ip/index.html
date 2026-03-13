@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What Is My IP? — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .ip-display {
+      text-align: center;
+      padding: 2rem 1rem;
+    }
+    .ip-address {
+      font-size: 2.6rem;
+      font-weight: 900;
+      font-family: 'Courier New', monospace;
+      color: var(--primary);
+      letter-spacing: .05em;
+      word-break: break-all;
+      line-height: 1.1;
+    }
+    .ip-label {
+      font-size: .8rem;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-top: .5rem;
+    }
+    .ip-type-badge {
+      display: inline-block;
+      margin-top: .75rem;
+      padding: .25rem .85rem;
+      border-radius: 50px;
+      font-size: .78rem;
+      font-weight: 700;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: .75rem;
+      margin-top: 1rem;
+    }
+    .detail-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .75rem 1rem;
+    }
+    .detail-card .lbl { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+    .detail-card .val { font-weight: 700; margin-top: .25rem; font-size: .92rem; word-break: break-all; }
+
+    .map-placeholder {
+      background: var(--bg-secondary);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: .9rem;
+      flex-direction: column;
+      gap: .5rem;
+    }
+    .map-placeholder .coord { font-family: monospace; font-size: .85rem; }
+
+    .speed-test-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .75rem;
+      margin-top: .75rem;
+    }
+    @media (max-width: 480px) { .speed-test-row { grid-template-columns: 1fr; } }
+    .speed-card { background: var(--bg-secondary); border-radius: var(--radius); padding: .85rem; text-align: center; }
+    .speed-card .sv { font-size: 1.4rem; font-weight: 900; color: var(--primary); }
+    .speed-card .sl { font-size: .72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+
+    .loading-pulse {
+      display: inline-block;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: pulse-anim .8s ease-in-out infinite alternate;
+      margin-right: .4rem;
+    }
+    @keyframes pulse-anim { to { opacity: .2; transform: scale(.7); } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">What Is My IP?</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🌐 What Is My IP?</h1>
+    <p>Your public IP address and network information.</p>
+  </div>
+
+  <!-- Main IP card -->
+  <div class="card">
+    <div class="ip-display" id="ipDisplay">
+      <span class="loading-pulse"></span>
+      <span class="text-muted">Detecting your IP…</span>
+    </div>
+    <div class="btn-group" style="justify-content:center" id="ipActions" style="display:none">
+      <button class="btn btn-primary" id="copyIpBtn">Copy IP</button>
+      <button class="btn btn-secondary btn-sm" id="refreshIpBtn">↺ Refresh</button>
+    </div>
+  </div>
+
+  <!-- Details -->
+  <div class="card mt-2 hidden" id="detailCard">
+    <strong>Network Details</strong>
+    <div class="detail-grid" id="detailGrid"></div>
+  </div>
+
+  <!-- Location -->
+  <div class="card mt-2 hidden" id="locationCard">
+    <strong>Location</strong>
+    <div class="map-placeholder mt-2" id="mapBox">
+      <span style="font-size:2rem">🗺️</span>
+      <span id="mapLabel">—</span>
+      <span class="coord" id="mapCoord"></span>
+    </div>
+    <p class="text-muted mt-2" style="font-size:.78rem">
+      ⚠️ IP-based location is approximate (city level). It does not reveal your exact address.
+    </p>
+  </div>
+
+  <!-- IPv6 check -->
+  <div class="card mt-2 hidden" id="ipv6Card">
+    <strong>IPv6 Support</strong>
+    <div class="mt-2" id="ipv6Result"></div>
+  </div>
+
+  <!-- Multiple APIs comparison -->
+  <div class="card mt-2">
+    <strong>Verify with other services</strong>
+    <div class="detail-grid mt-2" id="verifyGrid"></div>
+    <button class="btn btn-secondary btn-sm mt-2" id="verifyBtn">Check All Sources</button>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+let myIp = null;
+let ipData = null;
+
+async function fetchIp() {
+  const display = document.getElementById('ipDisplay');
+  display.innerHTML = '<span class="loading-pulse"></span><span class="text-muted">Detecting your IP…</span>';
+
+  try {
+    // Primary: ipify (returns just IP, very reliable)
+    const ipRes = await fetch('https://api.ipify.org?format=json');
+    const ipJson = await ipRes.json();
+    myIp = ipJson.ip;
+
+    // Secondary: ip-api.com for geo/ISP details (free, no key)
+    const geoRes = await fetch(`https://ip-api.com/json/${myIp}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query`);
+    ipData = await geoRes.json();
+
+    renderIp();
+  } catch(e) {
+    display.innerHTML = `<div class="alert alert-danger" style="text-align:left">Failed to detect IP: ${e.message}. Check your connection.</div>`;
+  }
+}
+
+function renderIp() {
+  const display  = document.getElementById('ipDisplay');
+  const isV6     = myIp.includes(':');
+  const typeColor = isV6 ? 'badge-primary' : 'badge-success';
+
+  display.innerHTML = `
+    <div class="ip-address">${escHtml(myIp)}</div>
+    <div class="ip-label">Your Public IP Address</div>
+    <span class="ip-type-badge badge ${typeColor}">${isV6 ? 'IPv6' : 'IPv4'}</span>
+  `;
+
+  document.getElementById('copyIpBtn').onclick = () => copyText(myIp, document.getElementById('copyIpBtn'));
+  document.getElementById('ipActions').style.display = '';
+
+  if (ipData && ipData.status === 'success') {
+    // Details
+    const details = [
+      { lbl: '🌍 Country', val: `${ipData.country} (${ipData.countryCode})` },
+      { lbl: '🏙️ Region / City', val: `${ipData.regionName}, ${ipData.city}` },
+      { lbl: '📮 ZIP / Postal', val: ipData.zip || '—' },
+      { lbl: '🕐 Timezone', val: ipData.timezone },
+      { lbl: '📡 ISP', val: ipData.isp },
+      { lbl: '🏢 Organization', val: ipData.org || '—' },
+      { lbl: '🔢 AS Number', val: ipData.as || '—' },
+      { lbl: '📍 Coordinates', val: `${ipData.lat}, ${ipData.lon}` },
+    ];
+    const grid = document.getElementById('detailGrid');
+    grid.innerHTML = details.map(d => `
+      <div class="detail-card">
+        <div class="lbl">${d.lbl}</div>
+        <div class="val">${escHtml(d.val)}</div>
+      </div>`).join('');
+    document.getElementById('detailCard').classList.remove('hidden');
+
+    // Location
+    document.getElementById('mapLabel').textContent = `${ipData.city}, ${ipData.regionName}, ${ipData.country}`;
+    document.getElementById('mapCoord').textContent = `${ipData.lat}°, ${ipData.lon}°`;
+    const mapLink = `https://www.openstreetmap.org/?mlat=${ipData.lat}&mlon=${ipData.lon}&zoom=10`;
+    document.getElementById('mapBox').innerHTML += `
+      <a href="${mapLink}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm mt-2" style="margin-top:.75rem">🗺️ Open in OpenStreetMap</a>`;
+    document.getElementById('locationCard').classList.remove('hidden');
+  }
+}
+
+// IPv6 check
+async function checkIpv6() {
+  const card = document.getElementById('ipv6Card');
+  const result = document.getElementById('ipv6Result');
+  card.classList.remove('hidden');
+  result.innerHTML = '<span class="loading-pulse"></span> Checking IPv6 support…';
+  try {
+    const res = await fetch('https://api6.ipify.org?format=json');
+    const { ip } = await res.json();
+    result.innerHTML = `<div class="alert alert-success">✓ IPv6 supported — your IPv6 address: <code style="word-break:break-all">${escHtml(ip)}</code></div>`;
+  } catch {
+    result.innerHTML = `<div class="alert alert-warning" style="background:var(--warning-dim);color:var(--warning);border:1px solid rgba(245,158,11,.2)">⚠ IPv6 not detected or not supported by your network.</div>`;
+  }
+}
+
+// Multi-source verify
+document.getElementById('verifyBtn').addEventListener('click', async () => {
+  const grid = document.getElementById('verifyGrid');
+  const sources = [
+    { name: 'ipify.org',    url: 'https://api.ipify.org?format=json',    parse: d => d.ip },
+    { name: 'api64.ipify',  url: 'https://api64.ipify.org?format=json',  parse: d => d.ip },
+    { name: 'ip-api.com',   url: 'https://ip-api.com/json?fields=query',  parse: d => d.query },
+  ];
+  grid.innerHTML = sources.map(s => `<div class="detail-card" id="src-${s.name}"><div class="lbl">${s.name}</div><div class="val"><span class="loading-pulse"></span></div></div>`).join('');
+
+  sources.forEach(async s => {
+    const card = document.getElementById(`src-${s.name}`);
+    try {
+      const res = await fetch(s.url);
+      const data = await res.json();
+      const ip = s.parse(data);
+      const match = ip === myIp;
+      card.querySelector('.val').innerHTML = `${escHtml(ip)} <span class="badge ${match ? 'badge-success' : 'badge-warning'}">${match ? '✓ Match' : '≠ Different'}</span>`;
+    } catch(e) {
+      card.querySelector('.val').innerHTML = `<span class="badge badge-danger">Failed</span>`;
+    }
+  });
+});
+
+document.getElementById('refreshIpBtn').addEventListener('click', fetchIp);
+
+fetchIp().then(() => checkIpv6());
+</script>
+</body>
+</html>

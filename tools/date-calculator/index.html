@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Date Calculator — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .result-block {
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-top: 1rem;
+    }
+    .result-block .big-num {
+      font-size: 2.4rem;
+      font-weight: 800;
+      color: var(--primary);
+      line-height: 1;
+    }
+    .result-block .big-label { font-size: .88rem; color: var(--text-muted); margin-top: .2rem; }
+    .result-mini-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: .5rem;
+      margin-top: .75rem;
+    }
+    .result-mini {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .5rem .75rem;
+      text-align: center;
+    }
+    .result-mini .val { font-weight: 800; color: var(--primary); font-size: 1.1rem; }
+    .result-mini .lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Date Calculator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>📅 Date Calculator</h1>
+    <p>Calculate date differences, add or subtract days, compute age, and count down to any date.</p>
+  </div>
+
+  <div class="card" data-tabs>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="diffTab">Difference</button>
+      <button class="tab-btn" data-tab="addTab">Add / Subtract</button>
+      <button class="tab-btn" data-tab="ageTab">Age</button>
+      <button class="tab-btn" data-tab="countTab">Countdown</button>
+    </div>
+
+    <!-- Difference -->
+    <div class="tab-pane active" id="diffTab">
+      <div class="form-row">
+        <div class="form-group"><label>Start Date</label><input type="date" id="diffStart"></div>
+        <div class="form-group"><label>End Date</label><input type="date" id="diffEnd"></div>
+      </div>
+      <button class="btn btn-primary" id="diffBtn">Calculate Difference</button>
+      <div id="diffResult" class="result-block hidden">
+        <div class="flex" style="gap:1.5rem;flex-wrap:wrap">
+          <div><div class="big-num" id="diffDays">—</div><div class="big-label">Days</div></div>
+          <div><div class="big-num" id="diffWeeks">—</div><div class="big-label">Weeks</div></div>
+          <div><div class="big-num" id="diffMonths">—</div><div class="big-label">Months</div></div>
+        </div>
+        <div class="result-mini-grid mt-2">
+          <div class="result-mini"><div class="val" id="diffHours">—</div><div class="lbl">Hours</div></div>
+          <div class="result-mini"><div class="val" id="diffMins">—</div><div class="lbl">Minutes</div></div>
+          <div class="result-mini"><div class="val" id="diffSecs">—</div><div class="lbl">Seconds</div></div>
+          <div class="result-mini"><div class="val" id="diffWorkdays">—</div><div class="lbl">Workdays</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add / Subtract -->
+    <div class="tab-pane" id="addTab">
+      <div class="form-group"><label>Start Date</label><input type="date" id="addStart"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Years</label><input type="number" id="addYears" value="0"></div>
+        <div class="form-group"><label>Months</label><input type="number" id="addMonths" value="0"></div>
+        <div class="form-group"><label>Days</label><input type="number" id="addDays" value="0"></div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" id="addBtn">➕ Add</button>
+        <button class="btn btn-secondary" id="subBtn">➖ Subtract</button>
+      </div>
+      <div id="addResult" class="result-block hidden">
+        <div class="big-num" id="addResultDate">—</div>
+        <div class="big-label" id="addResultDow">—</div>
+      </div>
+    </div>
+
+    <!-- Age -->
+    <div class="tab-pane" id="ageTab">
+      <div class="form-group"><label>Date of Birth</label><input type="date" id="ageBirth"></div>
+      <div class="form-group"><label>Age as of</label><input type="date" id="ageAsOf"></div>
+      <button class="btn btn-primary" id="ageBtn">Calculate Age</button>
+      <div id="ageResult" class="result-block hidden">
+        <div class="flex" style="gap:1.5rem;flex-wrap:wrap">
+          <div><div class="big-num" id="ageYears">—</div><div class="big-label">Years</div></div>
+          <div><div class="big-num" id="ageMonths">—</div><div class="big-label">Months</div></div>
+          <div><div class="big-num" id="ageDays2">—</div><div class="big-label">Days</div></div>
+        </div>
+        <div class="result-mini-grid mt-2">
+          <div class="result-mini"><div class="val" id="ageTotalDays">—</div><div class="lbl">Total Days</div></div>
+          <div class="result-mini"><div class="val" id="ageNextBd">—</div><div class="lbl">Next Birthday</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Countdown -->
+    <div class="tab-pane" id="countTab">
+      <div class="form-group"><label>Target Date</label><input type="date" id="countTarget"></div>
+      <div class="form-group"><label>Event Name (optional)</label><input type="text" id="countName" placeholder="e.g. Project Deadline"></div>
+      <button class="btn btn-primary" id="countBtn">Start Countdown</button>
+      <div id="countResult" class="result-block hidden">
+        <div id="countEventName" class="big-label" style="margin-bottom:.5rem"></div>
+        <div class="result-mini-grid">
+          <div class="result-mini"><div class="val" id="cdDays">—</div><div class="lbl">Days</div></div>
+          <div class="result-mini"><div class="val" id="cdHours">—</div><div class="lbl">Hours</div></div>
+          <div class="result-mini"><div class="val" id="cdMins">—</div><div class="lbl">Minutes</div></div>
+          <div class="result-mini"><div class="val" id="cdSecs">—</div><div class="lbl">Seconds</div></div>
+        </div>
+        <div id="countPast" class="alert alert-info hidden mt-2"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const today = new Date().toISOString().split('T')[0];
+document.getElementById('diffStart').value = today;
+document.getElementById('diffEnd').value = today;
+document.getElementById('addStart').value = today;
+document.getElementById('ageAsOf').value = today;
+document.getElementById('countTarget').value = today;
+
+// Difference
+document.getElementById('diffBtn').addEventListener('click', () => {
+  const a = new Date(document.getElementById('diffStart').value);
+  const b = new Date(document.getElementById('diffEnd').value);
+  if (isNaN(a) || isNaN(b)) return;
+  const msPerDay = 86400000;
+  const totalMs = Math.abs(b - a);
+  const days = Math.floor(totalMs / msPerDay);
+  document.getElementById('diffDays').textContent = fmt(days);
+  document.getElementById('diffWeeks').textContent = fmt((days / 7).toFixed(1));
+  document.getElementById('diffMonths').textContent = fmt((days / 30.44).toFixed(1));
+  document.getElementById('diffHours').textContent = fmt(Math.floor(totalMs / 3600000));
+  document.getElementById('diffMins').textContent = fmt(Math.floor(totalMs / 60000));
+  document.getElementById('diffSecs').textContent = fmt(Math.floor(totalMs / 1000));
+  // Workdays
+  let workdays = 0;
+  const start = a < b ? new Date(a) : new Date(b);
+  const end   = a < b ? new Date(b) : new Date(a);
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    if (d.getDay() !== 0 && d.getDay() !== 6) workdays++;
+  }
+  document.getElementById('diffWorkdays').textContent = fmt(workdays);
+  document.getElementById('diffResult').classList.remove('hidden');
+});
+
+// Add/Subtract
+function doAddSub(sign) {
+  const d = new Date(document.getElementById('addStart').value);
+  if (isNaN(d)) return;
+  d.setFullYear(d.getFullYear() + sign * parseInt(document.getElementById('addYears').value || 0));
+  d.setMonth(d.getMonth() + sign * parseInt(document.getElementById('addMonths').value || 0));
+  d.setDate(d.getDate() + sign * parseInt(document.getElementById('addDays').value || 0));
+  document.getElementById('addResultDate').textContent = d.toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('addResultDow').textContent = DAYS[d.getDay()] + ' · ' + d.toISOString().split('T')[0];
+  document.getElementById('addResult').classList.remove('hidden');
+}
+document.getElementById('addBtn').addEventListener('click', () => doAddSub(1));
+document.getElementById('subBtn').addEventListener('click', () => doAddSub(-1));
+
+// Age
+document.getElementById('ageBtn').addEventListener('click', () => {
+  const birth = new Date(document.getElementById('ageBirth').value);
+  const asOf  = new Date(document.getElementById('ageAsOf').value);
+  if (isNaN(birth) || isNaN(asOf)) return;
+  let y = asOf.getFullYear() - birth.getFullYear();
+  let m = asOf.getMonth() - birth.getMonth();
+  let d = asOf.getDate() - birth.getDate();
+  if (d < 0) { m--; d += new Date(asOf.getFullYear(), asOf.getMonth(), 0).getDate(); }
+  if (m < 0) { y--; m += 12; }
+  document.getElementById('ageYears').textContent = y;
+  document.getElementById('ageMonths').textContent = m;
+  document.getElementById('ageDays2').textContent = d;
+  document.getElementById('ageTotalDays').textContent = fmt(Math.floor((asOf - birth) / 86400000));
+  // Next birthday
+  const nextBd = new Date(asOf.getFullYear(), birth.getMonth(), birth.getDate());
+  if (nextBd <= asOf) nextBd.setFullYear(nextBd.getFullYear() + 1);
+  const daysToNextBd = Math.ceil((nextBd - asOf) / 86400000);
+  document.getElementById('ageNextBd').textContent = daysToNextBd + ' days';
+  document.getElementById('ageResult').classList.remove('hidden');
+});
+
+// Countdown
+let countdownInterval = null;
+document.getElementById('countBtn').addEventListener('click', () => {
+  if (countdownInterval) clearInterval(countdownInterval);
+  const target = new Date(document.getElementById('countTarget').value);
+  target.setHours(23, 59, 59, 0);
+  const name = document.getElementById('countName').value;
+  document.getElementById('countEventName').textContent = name || 'Countdown';
+  document.getElementById('countResult').classList.remove('hidden');
+  function tick() {
+    const now = new Date();
+    const diff = target - now;
+    const past = document.getElementById('countPast');
+    if (diff <= 0) {
+      past.classList.remove('hidden');
+      past.textContent = '🎉 ' + (name || 'The date') + ' has arrived!';
+      ['cdDays','cdHours','cdMins','cdSecs'].forEach(id => document.getElementById(id).textContent = '0');
+      clearInterval(countdownInterval);
+      return;
+    }
+    past.classList.add('hidden');
+    document.getElementById('cdDays').textContent = Math.floor(diff / 86400000);
+    document.getElementById('cdHours').textContent = Math.floor((diff % 86400000) / 3600000);
+    document.getElementById('cdMins').textContent = Math.floor((diff % 3600000) / 60000);
+    document.getElementById('cdSecs').textContent = Math.floor((diff % 60000) / 1000);
+  }
+  tick();
+  countdownInterval = setInterval(tick, 1000);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hash Generator — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .hash-row {
+      display: grid;
+      grid-template-columns: 90px 1fr auto;
+      gap: .5rem;
+      align-items: center;
+      padding: .6rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .hash-row:last-child { border-bottom: none; }
+    .hash-algo { font-weight: 700; font-size: .82rem; color: var(--text-muted); }
+    .hash-val {
+      font-family: 'Courier New', monospace;
+      font-size: .82rem;
+      word-break: break-all;
+      color: var(--primary);
+      background: var(--bg-secondary);
+      padding: .3rem .6rem;
+      border-radius: 6px;
+    }
+    .hash-val.empty { color: var(--text-light); font-style: italic; }
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: .9rem;
+      transition: all .15s;
+    }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
+    .drop-zone input[type=file] { display: none; }
+    .progress-bar {
+      height: 4px;
+      background: var(--border);
+      border-radius: 50px;
+      overflow: hidden;
+      margin-top: .5rem;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--primary);
+      transition: width .2s;
+      width: 0%;
+    }
+    .compare-result {
+      padding: .6rem .85rem;
+      border-radius: var(--radius);
+      font-size: .88rem;
+      font-weight: 600;
+      margin-top: .5rem;
+    }
+    .compare-match   { background: var(--success-dim); color: var(--success); }
+    .compare-nomatch { background: var(--danger-dim);  color: var(--danger); }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Hash Generator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔑 Hash Generator</h1>
+    <p>Generate cryptographic hashes using the browser's built-in Web Crypto API. No data leaves your device.</p>
+  </div>
+
+  <!-- Text Hash -->
+  <div class="card" data-tabs>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="textTab">Text</button>
+      <button class="tab-btn" data-tab="fileTab">File</button>
+      <button class="tab-btn" data-tab="hmacTab">HMAC</button>
+      <button class="tab-btn" data-tab="compareTab">Compare</button>
+    </div>
+
+    <!-- Text tab -->
+    <div class="tab-pane active" id="textTab">
+      <div class="form-group">
+        <label>Input Text</label>
+        <textarea id="textInput" placeholder="Type or paste text to hash…" style="min-height:100px"></textarea>
+      </div>
+      <div class="form-row">
+        <label class="checkbox-row"><input type="checkbox" id="liveHash" checked><label for="liveHash">Live (hash as you type)</label></label>
+        <div class="form-group" style="margin:0">
+          <label>Encoding</label>
+          <select id="encoding">
+            <option value="utf8">UTF-8</option>
+            <option value="hex">Hex input</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="hashTextBtn">Generate Hashes</button>
+      <div id="textResults" class="mt-2"></div>
+    </div>
+
+    <!-- File tab -->
+    <div class="tab-pane" id="fileTab">
+      <div class="drop-zone" id="dropZone">
+        📁 Drop any file here or <strong>click to browse</strong>
+        <p style="font-size:.78rem;margin-top:.3rem">File is read locally — never uploaded</p>
+        <input type="file" id="fileInput">
+      </div>
+      <div id="fileInfo" class="hidden mt-2"></div>
+      <div class="progress-bar hidden" id="progressWrap"><div class="progress-fill" id="progressFill"></div></div>
+      <div id="fileResults" class="mt-2"></div>
+    </div>
+
+    <!-- HMAC tab -->
+    <div class="tab-pane" id="hmacTab">
+      <div class="form-group">
+        <label>Message</label>
+        <textarea id="hmacMessage" placeholder="Message to sign…" style="min-height:80px"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Secret Key</label>
+          <input type="text" id="hmacKey" placeholder="Enter secret key">
+        </div>
+        <div class="form-group">
+          <label>Algorithm</label>
+          <select id="hmacAlgo">
+            <option value="SHA-256">HMAC-SHA-256</option>
+            <option value="SHA-384">HMAC-SHA-384</option>
+            <option value="SHA-512">HMAC-SHA-512</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="hmacBtn">Generate HMAC</button>
+      <div id="hmacResult" class="mt-2 hidden">
+        <div class="hash-val" id="hmacOutput"></div>
+        <button class="btn btn-secondary btn-sm mt-2" id="hmacCopyBtn">Copy</button>
+      </div>
+    </div>
+
+    <!-- Compare tab -->
+    <div class="tab-pane" id="compareTab">
+      <div class="form-group">
+        <label>Hash A</label>
+        <input type="text" id="compareA" placeholder="Paste first hash…" class="mono">
+      </div>
+      <div class="form-group">
+        <label>Hash B</label>
+        <input type="text" id="compareB" placeholder="Paste second hash…" class="mono">
+      </div>
+      <button class="btn btn-primary" id="compareBtn">Compare</button>
+      <div id="compareResult" class="hidden"></div>
+    </div>
+  </div>
+
+  <div class="card mt-2" style="font-size:.85rem">
+    <strong>Supported Algorithms</strong>
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem">
+      <span class="badge badge-primary">SHA-1 (legacy)</span>
+      <span class="badge badge-primary">SHA-256</span>
+      <span class="badge badge-primary">SHA-384</span>
+      <span class="badge badge-primary">SHA-512</span>
+      <span class="badge badge-primary">HMAC-SHA-256</span>
+      <span class="badge badge-primary">HMAC-SHA-384</span>
+      <span class="badge badge-primary">HMAC-SHA-512</span>
+    </div>
+    <p class="text-muted mt-2" style="font-size:.8rem">All hashing is done in your browser using the Web Crypto API. No data is transmitted to any server.</p>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+const ALGOS = ['SHA-1', 'SHA-256', 'SHA-384', 'SHA-512'];
+
+async function hashBuffer(buf, algo) {
+  const hashBuf = await crypto.subtle.digest(algo, buf);
+  return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function hashText(text) {
+  const enc = new TextEncoder();
+  const buf = enc.encode(text);
+  const results = await Promise.all(ALGOS.map(a => hashBuffer(buf, a)));
+  return Object.fromEntries(ALGOS.map((a, i) => [a, results[i]]));
+}
+
+function renderHashRows(hashes, container) {
+  container.innerHTML = ALGOS.map(algo => `
+    <div class="hash-row">
+      <span class="hash-algo">${algo}</span>
+      <span class="hash-val">${escHtml(hashes[algo])}</span>
+      <button class="btn btn-ghost btn-sm" onclick="copyText('${escHtml(hashes[algo])}', this)">Copy</button>
+    </div>
+  `).join('');
+}
+
+// Text hashing
+let liveTimer = null;
+async function doTextHash() {
+  const text = document.getElementById('textInput').value;
+  const container = document.getElementById('textResults');
+  if (!text) { container.innerHTML = ''; return; }
+  container.innerHTML = '<span class="text-muted" style="font-size:.85rem">Computing…</span>';
+  const hashes = await hashText(text);
+  renderHashRows(hashes, container);
+}
+
+document.getElementById('textInput').addEventListener('input', () => {
+  if (!document.getElementById('liveHash').checked) return;
+  clearTimeout(liveTimer);
+  liveTimer = setTimeout(doTextHash, 300);
+});
+document.getElementById('hashTextBtn').addEventListener('click', doTextHash);
+
+// File hashing
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+
+async function handleFile(file) {
+  if (!file) return;
+  const info = document.getElementById('fileInfo');
+  info.className = 'alert alert-info mt-2';
+  info.textContent = `Reading ${file.name} (${(file.size/1024).toFixed(1)} KB)…`;
+  info.classList.remove('hidden');
+  const pw = document.getElementById('progressWrap');
+  const pf = document.getElementById('progressFill');
+  pw.classList.remove('hidden');
+  pf.style.width = '30%';
+
+  const buf = await file.arrayBuffer();
+  pf.style.width = '70%';
+  const hashes = {};
+  for (const algo of ALGOS) {
+    hashes[algo] = await hashBuffer(buf, algo);
+  }
+  pf.style.width = '100%';
+  setTimeout(() => pw.classList.add('hidden'), 500);
+
+  info.className = 'alert alert-success mt-2';
+  info.textContent = `✓ ${file.name} · ${(file.size/1024).toFixed(2)} KB · ${file.type || 'unknown type'}`;
+  renderHashRows(hashes, document.getElementById('fileResults'));
+}
+
+// HMAC
+document.getElementById('hmacBtn').addEventListener('click', async () => {
+  const message = document.getElementById('hmacMessage').value;
+  const keyStr  = document.getElementById('hmacKey').value;
+  const algo    = document.getElementById('hmacAlgo').value;
+  if (!message || !keyStr) { alert('Enter both message and key.'); return; }
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw', enc.encode(keyStr),
+    { name: 'HMAC', hash: algo },
+    false, ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message));
+  const hex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2,'0')).join('');
+  document.getElementById('hmacOutput').textContent = hex;
+  document.getElementById('hmacResult').classList.remove('hidden');
+  document.getElementById('hmacCopyBtn').onclick = () => copyText(hex, document.getElementById('hmacCopyBtn'));
+});
+
+// Compare
+document.getElementById('compareBtn').addEventListener('click', () => {
+  const a = document.getElementById('compareA').value.trim().toLowerCase();
+  const b = document.getElementById('compareB').value.trim().toLowerCase();
+  const result = document.getElementById('compareResult');
+  result.classList.remove('hidden');
+  if (!a || !b) { result.className = 'compare-result compare-nomatch'; result.textContent = 'Enter both hashes to compare.'; return; }
+  if (a === b) {
+    result.className = 'compare-result compare-match';
+    result.textContent = '✓ Hashes match! (' + a.length * 4 + '-bit)';
+  } else {
+    result.className = 'compare-result compare-nomatch';
+    result.textContent = '✗ Hashes do NOT match';
+  }
+});
+</script>
+</body>
+</html>
