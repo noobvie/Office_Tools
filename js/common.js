@@ -3,12 +3,12 @@
    ============================================================ */
 
 /* ---------- Theme ---------- */
-const OT_THEMES  = ['light', 'dark', 'matrix'];
-const OT_LABELS  = { light: '🌙 Dark', dark: '💻 Matrix', matrix: '☀️ Light' };
+const OT_THEMES  = ['light', 'dark', 'matrix', 'anime'];
+const OT_LABELS  = { light: '🌙 Dark', dark: '💻 Matrix', matrix: '🌸 Anime', anime: '☀️ Light' };
 
 (function () {
-  const saved = localStorage.getItem('ot-theme') || 'light';
-  const valid = OT_THEMES.includes(saved) ? saved : 'light';
+  const saved = localStorage.getItem('ot-theme') || 'matrix';
+  const valid = OT_THEMES.includes(saved) ? saved : 'matrix';
   document.documentElement.setAttribute('data-theme', valid);
 })();
 

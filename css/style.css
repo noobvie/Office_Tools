@@ -143,6 +143,113 @@
 /* Matrix: badge override */
 [data-theme="matrix"] .badge-primary { background: #001400; color: #00ff41; border: 1px solid #0a3d0a; }
 
+/* ---------- Anime / Japanese Cartoon theme ---------- */
+[data-theme="anime"] {
+  --bg:           #fff0f5;
+  --bg-secondary: #ffe4ef;
+  --bg-card:      #ffffff;
+  --border:       #f9a8d4;
+  --text:         #4a1942;
+  --text-muted:   #9d4e8a;
+  --text-light:   #c084b0;
+  --primary:      #e91e8c;
+  --primary-h:    #c8157b;
+  --primary-dim:  #fce7f3;
+  --success:      #22c55e;
+  --success-dim:  #dcfce7;
+  --danger:       #ef4444;
+  --danger-dim:   #fee2e2;
+  --warning:      #f59e0b;
+  --warning-dim:  #fef3c7;
+  --radius:       16px;
+  --radius-lg:    24px;
+  --shadow:       0 2px 8px rgba(233,30,140,.10);
+  --shadow-md:    0 6px 20px rgba(233,30,140,.15);
+  --font:         'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Anime: sakura petal decoration on body */
+[data-theme="anime"] body::before {
+  content: '🌸';
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  font-size: 1.4rem;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: .55;
+  animation: petals 4s ease-in-out infinite alternate;
+}
+
+@keyframes petals {
+  from { transform: rotate(-8deg) scale(1);   opacity: .45; }
+  to   { transform: rotate( 8deg) scale(1.1); opacity: .65; }
+}
+
+/* Anime: pastel gradient header */
+[data-theme="anime"] .site-header {
+  background: linear-gradient(135deg, #fce7f3 0%, #ede9fe 100%);
+  border-bottom-color: #f9a8d4;
+  box-shadow: 0 2px 12px rgba(233,30,140,.12);
+}
+
+/* Anime: glowing pink headings */
+[data-theme="anime"] h1,
+[data-theme="anime"] .tool-card-name,
+[data-theme="anime"] .header-logo {
+  background: linear-gradient(90deg, #e91e8c, #a855f7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Anime: rounded pastel cards */
+[data-theme="anime"] .card,
+[data-theme="anime"] .tool-card {
+  border-color: #f9a8d4;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 16px rgba(233,30,140,.08);
+}
+[data-theme="anime"] .tool-card:hover {
+  border-color: #e91e8c;
+  box-shadow: 0 8px 28px rgba(233,30,140,.20);
+  transform: translateY(-2px);
+}
+
+/* Anime: primary button — bubblegum pink */
+[data-theme="anime"] .btn-primary {
+  background: linear-gradient(135deg, #e91e8c, #a855f7);
+  color: #fff;
+  border-color: transparent;
+  border-radius: 999px;
+  box-shadow: 0 4px 14px rgba(233,30,140,.30);
+}
+[data-theme="anime"] .btn-primary:hover {
+  background: linear-gradient(135deg, #c8157b, #9333ea);
+  box-shadow: 0 6px 20px rgba(233,30,140,.45);
+}
+
+/* Anime: input focus glow */
+[data-theme="anime"] input:focus,
+[data-theme="anime"] textarea:focus,
+[data-theme="anime"] select:focus {
+  border-color: #e91e8c;
+  box-shadow: 0 0 0 3px rgba(233,30,140,.15);
+}
+
+/* Anime: stat value color */
+[data-theme="anime"] .stat-card .stat-value,
+[data-theme="anime"] .live-ts,
+[data-theme="anime"] .big-result .num {
+  color: #e91e8c;
+}
+
+/* Anime: hero accent */
+[data-theme="anime"] .hero h1 span { color: #e91e8c; }
+
+/* Anime: badge */
+[data-theme="anime"] .badge-primary { background: #fce7f3; color: #e91e8c; border: 1px solid #f9a8d4; }
+
 /* ---------- Reset ---------- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
