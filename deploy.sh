@@ -516,8 +516,21 @@ PAYEOF
     systemctl enable office-tools-pb office-tools-pay
     systemctl start  office-tools-pb
 
-    # Give PocketBase a moment to initialize
-    sleep 2
+    # Give PocketBase time to initialize before creating superuser
+    info "Waiting for PocketBase to initialize..."
+    sleep 3
+
+    # Create superuser using credentials entered during setup
+    if [[ -n "$PB_ADMIN_EMAIL" && -n "$PB_ADMIN_PASSWORD" ]]; then
+        info "Creating PocketBase superuser: $PB_ADMIN_EMAIL"
+        "$PB_DIR/pocketbase" superuser upsert "$PB_ADMIN_EMAIL" "$PB_ADMIN_PASSWORD" \
+            && success "PocketBase superuser created: $PB_ADMIN_EMAIL" \
+            || warn "Superuser creation failed — run manually: $PB_DIR/pocketbase superuser upsert EMAIL PASS"
+    else
+        warn "PB_ADMIN_EMAIL or PB_ADMIN_PASSWORD not set — skipping superuser creation."
+        warn "Run manually: $PB_DIR/pocketbase superuser upsert EMAIL PASS"
+    fi
+
     systemctl start office-tools-pay || \
         warn "Grin payment server failed to start — check 'journalctl -u office-tools-pay'. Is your Grin wallet running?"
 
