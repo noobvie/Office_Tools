@@ -221,7 +221,11 @@ NGINXEOF
 ln -sf "$NGINX_CONF_PATH" "/etc/nginx/sites-enabled/${NGINX_SYMLINK}"
 rm -f /etc/nginx/sites-enabled/default
 
-nginx -t || die "nginx config test failed — check $NGINX_CONF_PATH"
+if ! nginx -t 2>&1; then
+    error "nginx config test failed. Config file: $NGINX_CONF_PATH"
+    cat "$NGINX_CONF_PATH"
+    die "Fix the config above and re-run deploy.sh"
+fi
 systemctl reload nginx
 success "nginx HTTP config written and reloaded"
 
@@ -258,8 +262,6 @@ server {
 
     ssl_certificate     ${SSL_CERT};
     ssl_certificate_key ${SSL_KEY};
-    include             /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
 
     # Strong SSL
     ssl_protocols             TLSv1.2 TLSv1.3;
@@ -329,7 +331,12 @@ server {
 }
 NGINXEOF
 
-nginx -t || die "nginx config test failed after SSL hardening — check $NGINX_CONF_PATH"
+if ! nginx -t 2>&1; then
+    error "nginx config test failed. Config file: $NGINX_CONF_PATH"
+    error "Current config written:"
+    cat "$NGINX_CONF_PATH"
+    die "Fix the config above and re-run deploy.sh"
+fi
 systemctl reload nginx
 success "SSL certificate issued and nginx hardened for $DOMAIN"
 
