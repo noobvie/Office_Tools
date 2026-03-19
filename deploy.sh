@@ -233,11 +233,34 @@ certbot --nginx -d "$DOMAIN" \
     -m "$EMAIL" \
     --redirect
 
-# After certbot: patch in strong SSL settings and security headers.
-# Certbot adds bare ssl_certificate lines — we append the hardening below.
-# Find the SSL server block certbot created and add our directives after the
-# ssl_certificate_key line.
-SSL_EXTRA="
+# certbot has issued the cert — cert paths are now known.
+# Rewrite the full config with SSL hardening (avoids fragile sed patching).
+SSL_CERT="/etc/letsencrypt/live/${DOMAIN}/fullchain.pem"
+SSL_KEY="/etc/letsencrypt/live/${DOMAIN}/privkey.pem"
+
+cat > "$NGINX_CONF_PATH" << NGINXEOF
+# Office Tools — managed by deploy.sh
+# Certbot will update the ssl_certificate lines on renewal.
+
+# ── HTTP → HTTPS redirect ────────────────────────────────────────────────────
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${DOMAIN};
+    return 301 https://\$host\$request_uri;
+}
+
+# ── HTTPS server ─────────────────────────────────────────────────────────────
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name ${DOMAIN};
+
+    ssl_certificate     ${SSL_CERT};
+    ssl_certificate_key ${SSL_KEY};
+    include             /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
+
     # Strong SSL
     ssl_protocols             TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers on;
@@ -247,12 +270,12 @@ SSL_EXTRA="
     ssl_session_tickets       off;
 
     # Security headers
-    add_header Strict-Transport-Security \"max-age=31536000; includeSubDomains\" always;
-    add_header X-Frame-Options           \"SAMEORIGIN\"             always;
-    add_header X-Content-Type-Options    \"nosniff\"                always;
-    add_header X-XSS-Protection          \"1; mode=block\"          always;
-    add_header Referrer-Policy           \"strict-origin-when-cross-origin\" always;
-    add_header Permissions-Policy        \"camera=(), microphone=(), geolocation=()\" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options           "SAMEORIGIN"             always;
+    add_header X-Content-Type-Options    "nosniff"                always;
+    add_header X-XSS-Protection          "1; mode=block"          always;
+    add_header Referrer-Policy           "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy        "camera=(), microphone=(), geolocation=()" always;
 
     # Gzip
     gzip            on;
@@ -260,14 +283,51 @@ SSL_EXTRA="
     gzip_types      text/plain text/css text/javascript application/javascript application/json image/svg+xml;
     gzip_min_length 1024;
 
-    # Cache static assets
-    location ~* \\.(css|js|png|jpg|jpeg|gif|ico|svg|woff2|woff)$ {
-        expires 7d;
-        add_header Cache-Control \"public, immutable\";
-    }"
+    root  ${WEB_ROOT};
+    index index.html;
 
-# Insert SSL_EXTRA after the ssl_certificate_key line in the config
-sed -i "/ssl_certificate_key/a\\${SSL_EXTRA}" "$NGINX_CONF_PATH"
+    # ── Static frontend ──────────────────────────────────────────────────────
+    location / {
+        try_files \$uri \$uri/ \$uri.html =404;
+    }
+
+    # Cache static assets
+    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg|woff2|woff)$ {
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # ── PocketBase API ───────────────────────────────────────────────────────
+    location /pb-api/ {
+        proxy_pass         http://127.0.0.1:8090/;
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade           \$http_upgrade;
+        proxy_set_header   Connection        "upgrade";
+        proxy_set_header   Host              \$host;
+        proxy_set_header   X-Real-IP         \$remote_addr;
+        proxy_set_header   X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 300s;
+        proxy_buffering    off;
+    }
+
+    # ── Grin payment server ──────────────────────────────────────────────────
+    location /pay-api/ {
+        proxy_pass         http://127.0.0.1:3001/;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              \$host;
+        proxy_set_header   X-Real-IP         \$remote_addr;
+        proxy_set_header   X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 60s;
+    }
+
+    # ── Block sensitive paths ────────────────────────────────────────────────
+    location ~ /\.                           { deny all; return 404; }
+    location /backend/                       { deny all; return 404; }
+    location ~ \.(env|sh|json|md|toml|log)$ { deny all; return 404; }
+}
+NGINXEOF
 
 nginx -t || die "nginx config test failed after SSL hardening — check $NGINX_CONF_PATH"
 systemctl reload nginx
