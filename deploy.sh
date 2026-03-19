@@ -36,12 +36,15 @@ REPO_DIR="/opt/office-tools/repo"
 WEB_ROOT="/var/www/office-tools"
 BACKEND_DIR="/opt/office-tools/backend"
 PB_DIR="/opt/office-tools/pocketbase"
-NGINX_CONF_PATH=""   # set after domain prompt
 NGINX_SYMLINK="office-tools"
-LOG_FILE="/var/log/office-tools-deploy.log"
+NGINX_CONF_PATH="/etc/nginx/sites-available/${NGINX_SYMLINK}"
+DEPLOY_CONF="/opt/office-tools/deploy.conf"   # saved config — skips prompts on redeploy
+LOG_DIR="/var/log/office-tools"
+LOG_FILE="$LOG_DIR/deploy_$(date +%Y%m%d_%H%M%S).log"
 
-mkdir -p "$(dirname "$LOG_FILE")"
-exec > >(tee -a "$LOG_FILE") 2>&1
+mkdir -p "$LOG_DIR"
+exec > >(tee "$LOG_FILE") 2>&1
+info "Log file: $LOG_FILE"
 
 echo ""
 echo -e "${BOLD}${CYAN}╔══════════════════════════════════════════════════╗${RESET}"
@@ -50,58 +53,92 @@ echo -e "${BOLD}${CYAN}║     github.com/noobvie/Office_Tools              ║$
 echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════════════╝${RESET}"
 echo ""
 
-# ─── Prompts ──────────────────────────────────────────────────────────────────
-section "Configuration"
-
-while true; do
-    echo -ne "${BOLD}Domain name${RESET} (e.g. tools.example.com): "
-    read -r DOMAIN
-    [[ -n "$DOMAIN" ]] && break
-    warn "Domain cannot be empty."
+# ─── Parse flags ──────────────────────────────────────────────────────────────
+RECONFIGURE=false
+for arg in "$@"; do
+    [[ "$arg" == "--reconfigure" ]] && RECONFIGURE=true
 done
 
-while true; do
-    echo -ne "${BOLD}Email${RESET} for Let's Encrypt SSL certificate: "
-    read -r EMAIL
-    [[ -n "$EMAIL" ]] && break
-    warn "Email cannot be empty."
-done
+# ─── Load saved config or prompt ──────────────────────────────────────────────
+DOMAIN=""; EMAIL=""; SETUP_BACKEND="n"
+GRIN_WALLET_PASS=""; PB_ADMIN_EMAIL=""; PB_ADMIN_PASSWORD=""
 
-echo ""
-echo -e "${DIM}Backend services (PocketBase + Grin payment server) are optional."
-echo -e "You can skip them and set up later.${RESET}"
-echo ""
-echo -ne "Set up backend (PocketBase + Grin payment server)? [Y/n]: "
-read -r SETUP_BACKEND
-SETUP_BACKEND="${SETUP_BACKEND:-Y}"
-
-if [[ "${SETUP_BACKEND,,}" == "y" ]]; then
-    section "Backend Configuration"
-    echo -e "  ${DIM}These values go into ${BACKEND_DIR}/.env${RESET}"
+if [[ -f "$DEPLOY_CONF" && "$RECONFIGURE" == false ]]; then
+    # ── Redeploy: load saved config, skip all prompts ──────────────────────
+    # shellcheck source=/dev/null
+    source "$DEPLOY_CONF"
+    section "Redeploy — using saved config"
+    info "Domain        : $DOMAIN"
+    info "Backend       : $SETUP_BACKEND"
+    info "Config file   : $DEPLOY_CONF"
+    info "Pass --reconfigure to change any setting"
     echo ""
+else
+    # ── First run (or --reconfigure): prompt for everything ────────────────
+    [[ "$RECONFIGURE" == true ]] && warn "--reconfigure flag set — re-entering all settings."
+    section "Configuration"
 
-    echo -ne "  Grin wallet password (GRIN_WALLET_PASS): "
-    read -rs GRIN_WALLET_PASS; echo ""
+    while true; do
+        echo -ne "${BOLD}Domain name${RESET} (e.g. tools.example.com): "
+        read -r DOMAIN
+        [[ -n "$DOMAIN" ]] && break
+        warn "Domain cannot be empty."
+    done
 
-    echo -ne "  PocketBase admin email (PB_ADMIN_EMAIL): "
-    read -r PB_ADMIN_EMAIL
+    while true; do
+        echo -ne "${BOLD}Email${RESET} for Let's Encrypt SSL certificate: "
+        read -r EMAIL
+        [[ -n "$EMAIL" ]] && break
+        warn "Email cannot be empty."
+    done
 
-    echo -ne "  PocketBase admin password (PB_ADMIN_PASSWORD): "
-    read -rs PB_ADMIN_PASSWORD; echo ""
+    echo ""
+    echo -e "${DIM}Backend services (PocketBase + Grin payment server) are optional."
+    echo -e "You can skip them and set up later.${RESET}"
+    echo ""
+    echo -ne "Set up backend (PocketBase + Grin payment server)? [Y/n]: "
+    read -r SETUP_BACKEND
+    SETUP_BACKEND="${SETUP_BACKEND:-Y}"
+
+    if [[ "${SETUP_BACKEND,,}" == "y" ]]; then
+        section "Backend Configuration"
+        echo -e "  ${DIM}These values go into ${BACKEND_DIR}/.env${RESET}"
+        echo ""
+
+        echo -ne "  Grin wallet password (GRIN_WALLET_PASS): "
+        read -rs GRIN_WALLET_PASS; echo ""
+
+        echo -ne "  PocketBase admin email (PB_ADMIN_EMAIL): "
+        read -r PB_ADMIN_EMAIL
+
+        echo -ne "  PocketBase admin password (PB_ADMIN_PASSWORD): "
+        read -rs PB_ADMIN_PASSWORD; echo ""
+    fi
+
+    echo ""
+    info "Deploying to  : $DOMAIN"
+    info "Web root      : $WEB_ROOT"
+    info "Backend dir   : $BACKEND_DIR"
+    info "PocketBase dir: $PB_DIR"
+    info "Log file      : $LOG_FILE"
+    echo ""
+    echo -ne "${BOLD}Proceed? [Y/n]: ${RESET}"
+    read -r CONFIRM
+    [[ "${CONFIRM,,}" == "n" ]] && echo "Aborted." && exit 0
+
+    # Save config for future redeploys (passwords excluded — stored in .env)
+    mkdir -p "$(dirname "$DEPLOY_CONF")"
+    cat > "$DEPLOY_CONF" << CONFEOF
+# Office Tools deploy config — auto-generated by deploy.sh
+# Re-run with --reconfigure to change these values.
+DOMAIN="${DOMAIN}"
+EMAIL="${EMAIL}"
+SETUP_BACKEND="${SETUP_BACKEND}"
+PB_ADMIN_EMAIL="${PB_ADMIN_EMAIL}"
+CONFEOF
+    chmod 600 "$DEPLOY_CONF"
+    success "Config saved to $DEPLOY_CONF"
 fi
-
-echo ""
-info "Deploying to  : $DOMAIN"
-info "Web root      : $WEB_ROOT"
-info "Backend dir   : $BACKEND_DIR"
-info "PocketBase dir: $PB_DIR"
-info "Log file      : $LOG_FILE"
-echo ""
-echo -ne "${BOLD}Proceed? [Y/n]: ${RESET}"
-read -r CONFIRM
-[[ "${CONFIRM,,}" == "n" ]] && echo "Aborted." && exit 0
-
-NGINX_CONF_PATH="/etc/nginx/sites-available/${NGINX_SYMLINK}"
 
 # ─── Step 1: System packages ──────────────────────────────────────────────────
 section "Step 1 — Installing packages"
@@ -355,6 +392,18 @@ success "SSL certificate issued and nginx hardened for $DOMAIN"
 # ─── Step 7: Backend setup (optional) ────────────────────────────────────────
 if [[ "${SETUP_BACKEND,,}" == "y" ]]; then
 
+    BACKEND_ALREADY_SET_UP=false
+    [[ -f "$BACKEND_DIR/.env" && -x "$PB_DIR/pocketbase" ]] && BACKEND_ALREADY_SET_UP=true
+
+    if [[ "$BACKEND_ALREADY_SET_UP" == true && "$RECONFIGURE" == false ]]; then
+        section "Step 7 — Backend already set up — syncing files only"
+        # Only sync updated backend source files; keep existing .env intact
+        rsync -av --exclude='.env' "$REPO_DIR/backend/" "$BACKEND_DIR/"
+        cd "$BACKEND_DIR" && npm install --omit=dev && cd /
+        cp "$BACKEND_DIR/pb_hooks/main.pb.js" "$PB_DIR/pb_hooks/"
+        systemctl restart office-tools-pb office-tools-pay 2>/dev/null || true
+        success "Backend files synced and services restarted"
+    else
     section "Step 7 — Setting up backend"
 
     # 7a. Copy backend files
@@ -473,7 +522,8 @@ PAYEOF
         warn "Grin payment server failed to start — check 'journalctl -u office-tools-pay'. Is your Grin wallet running?"
 
     success "systemd services created and started"
-fi
+    fi  # end else (first-time backend setup)
+fi    # end SETUP_BACKEND
 
 # ─── Done ─────────────────────────────────────────────────────────────────────
 section "Deployment Complete"
@@ -485,7 +535,8 @@ echo -e "${BOLD}── Locations ───────────────�
 echo -e "  Web root       : ${WEB_ROOT}"
 echo -e "  nginx config   : ${NGINX_CONF_PATH}"
 echo -e "  Git repo       : ${REPO_DIR}"
-echo -e "  Deploy log     : ${LOG_FILE}"
+echo -e "  Deploy logs    : ${LOG_DIR}/"
+echo -e "  This run log   : ${LOG_FILE}"
 echo -e "  SSL cert       : /etc/letsencrypt/live/${DOMAIN}/"
 echo ""
 
