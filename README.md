@@ -201,11 +201,12 @@ sudo bash Office_Tools/deploy.sh
 On launch it detects the OS, shows current status, and presents a menu:
 
 ```
-  1)  Install / Update    — packages · OS · pull latest code
-  2)  Add Domain          — configure domain · SSL · backend
-  3)  Remove / Switch     — remove or change active domain
-  4)  Delete              — permanently remove Office Tools
-  0)  Exit
+  1)    Install / Update    — packages · OS · pull latest code
+  2)    Add Domain          — configure domain · SSL · backend
+  3)    Remove / Switch     — remove or change active domain
+  4)    Update from Repo    — pull specific branch, restart services
+  DEL)  Delete              — permanently remove Office Tools
+  0)    Exit
 ```
 
 #### Option 1 — Install / Update
@@ -236,9 +237,23 @@ All settings are saved to `/opt/office-tools/deploy.conf` for future runs.
 - **Remove:** deletes nginx vhost config + Let's Encrypt certificate for the current domain
 - **Switch:** removes old domain config, then runs a full Option 2 setup for a new domain
 
-#### Option 4 — Delete
+#### Option 4 — Update from Repo
 
-Hands off to `undeploy.sh` which prompts for confirmation and removes:
+Pull the latest code from GitHub — optionally switching to a different branch:
+1. Fetches remote branch list and lets you choose by number or name
+2. Checks out the chosen branch and pulls latest commits
+3. Re-syncs frontend to `/var/www/office-tools/` (patches domain placeholders)
+4. Re-syncs backend files and restarts services (if already configured)
+
+Useful for updating after a `git push`, or for testing a feature branch on the live server.
+
+```bash
+sudo bash /opt/office-tools/repo/deploy.sh   # choose option 4
+```
+
+#### DEL — Delete
+
+Type `del` at the menu prompt. Hands off to `undeploy.sh` which prompts for confirmation and removes:
 services · systemd unit files · nginx config · SSL certificate · all directories
 
 **Server layout after deploy:**
@@ -255,7 +270,8 @@ services · systemd unit files · nginx config · SSL certificate · all directo
 **Update / redeploy after a git push:**
 
 ```bash
-sudo bash /opt/office-tools/repo/deploy.sh   # choose option 1
+sudo bash /opt/office-tools/repo/deploy.sh   # option 1 = full update (OS + packages + pull)
+                                              # option 4 = repo-only update (choose branch)
 ```
 
 ---

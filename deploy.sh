@@ -812,10 +812,95 @@ opt_3_remove_switch() {
     press_enter
 }
 
-# ─── Option 4: Delete ─────────────────────────────────────────────────────────
-opt_4_delete() {
+# ─── Option 4: Update from Repo ───────────────────────────────────────────────
+opt_4_update_repo() {
     show_banner
-    section "Option 4 — Delete Office Tools"
+    section "Option 4 — Update from Repository"
+
+    if [[ ! -d "$REPO_DIR/.git" ]]; then
+        warn "Repository not cloned yet. Run Option 1 to install first."
+        press_enter; return 0
+    fi
+
+    local current_branch
+    current_branch=$(git -C "$REPO_DIR" branch --show-current 2>/dev/null || echo "unknown")
+
+    echo -e "  Remote:         ${DIM}${REPO_URL}${RESET}"
+    echo -e "  Current branch: ${BOLD}${current_branch}${RESET}"
+    echo -e "  Last commit:    ${DIM}$(git -C "$REPO_DIR" log -1 --format='%h %s' 2>/dev/null)${RESET}"
+    echo ""
+
+    info "Fetching remote branch list…"
+    git -C "$REPO_DIR" fetch --quiet origin 2>/dev/null \
+        || warn "Could not reach remote — using cached branch list"
+
+    local branches=()
+    while IFS= read -r b; do
+        [[ -z "$b" ]] && continue
+        branches+=("$b")
+    done < <(git -C "$REPO_DIR" branch -r 2>/dev/null \
+        | grep -v '\->' | sed 's|[[:space:]]*origin/||')
+
+    if [[ "${#branches[@]}" -gt 0 ]]; then
+        echo -e "  ${BOLD}Available branches:${RESET}"
+        local i=1
+        for b in "${branches[@]}"; do
+            local marker=""
+            [[ "$b" == "$current_branch" ]] && marker=" ${DIM}← current${RESET}"
+            printf "    %s%d)%s  %s%s\n" "${CYAN}" "$i" "${RESET}" "$b" "$marker"
+            ((i++))
+        done
+        echo ""
+    fi
+
+    echo -ne "  Branch number or name (Enter = keep ${DIM}[${current_branch}]${RESET}): "
+    read -r _input
+
+    local target_branch="$current_branch"
+    if [[ -n "$_input" ]]; then
+        if [[ "$_input" =~ ^[0-9]+$ ]] && (( _input >= 1 && _input <= ${#branches[@]} )); then
+            target_branch="${branches[$(( _input - 1 ))]}"
+        else
+            target_branch="$_input"
+        fi
+    fi
+
+    echo ""
+    echo -e "  Target:  ${BOLD}${target_branch}${RESET}"
+    echo -ne "  ${BOLD}Proceed? [Y/n]: ${RESET}"; read -r _c
+    [[ "${_c,,}" == "n" ]] && return 0
+
+    mkdir -p "$LOG_DIR"
+    local logf="$LOG_DIR/update_$(date +%Y%m%d_%H%M%S).log"
+    info "Logging to: $logf"
+
+    (
+        set -euo pipefail
+        exec > >(tee "$logf") 2>&1
+        git -C "$REPO_DIR" checkout "$target_branch"
+        git -C "$REPO_DIR" pull origin "$target_branch" --ff-only
+        success "Repo updated: $(git -C "$REPO_DIR" log -1 --format='%h %s')"
+        load_conf
+        sync_frontend "${DOMAIN:-}"
+        if [[ -n "${DOMAIN:-}" ]]; then
+            [[ -d "$BACKEND_DIR" ]] && sync_backend || true
+            systemctl reload nginx 2>/dev/null || true
+        fi
+    ) || { warn "Update failed — check $logf"; press_enter; return 0; }
+
+    load_conf
+    if [[ -n "$DOMAIN" ]]; then
+        success "Updated to branch '${target_branch}' — https://${DOMAIN}"
+    else
+        success "Updated to branch '${target_branch}'"
+    fi
+    press_enter
+}
+
+# ─── DEL: Delete ──────────────────────────────────────────────────────────────
+opt_del_delete() {
+    show_banner
+    section "Delete — Remove Office Tools"
 
     echo -e "  ${RED}${BOLD}This will PERMANENTLY remove Office Tools from this server.${RESET}"
     echo ""
@@ -847,22 +932,25 @@ while true; do
     show_status
 
     echo -e "  ${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-    echo -e "    ${BOLD}1)${RESET}  Install / Update    ${DIM}packages · OS · pull latest code${RESET}"
-    echo -e "    ${BOLD}2)${RESET}  Add Domain          ${DIM}configure domain · SSL · backend${RESET}"
-    echo -e "    ${BOLD}3)${RESET}  Remove / Switch     ${DIM}remove or change active domain${RESET}"
-    echo -e "    ${BOLD}4)${RESET}  Delete              ${DIM}permanently remove Office Tools${RESET}"
-    echo -e "    ${BOLD}0)${RESET}  Exit"
+    echo -e "    ${BOLD}1)${RESET}   Install / Update    ${DIM}packages · OS · pull latest code${RESET}"
+    echo -e "    ${BOLD}2)${RESET}   Add Domain          ${DIM}configure domain · SSL · backend${RESET}"
+    echo -e "    ${BOLD}3)${RESET}   Remove / Switch     ${DIM}remove or change active domain${RESET}"
+    echo -e "    ${BOLD}4)${RESET}   Update from Repo    ${DIM}pull specific branch · restart services${RESET}"
+    echo -e "  ${DIM}  ──────────────────────────────────────────────${RESET}"
+    echo -e "  ${RED}  DEL)${RESET} Delete              ${DIM}permanently remove Office Tools${RESET}"
+    echo -e "    ${BOLD}0)${RESET}   Exit"
     echo -e "  ${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
-    echo -ne "  Choose [0-4]: "; read -r _choice
+    echo -ne "  Choose [0-4 / del]: "; read -r _choice
     echo ""
 
-    case "$_choice" in
-        1) opt_1_install_update ;;
-        2) opt_2_add_domain     ;;
-        3) opt_3_remove_switch  ;;
-        4) opt_4_delete; break  ;;
-        0) echo -e "${DIM}Goodbye.${RESET}"; exit 0 ;;
-        *) warn "Invalid choice: $_choice" ;;
+    case "${_choice,,}" in
+        1)   opt_1_install_update ;;
+        2)   opt_2_add_domain     ;;
+        3)   opt_3_remove_switch  ;;
+        4)   opt_4_update_repo    ;;
+        del) opt_del_delete; break ;;
+        0)   echo -e "${DIM}Goodbye.${RESET}"; exit 0 ;;
+        *)   warn "Invalid choice: $_choice" ;;
     esac
 done
