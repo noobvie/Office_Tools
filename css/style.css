@@ -365,6 +365,8 @@ a:hover { text-decoration: underline; }
   transform: translateY(-50%);
   color: var(--text-muted);
   pointer-events: none;
+  display: flex;
+  align-items: center;
 }
 
 /* ---------- Hub Grid ---------- */

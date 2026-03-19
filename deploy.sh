@@ -313,6 +313,18 @@ server {
         proxy_buffering    off;
     }
 
+    # ── PocketBase admin UI assets ───────────────────────────────────────────
+    # The admin SPA loads JS/CSS from absolute /_/ paths — proxy them here so
+    # the browser can fetch them (otherwise the admin page is blank).
+    location /_/ {
+        proxy_pass         http://127.0.0.1:8090/_/;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              \$host;
+        proxy_set_header   X-Real-IP         \$remote_addr;
+        proxy_set_header   X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto \$scheme;
+    }
+
     # ── Grin payment server ──────────────────────────────────────────────────
     location /pay-api/ {
         proxy_pass         http://127.0.0.1:3001/;
