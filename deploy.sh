@@ -224,7 +224,7 @@ server {
     }
 
     # ── PocketBase API ───────────────────────────────────────────────────────
-    location /pb-api/ {
+    location ^~ /pb-api/ {
         proxy_pass         http://127.0.0.1:8090/;
         proxy_http_version 1.1;
         proxy_set_header   Upgrade           \$http_upgrade;
@@ -238,7 +238,7 @@ server {
     }
 
     # ── Grin payment server ──────────────────────────────────────────────────
-    location /pay-api/ {
+    location ^~ /pay-api/ {
         proxy_pass         http://127.0.0.1:3001/;
         proxy_http_version 1.1;
         proxy_set_header   Host              \$host;
@@ -337,7 +337,7 @@ server {
     }
 
     # ── PocketBase API ───────────────────────────────────────────────────────
-    location /pb-api/ {
+    location ^~ /pb-api/ {
         proxy_pass         http://127.0.0.1:8090/;
         proxy_http_version 1.1;
         proxy_set_header   Upgrade           \$http_upgrade;
@@ -352,7 +352,7 @@ server {
 
     # ── PocketBase admin UI — HTML shell ─────────────────────────────────────
     # The admin SPA is served from /_/ on PocketBase.
-    location /_/ {
+    location ^~ /_/ {
         proxy_pass         http://127.0.0.1:8090/_/;
         proxy_http_version 1.1;
         proxy_set_header   Host              \$host;
@@ -364,7 +364,7 @@ server {
     # ── PocketBase admin UI — API calls ──────────────────────────────────────
     # The admin SPA makes API calls to /api/ using absolute paths.
     # /pb-api/ is for the frontend app; /api/ is for the admin UI itself.
-    location /api/ {
+    location ^~ /api/ {
         proxy_pass         http://127.0.0.1:8090/api/;
         proxy_http_version 1.1;
         proxy_set_header   Host              \$host;
@@ -374,7 +374,7 @@ server {
     }
 
     # ── Grin payment server ──────────────────────────────────────────────────
-    location /pay-api/ {
+    location ^~ /pay-api/ {
         proxy_pass         http://127.0.0.1:3001/;
         proxy_http_version 1.1;
         proxy_set_header   Host              \$host;
