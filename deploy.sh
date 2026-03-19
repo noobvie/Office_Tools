@@ -164,51 +164,19 @@ find "$WEB_ROOT" -type f -exec chmod 644 {} \;
 
 success "Frontend deployed to $WEB_ROOT"
 
-# ─── Step 5: nginx config ─────────────────────────────────────────────────────
+# ─── Step 5: nginx config (HTTP only first — certbot adds SSL block itself) ───
 section "Step 5 — Writing nginx config"
 
+# IMPORTANT: write HTTP-only block first.
+# Writing "listen 443 ssl" before the certificate exists fails nginx -t.
+# Certbot --nginx will append the SSL server block and fill in cert paths.
 cat > "$NGINX_CONF_PATH" << NGINXEOF
-# ── HTTP → HTTPS redirect ────────────────────────────────────────────────────
+# Office Tools — managed by deploy.sh
+# SSL block will be added below by certbot automatically.
 server {
     listen 80;
     listen [::]:80;
     server_name ${DOMAIN};
-    return 301 https://\$host\$request_uri;
-}
-
-# ── HTTPS server ─────────────────────────────────────────────────────────────
-server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    server_name ${DOMAIN};
-
-    # SSL — certbot will manage these
-    # ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
-    # ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
-
-    # Strong SSL settings
-    ssl_protocols             TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers on;
-    ssl_ciphers               ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
-    ssl_session_cache         shared:SSL:10m;
-    ssl_session_timeout       1d;
-    ssl_session_tickets       off;
-
-    # HSTS — tell browsers to always use HTTPS (1 year)
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-
-    # Security headers
-    add_header X-Frame-Options           "SAMEORIGIN"             always;
-    add_header X-Content-Type-Options    "nosniff"                always;
-    add_header X-XSS-Protection          "1; mode=block"          always;
-    add_header Referrer-Policy           "strict-origin-when-cross-origin" always;
-    add_header Permissions-Policy        "camera=(), microphone=(), geolocation=()" always;
-
-    # Gzip
-    gzip            on;
-    gzip_vary       on;
-    gzip_types      text/plain text/css text/javascript application/javascript application/json image/svg+xml;
-    gzip_min_length 1024;
 
     root  ${WEB_ROOT};
     index index.html;
@@ -216,15 +184,9 @@ server {
     # ── Static frontend ──────────────────────────────────────────────────────
     location / {
         try_files \$uri \$uri/ \$uri.html =404;
-
-        # Cache static assets aggressively
-        location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg|woff2|woff)$ {
-            expires 7d;
-            add_header Cache-Control "public, immutable";
-        }
     }
 
-    # ── PocketBase API (reverse proxy — backend stays on localhost) ──────────
+    # ── PocketBase API ───────────────────────────────────────────────────────
     location /pb-api/ {
         proxy_pass         http://127.0.0.1:8090/;
         proxy_http_version 1.1;
@@ -238,7 +200,7 @@ server {
         proxy_buffering    off;
     }
 
-    # ── Grin payment server (reverse proxy — backend stays on localhost) ─────
+    # ── Grin payment server ──────────────────────────────────────────────────
     location /pay-api/ {
         proxy_pass         http://127.0.0.1:3001/;
         proxy_http_version 1.1;
@@ -250,22 +212,20 @@ server {
     }
 
     # ── Block sensitive paths ────────────────────────────────────────────────
-    location ~ /\.                { deny all; return 404; }
-    location /backend/            { deny all; return 404; }
+    location ~ /\.                           { deny all; return 404; }
+    location /backend/                       { deny all; return 404; }
     location ~ \.(env|sh|json|md|toml|log)$ { deny all; return 404; }
 }
 NGINXEOF
 
 ln -sf "$NGINX_CONF_PATH" "/etc/nginx/sites-enabled/${NGINX_SYMLINK}"
-
-# Remove default nginx site if it exists
 rm -f /etc/nginx/sites-enabled/default
 
-nginx -t
+nginx -t || die "nginx config test failed — check $NGINX_CONF_PATH"
 systemctl reload nginx
-success "nginx config written and reloaded"
+success "nginx HTTP config written and reloaded"
 
-# ─── Step 6: SSL certificate ──────────────────────────────────────────────────
+# ─── Step 6: SSL certificate — certbot rewrites config with SSL block ─────────
 section "Step 6 — Getting Let's Encrypt SSL certificate"
 
 certbot --nginx -d "$DOMAIN" \
@@ -273,8 +233,45 @@ certbot --nginx -d "$DOMAIN" \
     -m "$EMAIL" \
     --redirect
 
-nginx -t && systemctl reload nginx
-success "SSL certificate issued for $DOMAIN"
+# After certbot: patch in strong SSL settings and security headers.
+# Certbot adds bare ssl_certificate lines — we append the hardening below.
+# Find the SSL server block certbot created and add our directives after the
+# ssl_certificate_key line.
+SSL_EXTRA="
+    # Strong SSL
+    ssl_protocols             TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers               ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+    ssl_session_cache         shared:SSL:10m;
+    ssl_session_timeout       1d;
+    ssl_session_tickets       off;
+
+    # Security headers
+    add_header Strict-Transport-Security \"max-age=31536000; includeSubDomains\" always;
+    add_header X-Frame-Options           \"SAMEORIGIN\"             always;
+    add_header X-Content-Type-Options    \"nosniff\"                always;
+    add_header X-XSS-Protection          \"1; mode=block\"          always;
+    add_header Referrer-Policy           \"strict-origin-when-cross-origin\" always;
+    add_header Permissions-Policy        \"camera=(), microphone=(), geolocation=()\" always;
+
+    # Gzip
+    gzip            on;
+    gzip_vary       on;
+    gzip_types      text/plain text/css text/javascript application/javascript application/json image/svg+xml;
+    gzip_min_length 1024;
+
+    # Cache static assets
+    location ~* \\.(css|js|png|jpg|jpeg|gif|ico|svg|woff2|woff)$ {
+        expires 7d;
+        add_header Cache-Control \"public, immutable\";
+    }"
+
+# Insert SSL_EXTRA after the ssl_certificate_key line in the config
+sed -i "/ssl_certificate_key/a\\${SSL_EXTRA}" "$NGINX_CONF_PATH"
+
+nginx -t || die "nginx config test failed after SSL hardening — check $NGINX_CONF_PATH"
+systemctl reload nginx
+success "SSL certificate issued and nginx hardened for $DOMAIN"
 
 # ─── Step 7: Backend setup (optional) ────────────────────────────────────────
 if [[ "${SETUP_BACKEND,,}" == "y" ]]; then
@@ -402,26 +399,65 @@ fi
 # ─── Done ─────────────────────────────────────────────────────────────────────
 section "Deployment Complete"
 
-echo -e "  ${BOLD}Site${RESET}         : ${GREEN}https://${DOMAIN}${RESET}"
-echo -e "  ${BOLD}Web root${RESET}     : ${WEB_ROOT}"
-echo -e "  ${BOLD}nginx config${RESET} : ${NGINX_CONF_PATH}"
+echo -e "${BOLD}${GREEN}  ✔  https://${DOMAIN}  is live${RESET}"
+echo ""
+
+echo -e "${BOLD}── Locations ───────────────────────────────────────────────────${RESET}"
+echo -e "  Web root       : ${WEB_ROOT}"
+echo -e "  nginx config   : ${NGINX_CONF_PATH}"
+echo -e "  Git repo       : ${REPO_DIR}"
+echo -e "  Deploy log     : ${LOG_FILE}"
+echo -e "  SSL cert       : /etc/letsencrypt/live/${DOMAIN}/"
+echo ""
 
 if [[ "${SETUP_BACKEND,,}" == "y" ]]; then
-    echo -e "  ${BOLD}PocketBase${RESET}   : http://127.0.0.1:8090  (admin: https://${DOMAIN}/pb-api/_/)"
-    echo -e "  ${BOLD}Payment srv${RESET}  : http://127.0.0.1:3001"
-    echo -e "  ${BOLD}Backend dir${RESET}  : ${BACKEND_DIR}"
-    echo -e "  ${BOLD}PocketBase dir${RESET}: ${PB_DIR}"
+    echo -e "${BOLD}── Backend ─────────────────────────────────────────────────────${RESET}"
+    echo -e "  PocketBase dir : ${PB_DIR}"
+    echo -e "  PocketBase bin : ${PB_DIR}/pocketbase"
+    echo -e "  Backend dir    : ${BACKEND_DIR}"
+    echo -e "  Backend .env   : ${BACKEND_DIR}/.env  ${DIM}(chmod 600, secrets here)${RESET}"
+    echo -e "  PB schema      : ${BACKEND_DIR}/pb_schema.json"
+    echo -e "  PB hooks       : ${PB_DIR}/pb_hooks/main.pb.js"
     echo ""
-    warn "Next step — import PocketBase schema:"
-    echo -e "  1. Open ${BOLD}https://${DOMAIN}/pb-api/_/${RESET}"
-    echo -e "  2. Create admin account"
-    echo -e "  3. Settings → Import Collections → paste ${BOLD}${BACKEND_DIR}/pb_schema.json${RESET}"
+
+    echo -e "${BOLD}── Service commands ────────────────────────────────────────────${RESET}"
+    echo -e "  systemctl status  office-tools-pb     ${DIM}# PocketBase status${RESET}"
+    echo -e "  systemctl status  office-tools-pay    ${DIM}# Grin payment server status${RESET}"
+    echo -e "  systemctl restart office-tools-pb"
+    echo -e "  systemctl restart office-tools-pay"
+    echo -e "  journalctl -fu    office-tools-pb     ${DIM}# live PocketBase logs${RESET}"
+    echo -e "  journalctl -fu    office-tools-pay    ${DIM}# live payment server logs${RESET}"
+    echo ""
+
+    echo -e "${BOLD}── URLs ────────────────────────────────────────────────────────${RESET}"
+    echo -e "  Site           : ${GREEN}https://${DOMAIN}/${RESET}"
+    echo -e "  Admin panel    : ${GREEN}https://${DOMAIN}/admin/${RESET}        ${DIM}(PocketBase admin credentials)${RESET}"
+    echo -e "  PocketBase UI  : ${GREEN}https://${DOMAIN}/pb-api/_/${RESET}     ${DIM}(first-time: create admin account)${RESET}"
+    echo -e "  PB API root    : ${GREEN}https://${DOMAIN}/pb-api/${RESET}"
+    echo -e "  Payment API    : ${GREEN}https://${DOMAIN}/pay-api/${RESET}"
+    echo ""
+
+    echo -e "${BOLD}${YELLOW}── PocketBase first-time setup (do this now) ───────────────────${RESET}"
+    echo -e "  1. Open  ${BOLD}https://${DOMAIN}/pb-api/_/${RESET}"
+    echo -e "  2. Create admin account — use the email/password you entered"
+    echo -e "  3. Go to  Settings → Import Collections"
+    echo -e "     Paste contents of:  ${BOLD}${BACKEND_DIR}/pb_schema.json${RESET}"
+    echo -e "  4. Configure mail  Settings → Mail  (for welcome/verification emails)"
+    echo -e "  5. Restart PocketBase:  ${BOLD}systemctl restart office-tools-pb${RESET}"
+    echo ""
 fi
 
+echo -e "${BOLD}── nginx commands ──────────────────────────────────────────────${RESET}"
+echo -e "  nginx -t                              ${DIM}# test config${RESET}"
+echo -e "  systemctl reload nginx                ${DIM}# apply config changes${RESET}"
+echo -e "  systemctl status nginx"
+echo -e "  tail -f /var/log/nginx/error.log      ${DIM}# nginx errors${RESET}"
+echo -e "  tail -f /var/log/nginx/access.log     ${DIM}# nginx access${RESET}"
 echo ""
-echo -e "  ${BOLD}Log file${RESET}     : $LOG_FILE"
+
+echo -e "${BOLD}── Redeploy after git push ─────────────────────────────────────${RESET}"
+echo -e "  ${BOLD}sudo bash ${REPO_DIR}/deploy.sh${RESET}"
+echo -e "  ${DIM}(re-pulls repo, re-syncs frontend, reloads nginx — SSL not re-requested)${RESET}"
 echo ""
-echo -e "  ${DIM}To redeploy after a git push:${RESET}"
-echo -e "  ${BOLD}bash /opt/office-tools/repo/deploy.sh${RESET}"
-echo ""
-success "Done!"
+
+success "All done!"
