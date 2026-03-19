@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IP Location Lookup — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    /* Search bar */
+    .lookup-bar {
+      display: flex; gap: .5rem;
+    }
+    .lookup-bar input {
+      flex: 1;
+      padding: .65rem 1rem;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-card);
+      color: var(--text);
+      font-size: .95rem;
+      font-family: 'Courier New', monospace;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .lookup-bar input:focus { border-color: var(--primary); }
+
+    /* Big IP hero */
+    .ip-hero {
+      text-align: center;
+      padding: 1.5rem 1rem 1rem;
+    }
+    .ip-hero .flag { font-size: 2.8rem; line-height: 1; }
+    .ip-hero .ip-addr {
+      font-size: 2rem; font-weight: 900;
+      font-family: 'Courier New', monospace;
+      color: var(--primary); letter-spacing: .04em;
+      word-break: break-all; margin: .4rem 0 .2rem;
+    }
+    .ip-hero .ip-sub { font-size: .84rem; color: var(--text-muted); }
+
+    /* Type badges row */
+    .type-badges { display: flex; flex-wrap: wrap; gap: .4rem; justify-content: center; margin-top: .65rem; }
+    .tbadge {
+      display: inline-block; border-radius: 20px;
+      padding: .18rem .65rem; font-size: .74rem; font-weight: 700;
+    }
+    .tbadge-vpn      { background: #fee2e2; color: #dc2626; }
+    .tbadge-proxy    { background: #fef3c7; color: #d97706; }
+    .tbadge-hosting  { background: #dbeafe; color: #2563eb; }
+    .tbadge-mobile   { background: #d1fae5; color: #059669; }
+    .tbadge-regular  { background: var(--primary-dim); color: var(--primary); }
+    [data-theme="dark"] .tbadge-vpn     { background: #450a0a; color: #fca5a5; }
+    [data-theme="dark"] .tbadge-proxy   { background: #451a03; color: #fcd34d; }
+    [data-theme="dark"] .tbadge-hosting { background: #1e3a5f; color: #93c5fd; }
+    [data-theme="dark"] .tbadge-mobile  { background: #064e3b; color: #6ee7b7; }
+    [data-theme="matrix"] .tbadge-vpn, [data-theme="matrix"] .tbadge-proxy,
+    [data-theme="matrix"] .tbadge-hosting, [data-theme="matrix"] .tbadge-mobile,
+    [data-theme="matrix"] .tbadge-regular { background: var(--primary-dim); color: var(--primary); }
+
+    /* Info grid */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
+      gap: .6rem;
+      margin-top: .75rem;
+    }
+    .info-cell {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .7rem .85rem;
+      display: flex; flex-direction: column; gap: .15rem;
+    }
+    .info-cell .ic-label {
+      font-size: .7rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .06em;
+      color: var(--text-muted);
+    }
+    .info-cell .ic-val {
+      font-size: .88rem; font-weight: 700; color: var(--text);
+      word-break: break-word;
+    }
+    .info-cell .ic-val.mono { font-family: 'Courier New', monospace; font-size: .82rem; }
+    .info-cell .ic-copy {
+      background: none; border: none; cursor: pointer;
+      font-size: .72rem; color: var(--primary);
+      padding: 0; text-align: left; margin-top: .2rem;
+      opacity: 0; transition: opacity .15s;
+    }
+    .info-cell:hover .ic-copy { opacity: 1; }
+
+    /* Map placeholder / embed */
+    .map-box {
+      margin-top: .75rem;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      min-height: 220px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: .5rem; color: var(--text-muted);
+      font-size: .85rem;
+    }
+    .map-box iframe {
+      width: 100%; height: 260px; border: none; display: block;
+    }
+    .map-coord { font-family: monospace; font-size: .82rem; }
+
+    /* History */
+    .history-list { display: flex; flex-direction: column; gap: .3rem; margin-top: .5rem; }
+    .history-item {
+      display: flex; align-items: center; gap: .55rem;
+      padding: .4rem .65rem;
+      background: var(--bg-secondary); border-radius: var(--radius);
+      cursor: pointer; font-size: .83rem;
+      border: 1px solid transparent; transition: border-color .12s;
+    }
+    .history-item:hover { border-color: var(--primary); color: var(--primary); }
+    .history-flag { font-size: 1.1rem; flex-shrink: 0; }
+    .history-ip   { font-family: 'Courier New', monospace; font-weight: 700; flex-shrink: 0; }
+    .history-loc  { flex: 1; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .history-del  { background: none; border: none; cursor: pointer; color: var(--danger); font-size: .9rem; padding: 0 .15rem; opacity: 0; }
+    .history-item:hover .history-del { opacity: 1; }
+
+    /* Spinner */
+    .spinner {
+      width: 28px; height: 28px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Error */
+    .lookup-error {
+      background: var(--danger-dim); color: var(--danger);
+      border-radius: var(--radius); padding: .75rem 1rem;
+      font-size: .88rem; font-weight: 600; margin-top: .75rem;
+    }
+
+    @media (max-width: 480px) { .ip-hero .ip-addr { font-size: 1.5rem; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">IP Location</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>&#127757; IP Location Lookup</h1>
+    <p>Look up the geolocation, ISP, and network info for any IPv4, IPv6 address or domain name.</p>
+  </div>
+
+  <!-- Lookup input -->
+  <div class="card">
+    <div class="lookup-bar">
+      <input type="text" id="ipInput" placeholder="Enter IP address or domain (e.g. 8.8.8.8 or google.com)"
+        autocomplete="off" spellcheck="false">
+      <button class="btn btn-primary" id="lookupBtn">Lookup</button>
+    </div>
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.6rem">
+      <button class="btn btn-secondary btn-sm" id="myIpBtn">&#128269; My IP</button>
+      <button class="btn btn-ghost btn-sm" data-example="8.8.8.8">8.8.8.8 (Google DNS)</button>
+      <button class="btn btn-ghost btn-sm" data-example="1.1.1.1">1.1.1.1 (Cloudflare)</button>
+      <button class="btn btn-ghost btn-sm" data-example="2001:4860:4860::8888">Google IPv6</button>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div id="resultArea"></div>
+
+  <!-- History -->
+  <div class="card mt-2" id="historyCard" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+      <strong style="font-size:.88rem">Recent Lookups</strong>
+      <button class="btn btn-ghost btn-sm" id="clearHistoryBtn">Clear</button>
+    </div>
+    <div class="history-list" id="historyList"></div>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+// ── Flag emoji from ISO country code ──────────────────────────────
+function flagOf(cc) {
+  if (!cc || cc.length !== 2) return '🌐';
+  return [...cc.toUpperCase()].map(c => String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65)).join('');
+}
+
+// ── History (localStorage) ────────────────────────────────────────
+const HIST_KEY = 'ot-ip-history';
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch { return []; }
+}
+function saveHistory(hist) {
+  localStorage.setItem(HIST_KEY, JSON.stringify(hist.slice(0, 20)));
+}
+function addHistory(entry) {
+  let hist = loadHistory().filter(h => h.ip !== entry.ip);
+  hist.unshift(entry);
+  saveHistory(hist);
+  renderHistory();
+}
+function renderHistory() {
+  const hist = loadHistory();
+  const card = document.getElementById('historyCard');
+  const list = document.getElementById('historyList');
+  if (!hist.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  list.innerHTML = hist.map((h, i) => `
+    <div class="history-item" data-ip="${escAttr(h.ip)}">
+      <span class="history-flag">${h.flag}</span>
+      <span class="history-ip">${escHtml(h.ip)}</span>
+      <span class="history-loc">${escHtml(h.loc)}</span>
+      <button class="history-del" data-i="${i}" title="Remove">&#10005;</button>
+    </div>`).join('');
+  list.querySelectorAll('.history-item').forEach(item => {
+    item.addEventListener('click', e => {
+      if (e.target.classList.contains('history-del')) return;
+      document.getElementById('ipInput').value = item.dataset.ip;
+      lookup(item.dataset.ip);
+    });
+  });
+  list.querySelectorAll('.history-del').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const hist = loadHistory();
+      hist.splice(+btn.dataset.i, 1);
+      saveHistory(hist);
+      renderHistory();
+    });
+  });
+}
+function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
+
+// ── Lookup ────────────────────────────────────────────────────────
+const resultArea = document.getElementById('resultArea');
+
+async function lookup(query) {
+  if (!query) return;
+  query = query.trim();
+  document.getElementById('ipInput').value = query;
+
+  resultArea.innerHTML = `
+    <div class="card mt-2" style="display:flex;flex-direction:column;align-items:center;gap:.75rem;padding:2rem">
+      <div class="spinner"></div>
+      <span style="font-size:.85rem;color:var(--text-muted)">Looking up ${escHtml(query)}…</span>
+    </div>`;
+
+  const fields = 'status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query,mobile,proxy,hosting';
+  let data;
+  try {
+    const res = await fetch(`https://ip-api.com/json/${encodeURIComponent(query)}?fields=${fields}`);
+    data = await res.json();
+  } catch (e) {
+    resultArea.innerHTML = `<div class="lookup-error mt-2">&#10007; Network error: ${escHtml(e.message)}</div>`;
+    return;
+  }
+
+  if (data.status === 'fail') {
+    const msgs = {
+      'private range':    'This is a private/reserved IP address (not publicly routable).',
+      'reserved range':   'This is a reserved IP address range.',
+      'invalid query':    'Invalid IP address or domain name.',
+    };
+    resultArea.innerHTML = `<div class="lookup-error mt-2">&#10007; ${escHtml(msgs[data.message] || data.message)}</div>`;
+    return;
+  }
+
+  const ip   = data.query;
+  const flag = flagOf(data.countryCode);
+  const isV6 = ip.includes(':');
+
+  // Detect connection type
+  const types = [];
+  if (data.proxy)   types.push({ cls: 'tbadge-vpn',     label: 'VPN / Proxy' });
+  if (data.hosting) types.push({ cls: 'tbadge-hosting',  label: 'Datacenter / Hosting' });
+  if (data.mobile)  types.push({ cls: 'tbadge-mobile',   label: 'Mobile Network' });
+  if (!types.length) types.push({ cls: 'tbadge-regular', label: isV6 ? 'IPv6' : 'IPv4' });
+
+  const typeBadges = types.map(t => `<span class="tbadge ${t.cls}">${t.label}</span>`).join('');
+
+  // Info cells
+  function cell(label, val, mono = false, copyable = true) {
+    if (!val || val === '—') return `
+      <div class="info-cell">
+        <span class="ic-label">${label}</span>
+        <span class="ic-val" style="color:var(--text-light);font-style:italic;font-weight:400">—</span>
+      </div>`;
+    return `
+      <div class="info-cell">
+        <span class="ic-label">${label}</span>
+        <span class="ic-val${mono ? ' mono' : ''}">${escHtml(val)}</span>
+        ${copyable ? `<button class="ic-copy ic-copy-btn" data-val="${escAttr(val)}">Copy</button>` : ''}
+      </div>`;
+  }
+
+  const country   = `${flag} ${data.country} (${data.countryCode})`;
+  const region    = data.regionName || '—';
+  const city      = data.city || '—';
+  const zip       = data.zip || '—';
+  const timezone  = data.timezone || '—';
+  const isp       = data.isp || '—';
+  const org       = data.org || '—';
+  const asn       = data.as || '—';
+  const coords    = (data.lat && data.lon) ? `${data.lat}, ${data.lon}` : '—';
+  const mapUrl    = (data.lat && data.lon)
+    ? `https://www.openstreetmap.org/?mlat=${data.lat}&mlon=${data.lon}&zoom=11#map=11/${data.lat}/${data.lon}`
+    : null;
+  const embedUrl  = (data.lat && data.lon)
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${data.lon-.5},${data.lat-.5},${data.lon+.5},${data.lat+.5}&layer=mapnik&marker=${data.lat},${data.lon}`
+    : null;
+
+  const mapHtml = embedUrl
+    ? `<iframe src="${escAttr(embedUrl)}" title="Map" loading="lazy" allowfullscreen></iframe>
+       <div style="font-size:.75rem;color:var(--text-muted);padding:.35rem .75rem .5rem">
+         ${escHtml(city)}, ${escHtml(region)}, ${escHtml(data.country)} &nbsp;·&nbsp;
+         <span class="map-coord">${escHtml(coords)}</span>
+         &nbsp;·&nbsp; <a href="${escAttr(mapUrl)}" target="_blank" rel="noopener" style="color:var(--primary)">Open in OpenStreetMap</a>
+       </div>`
+    : `<span style="font-size:1.5rem">🗺️</span><span>Location unavailable for this IP</span>`;
+
+  resultArea.innerHTML = `
+    <div class="card mt-2">
+
+      <div class="ip-hero">
+        <div class="flag">${flag}</div>
+        <div class="ip-addr">${escHtml(ip)}</div>
+        <div class="ip-sub">${escHtml(city ? city + ', ' : '')}${escHtml(region ? region + ', ' : '')}${escHtml(data.country || '')}</div>
+        <div class="type-badges">${typeBadges}</div>
+      </div>
+
+      <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin:.5rem 0 .25rem">
+        <button class="btn btn-primary btn-sm" id="copyAllBtn">Copy All Details</button>
+        ${mapUrl ? `<a href="${escAttr(mapUrl)}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">&#127757; Open Map</a>` : ''}
+      </div>
+
+      <div class="info-grid">
+        ${cell('Country',   country)}
+        ${cell('Region',    region)}
+        ${cell('City',      city)}
+        ${cell('ZIP / Postal', zip)}
+        ${cell('Timezone',  timezone)}
+        ${cell('ISP',       isp)}
+        ${cell('Organization', org)}
+        ${cell('ASN',       asn, true)}
+        ${cell('Coordinates', coords, true)}
+        ${cell('IP Address', ip, true)}
+        ${cell('Type', types.map(t => t.label).join(', '))}
+      </div>
+
+      <div class="map-box">${mapHtml}</div>
+
+      <p class="text-muted mt-2" style="font-size:.76rem">
+        &#9888;&#65039; IP geolocation is approximate — accuracy varies by ISP. Coordinates typically indicate the ISP's regional hub, not your exact location.
+        Data provided by <a href="https://ip-api.com" target="_blank" rel="noopener" style="color:var(--primary)">ip-api.com</a>.
+      </p>
+    </div>`;
+
+  // Copy all button
+  document.getElementById('copyAllBtn').addEventListener('click', function() {
+    const text = [
+      `IP Address:   ${ip}`,
+      `Country:      ${data.country} (${data.countryCode})`,
+      `Region:       ${region}`,
+      `City:         ${city}`,
+      `ZIP:          ${zip}`,
+      `Timezone:     ${timezone}`,
+      `ISP:          ${isp}`,
+      `Organization: ${org}`,
+      `ASN:          ${asn}`,
+      `Coordinates:  ${coords}`,
+      `VPN/Proxy:    ${data.proxy ? 'Yes' : 'No'}`,
+      `Hosting:      ${data.hosting ? 'Yes' : 'No'}`,
+      `Mobile:       ${data.mobile ? 'Yes' : 'No'}`,
+    ].join('\n');
+    copyText(text, this);
+  });
+
+  // Individual copy buttons
+  document.querySelectorAll('.ic-copy-btn').forEach(btn => {
+    btn.addEventListener('click', function() { copyText(this.dataset.val, this); });
+  });
+
+  // Save to history
+  addHistory({ ip, flag, loc: `${city ? city + ', ' : ''}${data.country || ''}` });
+}
+
+// ── UI wiring ─────────────────────────────────────────────────────
+document.getElementById('lookupBtn').addEventListener('click', () => {
+  lookup(document.getElementById('ipInput').value);
+});
+document.getElementById('ipInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') lookup(document.getElementById('ipInput').value);
+});
+
+// Example buttons
+document.querySelectorAll('[data-example]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('ipInput').value = btn.dataset.example;
+    lookup(btn.dataset.example);
+  });
+});
+
+// Detect my IP
+document.getElementById('myIpBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('myIpBtn');
+  btn.disabled = true; btn.textContent = 'Detecting…';
+  try {
+    const res  = await fetch('https://api.ipify.org?format=json');
+    const data = await res.json();
+    document.getElementById('ipInput').value = data.ip;
+    lookup(data.ip);
+  } catch {
+    alert('Could not detect your IP. Check your connection.');
+  }
+  btn.disabled = false; btn.innerHTML = '&#128269; My IP';
+});
+
+document.getElementById('clearHistoryBtn').addEventListener('click', () => {
+  localStorage.removeItem(HIST_KEY);
+  renderHistory();
+});
+
+// Init
+renderHistory();
+</script>
+</body>
+</html>

@@ -348,7 +348,7 @@ a:hover { text-decoration: underline; }
 }
 .search-wrap input {
   width: 100%;
-  padding: .7rem 1rem .7rem 2.8rem;
+  padding: .7rem 2.8rem .7rem 1rem;
   border: 1.5px solid var(--border);
   border-radius: 50px;
   background: var(--bg-card);
@@ -360,7 +360,7 @@ a:hover { text-decoration: underline; }
 .search-wrap input:focus { border-color: var(--primary); }
 .search-wrap .search-icon {
   position: absolute;
-  left: .9rem;
+  right: .9rem;
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-muted);

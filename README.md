@@ -1,6 +1,6 @@
 # Office Tools
 
-A collection of 32 free, browser-based utilities for everyday office and productivity work.
+A collection of 33 free, browser-based utilities for everyday office and productivity work.
 No build step, no framework, no tracking — everything runs locally in your browser.
 
 **Live site:** [https://github.com/noobvie/Office_Tools](https://github.com/noobvie/Office_Tools)
@@ -62,6 +62,7 @@ No build step, no framework, no tracking — everything runs locally in your bro
 |------|-------------|
 | Currency Converter | 40+ currencies with live exchange rates, popular pairs and quick-convert table |
 | What Is My IP? | Public IP, ISP, country, city, coordinates and IPv6 support status |
+| IP Location Lookup | Look up any IPv4/IPv6/domain — country, city, ISP, ASN, timezone, VPN/proxy detection, map |
 | Campaign URL Builder | Build UTM-tagged URLs for Google Analytics — history and QR code generation |
 
 ### ✨ Visual & Design
