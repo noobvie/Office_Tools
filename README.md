@@ -132,7 +132,7 @@ The frontend works fully without the backend. Auth and Pro features are opt-in.
 
 ---
 
-## Development Setup
+## Local Development
 
 ```bash
 git clone https://github.com/noobvie/Office_Tools.git
@@ -151,14 +151,68 @@ No build step, no `npm install`, no environment variables required for the front
 
 ---
 
-## Backend Setup
+## Production Deployment
 
-See [backend/README.md](backend/README.md) for full setup instructions covering:
-- PocketBase install and collection import (`pb_schema.json`)
-- Grin payment server setup (`.env.example`)
-- nginx reverse proxy config
-- systemd service files for both services
-- Frontend config (`js/config.js`) for connecting to your backend
+### One-shot deploy script (recommended)
+
+Runs on a fresh **Debian/Ubuntu** server as root. Handles everything automatically.
+
+```bash
+git clone https://github.com/noobvie/Office_Tools.git
+sudo bash Office_Tools/deploy.sh
+```
+
+The script will prompt for:
+- Your domain (e.g. `tools.example.com`)
+- Email for Let's Encrypt SSL
+- Whether to set up the backend (PocketBase + Grin payment server)
+- If yes: Grin wallet password, PocketBase admin credentials
+
+What it does automatically:
+
+| Step | Action |
+|------|--------|
+| 1 | Installs nginx, certbot, Node.js 20 |
+| 2 | `git clone` / `git pull` from GitHub |
+| 3 | Patches `js/config.js` with your domain |
+| 4 | Deploys frontend only to `/var/www/office-tools/` (excludes `backend/`, `.git`) |
+| 5 | Writes secure nginx config — HSTS, TLS 1.2/1.3, security headers, gzip |
+| 6 | Issues Let's Encrypt SSL certificate via certbot |
+| 7 | *(optional)* Sets up PocketBase + Grin payment server as systemd services |
+
+**Server layout after deploy:**
+
+```
+/var/www/office-tools/        ← frontend (nginx serves directly)
+/opt/office-tools/repo/       ← git repo
+/opt/office-tools/backend/    ← Node.js payment server + .env
+/opt/office-tools/pocketbase/ ← PocketBase binary + data
+```
+
+**Redeploy after a git push:**
+
+```bash
+sudo bash /opt/office-tools/repo/deploy.sh
+```
+
+Re-pulls, re-syncs frontend, reloads nginx. SSL cert is not re-requested if still valid.
+
+---
+
+### After deploy — PocketBase first-time setup
+
+1. Open `https://your-domain.com/pb-api/_/`
+2. Create your admin account
+3. Go to **Settings → Import Collections** → paste contents of `backend/pb_schema.json`
+4. Copy `backend/pb_hooks/main.pb.js` to `/opt/office-tools/pocketbase/pb_hooks/`
+5. Restart PocketBase: `systemctl restart office-tools-pb`
+
+---
+
+### Manual backend setup
+
+See [backend/README.md](backend/README.md) for manual instructions covering PocketBase,
+the Grin payment server, nginx config and systemd services.
 
 ---
 

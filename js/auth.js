@@ -94,7 +94,7 @@ const OTAuth = (() => {
 
   function logout() {
     clearAuth();
-    window.location.href = '/Office_Tools/index.html';
+    window.location.href = _rootPath() + 'index.html';
   }
 
   async function refreshSubscription() {
