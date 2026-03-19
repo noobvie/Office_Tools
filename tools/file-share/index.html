@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Share — Office Tools</title>
+  <meta name="description" content="Upload compressed archives (.zip, .tar, .rar) up to 1 GB and share a private download link. Files are auto-deleted after 1-7 days. Self-hosted — no third-party cloud storage.">
+  <meta name="keywords" content="file sharing, share ZIP online, upload and share file, temporary file hosting, file share link, private file transfer, upload RAR TAR">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Free File Sharing — Upload ZIP, TAR, RAR Archives up to 1 GB">
+  <meta property="og:description" content="Upload compressed archives (.zip, .tar, .rar) up to 1 GB and share a private download link. Files are auto-deleted after 1-7 days. Self-hosted — no third-party cloud storage.">
+  <meta property="og:url" content="https://yourdomain.com/tools/file-share/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Free File Sharing — Upload ZIP, TAR, RAR Archives up to 1 GB">
+  <meta name="twitter:description" content="Upload compressed archives (.zip, .tar, .rar) up to 1 GB and share a private download link. Files are auto-deleted after 1-7 days. Self-hosted — no third-party cloud storage.">
+  <link rel="canonical" href="https://yourdomain.com/tools/file-share/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"File Share","description":"Upload compressed archives (.zip, .tar, .rar) up to 1 GB and share a private download link. Files are auto-deleted after 1-7 days. Self-hosted — no third-party cloud storage.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://yourdomain.com/tools/file-share/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-lg);
+      padding: 2.5rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      background: var(--bg-secondary);
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--primary);
+      background: var(--primary-dim);
+    }
+    .drop-zone .dz-icon { font-size: 2.5rem; }
+    .drop-zone .dz-label { font-weight: 700; margin-top: .5rem; }
+    .drop-zone .dz-sub { font-size: .8rem; color: var(--text-muted); margin-top: .25rem; }
+
+    .file-info-row {
+      display: flex; align-items: center; gap: .75rem;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .75rem 1rem;
+    }
+    .file-info-icon { font-size: 1.6rem; }
+    .file-info-name { font-weight: 700; font-size: .92rem; word-break: break-all; }
+    .file-info-size { font-size: .8rem; color: var(--text-muted); }
+
+    .progress-wrap {
+      background: var(--bg-secondary);
+      border-radius: 100px;
+      height: 10px;
+      overflow: hidden;
+      margin-top: .5rem;
+    }
+    .progress-bar {
+      height: 100%;
+      background: var(--primary);
+      border-radius: 100px;
+      width: 0;
+      transition: width .15s linear;
+    }
+
+    .share-box {
+      background: var(--bg-secondary);
+      border: 1.5px solid var(--primary);
+      border-radius: var(--radius);
+      padding: .9rem 1.1rem;
+      display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+    }
+    .share-url {
+      font-family: monospace; font-weight: 700;
+      font-size: .9rem; color: var(--primary); flex: 1; word-break: break-all;
+    }
+
+    .dl-card {
+      text-align: center; padding: 2rem 1rem;
+    }
+    .dl-icon { font-size: 3rem; }
+    .dl-name { font-size: 1.1rem; font-weight: 900; margin-top: .5rem; word-break: break-all; }
+    .dl-meta { font-size: .83rem; color: var(--text-muted); margin-top: .25rem; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">File Share</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+
+  <!-- ── UPLOAD MODE ─────────────────────────────────────── -->
+  <div id="uploadMode">
+    <div class="tool-header">
+      <h1>📦 File Share</h1>
+      <p>Upload a compressed archive and share it with a private link. Max 1 GB, max 7 days retention.</p>
+    </div>
+
+    <div class="card">
+      <!-- Drop zone -->
+      <div class="drop-zone" id="dropZone">
+        <div class="dz-icon">📦</div>
+        <div class="dz-label">Drop your archive here</div>
+        <div class="dz-sub">Supported: .zip .tar .tar.gz .tar.bz2 .rar — Max 1 GB</div>
+        <input type="file" id="fileInput" accept=".zip,.tar,.gz,.bz2,.rar,.tar.gz,.tar.bz2" style="display:none">
+        <button class="btn btn-secondary btn-sm" style="margin-top:1rem" id="browseBtn">Browse file</button>
+      </div>
+
+      <!-- Selected file info -->
+      <div id="fileInfo" class="hidden mt-2">
+        <div class="file-info-row">
+          <span class="file-info-icon" id="fileIcon">📄</span>
+          <div style="flex:1">
+            <div class="file-info-name" id="fileName"></div>
+            <div class="file-info-size" id="fileSize"></div>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="clearFileBtn">✕ Clear</button>
+        </div>
+      </div>
+
+      <!-- Options -->
+      <div style="max-width:260px;margin-top:1rem">
+        <label class="form-label">Expires after</label>
+        <select id="fileExpiry" class="form-input">
+          <option value="1">1 day</option>
+          <option value="3" selected>3 days</option>
+          <option value="7">7 days (max)</option>
+        </select>
+      </div>
+
+      <div id="uploadError" class="alert alert-danger mt-2 hidden"></div>
+
+      <div class="btn-group mt-3">
+        <button class="btn btn-primary" id="uploadBtn" disabled>Upload &amp; Share</button>
+      </div>
+
+      <!-- Progress -->
+      <div id="progressBox" class="hidden mt-3">
+        <div style="display:flex;justify-content:space-between;font-size:.82rem;color:var(--text-muted)">
+          <span id="progressLabel">Uploading…</span>
+          <span id="progressPct">0%</span>
+        </div>
+        <div class="progress-wrap mt-1"><div class="progress-bar" id="progressBar"></div></div>
+      </div>
+
+      <!-- Share result -->
+      <div id="shareResult" class="hidden mt-3">
+        <div class="share-box">
+          <span class="share-url" id="shareUrl"></span>
+          <button class="btn btn-secondary btn-sm" id="copyShareBtn">Copy Link</button>
+          <a class="btn btn-secondary btn-sm" id="openShareBtn" target="_blank" rel="noopener">Open ↗</a>
+        </div>
+        <p style="font-size:.78rem;color:var(--text-muted);margin-top:.5rem" id="shareExpiryNote"></p>
+      </div>
+    </div>
+
+    <div class="card mt-2" style="font-size:.83rem;color:var(--text-muted)">
+      <strong style="color:var(--text)">Limits</strong>
+      <ul style="margin:.4rem 0 0 1.1rem;line-height:1.7">
+        <li>File types: <strong>.zip · .tar · .tar.gz · .tar.bz2 · .rar</strong></li>
+        <li>Max size: <strong>1 GB</strong> (requires PocketBase configured with <code>--maxBodySize=1073741824</code>)</li>
+        <li>Max retention: <strong>7 days</strong> — files are deleted automatically</li>
+        <li>Stored on your PocketBase instance — no third-party services</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ── DOWNLOAD MODE ───────────────────────────────────── -->
+  <div id="downloadMode" class="hidden">
+    <div class="tool-header">
+      <h1>📦 File Share</h1>
+      <p>Your file is ready to download.</p>
+    </div>
+
+    <div class="card">
+      <div id="dlLoading" style="text-align:center;padding:2rem">
+        <span class="loading-pulse" style="width:14px;height:14px;border-radius:50%;background:var(--primary);display:inline-block;animation:pulse-anim .8s ease-in-out infinite alternate"></span>
+        <p class="text-muted mt-2">Loading file info…</p>
+      </div>
+
+      <div id="dlContent" class="dl-card hidden">
+        <div class="dl-icon" id="dlIcon">📦</div>
+        <div class="dl-name" id="dlName"></div>
+        <div class="dl-meta" id="dlMeta"></div>
+        <a class="btn btn-primary mt-3" id="dlBtn" download>⬇ Download File</a>
+        <p class="text-muted mt-2" style="font-size:.78rem" id="dlExpiry"></p>
+      </div>
+
+      <div id="dlError" class="hidden" style="text-align:center;padding:2rem">
+        <div style="font-size:2.5rem">⏱️</div>
+        <p id="dlErrorMsg" style="font-weight:700;margin-top:.5rem"></p>
+        <p class="text-muted" style="font-size:.85rem">The file may have expired or never existed.</p>
+        <a href="index.html" class="btn btn-secondary mt-2">Upload a new file</a>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const PB = window.OT_CONFIG?.PB_URL || 'http://localhost:8090';
+
+const ALLOWED_EXT   = ['.zip', '.tar', '.gz', '.bz2', '.rar'];
+const ALLOWED_MIME  = ['application/zip','application/x-zip-compressed',
+  'application/x-tar','application/gzip','application/x-gzip',
+  'application/x-bzip2','application/vnd.rar','application/x-rar-compressed',
+  'application/octet-stream'];  // .tar/.rar often come as octet-stream
+const MAX_BYTES = 1 * 1024 * 1024 * 1024; // 1 GB
+
+let selectedFile = null;
+
+/* ── Helpers ─────────────────────────────────────────────── */
+function genCode(len = 10) {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const arr = new Uint8Array(len);
+  crypto.getRandomValues(arr);
+  return [...arr].map(b => chars[b % chars.length]).join('');
+}
+
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+  return (bytes / 1073741824).toFixed(2) + ' GB';
+}
+
+function fileExt(name) {
+  const lower = name.toLowerCase();
+  if (lower.endsWith('.tar.gz'))  return '.tar.gz';
+  if (lower.endsWith('.tar.bz2')) return '.tar.bz2';
+  return lower.match(/\.[^.]+$/)?.[0] || '';
+}
+
+function fileIcon(name) {
+  const ext = fileExt(name);
+  if (ext === '.zip') return '🗜️';
+  if (ext === '.rar') return '📦';
+  if (ext.includes('tar') || ext.includes('gz') || ext.includes('bz2')) return '📦';
+  return '📄';
+}
+
+function isAllowed(file) {
+  const ext = fileExt(file.name);
+  return ALLOWED_EXT.some(e => ext === e || ext.endsWith(e));
+}
+
+function calcExpiry(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + parseInt(days));
+  return d.toISOString().replace('T', ' ').split('.')[0] + 'Z';
+}
+
+function showUploadError(msg) {
+  const b = document.getElementById('uploadError');
+  b.textContent = msg; b.classList.remove('hidden');
+}
+
+/* ── File selection ──────────────────────────────────────── */
+function setFile(file) {
+  document.getElementById('uploadError').classList.add('hidden');
+
+  if (!isAllowed(file)) {
+    return showUploadError(`File type not allowed. Only ${ALLOWED_EXT.join(', ')} files are accepted.`);
+  }
+  if (file.size > MAX_BYTES) {
+    return showUploadError(`File too large. Maximum size is 1 GB (${fmtSize(file.size)} selected).`);
+  }
+
+  selectedFile = file;
+  document.getElementById('fileIcon').textContent = fileIcon(file.name);
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileSize').textContent = fmtSize(file.size);
+  document.getElementById('fileInfo').classList.remove('hidden');
+  document.getElementById('uploadBtn').disabled = false;
+}
+
+document.getElementById('browseBtn').addEventListener('click', () =>
+  document.getElementById('fileInput').click());
+
+document.getElementById('fileInput').addEventListener('change', e => {
+  if (e.target.files[0]) setFile(e.target.files[0]);
+});
+
+document.getElementById('clearFileBtn').addEventListener('click', () => {
+  selectedFile = null;
+  document.getElementById('fileInfo').classList.add('hidden');
+  document.getElementById('uploadBtn').disabled = true;
+  document.getElementById('fileInput').value = '';
+});
+
+// Drag & drop
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) setFile(f);
+});
+
+/* ── Upload ──────────────────────────────────────────────── */
+document.getElementById('uploadBtn').addEventListener('click', async () => {
+  if (!selectedFile) return;
+
+  document.getElementById('uploadError').classList.add('hidden');
+  document.getElementById('shareResult').classList.add('hidden');
+
+  const btn     = document.getElementById('uploadBtn');
+  const expDays = document.getElementById('fileExpiry').value;
+  const code    = genCode(10);
+  const expires = calcExpiry(expDays);
+
+  btn.disabled = true;
+  document.getElementById('progressBox').classList.remove('hidden');
+
+  const fd = new FormData();
+  fd.append('code',          code);
+  fd.append('original_name', selectedFile.name);
+  fd.append('file_size',     selectedFile.size);
+  fd.append('expires',       expires);
+  fd.append('file',          selectedFile, selectedFile.name);
+
+  try {
+    await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${PB}/api/collections/file_shares/records`);
+
+      xhr.upload.addEventListener('progress', e => {
+        if (e.lengthComputable) {
+          const pct = Math.round(e.loaded / e.total * 100);
+          document.getElementById('progressBar').style.width = pct + '%';
+          document.getElementById('progressPct').textContent = pct + '%';
+          document.getElementById('progressLabel').textContent =
+            pct < 100 ? `Uploading… ${fmtSize(e.loaded)} / ${fmtSize(e.total)}` : 'Processing…';
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(JSON.parse(xhr.responseText));
+        } else {
+          try { reject(new Error(JSON.parse(xhr.responseText).message || 'Upload failed')); }
+          catch { reject(new Error(`Upload failed (HTTP ${xhr.status})`)); }
+        }
+      });
+      xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
+      xhr.send(fd);
+    });
+
+    const shareUrl = `${location.origin}/tools/file-share/?id=${code}`;
+    document.getElementById('shareUrl').textContent = shareUrl;
+    document.getElementById('openShareBtn').href = shareUrl;
+    document.getElementById('copyShareBtn').onclick = () =>
+      copyText(shareUrl, document.getElementById('copyShareBtn'));
+    document.getElementById('shareExpiryNote').textContent =
+      `Expires: ${new Date(expires).toLocaleDateString()} — file will be deleted automatically after ${expDays} day(s).`;
+    document.getElementById('shareResult').classList.remove('hidden');
+
+  } catch (err) {
+    showUploadError(err.message);
+  } finally {
+    btn.disabled = false;
+    document.getElementById('progressBox').classList.add('hidden');
+    document.getElementById('progressBar').style.width = '0';
+  }
+});
+
+/* ── Download mode ───────────────────────────────────────── */
+async function loadShare(id) {
+  document.getElementById('uploadMode').classList.add('hidden');
+  document.getElementById('downloadMode').classList.remove('hidden');
+
+  try {
+    const now    = new Date().toISOString().replace('T', ' ').split('.')[0];
+    const filter = `code="${id.replace(/"/g, '')}" && expires>"${now}"`;
+    const r      = await fetch(`${PB}/api/collections/file_shares/records?filter=${encodeURIComponent(filter)}&perPage=1`);
+    if (!r.ok) throw new Error('Service unavailable');
+    const data   = await r.json();
+    const rec    = data.items?.[0];
+
+    if (!rec) {
+      document.getElementById('dlLoading').classList.add('hidden');
+      document.getElementById('dlErrorMsg').textContent = 'File not found or expired.';
+      document.getElementById('dlError').classList.remove('hidden');
+      return;
+    }
+
+    const dlUrl = `${PB}/api/files/file_shares/${rec.id}/${rec.file}?download=1`;
+    const name  = rec.original_name || rec.file;
+
+    document.getElementById('dlIcon').textContent = fileIcon(name);
+    document.getElementById('dlName').textContent = name;
+    document.getElementById('dlMeta').textContent =
+      `${fmtSize(rec.file_size || 0)} · Uploaded ${new Date(rec.created).toLocaleDateString()}`;
+    document.getElementById('dlBtn').href = dlUrl;
+    document.getElementById('dlBtn').download = name;
+    document.getElementById('dlExpiry').textContent =
+      `Expires: ${new Date(rec.expires).toLocaleDateString()} — download before it's gone.`;
+
+    document.getElementById('dlLoading').classList.add('hidden');
+    document.getElementById('dlContent').classList.remove('hidden');
+
+  } catch (err) {
+    document.getElementById('dlLoading').classList.add('hidden');
+    document.getElementById('dlErrorMsg').textContent = err.message;
+    document.getElementById('dlError').classList.remove('hidden');
+  }
+}
+
+/* ── Route ───────────────────────────────────────────────── */
+const shareId = new URLSearchParams(location.search).get('id');
+if (shareId) loadShare(shareId);
+
+// Add pulse animation for download loading
+const style = document.createElement('style');
+style.textContent = '@keyframes pulse-anim { to { opacity:.2; transform:scale(.7); } }';
+document.head.appendChild(style);
+</script>
+</body>
+</html>

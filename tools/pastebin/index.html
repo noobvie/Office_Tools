@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pastebin — Office Tools</title>
+  <meta name="description" content="Share text and code snippets via a private link. Supports 18 syntax types, configurable expiry (1 day to forever), and burn-after-read mode for one-time private sharing.">
+  <meta name="keywords" content="pastebin, code sharing, share code online, syntax highlight paste, private paste, burn after read, self-hosted pastebin">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Self-Hosted Pastebin — Share Code &amp; Text with Syntax Highlighting">
+  <meta property="og:description" content="Share text and code snippets via a private link. Supports 18 syntax types, configurable expiry (1 day to forever), and burn-after-read mode for one-time private sharing.">
+  <meta property="og:url" content="https://yourdomain.com/tools/pastebin/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Self-Hosted Pastebin — Share Code &amp; Text with Syntax Highlighting">
+  <meta name="twitter:description" content="Share text and code snippets via a private link. Supports 18 syntax types, configurable expiry (1 day to forever), and burn-after-read mode for one-time private sharing.">
+  <link rel="canonical" href="https://yourdomain.com/tools/pastebin/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Pastebin","description":"Share text and code snippets via a private link. Supports 18 syntax types, configurable expiry (1 day to forever), and burn-after-read mode for one-time private sharing.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://yourdomain.com/tools/pastebin/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    #contentArea {
+      width: 100%; box-sizing: border-box;
+      min-height: 280px; resize: vertical;
+      font-family: 'Courier New', monospace;
+      font-size: .88rem; line-height: 1.6;
+      background: var(--bg-secondary);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .75rem 1rem;
+      outline: none;
+      transition: border-color var(--transition);
+    }
+    #contentArea:focus { border-color: var(--primary); }
+
+    .paste-view-content {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      font-family: 'Courier New', monospace;
+      font-size: .875rem;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    .paste-meta-row {
+      display: flex; flex-wrap: wrap; gap: .5rem;
+      align-items: center; font-size: .82rem; color: var(--text-muted);
+    }
+    .paste-share-box {
+      background: var(--bg-secondary);
+      border: 1.5px solid var(--primary);
+      border-radius: var(--radius);
+      padding: .85rem 1.1rem;
+      display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+    }
+    .paste-share-url {
+      font-family: monospace; font-weight: 700; font-size: .92rem;
+      color: var(--primary); flex: 1; word-break: break-all;
+    }
+    .burn-warning {
+      background: var(--warning-dim); border: 1px solid var(--warning);
+      border-radius: var(--radius); padding: .6rem .9rem;
+      font-size: .83rem; color: var(--warning); font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Pastebin</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+
+  <!-- ── CREATE MODE ─────────────────────────────────────── -->
+  <div id="createMode">
+    <div class="tool-header">
+      <h1>📋 Pastebin</h1>
+      <p>Share text, code snippets, and notes with a private link. No account needed.</p>
+    </div>
+
+    <div class="card">
+      <div style="display:grid;grid-template-columns:1fr 180px;gap:.75rem;align-items:end">
+        <div>
+          <label class="form-label">Title <span style="color:var(--text-muted)">(optional)</span></label>
+          <input type="text" id="pasteTitle" class="form-input" placeholder="Untitled paste" maxlength="200">
+        </div>
+        <div>
+          <label class="form-label">Syntax</label>
+          <select id="pasteSyntax" class="form-input">
+            <option value="plain">Plain text</option>
+            <option value="bash">Bash / Shell</option>
+            <option value="javascript">JavaScript</option>
+            <option value="typescript">TypeScript</option>
+            <option value="python">Python</option>
+            <option value="json">JSON</option>
+            <option value="html">HTML</option>
+            <option value="css">CSS</option>
+            <option value="sql">SQL</option>
+            <option value="yaml">YAML</option>
+            <option value="markdown">Markdown</option>
+            <option value="go">Go</option>
+            <option value="rust">Rust</option>
+            <option value="php">PHP</option>
+            <option value="c">C / C++</option>
+            <option value="java">Java</option>
+            <option value="nginx">Nginx</option>
+            <option value="diff">Diff / Patch</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mt-2">
+        <label class="form-label">Content <span style="color:var(--danger)">*</span></label>
+        <textarea id="contentArea" placeholder="Paste your text or code here…" spellcheck="false"></textarea>
+        <div style="text-align:right;font-size:.72rem;color:var(--text-muted);margin-top:.25rem">
+          <span id="charCount">0</span> characters
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;align-items:center" class="mt-2">
+        <div>
+          <label class="form-label">Expires</label>
+          <select id="pasteExpiry" class="form-input">
+            <option value="0">Never</option>
+            <option value="1">1 day</option>
+            <option value="7" selected>7 days</option>
+            <option value="30">30 days</option>
+            <option value="365">1 year</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:center;gap:.5rem;padding-top:1.5rem">
+          <input type="checkbox" id="burnCheck" style="width:1rem;height:1rem;cursor:pointer">
+          <label for="burnCheck" style="font-size:.88rem;cursor:pointer">
+            🔥 Burn after read <span style="font-size:.75rem;color:var(--text-muted)">(delete on first view)</span>
+          </label>
+        </div>
+      </div>
+
+      <div id="createError" class="alert alert-danger mt-2 hidden"></div>
+
+      <div class="btn-group mt-3">
+        <button class="btn btn-primary" id="createBtn">Create Paste</button>
+      </div>
+
+      <!-- Result -->
+      <div id="createResult" class="hidden mt-3">
+        <div class="paste-share-box">
+          <span class="paste-share-url" id="pasteShareUrl"></span>
+          <button class="btn btn-secondary btn-sm" id="copyPasteBtn">Copy Link</button>
+          <a class="btn btn-secondary btn-sm" id="openPasteBtn" target="_blank" rel="noopener">Open ↗</a>
+        </div>
+        <p style="font-size:.78rem;color:var(--text-muted);margin-top:.5rem" id="createExpiryNote"></p>
+      </div>
+    </div>
+
+    <div class="card mt-2" style="font-size:.83rem;color:var(--text-muted)">
+      <strong style="color:var(--text)">Note</strong> — Pastes are stored on your PocketBase instance.
+      Content is <strong>not encrypted</strong> — avoid pasting passwords or private keys.
+      Use <em>Burn after read</em> for one-time sharing.
+    </div>
+  </div>
+
+  <!-- ── VIEW MODE ───────────────────────────────────────── -->
+  <div id="viewMode" class="hidden">
+    <div class="tool-header">
+      <h1 id="viewTitle">📋 Paste</h1>
+    </div>
+
+    <div id="burnWarning" class="burn-warning hidden mb-2">
+      🔥 This is a burn-after-read paste — it has been deleted and can no longer be viewed by others.
+    </div>
+
+    <div class="card">
+      <div class="paste-meta-row" id="pasteMeta"></div>
+      <div class="paste-view-content mt-2" id="pasteContent"></div>
+    </div>
+
+    <div class="btn-group mt-2">
+      <button class="btn btn-secondary" id="copyContentBtn">Copy Content</button>
+      <button class="btn btn-secondary" id="downloadTxtBtn">Download .txt</button>
+      <a href="index.html" class="btn btn-secondary">New Paste</a>
+    </div>
+
+    <div id="viewError" class="card mt-2 hidden">
+      <div class="alert alert-danger" id="viewErrorMsg"></div>
+      <a href="index.html" class="btn btn-primary mt-2">Create a New Paste</a>
+    </div>
+  </div>
+
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const PB = window.OT_CONFIG?.PB_URL || 'http://localhost:8090';
+
+/* ── Helpers ─────────────────────────────────────────────── */
+function genCode(len = 10) {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const arr = new Uint8Array(len);
+  crypto.getRandomValues(arr);
+  return [...arr].map(b => chars[b % chars.length]).join('');
+}
+
+function calcExpiry(days) {
+  if (!days || days === '0') return '';
+  const d = new Date();
+  d.setDate(d.getDate() + parseInt(days));
+  return d.toISOString().replace('T', ' ').split('.')[0] + 'Z';
+}
+
+function fmtDate(iso) {
+  if (!iso) return 'Never';
+  return new Date(iso).toLocaleString();
+}
+
+function syntaxLabel(s) {
+  const map = { plain:'Plain text', bash:'Bash', javascript:'JavaScript', typescript:'TypeScript',
+    python:'Python', json:'JSON', html:'HTML', css:'CSS', sql:'SQL', yaml:'YAML',
+    markdown:'Markdown', go:'Go', rust:'Rust', php:'PHP', c:'C/C++', java:'Java',
+    nginx:'Nginx', diff:'Diff/Patch' };
+  return map[s] || s;
+}
+
+/* ── Character counter ───────────────────────────────────── */
+document.getElementById('contentArea').addEventListener('input', function () {
+  document.getElementById('charCount').textContent = this.value.length.toLocaleString();
+});
+
+/* ── Create paste ────────────────────────────────────────── */
+document.getElementById('createBtn').addEventListener('click', async () => {
+  const errBox = document.getElementById('createError');
+  errBox.classList.add('hidden');
+  document.getElementById('createResult').classList.add('hidden');
+
+  const content = document.getElementById('contentArea').value;
+  const title   = document.getElementById('pasteTitle').value.trim() || 'Untitled';
+  const syntax  = document.getElementById('pasteSyntax').value;
+  const expDays = document.getElementById('pasteExpiry').value;
+  const burn    = document.getElementById('burnCheck').checked;
+
+  if (!content.trim()) {
+    errBox.textContent = 'Content cannot be empty.';
+    return errBox.classList.remove('hidden');
+  }
+
+  const btn = document.getElementById('createBtn');
+  btn.textContent = 'Creating…'; btn.disabled = true;
+
+  try {
+    const code    = genCode(10);
+    const expires = calcExpiry(expDays);
+
+    const r = await fetch(`${PB}/api/collections/pastes/records`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, title, content, syntax, expires, burn_after_read: burn }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || 'Server error');
+
+    const shareUrl = `${location.origin}/tools/pastebin/?id=${code}`;
+    document.getElementById('pasteShareUrl').textContent = shareUrl;
+    document.getElementById('openPasteBtn').href = shareUrl;
+    document.getElementById('copyPasteBtn').onclick = () =>
+      copyText(shareUrl, document.getElementById('copyPasteBtn'));
+    document.getElementById('createExpiryNote').textContent =
+      burn ? '🔥 Burn after read — the paste will be deleted after the first view.' :
+      expires ? `Expires: ${fmtDate(expires)}` : 'This paste never expires.';
+    document.getElementById('createResult').classList.remove('hidden');
+
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.classList.remove('hidden');
+  } finally {
+    btn.textContent = 'Create Paste'; btn.disabled = false;
+  }
+});
+
+/* ── View paste ──────────────────────────────────────────── */
+async function loadPaste(id) {
+  document.getElementById('createMode').classList.add('hidden');
+  document.getElementById('viewMode').classList.remove('hidden');
+
+  const errBox  = document.getElementById('viewError');
+  const errMsg  = document.getElementById('viewErrorMsg');
+
+  try {
+    const now    = new Date().toISOString().replace('T', ' ').split('.')[0];
+    const filter = `code="${id.replace(/"/g, '')}" && (expires="" || expires>"${now}")`;
+    const r      = await fetch(`${PB}/api/collections/pastes/records?filter=${encodeURIComponent(filter)}&perPage=1`);
+    if (!r.ok) throw new Error('Service unavailable');
+    const data   = await r.json();
+    const rec    = data.items?.[0];
+
+    if (!rec) {
+      errMsg.textContent = 'Paste not found or has expired.';
+      errBox.classList.remove('hidden');
+      document.getElementById('pasteContent').closest('.card').style.display = 'none';
+      document.querySelector('.btn-group').style.display = 'none';
+      return;
+    }
+
+    document.title = `${rec.title || 'Untitled'} — Pastebin — Office Tools`;
+    document.getElementById('viewTitle').textContent = `📋 ${rec.title || 'Untitled'}`;
+    document.getElementById('pasteMeta').innerHTML = `
+      <span class="badge badge-primary">${escHtml(syntaxLabel(rec.syntax || 'plain'))}</span>
+      ${rec.expires ? `<span>Expires: ${fmtDate(rec.expires)}</span>` : '<span>No expiry</span>'}
+      ${rec.burn_after_read ? '<span class="badge" style="background:var(--warning-dim);color:var(--warning)">🔥 Burn after read</span>' : ''}
+      <span>${rec.content.length.toLocaleString()} chars</span>
+    `;
+    document.getElementById('pasteContent').textContent = rec.content;
+
+    if (rec.burn_after_read) {
+      document.getElementById('burnWarning').classList.remove('hidden');
+      // Delete the record — allowed because deleteRule="" on this collection
+      fetch(`${PB}/api/collections/pastes/records/${rec.id}`, { method: 'DELETE' }).catch(() => {});
+    }
+
+    document.getElementById('copyContentBtn').onclick = () =>
+      copyText(rec.content, document.getElementById('copyContentBtn'));
+
+    document.getElementById('downloadTxtBtn').onclick = () => {
+      const blob = new Blob([rec.content], { type: 'text/plain' });
+      const a    = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${(rec.title || 'paste').replace(/[^a-z0-9]/gi, '_')}.txt`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    };
+
+  } catch (err) {
+    errMsg.textContent = err.message;
+    errBox.classList.remove('hidden');
+  }
+}
+
+/* ── Route ───────────────────────────────────────────────── */
+const pasteId = new URLSearchParams(location.search).get('id');
+if (pasteId) {
+  loadPaste(pasteId);
+}
+</script>
+</body>
+</html>

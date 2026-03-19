@@ -75,9 +75,171 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+/* ---------- Tool Sidebar ---------- */
+const OT_TOOLS = [
+  // ⏱️ Productivity & Time
+  { name: 'Pomodoro Timer',          path: 'pomodoro',              cat: '⏱️ Productivity & Time', icon: '🍅' },
+  { name: 'Date Calculator',         path: 'date-calculator',       cat: '⏱️ Productivity & Time', icon: '📅' },
+  // ✨ Generators
+  { name: 'Password Generator',      path: 'password-generator',    cat: '✨ Generators',           icon: '🔑' },
+  { name: 'QR Code Generator',       path: 'qr-generator',          cat: '✨ Generators',           icon: '📱' },
+  { name: 'UUID Generator',          path: 'uuid-generator',        cat: '✨ Generators',           icon: '🆔' },
+  { name: 'Random Number Generator', path: 'random-number',         cat: '✨ Generators',           icon: '🎲' },
+  // 📝 Text & Content
+  { name: 'Word Counter',            path: 'word-counter',          cat: '📝 Text & Content',       icon: '📝' },
+  { name: 'Markdown Editor',         path: 'markdown-editor',       cat: '📝 Text & Content',       icon: '✍️' },
+  { name: 'Text Diff',               path: 'text-diff',             cat: '📝 Text & Content',       icon: '🔍' },
+  { name: 'Typing Speed Test',       path: 'typing-speed',          cat: '📝 Text & Content',       icon: '⌨️' },
+  // 🔒 Encoding & Crypto
+  { name: 'Base64 Converter',        path: 'base64-converter',      cat: '🔒 Encoding & Crypto',    icon: '🔐' },
+  { name: 'URL Encoder / Decoder',   path: 'url-encoder',           cat: '🔒 Encoding & Crypto',    icon: '🔗' },
+  { name: 'Unix Timestamp',          path: 'unix-timestamp',        cat: '🔒 Encoding & Crypto',    icon: '⏰' },
+  { name: 'Hash Generator',          path: 'hash-generator',        cat: '🔒 Encoding & Crypto',    icon: '🛡️' },
+  // 🧮 Calculators
+  { name: 'Percentage Calculator',   path: 'percentage-calculator', cat: '🧮 Calculators',          icon: '💯' },
+  { name: 'Aspect Ratio Calculator', path: 'aspect-ratio',          cat: '🧮 Calculators',          icon: '📐' },
+  // 💻 Development
+  { name: 'JSON Editor',             path: 'json-editor',           cat: '💻 Development',          icon: '📋' },
+  { name: 'CSV ↔ JSON',              path: 'csv-json',              cat: '💻 Development',          icon: '📊' },
+  { name: 'Crontab Explainer',       path: 'crontab',               cat: '💻 Development',          icon: '⏲️' },
+  // 🎨 Design
+  { name: 'Color Converter',         path: 'color-converter',       cat: '🎨 Design',               icon: '🎨' },
+  // 🌐 Network & Web
+  { name: 'Currency Converter',      path: 'currency',              cat: '🌐 Network & Web',        icon: '💱' },
+  { name: 'What Is My IP?',          path: 'my-ip',                 cat: '🌐 Network & Web',        icon: '🌐' },
+  { name: 'IP Location Lookup',      path: 'ip-location',           cat: '🌐 Network & Web',        icon: '📍' },
+  { name: 'Campaign URL Builder',    path: 'utm-builder',           cat: '🌐 Network & Web',        icon: '🔗' },
+  // 🖼️ Visual & Design
+  { name: 'Screenshot Beautifier',   path: 'screenshot-beautifier', cat: '🖼️ Visual & Design',     icon: '🖼️' },
+  { name: 'Contrast Checker',        path: 'contrast-checker',      cat: '🖼️ Visual & Design',     icon: '♿' },
+  { name: 'Palette Extractor',       path: 'palette-extractor',     cat: '🖼️ Visual & Design',     icon: '🎨' },
+  // 🎲 Fun & Productivity
+  { name: 'Fake Data Generator',     path: 'fake-data',             cat: '🎲 Fun & Productivity',   icon: '🃏' },
+  { name: 'Wheel of Names',          path: 'wheel-of-names',        cat: '🎲 Fun & Productivity',   icon: '🎡' },
+  // 🔐 Security
+  { name: 'CSR Decoder',             path: 'csr-decoder',           cat: '🔐 Security',             icon: '📜' },
+  // 📁 Images & PDF
+  { name: 'Image Converter',         path: 'image-converter',       cat: '📁 Images & PDF',         icon: '🖼️' },
+  { name: 'PDF Toolkit',             path: 'pdf-toolkit',           cat: '📁 Images & PDF',         icon: '📄' },
+  { name: 'PDF to Text',             path: 'pdf-to-text',           cat: '📁 Images & PDF',         icon: '📃' },
+  // 📤 Share
+  { name: 'URL Shortener',           path: 'url-shortener',         cat: '📤 Share',                icon: '🔗' },
+  { name: 'Pastebin',                path: 'pastebin',              cat: '📤 Share',                icon: '📋' },
+  { name: 'File Share',              path: 'file-share',            cat: '📤 Share',                icon: '📦' },
+];
+
+function initToolSidebar() {
+  const m = window.location.pathname.match(/\/tools\/([^\/]+)/);
+  if (!m) return;
+  const currentPath = m[1];
+
+  // Inject toggle button into header
+  const headerActions = document.querySelector('.header-actions');
+  if (!headerActions) return;
+  const toggleBtn = document.createElement('button');
+  toggleBtn.className = 'ot-sidebar-btn';
+  toggleBtn.id = 'otSidebarToggle';
+  toggleBtn.innerHTML = '☰ Tools';
+  toggleBtn.title = 'Browse all tools (Ctrl+K)';
+  headerActions.prepend(toggleBtn);
+
+  // Build sidebar + backdrop
+  const backdrop = document.createElement('div');
+  backdrop.className = 'ot-sidebar-backdrop';
+
+  const sidebar = document.createElement('div');
+  sidebar.className = 'ot-sidebar';
+  sidebar.innerHTML = `
+    <div class="ot-sidebar-head">
+      <strong>🛠️ All Tools</strong>
+      <button class="ot-sidebar-close" title="Close (Esc)">✕</button>
+    </div>
+    <div class="ot-sidebar-search">
+      <input type="text" id="otSidebarSearch" placeholder="Search tools… (Ctrl+K)" autocomplete="off">
+    </div>
+    <div class="ot-sidebar-list" id="otSidebarList"></div>
+  `;
+
+  document.body.appendChild(backdrop);
+  document.body.appendChild(sidebar);
+
+  const searchInput = sidebar.querySelector('#otSidebarSearch');
+  const listEl      = sidebar.querySelector('#otSidebarList');
+
+  function renderList(q) {
+    const query    = (q || '').toLowerCase().trim();
+    const filtered = query
+      ? OT_TOOLS.filter(t => t.name.toLowerCase().includes(query) || t.cat.toLowerCase().includes(query))
+      : OT_TOOLS;
+
+    const cats = [], map = {};
+    for (const t of filtered) {
+      if (!map[t.cat]) { map[t.cat] = []; cats.push(t.cat); }
+      map[t.cat].push(t);
+    }
+
+    let html = '';
+    for (const cat of cats) {
+      if (!query) html += `<div class="ot-sidebar-cat">${cat}</div>`;
+      for (const t of map[cat]) {
+        html += `<a class="ot-sidebar-item${t.path === currentPath ? ' current' : ''}" href="../${t.path}/index.html">
+          <span class="si-icon">${t.icon}</span><span class="si-name">${t.name}</span>
+        </a>`;
+      }
+    }
+    if (!html) html = '<div style="padding:1rem;color:var(--text-muted);font-size:.84rem">No tools found.</div>';
+    listEl.innerHTML = html;
+  }
+
+  renderList();
+
+  function openSidebar()  { sidebar.classList.add('open');    backdrop.classList.add('show');    setTimeout(() => searchInput.focus(), 40); }
+  function closeSidebar() { sidebar.classList.remove('open'); backdrop.classList.remove('show'); }
+
+  toggleBtn.addEventListener('click', () => sidebar.classList.contains('open') ? closeSidebar() : openSidebar());
+  sidebar.querySelector('.ot-sidebar-close').addEventListener('click', closeSidebar);
+  backdrop.addEventListener('click', closeSidebar);
+  searchInput.addEventListener('input', () => renderList(searchInput.value));
+
+  // Arrow-key + Enter navigation
+  searchInput.addEventListener('keydown', e => {
+    const items  = [...listEl.querySelectorAll('.ot-sidebar-item')];
+    const focused = listEl.querySelector('.ot-sidebar-item.focused');
+    let idx = items.indexOf(focused);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (focused) focused.classList.remove('focused');
+      idx = (idx + 1) % items.length;
+      items[idx]?.classList.add('focused');
+      items[idx]?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (focused) focused.classList.remove('focused');
+      idx = (idx - 1 + items.length) % items.length;
+      items[idx]?.classList.add('focused');
+      items[idx]?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter' && focused) {
+      focused.click();
+    } else if (e.key === 'Escape') {
+      closeSidebar();
+    }
+  });
+
+  // Ctrl+K / Escape global shortcuts
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+    } else if (e.key === 'Escape' && sidebar.classList.contains('open')) {
+      closeSidebar();
+    }
+  });
+}
+
 /* ---------- Auto-init on DOMContentLoaded ---------- */
 document.addEventListener('DOMContentLoaded', () => {
   initThemeToggle();
   initTabs();
+  initToolSidebar();
   // Auth nav rendered by auth.js when present (loaded after common.js on auth-enabled pages)
 });

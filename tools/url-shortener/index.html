@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>URL Shortener — Office Tools</title>
+  <meta name="description" content="Create short links from long URLs with optional custom aliases and configurable expiry (1 day to forever). Self-hosted via PocketBase — your data stays on your server.">
+  <meta name="keywords" content="URL shortener, short link, custom URL shortener, link shortener, shorten URL, self-hosted link shortener, URL alias">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Self-Hosted URL Shortener — Short Links with Custom Alias &amp; Expiry">
+  <meta property="og:description" content="Create short links from long URLs with optional custom aliases and configurable expiry (1 day to forever). Self-hosted via PocketBase — your data stays on your server.">
+  <meta property="og:url" content="https://yourdomain.com/tools/url-shortener/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Self-Hosted URL Shortener — Short Links with Custom Alias &amp; Expiry">
+  <meta name="twitter:description" content="Create short links from long URLs with optional custom aliases and configurable expiry (1 day to forever). Self-hosted via PocketBase — your data stays on your server.">
+  <link rel="canonical" href="https://yourdomain.com/tools/url-shortener/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"URL Shortener","description":"Create short links from long URLs with optional custom aliases and configurable expiry (1 day to forever). Self-hosted via PocketBase — your data stays on your server.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://yourdomain.com/tools/url-shortener/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .short-result {
+      background: var(--bg-secondary);
+      border: 1.5px solid var(--primary);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      flex-wrap: wrap;
+    }
+    .short-url {
+      font-family: 'Courier New', monospace;
+      font-weight: 700;
+      font-size: .95rem;
+      color: var(--primary);
+      flex: 1;
+      word-break: break-all;
+    }
+    .hist-item {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      padding: .5rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: .85rem;
+    }
+    .hist-item:last-child { border-bottom: none; }
+    .hist-orig { color: var(--text-muted); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hist-short { font-family: monospace; color: var(--primary); white-space: nowrap; }
+    .hist-exp { font-size: .75rem; color: var(--text-muted); white-space: nowrap; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">URL Shortener</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔗 URL Shortener</h1>
+    <p>Create short, shareable links with optional custom aliases and expiry.</p>
+  </div>
+
+  <!-- Shorten form -->
+  <div class="card">
+    <div class="mb-2">
+      <label class="form-label">Long URL <span style="color:var(--danger)">*</span></label>
+      <input type="url" id="longUrl" class="form-input" placeholder="https://example.com/very/long/path?query=value" autocomplete="off">
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem" class="mt-2">
+      <div>
+        <label class="form-label">Custom alias <span style="color:var(--text-muted)">(optional)</span></label>
+        <input type="text" id="alias" class="form-input" placeholder="my-link (4–20 chars)" maxlength="20" autocomplete="off">
+        <div style="font-size:.72rem;color:var(--text-muted);margin-top:.25rem">Letters, numbers, hyphens only</div>
+      </div>
+      <div>
+        <label class="form-label">Expires</label>
+        <select id="expiry" class="form-input">
+          <option value="0">Never</option>
+          <option value="1">1 day</option>
+          <option value="7" selected>7 days</option>
+          <option value="30">30 days</option>
+          <option value="365">1 year</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="btn-group mt-3">
+      <button class="btn btn-primary" id="shortenBtn">Shorten URL</button>
+    </div>
+
+    <div id="errorBox" class="alert alert-danger mt-2 hidden"></div>
+
+    <!-- Result -->
+    <div id="resultBox" class="hidden mt-3">
+      <div class="short-result">
+        <span class="short-url" id="shortUrlText"></span>
+        <button class="btn btn-secondary btn-sm" id="copyShortBtn">Copy</button>
+        <a class="btn btn-secondary btn-sm" id="openShortBtn" target="_blank" rel="noopener">Open ↗</a>
+      </div>
+      <p style="font-size:.78rem;color:var(--text-muted);margin-top:.5rem" id="expiryNote"></p>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="card mt-2" id="histCard" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <strong>Recent Links</strong>
+      <button class="btn btn-secondary btn-sm" id="clearHistBtn">Clear</button>
+    </div>
+    <div id="histList" class="mt-2"></div>
+  </div>
+
+  <!-- Info -->
+  <div class="card mt-2" style="font-size:.84rem;color:var(--text-muted)">
+    <strong style="color:var(--text)">How it works</strong>
+    <ul style="margin:.5rem 0 0 1.2rem;line-height:1.7">
+      <li>Short links use the format <code>{site}/s/#CODE</code></li>
+      <li>Links are stored on your PocketBase instance — no third-party service</li>
+      <li>Expired links automatically stop redirecting</li>
+      <li>Requires the backend (PocketBase) to be configured</li>
+    </ul>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const PB       = window.OT_CONFIG?.PB_URL || 'http://localhost:8090';
+const HIST_KEY = 'ot-urlshort-history';
+
+/* ── Helpers ─────────────────────────────────────────────── */
+function genCode(len = 8) {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const arr   = new Uint8Array(len);
+  crypto.getRandomValues(arr);
+  return [...arr].map(b => chars[b % chars.length]).join('');
+}
+
+function calcExpiry(days) {
+  if (!days || days === '0') return '';
+  const d = new Date();
+  d.setDate(d.getDate() + parseInt(days));
+  return d.toISOString().replace('T', ' ').split('.')[0] + 'Z';
+}
+
+function isValidUrl(s) {
+  try { return ['http:', 'https:'].includes(new URL(s).protocol); } catch { return false; }
+}
+
+function shortUrl(code) {
+  return `${location.origin}/s/#${code}`;
+}
+
+function showError(msg) {
+  const box = document.getElementById('errorBox');
+  box.textContent = msg;
+  box.classList.remove('hidden');
+}
+function clearError() { document.getElementById('errorBox').classList.add('hidden'); }
+
+/* ── PocketBase ──────────────────────────────────────────── */
+async function pbCreate(body) {
+  const r = await fetch(`${PB}/api/collections/short_urls/records`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.message || 'Server error');
+  return d;
+}
+
+async function codeExists(code) {
+  const r = await fetch(`${PB}/api/collections/short_urls/records?filter=${encodeURIComponent(`code="${code}"`)}&perPage=1`);
+  if (!r.ok) return false;
+  const d = await r.json();
+  return (d.items?.length || 0) > 0;
+}
+
+/* ── History ─────────────────────────────────────────────── */
+function loadHistory() { try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch { return []; } }
+function saveHistory(h) { localStorage.setItem(HIST_KEY, JSON.stringify(h.slice(0, 20))); }
+
+function renderHistory() {
+  const hist = loadHistory();
+  const card = document.getElementById('histCard');
+  const list = document.getElementById('histList');
+  if (!hist.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  list.innerHTML = hist.map(h => `
+    <div class="hist-item">
+      <span class="hist-orig" title="${escHtml(h.long_url)}">${escHtml(h.long_url)}</span>
+      <a class="hist-short" href="${escHtml(shortUrl(h.code))}" target="_blank" rel="noopener">/s/#${escHtml(h.code)}</a>
+      <span class="hist-exp">${h.expires ? new Date(h.expires).toLocaleDateString() : '∞'}</span>
+      <button class="btn btn-secondary btn-sm" onclick="copyText('${shortUrl(h.code)}', this)">Copy</button>
+    </div>`).join('');
+}
+
+/* ── Shorten ─────────────────────────────────────────────── */
+document.getElementById('shortenBtn').addEventListener('click', async () => {
+  clearError();
+  document.getElementById('resultBox').classList.add('hidden');
+
+  const longUrl = document.getElementById('longUrl').value.trim();
+  const alias   = document.getElementById('alias').value.trim();
+  const expDays = document.getElementById('expiry').value;
+
+  if (!longUrl) return showError('Please enter a URL.');
+  if (!isValidUrl(longUrl)) return showError('Please enter a valid http:// or https:// URL.');
+  if (alias && !/^[a-zA-Z0-9-]{4,20}$/.test(alias)) {
+    return showError('Alias must be 4–20 characters: letters, numbers, hyphens only.');
+  }
+
+  const btn = document.getElementById('shortenBtn');
+  btn.textContent = 'Creating…'; btn.disabled = true;
+
+  try {
+    let code = alias || genCode(8);
+
+    if (await codeExists(code)) {
+      if (alias) throw new Error(`Alias "${alias}" is already taken. Try a different one.`);
+      code = genCode(8); // retry once
+    }
+
+    const expires = calcExpiry(expDays);
+    await pbCreate({ code, long_url: longUrl, expires });
+
+    const sUrl = shortUrl(code);
+    document.getElementById('shortUrlText').textContent = sUrl;
+    document.getElementById('openShortBtn').href = sUrl;
+    document.getElementById('copyShortBtn').onclick = () => copyText(sUrl, document.getElementById('copyShortBtn'));
+    document.getElementById('expiryNote').textContent = expires
+      ? `Expires: ${new Date(expires).toLocaleDateString()}`
+      : 'This link never expires.';
+    document.getElementById('resultBox').classList.remove('hidden');
+
+    // Save to history
+    const hist = loadHistory();
+    hist.unshift({ code, long_url: longUrl, expires, created: new Date().toISOString() });
+    saveHistory(hist);
+    renderHistory();
+
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    btn.textContent = 'Shorten URL'; btn.disabled = false;
+  }
+});
+
+document.getElementById('clearHistBtn').addEventListener('click', () => {
+  localStorage.removeItem(HIST_KEY);
+  renderHistory();
+});
+
+renderHistory();
+</script>
+</body>
+</html>

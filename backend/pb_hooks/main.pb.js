@@ -70,3 +70,42 @@ onRecordAfterCreateSuccess((e) => {
   const sub = e.record;
   console.log(`[subscription] New: user=${sub.getString("user")} plan=${sub.getString("plan")} status=${sub.getString("status")}`);
 }, "subscriptions");
+
+// ── Purge expired short URLs (daily at 04:00) ────────────────
+cronAdd("purge-short-urls", "0 4 * * *", () => {
+  const now = new Date().toISOString();
+  const records = $app.findRecordsByFilter(
+    "short_urls",
+    `expires != '' && expires < {:now}`,
+    "-created", 500, 0,
+    { now }
+  );
+  records.forEach(r => $app.delete(r));
+  if (records.length) console.log(`[cron] Deleted ${records.length} expired short URL(s).`);
+});
+
+// ── Purge expired pastes (daily at 04:05) ────────────────────
+cronAdd("purge-pastes", "5 4 * * *", () => {
+  const now = new Date().toISOString();
+  const records = $app.findRecordsByFilter(
+    "pastes",
+    `expires != '' && expires < {:now}`,
+    "-created", 500, 0,
+    { now }
+  );
+  records.forEach(r => $app.delete(r));
+  if (records.length) console.log(`[cron] Deleted ${records.length} expired paste(s).`);
+});
+
+// ── Purge expired file shares (daily at 04:10) ───────────────
+cronAdd("purge-file-shares", "10 4 * * *", () => {
+  const now = new Date().toISOString();
+  const records = $app.findRecordsByFilter(
+    "file_shares",
+    `expires != '' && expires < {:now}`,
+    "-created", 200, 0,
+    { now }
+  );
+  records.forEach(r => $app.delete(r));
+  if (records.length) console.log(`[cron] Deleted ${records.length} expired file share(s).`);
+});

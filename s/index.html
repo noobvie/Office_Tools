@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redirecting… — Office Tools</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .redir-box { text-align: center; max-width: 480px; width: 100%; padding: 2rem; }
+    .redir-icon { font-size: 3rem; margin-bottom: 1rem; }
+    @keyframes pulse-anim { to { opacity: .2; transform: scale(.7); } }
+    .loading-pulse {
+      display: inline-block; width: 12px; height: 12px;
+      border-radius: 50%; background: var(--primary);
+      animation: pulse-anim .8s ease-in-out infinite alternate;
+      margin-right: .4rem; vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+<div class="redir-box">
+  <div id="status">
+    <div class="redir-icon">🔗</div>
+    <p><span class="loading-pulse"></span> Finding your destination…</p>
+  </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script>
+(async () => {
+  const PB      = window.OT_CONFIG?.PB_URL || 'http://localhost:8090';
+  const el      = document.getElementById('status');
+  const code    = location.hash.slice(1) || new URLSearchParams(location.search).get('c');
+
+  function show(icon, html) {
+    el.innerHTML = `<div class="redir-icon">${icon}</div>${html}`;
+  }
+
+  if (!code) {
+    show('❓', `<p class="text-muted">No short code provided.</p>
+      <a href="../tools/url-shortener/index.html" class="btn btn-primary mt-2">Create a Short URL</a>`);
+    return;
+  }
+
+  try {
+    const now    = new Date().toISOString().replace('T', ' ').split('.')[0];
+    const filter = `code="${code.replace(/"/g, '')}" && (expires="" || expires>"${now}")`;
+    const r      = await fetch(`${PB}/api/collections/short_urls/records?filter=${encodeURIComponent(filter)}&perPage=1`);
+    if (!r.ok) throw new Error('Service unavailable');
+    const data   = await r.json();
+    const record = data.items?.[0];
+
+    if (!record) {
+      show('⏱️', `<p><strong>Link not found or expired.</strong></p>
+        <p class="text-muted" style="font-size:.88rem">The short link may have expired or never existed.</p>
+        <a href="../tools/url-shortener/index.html" class="btn btn-secondary btn-sm mt-2">Create a new link</a>`);
+      document.title = 'Link Not Found — Office Tools';
+      return;
+    }
+
+    const dest = record.long_url;
+    show('✅', `<p>Redirecting to:</p>
+      <p style="word-break:break-all;font-size:.85rem;color:var(--text-muted)">${dest}</p>
+      <p class="text-muted" style="font-size:.8rem">If you are not redirected, <a href="${dest}">click here</a>.</p>`);
+
+    // Small delay so the destination is visible
+    setTimeout(() => { window.location.replace(dest); }, 600);
+
+  } catch (err) {
+    show('⚠️', `<p><strong>Could not reach the link service.</strong></p>
+      <p class="text-muted" style="font-size:.85rem">${err.message}</p>`);
+  }
+})();
+</script>
+</body>
+</html>

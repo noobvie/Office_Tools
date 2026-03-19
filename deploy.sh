@@ -180,7 +180,11 @@ sed -i "s|https://pb\.yourdomain\.com|https://${DOMAIN}/pb-api|g"  "$CONFIG_FILE
 sed -i "s|https://pay\.yourdomain\.com|https://${DOMAIN}/pay-api|g" "$CONFIG_FILE"
 sed -i "s|https://yourdomain\.com|https://${DOMAIN}|g"              "$CONFIG_FILE"
 
-success "config.js updated for $DOMAIN"
+# Patch SEO canonical/OG URLs in all HTML files (canonical, og:url, JSON-LD url)
+info "Patching SEO domain placeholders in HTML files…"
+find "$REPO_DIR" -name "*.html" -not -path "*/.git/*" \
+  -exec sed -i "s|https://yourdomain\.com|https://${DOMAIN}|g" {} \;
+success "SEO domain patched in all HTML files for $DOMAIN"
 
 # ─── Step 4: Deploy frontend to web root ─────────────────────────────────────
 section "Step 4 — Deploying frontend to $WEB_ROOT"

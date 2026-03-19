@@ -1,6 +1,6 @@
 # Office Tools
 
-A collection of 33 free, browser-based utilities for everyday office and productivity work.
+A collection of 36 free, browser-based utilities for everyday office and productivity work.
 No build step, no framework, no tracking — everything runs locally in your browser.
 
 **Live site:** [https://github.com/noobvie/Office_Tools](https://github.com/noobvie/Office_Tools)
@@ -77,6 +77,13 @@ No build step, no framework, no tracking — everything runs locally in your bro
 |------|-------------|
 | Fake Data Generator | Realistic test data — names, emails, phones, addresses. Download CSV or JSON |
 | Wheel of Names | Animated spinning wheel to randomly pick a winner. Remove or keep winners |
+
+### 📤 Share
+| Tool | Description |
+|------|-------------|
+| URL Shortener | Short links with custom alias and expiry — self-hosted via PocketBase |
+| Pastebin | Share text/code snippets with syntax label, expiry, and burn-after-read |
+| File Share | Upload .zip/.tar/.rar (up to 1 GB) and share a download link — auto-deleted in max 7 days |
 
 ### 🔒 Security & Certificates
 | Tool | Description |

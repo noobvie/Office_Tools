@@ -54,5 +54,70 @@
     "createRule": "@request.auth.id != ''",
     "updateRule": null,
     "deleteRule": null
+  },
+
+  {
+    "name": "short_urls",
+    "type": "base",
+    "system": false,
+    "schema": [
+      { "name": "code",     "type": "text",   "required": true,  "options": { "min": 4, "max": 20 } },
+      { "name": "long_url", "type": "text",   "required": true,  "options": { "max": 4096 } },
+      { "name": "expires",  "type": "date",   "required": false, "options": {} }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX idx_surl_code ON short_urls (code)",
+      "CREATE INDEX idx_surl_expires ON short_urls (expires)"
+    ],
+    "listRule": "",
+    "viewRule": "",
+    "createRule": "",
+    "updateRule": null,
+    "deleteRule": null
+  },
+
+  {
+    "name": "pastes",
+    "type": "base",
+    "system": false,
+    "schema": [
+      { "name": "code",            "type": "text", "required": true,  "options": { "min": 4, "max": 20 } },
+      { "name": "title",           "type": "text", "required": false, "options": { "max": 200 } },
+      { "name": "content",         "type": "text", "required": true,  "options": {} },
+      { "name": "syntax",          "type": "text", "required": false, "options": { "max": 50 } },
+      { "name": "expires",         "type": "date", "required": false, "options": {} },
+      { "name": "burn_after_read", "type": "bool", "required": false, "options": {} }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX idx_pastes_code ON pastes (code)",
+      "CREATE INDEX idx_pastes_expires ON pastes (expires)"
+    ],
+    "listRule": "",
+    "viewRule": "",
+    "createRule": "",
+    "updateRule": null,
+    "deleteRule": ""
+  },
+
+  {
+    "name": "file_shares",
+    "type": "base",
+    "system": false,
+    "schema": [
+      { "name": "code",          "type": "text",   "required": true,  "options": { "min": 4, "max": 20 } },
+      { "name": "file",          "type": "file",   "required": true,  "options": { "maxSelect": 1, "maxSize": 1073741824, "mimeTypes": [], "thumbs": [] } },
+      { "name": "original_name", "type": "text",   "required": false, "options": { "max": 500 } },
+      { "name": "file_size",     "type": "number", "required": false, "options": { "min": 0 } },
+      { "name": "expires",       "type": "date",   "required": true,  "options": {} }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX idx_fshare_code ON file_shares (code)",
+      "CREATE INDEX idx_fshare_expires ON file_shares (expires)"
+    ],
+    "listRule": "",
+    "viewRule": "",
+    "createRule": "",
+    "updateRule": null,
+    "deleteRule": null
   }
 ]
