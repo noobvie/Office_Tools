@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF to Text — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
+    .drop-zone input[type=file] { display: none; }
+
+    .progress-bar { height: 5px; background: var(--border); border-radius: 50px; overflow: hidden; margin-top: .6rem; }
+    .progress-fill { height: 100%; background: var(--primary); transition: width .25s; width: 0%; }
+
+    .page-block {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: .75rem;
+      overflow: hidden;
+    }
+    .page-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .45rem .85rem;
+      background: var(--bg-secondary);
+      font-size: .82rem; font-weight: 600;
+      cursor: pointer; user-select: none;
+    }
+    .page-header:hover { background: var(--primary-dim); color: var(--primary); }
+    .page-body {
+      padding: .75rem .9rem;
+      font-size: .82rem; line-height: 1.65;
+      white-space: pre-wrap; word-break: break-word;
+      font-family: 'Courier New', monospace;
+      color: var(--text);
+      max-height: 260px;
+      overflow-y: auto;
+      border-top: 1px solid var(--border);
+    }
+    .page-body.collapsed { display: none; }
+
+    .stat-pill {
+      display: inline-block;
+      background: var(--primary-dim); color: var(--primary);
+      border-radius: 20px; padding: .2rem .65rem;
+      font-size: .78rem; font-weight: 600; margin-right: .3rem;
+    }
+
+    .action-bar { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+    .text-preview-area {
+      width: 100%;
+      min-height: 220px;
+      font-size: .82rem;
+      font-family: 'Courier New', monospace;
+      resize: vertical;
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">PDF to Text</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>📄 PDF to Text</h1>
+    <p>Extract text from any PDF. Download as plain <code>.txt</code> or Word <code>.docx</code>. Everything runs locally — no upload.</p>
+  </div>
+
+  <!-- Upload -->
+  <div class="card">
+    <div class="drop-zone" id="dropZone">
+      Drop a PDF here or <strong>click to browse</strong>
+      <p style="font-size:.77rem;margin:.3rem 0 0">PDF is read locally — never uploaded</p>
+      <input type="file" id="pdfFile" accept=".pdf,application/pdf">
+    </div>
+    <div id="progressWrap" style="display:none">
+      <div class="progress-bar mt-2"><div class="progress-fill" id="progressFill"></div></div>
+      <p id="progressLabel" style="font-size:.81rem;color:var(--text-muted);margin-top:.35rem">Reading…</p>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results" style="display:none">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+        <div>
+          <span class="stat-pill" id="statPages">0 pages</span>
+          <span class="stat-pill" id="statWords">0 words</span>
+          <span class="stat-pill" id="statChars">0 chars</span>
+        </div>
+        <div class="action-bar" style="margin-top:0">
+          <button class="btn btn-secondary btn-sm" id="copyAllBtn">Copy All</button>
+          <button class="btn btn-secondary btn-sm" id="dlTxtBtn">Download .txt</button>
+          <button class="btn btn-primary btn-sm" id="dlDocxBtn">Download .docx</button>
+        </div>
+      </div>
+
+      <div class="form-row mt-2" style="gap:.75rem;flex-wrap:wrap;align-items:center">
+        <label class="checkbox-row" style="margin:0">
+          <input type="checkbox" id="showPerPage" checked>
+          <label for="showPerPage" style="font-size:.84rem">Show per-page breakdown</label>
+        </label>
+        <label class="checkbox-row" style="margin:0">
+          <input type="checkbox" id="addPageNums" checked>
+          <label for="addPageNums" style="font-size:.84rem">Include page numbers in output</label>
+        </label>
+      </div>
+    </div>
+
+    <!-- Per-page view -->
+    <div id="perPageView"></div>
+
+    <!-- Flat view -->
+    <div class="card" id="flatView" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+        <strong style="font-size:.88rem">Full text</strong>
+        <button class="btn btn-ghost btn-sm" id="copyFlatBtn">Copy</button>
+      </div>
+      <textarea class="text-preview-area" id="flatText" readonly></textarea>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let pagesText = [];   // array of strings, one per page
+let pdfName   = '';
+
+// ── Drop / file input ───────────────────────────────────────────────
+const dropZone = document.getElementById('dropZone');
+const pdfFileEl= document.getElementById('pdfFile');
+dropZone.addEventListener('click', () => pdfFileEl.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); loadPdf(e.dataTransfer.files[0]); });
+pdfFileEl.addEventListener('change', () => loadPdf(pdfFileEl.files[0]));
+
+async function loadPdf(file) {
+  if (!file) return;
+  pdfName = file.name.replace(/\.pdf$/i, '');
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('progressWrap').style.display = '';
+  setProgress(5, 'Loading PDF…');
+
+  const buf = await file.arrayBuffer();
+  setProgress(15, 'Parsing PDF…');
+
+  let pdf;
+  try {
+    pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  } catch (e) {
+    setProgress(0, '');
+    document.getElementById('progressWrap').style.display = 'none';
+    alert('Could not read PDF: ' + e.message);
+    return;
+  }
+
+  pagesText = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    setProgress(15 + Math.round(80 * i / pdf.numPages), `Extracting page ${i} of ${pdf.numPages}…`);
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    // Join items, preserving newlines from transform data
+    let pageStr = '';
+    let lastY = null;
+    for (const item of content.items) {
+      if ('str' in item) {
+        if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) pageStr += '\n';
+        pageStr += item.str;
+        lastY = item.transform[5];
+      }
+    }
+    pagesText.push(pageStr.trim());
+  }
+
+  setProgress(100, 'Done');
+  setTimeout(() => { document.getElementById('progressWrap').style.display = 'none'; }, 500);
+
+  renderResults();
+}
+
+function setProgress(pct, label) {
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = label;
+}
+
+// ── Render results ──────────────────────────────────────────────────
+function buildFullText(includeNums) {
+  return pagesText.map((t, i) => {
+    const header = includeNums ? `━━━ Page ${i + 1} ━━━\n` : '';
+    return header + t;
+  }).join('\n\n');
+}
+
+function countWords(str) { return str.split(/\s+/).filter(Boolean).length; }
+
+function renderResults() {
+  const totalWords = pagesText.reduce((n, t) => n + countWords(t), 0);
+  const totalChars = pagesText.reduce((n, t) => n + t.length, 0);
+  document.getElementById('statPages').textContent = pagesText.length + ' page' + (pagesText.length !== 1 ? 's' : '');
+  document.getElementById('statWords').textContent = totalWords.toLocaleString() + ' words';
+  document.getElementById('statChars').textContent = totalChars.toLocaleString() + ' chars';
+  document.getElementById('results').style.display = '';
+  updateViews();
+}
+
+function updateViews() {
+  const perPage  = document.getElementById('showPerPage').checked;
+  const addNums  = document.getElementById('addPageNums').checked;
+  document.getElementById('perPageView').style.display = perPage ? '' : 'none';
+  document.getElementById('flatView').style.display    = perPage ? 'none' : '';
+
+  if (perPage) {
+    const container = document.getElementById('perPageView');
+    container.innerHTML = pagesText.map((t, i) => `
+      <div class="page-block">
+        <div class="page-header" onclick="togglePage(${i})">
+          <span>Page ${i + 1}</span>
+          <span style="color:var(--text-muted);font-weight:400">${countWords(t)} words &nbsp; ▾</span>
+        </div>
+        <div class="page-body" id="pb${i}">${escHtml(t || '(no text on this page)')}</div>
+      </div>`).join('');
+  } else {
+    document.getElementById('flatText').value = buildFullText(addNums);
+  }
+}
+
+function togglePage(i) {
+  const body = document.getElementById('pb' + i);
+  body.classList.toggle('collapsed');
+}
+
+document.getElementById('showPerPage').addEventListener('change', updateViews);
+document.getElementById('addPageNums').addEventListener('change', updateViews);
+
+// ── Actions ─────────────────────────────────────────────────────────
+document.getElementById('copyAllBtn').addEventListener('click', () => {
+  const text = buildFullText(document.getElementById('addPageNums').checked);
+  copyText(text, document.getElementById('copyAllBtn'));
+});
+document.getElementById('copyFlatBtn').addEventListener('click', () => {
+  copyText(document.getElementById('flatText').value, document.getElementById('copyFlatBtn'));
+});
+
+document.getElementById('dlTxtBtn').addEventListener('click', () => {
+  const text = buildFullText(document.getElementById('addPageNums').checked);
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  dlBlob(blob, pdfName + '.txt');
+});
+
+document.getElementById('dlDocxBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('dlDocxBtn');
+  btn.disabled = true; btn.textContent = 'Generating…';
+  try {
+    const { Document, Packer, Paragraph, TextRun, HeadingLevel } = docx;
+    const includeNums = document.getElementById('addPageNums').checked;
+    const children = [];
+
+    pagesText.forEach((text, i) => {
+      if (includeNums) {
+        children.push(new Paragraph({ text: `Page ${i + 1}`, heading: HeadingLevel.HEADING_2 }));
+      }
+      const lines = text.split('\n');
+      lines.forEach(line => {
+        children.push(new Paragraph({ children: [new TextRun(line)] }));
+      });
+      if (i < pagesText.length - 1) {
+        children.push(new Paragraph({ children: [new TextRun({ text: '', break: 1 })] }));
+      }
+    });
+
+    const doc = new Document({ sections: [{ properties: {}, children }] });
+    const blob = await Packer.toBlob(doc);
+    dlBlob(blob, pdfName + '.docx');
+  } catch (e) {
+    alert('Error generating .docx: ' + e.message);
+  }
+  btn.disabled = false; btn.textContent = 'Download .docx';
+});
+
+function dlBlob(blob, name) {
+  const u = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = u; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(u), 8000);
+}
+</script>
+</body>
+</html>

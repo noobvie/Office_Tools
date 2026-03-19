@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Converter — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
+    .drop-zone input[type=file] { display: none; }
+
+    .file-list { margin-top: .75rem; display: flex; flex-direction: column; gap: .4rem; }
+    .file-item {
+      display: flex; align-items: center; gap: .65rem;
+      padding: .55rem .75rem;
+      background: var(--bg-secondary); border-radius: var(--radius);
+      font-size: .84rem;
+    }
+    .file-item .fi-icon { font-size: 1.3rem; flex-shrink: 0; }
+    .file-item .fi-info { flex: 1; min-width: 0; }
+    .file-item .fi-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-item .fi-size { font-size: .77rem; color: var(--text-muted); }
+    .file-item .fi-status { font-size: .78rem; white-space: nowrap; }
+    .st-wait { color: var(--text-muted); }
+    .st-busy { color: var(--warning); }
+    .st-ok   { color: var(--success); }
+    .st-err  { color: var(--danger); }
+
+    .preview-row { display: flex; gap: 1rem; margin-top: .75rem; }
+    .preview-col { flex: 1; min-width: 0; }
+    .preview-col img { max-width: 100%; max-height: 210px; border-radius: var(--radius); border: 1px solid var(--border); display: block; }
+    .preview-label { font-size: .77rem; color: var(--text-muted); margin-bottom: .3rem; }
+    .size-pill {
+      display: inline-block; margin-top: .3rem;
+      background: var(--bg-secondary); border-radius: 20px;
+      padding: .15rem .55rem; font-size: .78rem;
+    }
+    .size-shrink { color: var(--success); font-weight: 600; margin-left: .3rem; }
+    .size-grow   { color: var(--warning); font-weight: 600; margin-left: .3rem; }
+
+    .quality-row { display: flex; align-items: center; gap: .75rem; }
+    .quality-row label { font-size: .84rem; white-space: nowrap; flex-shrink: 0; }
+    .quality-row input[type=range] { flex: 1; }
+    .quality-val { font-weight: 700; min-width: 2.8rem; text-align: right; font-size: .9rem; }
+
+    .resize-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: .5rem; align-items: flex-end; }
+    .lock-btn {
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: 6px; cursor: pointer; padding: .35rem .55rem;
+      font-size: .95rem; color: var(--text-muted); transition: all .15s;
+      margin-bottom: 1px;
+    }
+    .lock-btn.locked { color: var(--primary); border-color: var(--primary); background: var(--primary-dim); }
+
+    @media (max-width: 580px) { .preview-row { flex-direction: column; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Image Converter</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🖼️ Image Converter</h1>
+    <p>Convert HEIC/HEIF (iPhone photos) to JPG or PNG, compress images, and resize — all locally in your browser.</p>
+  </div>
+
+  <div class="card" data-tabs>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="convTab">Convert Format</button>
+      <button class="tab-btn" data-tab="compTab">Compress</button>
+      <button class="tab-btn" data-tab="resTab">Resize</button>
+    </div>
+
+    <!-- ── Convert Format ─────────────────────────────────── -->
+    <div class="tab-pane active" id="convTab">
+      <p style="font-size:.84rem;color:var(--text-muted);margin-bottom:.75rem">
+        Supports HEIC/HEIF (iPhone), BMP, TIFF, WebP, GIF (first frame) → JPG / PNG / WebP. Multiple files supported.
+      </p>
+      <div class="drop-zone" id="convDrop">
+        Drop images here or <strong>click to browse</strong>
+        <p style="font-size:.77rem;margin:.25rem 0 0">Multiple files OK</p>
+        <input type="file" id="convFile" accept="image/*,.heic,.heif" multiple>
+      </div>
+
+      <div class="form-row mt-2" style="gap:.65rem;align-items:flex-end;flex-wrap:wrap">
+        <div class="form-group" style="margin:0;min-width:110px">
+          <label>Output format</label>
+          <select id="convFormat">
+            <option value="jpg">JPG</option>
+            <option value="png">PNG</option>
+            <option value="webp">WebP</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0;flex:1;min-width:160px" id="convQGroup">
+          <label>Quality: <span id="convQVal">85</span>%</label>
+          <input type="range" id="convQ" min="1" max="100" value="85">
+        </div>
+        <button class="btn btn-primary" id="convBtn" disabled>Convert All</button>
+      </div>
+
+      <div id="convList" class="file-list" style="display:none"></div>
+    </div>
+
+    <!-- ── Compress ───────────────────────────────────────── -->
+    <div class="tab-pane" id="compTab">
+      <div class="drop-zone" id="compDrop">
+        Drop a JPG, PNG or WebP here or <strong>click to browse</strong>
+        <input type="file" id="compFile" accept="image/jpeg,image/png,image/webp">
+      </div>
+
+      <div id="compControls" style="display:none">
+        <div class="form-row mt-2" style="gap:.65rem;align-items:flex-end;flex-wrap:wrap">
+          <div class="form-group" style="margin:0;min-width:140px">
+            <label>Output format</label>
+            <select id="compFmt">
+              <option value="same">Same as input</option>
+              <option value="jpg">JPG</option>
+              <option value="png">PNG</option>
+              <option value="webp">WebP</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0;flex:1;min-width:160px" id="compQGroup">
+            <label>Quality: <span id="compQVal">80</span>%</label>
+            <input type="range" id="compQ" min="1" max="100" value="80">
+          </div>
+        </div>
+
+        <div class="preview-row mt-2">
+          <div class="preview-col">
+            <div class="preview-label">Original</div>
+            <img id="compOrigImg" alt="original">
+            <span class="size-pill" id="compOrigSz">—</span>
+          </div>
+          <div class="preview-col">
+            <div class="preview-label">Compressed <span id="compSaveLbl"></span></div>
+            <img id="compNewImg" alt="compressed">
+            <span class="size-pill" id="compNewSz">—</span>
+          </div>
+        </div>
+
+        <button class="btn btn-primary mt-2" id="compDownBtn">Download Compressed</button>
+      </div>
+    </div>
+
+    <!-- ── Resize ─────────────────────────────────────────── -->
+    <div class="tab-pane" id="resTab">
+      <div class="drop-zone" id="resDrop">
+        Drop any image here or <strong>click to browse</strong>
+        <input type="file" id="resFile" accept="image/*,.heic,.heif">
+      </div>
+
+      <div id="resControls" style="display:none">
+        <div class="alert alert-info mt-2" id="resInfo" style="font-size:.84rem;padding:.45rem .85rem"></div>
+
+        <div class="resize-grid mt-2">
+          <div class="form-group" style="margin:0">
+            <label>Width (px)</label>
+            <input type="number" id="resW" min="1" max="16000">
+          </div>
+          <button class="lock-btn locked" id="lockBtn" title="Lock aspect ratio">&#128274;</button>
+          <div class="form-group" style="margin:0">
+            <label>Height (px)</label>
+            <input type="number" id="resH" min="1" max="16000">
+          </div>
+        </div>
+
+        <div class="form-row mt-2" style="gap:.65rem;align-items:flex-end;flex-wrap:wrap">
+          <div class="form-group" style="margin:0;min-width:110px">
+            <label>Format</label>
+            <select id="resFmt">
+              <option value="png">PNG</option>
+              <option value="jpg">JPG</option>
+              <option value="webp">WebP</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0;flex:1;min-width:160px" id="resQGroup">
+            <label>Quality: <span id="resQVal">90</span>%</label>
+            <input type="range" id="resQ" min="1" max="100" value="90">
+          </div>
+          <button class="btn btn-primary" id="resBtn">Download Resized</button>
+        </div>
+
+        <div class="mt-2" style="text-align:center">
+          <img id="resThumb" style="max-width:100%;max-height:200px;border-radius:var(--radius);border:1px solid var(--border)" alt="preview">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-2" style="font-size:.84rem">
+    <strong>Supported input formats</strong>
+    <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.6rem">
+      <span class="badge badge-primary">HEIC/HEIF (iPhone)</span>
+      <span class="badge">JPG</span>
+      <span class="badge">PNG</span>
+      <span class="badge">WebP</span>
+      <span class="badge">BMP</span>
+      <span class="badge">GIF (first frame)</span>
+    </div>
+    <p class="text-muted mt-2" style="font-size:.79rem">All conversion runs locally in your browser. No images are uploaded to any server.</p>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+// ── Shared helpers ─────────────────────────────────────────────────────
+function fmtSz(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(2) + ' MB';
+}
+function dlBlob(blob, name) {
+  const u = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = u; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(u), 8000);
+}
+function noExt(n) { return n.replace(/\.[^.]+$/, ''); }
+function isHeic(f) { return f.type === 'image/heic' || f.type === 'image/heif' || /\.(heic|heif)$/i.test(f.name); }
+function loadImg(src) {
+  return new Promise((ok, err) => {
+    const i = new Image(); i.onload = () => ok(i); i.onerror = err; i.src = src;
+  });
+}
+async function fileToUrl(f) {
+  if (isHeic(f)) {
+    const b = await heic2any({ blob: f, toType: 'image/png' });
+    return URL.createObjectURL(Array.isArray(b) ? b[0] : b);
+  }
+  return URL.createObjectURL(f);
+}
+function imgToBlob(img, mime, q) {
+  return new Promise(res => {
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const ctx = c.getContext('2d');
+    if (mime === 'image/jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); }
+    ctx.drawImage(img, 0, 0);
+    c.toBlob(res, mime, mime === 'image/png' ? undefined : q / 100);
+  });
+}
+function fmtMime(fmt) {
+  return fmt === 'jpg' ? 'image/jpeg' : fmt === 'webp' ? 'image/webp' : 'image/png';
+}
+function bindDrop(zone, input, cb) {
+  zone.addEventListener('click', () => input.click());
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragover'); cb(e.dataTransfer.files); });
+  input.addEventListener('change', () => cb(input.files));
+}
+
+// ── CONVERT TAB ───────────────────────────────────────────────────────
+let convFiles = [];
+const convDrop = document.getElementById('convDrop');
+const convFileEl = document.getElementById('convFile');
+const convFmt = document.getElementById('convFormat');
+const convQ   = document.getElementById('convQ');
+const convQVal= document.getElementById('convQVal');
+const convQGroup = document.getElementById('convQGroup');
+const convBtn = document.getElementById('convBtn');
+const convList= document.getElementById('convList');
+
+convFmt.addEventListener('change', () => {
+  convQGroup.style.display = convFmt.value === 'png' ? 'none' : '';
+});
+convQ.addEventListener('input', () => convQVal.textContent = convQ.value);
+
+bindDrop(convDrop, convFileEl, files => {
+  convFiles = Array.from(files);
+  convList.style.display = 'flex';
+  convList.innerHTML = convFiles.map((f, i) => `
+    <div class="file-item" id="cfi${i}">
+      <span class="fi-icon">🖼️</span>
+      <div class="fi-info">
+        <div class="fi-name">${escHtml(f.name)}</div>
+        <div class="fi-size">${fmtSz(f.size)}</div>
+      </div>
+      <span class="fi-status st-wait" id="cfs${i}">Waiting…</span>
+    </div>`).join('');
+  convBtn.disabled = false;
+});
+
+convBtn.addEventListener('click', async () => {
+  const fmt  = convFmt.value;
+  const q    = parseInt(convQ.value);
+  const mime = fmtMime(fmt);
+  convBtn.disabled = true;
+  convBtn.textContent = 'Converting…';
+
+  for (let i = 0; i < convFiles.length; i++) {
+    const f = convFiles[i];
+    const st = document.getElementById('cfs' + i);
+    st.textContent = 'Converting…'; st.className = 'fi-status st-busy';
+    try {
+      let blob;
+      if (isHeic(f)) {
+        const r = await heic2any({ blob: f, toType: mime, quality: q / 100 });
+        blob = Array.isArray(r) ? r[0] : r;
+      } else {
+        const url = URL.createObjectURL(f);
+        const img = await loadImg(url);
+        URL.revokeObjectURL(url);
+        blob = await imgToBlob(img, mime, q);
+      }
+      dlBlob(blob, noExt(f.name) + '.' + fmt);
+      st.textContent = '✓ ' + fmtSz(blob.size);
+      st.className = 'fi-status st-ok';
+    } catch (e) {
+      st.textContent = '✗ ' + (e.message || 'Error');
+      st.className = 'fi-status st-err';
+    }
+    if (i < convFiles.length - 1) await new Promise(r => setTimeout(r, 350));
+  }
+  convBtn.disabled = false;
+  convBtn.textContent = 'Convert All';
+});
+
+// ── COMPRESS TAB ─────────────────────────────────────────────────────
+let compFile = null, compImg = null, compBlob = null;
+const compDrop    = document.getElementById('compDrop');
+const compFileEl  = document.getElementById('compFile');
+const compCtrl    = document.getElementById('compControls');
+const compFmt     = document.getElementById('compFmt');
+const compQ       = document.getElementById('compQ');
+const compQVal    = document.getElementById('compQVal');
+const compQGroup  = document.getElementById('compQGroup');
+const compOrigImg = document.getElementById('compOrigImg');
+const compNewImg  = document.getElementById('compNewImg');
+const compOrigSz  = document.getElementById('compOrigSz');
+const compNewSz   = document.getElementById('compNewSz');
+const compSaveLbl = document.getElementById('compSaveLbl');
+const compDownBtn = document.getElementById('compDownBtn');
+
+function compMime() {
+  const v = compFmt.value;
+  if (v === 'same') return compFile?.type === 'image/png' ? 'image/png' : compFile?.type === 'image/webp' ? 'image/webp' : 'image/jpeg';
+  return fmtMime(v);
+}
+function compExt() { const m = compMime(); return m === 'image/jpeg' ? 'jpg' : m === 'image/webp' ? 'webp' : 'png'; }
+
+let compTimer = null;
+async function updateComp() {
+  if (!compImg) return;
+  const mime = compMime();
+  const isPng = mime === 'image/png';
+  compQGroup.style.display = isPng ? 'none' : '';
+  const c = document.createElement('canvas');
+  c.width = compImg.naturalWidth; c.height = compImg.naturalHeight;
+  const ctx = c.getContext('2d');
+  if (!isPng) { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); }
+  ctx.drawImage(compImg, 0, 0);
+  compBlob = await new Promise(res => c.toBlob(res, mime, isPng ? undefined : parseInt(compQ.value) / 100));
+  const oldSrc = compNewImg.src;
+  compNewImg.src = URL.createObjectURL(compBlob);
+  if (oldSrc.startsWith('blob:')) URL.revokeObjectURL(oldSrc);
+  compNewSz.textContent = fmtSz(compBlob.size);
+  const pct = ((1 - compBlob.size / compFile.size) * 100).toFixed(1);
+  if (compBlob.size < compFile.size) {
+    compSaveLbl.innerHTML = `<span class="size-shrink">▼ ${pct}% smaller</span>`;
+  } else {
+    const grow = ((compBlob.size / compFile.size - 1) * 100).toFixed(1);
+    compSaveLbl.innerHTML = `<span class="size-grow">▲ ${grow}% larger</span>`;
+  }
+}
+
+bindDrop(compDrop, compFileEl, async files => {
+  const f = files[0]; if (!f) return;
+  compFile = f;
+  const url = URL.createObjectURL(f);
+  compImg = await loadImg(url);
+  compOrigImg.src = url;
+  compOrigSz.textContent = fmtSz(f.size);
+  compCtrl.style.display = '';
+  await updateComp();
+});
+compQ.addEventListener('input', () => {
+  compQVal.textContent = compQ.value;
+  clearTimeout(compTimer); compTimer = setTimeout(updateComp, 250);
+});
+compFmt.addEventListener('change', updateComp);
+compDownBtn.addEventListener('click', () => {
+  if (!compBlob || !compFile) return;
+  dlBlob(compBlob, noExt(compFile.name) + '_compressed.' + compExt());
+});
+
+// ── RESIZE TAB ───────────────────────────────────────────────────────
+let resFile = null, resImg = null, resRatio = 1, resLocked = true;
+const resDrop   = document.getElementById('resDrop');
+const resFileEl = document.getElementById('resFile');
+const resCtrl   = document.getElementById('resControls');
+const resInfo   = document.getElementById('resInfo');
+const resW      = document.getElementById('resW');
+const resH      = document.getElementById('resH');
+const lockBtn   = document.getElementById('lockBtn');
+const resFmt    = document.getElementById('resFmt');
+const resQ      = document.getElementById('resQ');
+const resQVal   = document.getElementById('resQVal');
+const resQGroup = document.getElementById('resQGroup');
+const resBtn    = document.getElementById('resBtn');
+const resThumb  = document.getElementById('resThumb');
+
+resFmt.addEventListener('change', () => { resQGroup.style.display = resFmt.value === 'png' ? 'none' : ''; });
+resQ.addEventListener('input', () => resQVal.textContent = resQ.value);
+lockBtn.addEventListener('click', () => {
+  resLocked = !resLocked;
+  lockBtn.innerHTML = resLocked ? '&#128274;' : '&#128275;';
+  lockBtn.classList.toggle('locked', resLocked);
+});
+resW.addEventListener('input', () => { if (resLocked && resImg) { const w = +resW.value; if (w > 0) resH.value = Math.round(w / resRatio); } });
+resH.addEventListener('input', () => { if (resLocked && resImg) { const h = +resH.value; if (h > 0) resW.value = Math.round(h * resRatio); } });
+
+bindDrop(resDrop, resFileEl, async files => {
+  const f = files[0]; if (!f) return;
+  resFile = f;
+  const url = await fileToUrl(f);
+  resImg = await loadImg(url);
+  resRatio = resImg.naturalWidth / resImg.naturalHeight;
+  resW.value = resImg.naturalWidth;
+  resH.value = resImg.naturalHeight;
+  resInfo.textContent = `Original: ${resImg.naturalWidth} × ${resImg.naturalHeight} px  ·  ${fmtSz(f.size)}`;
+  resThumb.src = url;
+  resCtrl.style.display = '';
+  resQGroup.style.display = resFmt.value === 'png' ? 'none' : '';
+});
+
+resBtn.addEventListener('click', () => {
+  if (!resImg) return;
+  const w = parseInt(resW.value), h = parseInt(resH.value);
+  if (!w || !h || w < 1 || h < 1) { alert('Enter valid width and height.'); return; }
+  const fmt  = resFmt.value;
+  const mime = fmtMime(fmt);
+  const q    = parseInt(resQ.value) / 100;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  if (fmt === 'jpg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); }
+  ctx.drawImage(resImg, 0, 0, w, h);
+  resThumb.src = c.toDataURL(mime);
+  c.toBlob(blob => dlBlob(blob, noExt(resFile.name) + `_${w}x${h}.${fmt}`), mime, fmt === 'png' ? undefined : q);
+});
+</script>
+</body>
+</html>
