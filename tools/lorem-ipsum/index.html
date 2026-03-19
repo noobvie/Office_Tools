@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lorem Ipsum Generator — Office Tools</title>
+  <meta name="description" content="Generate Lorem Ipsum placeholder text by paragraphs, sentences, or words. Classic Latin or random start. Copy instantly. Free online lorem ipsum generator.">
+  <meta name="keywords" content="lorem ipsum generator, placeholder text generator, dummy text generator, lorem ipsum paragraphs, fake text generator, lipsum">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Lorem Ipsum Generator — Office Tools">
+  <meta property="og:description" content="Generate Lorem Ipsum placeholder text by paragraphs, sentences, or words. Classic Latin or random start. Copy instantly. Free online lorem ipsum generator.">
+  <meta property="og:url" content="https://yourdomain.com/tools/lorem-ipsum/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Lorem Ipsum Generator — Office Tools">
+  <meta name="twitter:description" content="Generate Lorem Ipsum placeholder text by paragraphs, sentences, or words. Classic Latin or random start. Copy instantly.">
+  <link rel="canonical" href="https://yourdomain.com/tools/lorem-ipsum/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Lorem Ipsum Generator","description":"Generate Lorem Ipsum placeholder text by paragraphs, sentences, or words. Classic Latin or random start. Copy instantly. Free online lorem ipsum generator.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://yourdomain.com/tools/lorem-ipsum/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .ctrl-row { display: grid; grid-template-columns: 160px 1fr 1fr; gap: .75rem; align-items: end; }
+    .li-output {
+      width: 100%; box-sizing: border-box; min-height: 260px; resize: vertical;
+      font-size: .9rem; line-height: 1.75;
+      background: var(--bg-secondary); color: var(--text);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: .85rem 1rem; outline: none;
+    }
+    @media (max-width: 520px) { .ctrl-row { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Lorem Ipsum</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>📄 Lorem Ipsum Generator</h1>
+    <p>Generate placeholder text by paragraphs, sentences, words, or list items.</p>
+  </div>
+
+  <div class="card">
+    <div class="ctrl-row">
+      <div>
+        <label class="form-label">Type</label>
+        <select id="liType" class="form-input">
+          <option value="paragraphs">Paragraphs</option>
+          <option value="sentences">Sentences</option>
+          <option value="words">Words</option>
+          <option value="list">List Items</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Count</label>
+        <input type="number" id="liCount" class="form-input" min="1" max="100" value="3">
+      </div>
+      <div style="display:flex;align-items:center;gap:.4rem;padding-top:1.4rem">
+        <input type="checkbox" id="liClassic" checked>
+        <label for="liClassic" style="font-size:.85rem;cursor:pointer">Start with "Lorem ipsum…"</label>
+      </div>
+    </div>
+    <div class="btn-group mt-2">
+      <button class="btn btn-primary" id="liGenerate">Generate</button>
+      <button class="btn btn-secondary" id="liCopy">Copy All</button>
+    </div>
+  </div>
+
+  <div class="card mt-2">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+      <label class="form-label" style="margin:0">Output</label>
+      <span id="liWordCount" style="font-size:.78rem;color:var(--text-muted)"></span>
+    </div>
+    <textarea class="li-output" id="liOutput" readonly spellcheck="false"></textarea>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const SENTENCES = [
+  'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+  'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
+  'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.',
+  'Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
+  'Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium.',
+  'Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores.',
+  'Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit.',
+  'Ut labore et dolore magnam aliquam quaerat voluptatem et harum quidem rerum facilis est et expedita distinctio.',
+  'Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus id quod maxime placeat facere possimus.',
+  'Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet ut et voluptates repudiandae sint.',
+];
+
+const WORDS = SENTENCES.join(' ').replace(/[,\.]/g, '').split(' ').filter(w => w.length > 0);
+const CLASSIC = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.';
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function getSentences(n, classic) {
+  const pool = classic ? [CLASSIC, ...shuffle(SENTENCES.slice(1))] : shuffle(SENTENCES);
+  const out = [];
+  for (let i = 0; i < n; i++) out.push(pool[i % pool.length]);
+  return out;
+}
+
+function getParagraph(classic, isFirst) {
+  const count = 4 + Math.floor(Math.random() * 4);
+  const sents = isFirst && classic
+    ? [CLASSIC, ...getSentences(count - 1, false)]
+    : getSentences(count, false);
+  return sents.join(' ');
+}
+
+function generate() {
+  const type  = document.getElementById('liType').value;
+  const count = Math.max(1, Math.min(100, parseInt(document.getElementById('liCount').value) || 3));
+  const classic = document.getElementById('liClassic').checked;
+  let output = '';
+
+  if (type === 'paragraphs') {
+    const paras = [];
+    for (let i = 0; i < count; i++) paras.push(getParagraph(classic, i === 0));
+    output = paras.join('\n\n');
+  } else if (type === 'sentences') {
+    output = getSentences(count, classic).join(' ');
+  } else if (type === 'words') {
+    const pool = classic ? ['Lorem', 'ipsum', ...shuffle(WORDS)] : shuffle(WORDS);
+    const w = [];
+    for (let i = 0; i < count; i++) w.push(pool[i % pool.length]);
+    output = w.join(' ') + '.';
+  } else {
+    // list
+    const sents = getSentences(count, classic);
+    output = sents.map(s => '• ' + s).join('\n');
+  }
+
+  document.getElementById('liOutput').value = output;
+  const wc = output.trim().split(/\s+/).filter(w => w.length).length;
+  document.getElementById('liWordCount').textContent = `${wc} words`;
+}
+
+document.getElementById('liGenerate').addEventListener('click', generate);
+document.getElementById('liCopy').addEventListener('click', function() {
+  copyText(document.getElementById('liOutput').value, this);
+});
+
+generate();
+</script>
+</body>
+</html>

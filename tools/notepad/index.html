@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Online Notepad — Auto-Save Scratch Pad — Office Tools</title>
+  <meta name="description" content="A fast online notepad that auto-saves everything to your browser's local storage. No login, no account — your notes are always there when you come back. Download as .txt.">
+  <meta name="keywords" content="online notepad, browser notepad, auto-save notepad, scratch pad online, quick notes browser, local storage notepad">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Online Notepad — Auto-Save Scratch Pad — Office Tools">
+  <meta property="og:description" content="A fast online notepad that auto-saves everything to your browser's local storage. No login, no account — your notes are always there when you come back. Download as .txt.">
+  <meta property="og:url" content="https://yourdomain.com/tools/notepad/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Online Notepad — Auto-Save Scratch Pad — Office Tools">
+  <meta name="twitter:description" content="A fast online notepad that auto-saves everything to your browser's local storage. No login, no account needed.">
+  <link rel="canonical" href="https://yourdomain.com/tools/notepad/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Online Notepad","description":"A fast online notepad that auto-saves everything to your browser's local storage. No login, no account — your notes are always there when you come back.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://yourdomain.com/tools/notepad/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .tab-strip {
+      display: flex; gap: .35rem; flex-wrap: wrap; margin-bottom: .65rem;
+    }
+    .np-tab {
+      padding: .45rem .9rem; border: 1.5px solid var(--border);
+      border-radius: var(--radius) var(--radius) 0 0;
+      background: var(--bg-secondary); cursor: pointer;
+      font-size: .85rem; color: var(--text-muted);
+      transition: all var(--transition);
+      border-bottom: none; position: relative;
+    }
+    .np-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 700; }
+    .np-tab-name { outline: none; border: none; background: transparent; color: inherit; font: inherit; cursor: text; max-width: 90px; }
+    .np-area {
+      width: 100%; box-sizing: border-box; min-height: 380px; resize: vertical;
+      font-size: .93rem; line-height: 1.75;
+      background: var(--bg-secondary); color: var(--text);
+      border: 1px solid var(--border); border-radius: 0 var(--radius) var(--radius) var(--radius);
+      padding: .85rem 1rem; outline: none;
+      transition: border-color var(--transition);
+      font-family: inherit;
+    }
+    .np-area:focus { border-color: var(--primary); }
+    .save-indicator { font-size: .78rem; color: #22c55e; opacity: 0; transition: opacity .5s; }
+    .save-indicator.show { opacity: 1; }
+    .stats-row { font-size: .78rem; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Notepad</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>📝 Online Notepad</h1>
+    <p>Auto-saves to your browser. Up to 5 named notes — double-click a tab to rename it.</p>
+  </div>
+
+  <div class="card">
+    <div class="tab-strip" id="tabStrip"></div>
+    <textarea class="np-area" id="npArea" placeholder="Start typing… your notes are auto-saved."></textarea>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.5rem;flex-wrap:wrap;gap:.4rem">
+      <div class="stats-row" id="npStats">Words: 0 · Characters: 0</div>
+      <span class="save-indicator" id="saveIndicator">✓ Saved</span>
+    </div>
+    <div class="btn-group mt-2">
+      <button class="btn btn-secondary" id="npDownload">Download .txt</button>
+      <button class="btn btn-secondary" id="npCopy">Copy All</button>
+      <button class="btn btn-secondary" id="npClear">Clear</button>
+    </div>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const NUM_TABS = 5;
+const PREFIX   = 'ot-notepad-';
+let activeTab  = parseInt(localStorage.getItem(PREFIX + 'active') || '0');
+let saveTimer  = null;
+
+function getNote(i)       { return localStorage.getItem(PREFIX + 'note-' + i) || ''; }
+function getTabName(i)    { return localStorage.getItem(PREFIX + 'name-' + i) || ('Note ' + (i + 1)); }
+function setNote(i, v)    { localStorage.setItem(PREFIX + 'note-' + i, v); }
+function setTabName(i, v) { localStorage.setItem(PREFIX + 'name-' + i, v); }
+
+function buildTabs() {
+  const strip = document.getElementById('tabStrip');
+  strip.innerHTML = '';
+  for (let i = 0; i < NUM_TABS; i++) {
+    const tab = document.createElement('div');
+    tab.className = 'np-tab' + (i === activeTab ? ' active' : '');
+    tab.dataset.idx = i;
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'np-tab-name';
+    nameSpan.textContent = getTabName(i);
+    nameSpan.contentEditable = 'false';
+    tab.appendChild(nameSpan);
+    tab.addEventListener('click', () => switchTab(i));
+    tab.addEventListener('dblclick', e => {
+      e.preventDefault();
+      nameSpan.contentEditable = 'true';
+      nameSpan.focus();
+      const range = document.createRange(); range.selectNodeContents(nameSpan);
+      window.getSelection().removeAllRanges(); window.getSelection().addRange(range);
+    });
+    nameSpan.addEventListener('blur', () => {
+      nameSpan.contentEditable = 'false';
+      setTabName(i, nameSpan.textContent.trim() || ('Note ' + (i+1)));
+      nameSpan.textContent = getTabName(i);
+    });
+    nameSpan.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); nameSpan.blur(); }
+    });
+    strip.appendChild(tab);
+  }
+}
+
+function switchTab(i) {
+  activeTab = i;
+  localStorage.setItem(PREFIX + 'active', i);
+  buildTabs();
+  document.getElementById('npArea').value = getNote(i);
+  updateStats();
+}
+
+function updateStats() {
+  const text = document.getElementById('npArea').value;
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  document.getElementById('npStats').textContent = `Words: ${words} · Characters: ${text.length}`;
+}
+
+function showSaved() {
+  const el = document.getElementById('saveIndicator');
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+document.getElementById('npArea').addEventListener('input', () => {
+  updateStats();
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    setNote(activeTab, document.getElementById('npArea').value);
+    showSaved();
+  }, 500);
+});
+
+document.getElementById('npDownload').addEventListener('click', () => {
+  const text = document.getElementById('npArea').value;
+  const name = getTabName(activeTab).replace(/[^a-z0-9]/gi, '_') || 'note';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+  a.download = name + '.txt'; a.click(); URL.revokeObjectURL(a.href);
+});
+
+document.getElementById('npCopy').addEventListener('click', function() {
+  copyText(document.getElementById('npArea').value, this);
+});
+
+document.getElementById('npClear').addEventListener('click', () => {
+  if (!confirm('Clear this note?')) return;
+  document.getElementById('npArea').value = '';
+  setNote(activeTab, '');
+  updateStats();
+});
+
+buildTabs();
+document.getElementById('npArea').value = getNote(activeTab);
+updateStats();
+</script>
+</body>
+</html>

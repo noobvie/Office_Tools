@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Text Case Converter — Office Tools</title>
+  <meta name="description" content="Convert text to UPPERCASE, lowercase, Title Case, Sentence case, camelCase, PascalCase, snake_case, kebab-case, and CONSTANT_CASE instantly. Free online case converter.">
+  <meta name="keywords" content="text case converter, uppercase lowercase converter, camelCase converter, snake_case converter, title case online, text transformation tool">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Text Case Converter — Office Tools">
+  <meta property="og:description" content="Convert text to UPPERCASE, lowercase, Title Case, Sentence case, camelCase, PascalCase, snake_case, kebab-case, and CONSTANT_CASE instantly. Free online case converter.">
+  <meta property="og:url" content="https://yourdomain.com/tools/text-case/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Text Case Converter — Office Tools">
+  <meta name="twitter:description" content="Convert text to UPPERCASE, lowercase, Title Case, Sentence case, camelCase, PascalCase, snake_case, kebab-case, and CONSTANT_CASE instantly.">
+  <link rel="canonical" href="https://yourdomain.com/tools/text-case/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Text Case Converter","description":"Convert text to UPPERCASE, lowercase, Title Case, Sentence case, camelCase, PascalCase, snake_case, kebab-case, and CONSTANT_CASE instantly. Free online case converter.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://yourdomain.com/tools/text-case/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .tc-input {
+      width: 100%; box-sizing: border-box; min-height: 120px; resize: vertical;
+      font-size: .92rem; line-height: 1.6;
+      background: var(--bg-secondary); color: var(--text);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: .75rem 1rem; outline: none;
+      transition: border-color var(--transition);
+    }
+    .tc-input:focus { border-color: var(--primary); }
+    .tc-row {
+      display: grid; grid-template-columns: 160px 1fr auto;
+      gap: .65rem; align-items: center;
+      padding: .6rem 0; border-bottom: 1px solid var(--border);
+    }
+    .tc-row:last-child { border-bottom: none; }
+    .tc-label { font-size: .8rem; font-weight: 700; color: var(--text-muted); font-family: monospace; }
+    .tc-value { font-family: 'Courier New', monospace; font-size: .87rem; word-break: break-all; color: var(--text); }
+    .stats-row { font-size: .78rem; color: var(--text-muted); margin-top: .4rem; }
+    @media (max-width: 520px) { .tc-row { grid-template-columns: 1fr auto; } .tc-label { display: none; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Text Case</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔡 Text Case Converter</h1>
+    <p>Convert text between 9 different cases. All results update live as you type.</p>
+  </div>
+
+  <div class="card">
+    <label class="form-label">Input Text</label>
+    <textarea class="tc-input" id="tcInput" placeholder="Type or paste text here…">The quick brown fox jumps over the lazy dog</textarea>
+    <div class="stats-row" id="tcStats">Words: 9 · Characters: 43</div>
+  </div>
+
+  <div class="card mt-2" id="tcResults"></div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+function toWords(str) {
+  // Split on non-alphanumeric (spaces, hyphens, underscores, etc.)
+  return str.replace(/([a-z])([A-Z])/g, '$1 $2')
+            .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+            .split(/[\s\-_\/\.]+/)
+            .filter(w => w.length > 0);
+}
+
+const CASES = [
+  { label: 'UPPERCASE',     fn: s => s.toUpperCase() },
+  { label: 'lowercase',     fn: s => s.toLowerCase() },
+  { label: 'Title Case',    fn: s => toWords(s).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') },
+  { label: 'Sentence case', fn: s => {
+    const lower = s.toLowerCase();
+    return lower.replace(/(^\s*\w|[.!?]\s+\w)/g, m => m.toUpperCase());
+  }},
+  { label: 'camelCase',     fn: s => { const w = toWords(s); return w[0].toLowerCase() + w.slice(1).map(w2 => w2.charAt(0).toUpperCase() + w2.slice(1).toLowerCase()).join(''); } },
+  { label: 'PascalCase',    fn: s => toWords(s).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('') },
+  { label: 'snake_case',    fn: s => toWords(s).map(w => w.toLowerCase()).join('_') },
+  { label: 'kebab-case',    fn: s => toWords(s).map(w => w.toLowerCase()).join('-') },
+  { label: 'CONSTANT_CASE', fn: s => toWords(s).map(w => w.toUpperCase()).join('_') },
+];
+
+function buildResults() {
+  const resDiv = document.getElementById('tcResults');
+  resDiv.innerHTML = CASES.map((c, i) => `
+    <div class="tc-row">
+      <div class="tc-label">${escHtml(c.label)}</div>
+      <div class="tc-value" id="tcVal${i}"></div>
+      <button class="btn btn-sm btn-secondary" id="tcCopy${i}">Copy</button>
+    </div>
+  `).join('');
+  CASES.forEach((c, i) => {
+    document.getElementById(`tcCopy${i}`).addEventListener('click', function() {
+      copyText(document.getElementById(`tcVal${i}`).textContent, this);
+    });
+  });
+}
+
+function update() {
+  const text = document.getElementById('tcInput').value;
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  document.getElementById('tcStats').textContent = `Words: ${words} · Characters: ${text.length}`;
+  CASES.forEach((c, i) => {
+    document.getElementById(`tcVal${i}`).textContent = text ? c.fn(text) : '';
+  });
+}
+
+buildResults();
+document.getElementById('tcInput').addEventListener('input', update);
+update();
+</script>
+</body>
+</html>

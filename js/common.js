@@ -80,30 +80,46 @@ const OT_TOOLS = [
   // ⏱️ Productivity & Time
   { name: 'Pomodoro Timer',          path: 'pomodoro',              cat: '⏱️ Productivity & Time', icon: '🍅' },
   { name: 'Date Calculator',         path: 'date-calculator',       cat: '⏱️ Productivity & Time', icon: '📅' },
+  { name: 'World Calendar',          path: 'calendar',              cat: '⏱️ Productivity & Time', icon: '🗓️' },
+  { name: 'Stopwatch & Timer',       path: 'timer',                 cat: '⏱️ Productivity & Time', icon: '⏱️' },
+  { name: 'Time Zone Converter',     path: 'timezone',              cat: '⏱️ Productivity & Time', icon: '🌐' },
   // ✨ Generators
   { name: 'Password Generator',      path: 'password-generator',    cat: '✨ Generators',           icon: '🔑' },
   { name: 'QR Code Generator',       path: 'qr-generator',          cat: '✨ Generators',           icon: '📱' },
   { name: 'UUID Generator',          path: 'uuid-generator',        cat: '✨ Generators',           icon: '🆔' },
   { name: 'Random Number Generator', path: 'random-number',         cat: '✨ Generators',           icon: '🎲' },
+  { name: 'Lorem Ipsum Generator',   path: 'lorem-ipsum',           cat: '✨ Generators',           icon: '📄' },
   // 📝 Text & Content
   { name: 'Word Counter',            path: 'word-counter',          cat: '📝 Text & Content',       icon: '📝' },
   { name: 'Markdown Editor',         path: 'markdown-editor',       cat: '📝 Text & Content',       icon: '✍️' },
   { name: 'Text Diff',               path: 'text-diff',             cat: '📝 Text & Content',       icon: '🔍' },
   { name: 'Typing Speed Test',       path: 'typing-speed',          cat: '📝 Text & Content',       icon: '⌨️' },
+  { name: 'Text Case Converter',     path: 'text-case',             cat: '📝 Text & Content',       icon: '🔡' },
+  { name: 'Notepad',                 path: 'notepad',               cat: '📝 Text & Content',       icon: '📝' },
   // 🔒 Encoding & Crypto
   { name: 'Base64 Converter',        path: 'base64-converter',      cat: '🔒 Encoding & Crypto',    icon: '🔐' },
   { name: 'URL Encoder / Decoder',   path: 'url-encoder',           cat: '🔒 Encoding & Crypto',    icon: '🔗' },
   { name: 'Unix Timestamp',          path: 'unix-timestamp',        cat: '🔒 Encoding & Crypto',    icon: '⏰' },
   { name: 'Hash Generator',          path: 'hash-generator',        cat: '🔒 Encoding & Crypto',    icon: '🛡️' },
+  { name: 'HTML Entity Encoder',     path: 'html-entities',         cat: '🔒 Encoding & Crypto',    icon: '🏷️' },
+  { name: 'JWT Decoder',             path: 'jwt-decoder',           cat: '🔒 Encoding & Crypto',    icon: '🔐' },
+  { name: 'Number Base Converter',   path: 'base-converter',        cat: '🔒 Encoding & Crypto',    icon: '🔢' },
   // 🧮 Calculators
   { name: 'Percentage Calculator',   path: 'percentage-calculator', cat: '🧮 Calculators',          icon: '💯' },
   { name: 'Aspect Ratio Calculator', path: 'aspect-ratio',          cat: '🧮 Calculators',          icon: '📐' },
+  { name: 'Unit Converter',          path: 'unit-converter',        cat: '🧮 Calculators',          icon: '📐' },
+  { name: 'Loan Calculator',         path: 'loan-calculator',       cat: '🧮 Calculators',          icon: '🏦' },
+  { name: 'Tip Calculator',          path: 'tip-calculator',        cat: '🧮 Calculators',          icon: '🧾' },
+  { name: 'Number to Words',         path: 'number-words',          cat: '🧮 Calculators',          icon: '🔤' },
   // 💻 Development
   { name: 'JSON Editor',             path: 'json-editor',           cat: '💻 Development',          icon: '📋' },
   { name: 'CSV ↔ JSON',              path: 'csv-json',              cat: '💻 Development',          icon: '📊' },
   { name: 'Crontab Explainer',       path: 'crontab',               cat: '💻 Development',          icon: '⏲️' },
+  { name: 'Regex Tester',            path: 'regex-tester',          cat: '💻 Development',          icon: '🔍' },
+  { name: 'SQL Formatter',           path: 'sql-formatter',         cat: '💻 Development',          icon: '🗄️' },
   // 🎨 Design
   { name: 'Color Converter',         path: 'color-converter',       cat: '🎨 Design',               icon: '🎨' },
+  { name: 'Character Map',           path: 'char-map',              cat: '🎨 Design',               icon: '🔣' },
   // 🌐 Network & Web
   { name: 'Currency Converter',      path: 'currency',              cat: '🌐 Network & Web',        icon: '💱' },
   { name: 'What Is My IP?',          path: 'my-ip',                 cat: '🌐 Network & Web',        icon: '🌐' },

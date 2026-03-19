@@ -1,24 +1,21 @@
 #!/bin/bash
 # =============================================================================
-# Office Tools — One-Shot Deployment Script
-# https://github.com/noobvie/Office_Tools
+# Office Tools — Deploy Manager
+# Interactive menu for installation, domain management, and removal.
 #
-# Run once on a fresh Debian/Ubuntu server as root.
-# Installs: nginx, certbot, Node.js, PocketBase, Office Tools frontend.
-# Sets up: SSL, secure nginx config, systemd services.
+# Supports:  Debian · Ubuntu · AlmaLinux · Rocky Linux · CentOS Stream
+# Usage:     sudo bash deploy.sh
 # =============================================================================
 
-set -euo pipefail
-
-# ─── Colors ───────────────────────────────────────────────────────────────────
+# ─── Colors & helpers ─────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 CYAN='\033[0;36m'; BOLD='\033[1m'; DIM='\033[2m'; RESET='\033[0m'
 
 info()    { echo -e "${CYAN}[INFO]${RESET}  $*"; }
 success() { echo -e "${GREEN}[OK]${RESET}    $*"; }
 warn()    { echo -e "${YELLOW}[WARN]${RESET}  $*"; }
-error()   { echo -e "${RED}[ERROR]${RESET} $*"; }
-die()     { echo -e "${RED}${BOLD}[FATAL]${RESET} $*"; exit 1; }
+die()     { echo -e "${RED}${BOLD}[FATAL]${RESET} $*" >&2; exit 1; }
+
 section() {
     echo ""
     echo -e "${BOLD}${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
@@ -27,8 +24,11 @@ section() {
     echo ""
 }
 
-# ─── Must run as root ─────────────────────────────────────────────────────────
-[[ "$EUID" -ne 0 ]] && die "Run this script as root: sudo bash deploy.sh"
+press_enter() {
+    echo ""
+    echo -ne "${DIM}  Press Enter to return to menu…${RESET}"
+    read -r
+}
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 REPO_URL="https://github.com/noobvie/Office_Tools.git"
@@ -36,198 +36,221 @@ REPO_DIR="/opt/office-tools/repo"
 WEB_ROOT="/var/www/office-tools"
 BACKEND_DIR="/opt/office-tools/backend"
 PB_DIR="/opt/office-tools/pocketbase"
-NGINX_SYMLINK="office-tools"
-NGINX_CONF_PATH="/etc/nginx/sites-available/${NGINX_SYMLINK}"
-DEPLOY_CONF="/opt/office-tools/deploy.conf"   # saved config — skips prompts on redeploy
+DEPLOY_CONF="/opt/office-tools/deploy.conf"
 LOG_DIR="/var/log/office-tools"
-LOG_FILE="$LOG_DIR/deploy_$(date +%Y%m%d_%H%M%S).log"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-mkdir -p "$LOG_DIR"
-exec > >(tee "$LOG_FILE") 2>&1
-info "Log file: $LOG_FILE"
+# nginx config paths — set by detect_os()
+NGINX_CONF_PATH=""
+NGINX_ENABLED_PATH=""   # empty = not used (RHEL writes directly to conf.d)
 
-echo ""
-echo -e "${BOLD}${CYAN}╔══════════════════════════════════════════════════╗${RESET}"
-echo -e "${BOLD}${CYAN}║     Office Tools — Deployment Script             ║${RESET}"
-echo -e "${BOLD}${CYAN}║     github.com/noobvie/Office_Tools              ║${RESET}"
-echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════════════╝${RESET}"
-echo ""
+# ─── OS detection ─────────────────────────────────────────────────────────────
+OS_FAMILY=""   # "debian" or "rhel"
+OS_NAME="unknown"
 
-# ─── Parse flags ──────────────────────────────────────────────────────────────
-RECONFIGURE=false
-for arg in "$@"; do
-    [[ "$arg" == "--reconfigure" ]] && RECONFIGURE=true
-done
-
-# ─── Load saved config or prompt ──────────────────────────────────────────────
-DOMAIN=""; EMAIL=""; SETUP_BACKEND="n"
-GRIN_WALLET_PASS=""; PB_ADMIN_EMAIL=""; PB_ADMIN_PASSWORD=""
-
-if [[ -f "$DEPLOY_CONF" && "$RECONFIGURE" == false ]]; then
-    # ── Redeploy: load saved config, skip all prompts ──────────────────────
-    # shellcheck source=/dev/null
-    source "$DEPLOY_CONF"
-    section "Redeploy — using saved config"
-    info "Domain        : $DOMAIN"
-    info "Backend       : $SETUP_BACKEND"
-    info "Config file   : $DEPLOY_CONF"
-    info "Pass --reconfigure to change any setting"
-    echo ""
-else
-    # ── First run (or --reconfigure): prompt for everything ────────────────
-    [[ "$RECONFIGURE" == true ]] && warn "--reconfigure flag set — re-entering all settings."
-    section "Configuration"
-
-    while true; do
-        echo -ne "${BOLD}Domain name${RESET} (e.g. tools.example.com): "
-        read -r DOMAIN
-        [[ -n "$DOMAIN" ]] && break
-        warn "Domain cannot be empty."
-    done
-
-    while true; do
-        echo -ne "${BOLD}Email${RESET} for Let's Encrypt SSL certificate: "
-        read -r EMAIL
-        [[ -n "$EMAIL" ]] && break
-        warn "Email cannot be empty."
-    done
-
-    echo ""
-    echo -e "${DIM}Backend services (PocketBase + Grin payment server) are optional."
-    echo -e "You can skip them and set up later.${RESET}"
-    echo ""
-    echo -ne "Set up backend (PocketBase + Grin payment server)? [Y/n]: "
-    read -r SETUP_BACKEND
-    SETUP_BACKEND="${SETUP_BACKEND:-Y}"
-
-    if [[ "${SETUP_BACKEND,,}" == "y" ]]; then
-        section "Backend Configuration"
-        echo -e "  ${DIM}These values go into ${BACKEND_DIR}/.env${RESET}"
-        echo ""
-
-        echo -ne "  Grin wallet password (GRIN_WALLET_PASS): "
-        read -rs GRIN_WALLET_PASS; echo ""
-
-        echo -ne "  PocketBase admin email (PB_ADMIN_EMAIL): "
-        read -r PB_ADMIN_EMAIL
-
-        echo -ne "  PocketBase admin password (PB_ADMIN_PASSWORD): "
-        read -rs PB_ADMIN_PASSWORD; echo ""
+detect_os() {
+    if [[ ! -f /etc/os-release ]]; then
+        die "Cannot detect OS (/etc/os-release not found)."
     fi
+    # shellcheck source=/dev/null
+    source /etc/os-release
+    OS_NAME="${PRETTY_NAME:-${NAME:-unknown}}"
 
-    echo ""
-    info "Deploying to  : $DOMAIN"
-    info "Web root      : $WEB_ROOT"
-    info "Backend dir   : $BACKEND_DIR"
-    info "PocketBase dir: $PB_DIR"
-    info "Log file      : $LOG_FILE"
-    echo ""
-    echo -ne "${BOLD}Proceed? [Y/n]: ${RESET}"
-    read -r CONFIRM
-    [[ "${CONFIRM,,}" == "n" ]] && echo "Aborted." && exit 0
+    case "${ID:-}" in
+        ubuntu|debian|linuxmint|pop)
+            OS_FAMILY="debian" ;;
+        almalinux|rocky|centos|rhel|fedora|ol)
+            OS_FAMILY="rhel" ;;
+        *)
+            case "${ID_LIKE:-}" in
+                *debian*) OS_FAMILY="debian" ;;
+                *rhel*|*centos*|*fedora*) OS_FAMILY="rhel" ;;
+                *) die "Unsupported OS: ${OS_NAME}. Use Debian/Ubuntu or AlmaLinux/Rocky Linux." ;;
+            esac ;;
+    esac
 
-    # Save config for future redeploys (passwords excluded — stored in .env)
+    if [[ "$OS_FAMILY" == "debian" ]]; then
+        NGINX_CONF_PATH="/etc/nginx/sites-available/office-tools"
+        NGINX_ENABLED_PATH="/etc/nginx/sites-enabled/office-tools"
+    else
+        NGINX_CONF_PATH="/etc/nginx/conf.d/office-tools.conf"
+        NGINX_ENABLED_PATH=""
+    fi
+}
+
+# ─── Config helpers ────────────────────────────────────────────────────────────
+DOMAIN=""; EMAIL=""; SETUP_BACKEND="n"; PB_ADMIN_EMAIL=""
+
+load_conf() {
+    DOMAIN=""; EMAIL=""; SETUP_BACKEND="n"; PB_ADMIN_EMAIL=""
+    [[ -f "$DEPLOY_CONF" ]] && source "$DEPLOY_CONF" || true
+}
+
+save_conf() {
     mkdir -p "$(dirname "$DEPLOY_CONF")"
     cat > "$DEPLOY_CONF" << CONFEOF
 # Office Tools deploy config — auto-generated by deploy.sh
-# Re-run with --reconfigure to change these values.
 DOMAIN="${DOMAIN}"
 EMAIL="${EMAIL}"
 SETUP_BACKEND="${SETUP_BACKEND}"
 PB_ADMIN_EMAIL="${PB_ADMIN_EMAIL}"
 CONFEOF
     chmod 600 "$DEPLOY_CONF"
-    success "Config saved to $DEPLOY_CONF"
-fi
+}
 
-# ─── Step 1: System packages ──────────────────────────────────────────────────
-section "Step 1 — Installing packages"
+# ─── Package management ────────────────────────────────────────────────────────
+pkg_update_os() {
+    section "Updating OS packages — ${OS_NAME}"
+    if [[ "$OS_FAMILY" == "debian" ]]; then
+        apt-get update -qq
+        DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
+    else
+        dnf upgrade -y --nobest 2>/dev/null || dnf upgrade -y
+    fi
+    success "OS packages updated"
+}
 
-apt-get update -qq
-apt-get install -y --no-install-recommends \
-    nginx certbot python3-certbot-nginx \
-    git curl unzip rsync ca-certificates gnupg
+pkg_install() {
+    if [[ "$OS_FAMILY" == "debian" ]]; then
+        apt-get install -y --no-install-recommends "$@"
+    else
+        dnf install -y "$@"
+    fi
+}
 
-# Node.js 20 (via NodeSource) if not already installed
-if ! command -v node &>/dev/null || [[ "$(node -e 'process.stdout.write(process.version.slice(1).split(".")[0])')" -lt 18 ]]; then
-    info "Installing Node.js 20..."
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-    apt-get install -y nodejs
-fi
+install_base_packages() {
+    section "Installing base packages"
+    if [[ "$OS_FAMILY" == "debian" ]]; then
+        apt-get update -qq
+        pkg_install nginx certbot python3-certbot-nginx \
+            git curl unzip rsync ca-certificates gnupg
+    else
+        # EPEL provides certbot on RHEL-family
+        dnf install -y epel-release
+        dnf install -y nginx certbot python3-certbot-nginx \
+            git curl unzip rsync ca-certificates
+        # Allow nginx to proxy to localhost (SELinux)
+        setsebool -P httpd_can_network_connect 1 2>/dev/null || \
+            warn "SELinux: could not set httpd_can_network_connect — set manually if proxying fails"
+    fi
 
-success "Packages ready. Node $(node -v), nginx $(nginx -v 2>&1 | grep -oP '[\d.]+')"
+    # Open firewall ports if firewalld is active
+    if command -v firewall-cmd &>/dev/null && systemctl is-active --quiet firewalld 2>/dev/null; then
+        firewall-cmd --permanent --add-service=http --add-service=https &>/dev/null
+        firewall-cmd --reload &>/dev/null
+        success "Firewall: HTTP and HTTPS opened"
+    fi
 
-# ─── Step 2: Clone / update repo ─────────────────────────────────────────────
-section "Step 2 — Pulling Office Tools from GitHub"
+    systemctl enable nginx
+    systemctl start  nginx
+    success "Base packages installed — nginx $(nginx -v 2>&1 | grep -oP '[\d.]+')"
+}
 
-if [[ -d "$REPO_DIR/.git" ]]; then
-    info "Repo exists — pulling latest..."
-    git -C "$REPO_DIR" pull --ff-only
-else
-    info "Cloning $REPO_URL..."
-    mkdir -p "$(dirname "$REPO_DIR")"
-    git clone "$REPO_URL" "$REPO_DIR"
-fi
+install_nodejs() {
+    local MIN=18 VER=20
+    if command -v node &>/dev/null; then
+        local cur
+        cur=$(node -e 'process.stdout.write(process.version.slice(1).split(".")[0])' 2>/dev/null || echo 0)
+        if [[ "$cur" -ge "$MIN" ]]; then
+            info "Node.js $(node -v) already installed — skipping"
+            return 0
+        fi
+        info "Node.js $cur < $MIN — upgrading to $VER…"
+    fi
 
-success "Repo up to date: $(git -C "$REPO_DIR" log -1 --format='%h %s')"
+    local setup_url
+    if [[ "$OS_FAMILY" == "debian" ]]; then
+        setup_url="https://deb.nodesource.com/setup_${VER}.x"
+    else
+        setup_url="https://rpm.nodesource.com/setup_${VER}.x"
+    fi
 
-# ─── Step 3: Patch js/config.js with real domain ─────────────────────────────
-section "Step 3 — Patching frontend config"
+    curl -fsSL "$setup_url" | bash - || die "NodeSource setup failed"
 
-CONFIG_FILE="$REPO_DIR/js/config.js"
-# Replace placeholder domain with real domain in PB_URL and GRIN_SERVER_URL
-sed -i "s|https://pb\.yourdomain\.com|https://${DOMAIN}/pb-api|g"  "$CONFIG_FILE"
-sed -i "s|https://pay\.yourdomain\.com|https://${DOMAIN}/pay-api|g" "$CONFIG_FILE"
-sed -i "s|https://yourdomain\.com|https://${DOMAIN}|g"              "$CONFIG_FILE"
+    if [[ "$OS_FAMILY" == "debian" ]]; then
+        apt-get install -y nodejs
+    else
+        dnf install -y nodejs
+    fi
+    success "Node.js $(node -v) installed"
+}
 
-# Patch SEO canonical/OG URLs in all HTML files (canonical, og:url, JSON-LD url)
-info "Patching SEO domain placeholders in HTML files…"
-find "$REPO_DIR" -name "*.html" -not -path "*/.git/*" \
-  -exec sed -i "s|https://yourdomain\.com|https://${DOMAIN}|g" {} \;
-success "SEO domain patched in all HTML files for $DOMAIN"
+# ─── Repo & frontend ──────────────────────────────────────────────────────────
+pull_repo() {
+    section "Pulling Office Tools from GitHub"
+    if [[ -d "$REPO_DIR/.git" ]]; then
+        info "Repo found — pulling latest…"
+        git -C "$REPO_DIR" pull --ff-only
+    else
+        info "Cloning $REPO_URL…"
+        mkdir -p "$(dirname "$REPO_DIR")"
+        git clone "$REPO_URL" "$REPO_DIR"
+    fi
+    success "Repo: $(git -C "$REPO_DIR" log -1 --format='%h %s')"
+}
 
-# ─── Step 4: Deploy frontend to web root ─────────────────────────────────────
-section "Step 4 — Deploying frontend to $WEB_ROOT"
+sync_frontend() {
+    local domain="${1:-}"
+    section "Syncing frontend → $WEB_ROOT"
+    mkdir -p "$WEB_ROOT"
+    rsync -a --delete \
+        --exclude='.git' \
+        --exclude='.gitignore' \
+        --exclude='backend' \
+        --exclude='deploy.sh' \
+        --exclude='undeploy.sh' \
+        --exclude='*.md' \
+        "$REPO_DIR/" "$WEB_ROOT/"
+    chown -R www-data:www-data "$WEB_ROOT"
+    chmod -R 755 "$WEB_ROOT"
+    find "$WEB_ROOT" -type f -exec chmod 644 {} \;
 
-mkdir -p "$WEB_ROOT"
+    if [[ "$OS_FAMILY" == "rhel" ]]; then
+        chcon -R -t httpd_sys_content_t "$WEB_ROOT" 2>/dev/null || true
+    fi
 
-rsync -av --delete \
-    --exclude='.git' \
-    --exclude='.gitignore' \
-    --exclude='backend' \
-    --exclude='deploy.sh' \
-    --exclude='*.md' \
-    "$REPO_DIR/" "$WEB_ROOT/"
+    [[ -n "$domain" ]] && _patch_domain "$REPO_DIR" "$domain"
+    [[ -n "$domain" ]] && _patch_domain "$WEB_ROOT"  "$domain"
 
-chown -R www-data:www-data "$WEB_ROOT"
-chmod -R 755 "$WEB_ROOT"
-find "$WEB_ROOT" -type f -exec chmod 644 {} \;
+    success "Frontend deployed to $WEB_ROOT"
+}
 
-success "Frontend deployed to $WEB_ROOT"
+_patch_domain() {
+    local dir="$1" domain="$2"
+    local cfg="$dir/js/config.js"
+    if [[ -f "$cfg" ]]; then
+        sed -i "s|https://pb\.yourdomain\.com|https://${domain}/pb-api|g"  "$cfg"
+        sed -i "s|https://pay\.yourdomain\.com|https://${domain}/pay-api|g" "$cfg"
+        sed -i "s|https://yourdomain\.com|https://${domain}|g"              "$cfg"
+    fi
+    find "$dir" -name "*.html" -not -path "*/.git/*" \
+        -exec sed -i "s|https://yourdomain\.com|https://${domain}|g" {} \;
+}
 
-# ─── Step 5: nginx config (HTTP only first — certbot adds SSL block itself) ───
-section "Step 5 — Writing nginx config"
+# ─── nginx config writers ──────────────────────────────────────────────────────
+_nginx_enable() {
+    if [[ "$OS_FAMILY" == "debian" ]]; then
+        ln -sf "$NGINX_CONF_PATH" "$NGINX_ENABLED_PATH"
+        rm -f /etc/nginx/sites-enabled/default
+    fi
+    nginx -t 2>&1 || die "nginx config test failed — check $NGINX_CONF_PATH"
+    systemctl reload nginx
+}
 
-# IMPORTANT: write HTTP-only block first.
-# Writing "listen 443 ssl" before the certificate exists fails nginx -t.
-# Certbot --nginx will append the SSL server block and fill in cert paths.
-cat > "$NGINX_CONF_PATH" << NGINXEOF
-# Office Tools — managed by deploy.sh
-# SSL block will be added below by certbot automatically.
+write_nginx_http() {
+    local domain="$1"
+    cat > "$NGINX_CONF_PATH" << NGINXEOF
+# Office Tools — managed by deploy.sh (HTTP — certbot will add SSL)
 server {
     listen 80;
     listen [::]:80;
-    server_name ${DOMAIN};
+    server_name ${domain};
 
     root  ${WEB_ROOT};
     index index.html;
 
-    # ── Static frontend ──────────────────────────────────────────────────────
-    location / {
-        try_files \$uri \$uri/ \$uri.html =404;
-    }
+    location / { try_files \$uri \$uri/ \$uri.html =404; }
 
-    # ── PocketBase API ───────────────────────────────────────────────────────
     location ^~ /pb-api/ {
         proxy_pass         http://127.0.0.1:8090/;
         proxy_http_version 1.1;
@@ -240,8 +263,6 @@ server {
         proxy_read_timeout 300s;
         proxy_buffering    off;
     }
-
-    # ── Grin payment server ──────────────────────────────────────────────────
     location ^~ /pay-api/ {
         proxy_pass         http://127.0.0.1:3001/;
         proxy_http_version 1.1;
@@ -249,70 +270,45 @@ server {
         proxy_set_header   X-Real-IP         \$remote_addr;
         proxy_set_header   X-Forwarded-For   \$proxy_add_x_forwarded_for;
         proxy_set_header   X-Forwarded-Proto \$scheme;
-        proxy_read_timeout 60s;
     }
-
-    # ── Block sensitive paths ────────────────────────────────────────────────
     location ~ /\.                           { deny all; return 404; }
     location /backend/                       { deny all; return 404; }
     location ~ \.(env|sh|json|md|toml|log)$ { deny all; return 404; }
 }
 NGINXEOF
+    _nginx_enable
+    success "nginx HTTP config written for ${domain}"
+}
 
-ln -sf "$NGINX_CONF_PATH" "/etc/nginx/sites-enabled/${NGINX_SYMLINK}"
-rm -f /etc/nginx/sites-enabled/default
+write_nginx_https() {
+    local domain="$1"
+    local ssl_cert="/etc/letsencrypt/live/${domain}/fullchain.pem"
+    local ssl_key="/etc/letsencrypt/live/${domain}/privkey.pem"
 
-if ! nginx -t 2>&1; then
-    error "nginx config test failed. Config file: $NGINX_CONF_PATH"
-    cat "$NGINX_CONF_PATH"
-    die "Fix the config above and re-run deploy.sh"
-fi
-systemctl reload nginx
-success "nginx HTTP config written and reloaded"
-
-# ─── Step 6: SSL certificate — certbot rewrites config with SSL block ─────────
-section "Step 6 — Getting Let's Encrypt SSL certificate"
-
-certbot --nginx -d "$DOMAIN" \
-    --non-interactive --agree-tos \
-    -m "$EMAIL" \
-    --redirect
-
-# certbot has issued the cert — cert paths are now known.
-# Rewrite the full config with SSL hardening (avoids fragile sed patching).
-SSL_CERT="/etc/letsencrypt/live/${DOMAIN}/fullchain.pem"
-SSL_KEY="/etc/letsencrypt/live/${DOMAIN}/privkey.pem"
-
-cat > "$NGINX_CONF_PATH" << NGINXEOF
+    cat > "$NGINX_CONF_PATH" << NGINXEOF
 # Office Tools — managed by deploy.sh
-# Certbot will update the ssl_certificate lines on renewal.
 
-# ── HTTP → HTTPS redirect ────────────────────────────────────────────────────
 server {
     listen 80;
     listen [::]:80;
-    server_name ${DOMAIN};
+    server_name ${domain};
     return 301 https://\$host\$request_uri;
 }
 
-# ── HTTPS server ─────────────────────────────────────────────────────────────
 server {
     listen 443 ssl;
     listen [::]:443 ssl;
-    server_name ${DOMAIN};
+    server_name ${domain};
 
-    ssl_certificate     ${SSL_CERT};
-    ssl_certificate_key ${SSL_KEY};
-
-    # Strong SSL
+    ssl_certificate     ${ssl_cert};
+    ssl_certificate_key ${ssl_key};
     ssl_protocols             TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers on;
-    ssl_ciphers               ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
-    ssl_session_cache         shared:SSL:10m;
-    ssl_session_timeout       1d;
-    ssl_session_tickets       off;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
 
-    # Security headers
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     add_header X-Frame-Options           "SAMEORIGIN"             always;
     add_header X-Content-Type-Options    "nosniff"                always;
@@ -320,27 +316,22 @@ server {
     add_header Referrer-Policy           "strict-origin-when-cross-origin" always;
     add_header Permissions-Policy        "camera=(), microphone=(), geolocation=()" always;
 
-    # Gzip
-    gzip            on;
-    gzip_vary       on;
-    gzip_types      text/plain text/css text/javascript application/javascript application/json image/svg+xml;
+    gzip on; gzip_vary on;
+    gzip_types text/plain text/css text/javascript application/javascript application/json image/svg+xml;
     gzip_min_length 1024;
+
+    client_max_body_size 1100M;
 
     root  ${WEB_ROOT};
     index index.html;
 
-    # ── Static frontend ──────────────────────────────────────────────────────
-    location / {
-        try_files \$uri \$uri/ \$uri.html =404;
-    }
+    location / { try_files \$uri \$uri/ \$uri.html =404; }
 
-    # Cache static assets
     location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg|woff2|woff)$ {
         expires 7d;
         add_header Cache-Control "public, immutable";
     }
 
-    # ── PocketBase API ───────────────────────────────────────────────────────
     location ^~ /pb-api/ {
         proxy_pass         http://127.0.0.1:8090/;
         proxy_http_version 1.1;
@@ -352,32 +343,24 @@ server {
         proxy_set_header   X-Forwarded-Proto \$scheme;
         proxy_read_timeout 300s;
         proxy_buffering    off;
+        client_max_body_size 1100M;
     }
-
-    # ── PocketBase admin UI — HTML shell ─────────────────────────────────────
-    # The admin SPA is served from /_/ on PocketBase.
     location ^~ /_/ {
-        proxy_pass         http://127.0.0.1:8090/_/;
+        proxy_pass http://127.0.0.1:8090/_/;
         proxy_http_version 1.1;
-        proxy_set_header   Host              \$host;
-        proxy_set_header   X-Real-IP         \$remote_addr;
-        proxy_set_header   X-Forwarded-For   \$proxy_add_x_forwarded_for;
-        proxy_set_header   X-Forwarded-Proto \$scheme;
+        proxy_set_header Host              \$host;
+        proxy_set_header X-Real-IP         \$remote_addr;
+        proxy_set_header X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
-
-    # ── PocketBase admin UI — API calls ──────────────────────────────────────
-    # The admin SPA makes API calls to /api/ using absolute paths.
-    # /pb-api/ is for the frontend app; /api/ is for the admin UI itself.
     location ^~ /api/ {
-        proxy_pass         http://127.0.0.1:8090/api/;
+        proxy_pass http://127.0.0.1:8090/api/;
         proxy_http_version 1.1;
-        proxy_set_header   Host              \$host;
-        proxy_set_header   X-Real-IP         \$remote_addr;
-        proxy_set_header   X-Forwarded-For   \$proxy_add_x_forwarded_for;
-        proxy_set_header   X-Forwarded-Proto \$scheme;
+        proxy_set_header Host              \$host;
+        proxy_set_header X-Real-IP         \$remote_addr;
+        proxy_set_header X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
-
-    # ── Grin payment server ──────────────────────────────────────────────────
     location ^~ /pay-api/ {
         proxy_pass         http://127.0.0.1:3001/;
         proxy_http_version 1.1;
@@ -388,107 +371,79 @@ server {
         proxy_read_timeout 60s;
     }
 
-    # ── Block sensitive paths ────────────────────────────────────────────────
     location ~ /\.                           { deny all; return 404; }
     location /backend/                       { deny all; return 404; }
     location ~ \.(env|sh|json|md|toml|log)$ { deny all; return 404; }
 }
 NGINXEOF
+    _nginx_enable
+    success "nginx HTTPS config hardened for ${domain}"
+}
 
-if ! nginx -t 2>&1; then
-    error "nginx config test failed. Config file: $NGINX_CONF_PATH"
-    error "Current config written:"
-    cat "$NGINX_CONF_PATH"
-    die "Fix the config above and re-run deploy.sh"
-fi
-systemctl reload nginx
-success "SSL certificate issued and nginx hardened for $DOMAIN"
+get_ssl() {
+    local domain="$1" email="$2"
+    section "Getting Let's Encrypt SSL for ${domain}"
+    certbot --nginx -d "$domain" \
+        --non-interactive --agree-tos \
+        -m "$email" --redirect
+    success "SSL certificate issued"
+}
 
-# ─── Step 7: Backend setup (optional) ────────────────────────────────────────
-if [[ "${SETUP_BACKEND,,}" == "y" ]]; then
+# ─── Backend ──────────────────────────────────────────────────────────────────
+setup_backend_first() {
+    local domain="$1"
 
-    BACKEND_ALREADY_SET_UP=false
-    [[ -f "$BACKEND_DIR/.env" && -x "$PB_DIR/pocketbase" ]] && BACKEND_ALREADY_SET_UP=true
+    section "Backend setup — PocketBase + Grin payment server"
+    echo -ne "  PocketBase admin email:    "; read -r PB_ADMIN_EMAIL
+    echo -ne "  PocketBase admin password: "; read -rs _PB_PASS; echo ""
+    echo -ne "  Grin wallet password:      "; read -rs _GW_PASS; echo ""
 
-    if [[ "$BACKEND_ALREADY_SET_UP" == true && "$RECONFIGURE" == false ]]; then
-        section "Step 7 — Backend already set up — syncing files only"
-        # Only sync updated backend source files; keep existing .env intact
-        rsync -av --exclude='.env' "$REPO_DIR/backend/" "$BACKEND_DIR/"
-        cd "$BACKEND_DIR" && npm install --omit=dev && cd /
-        cp "$BACKEND_DIR/pb_hooks/main.pb.js" "$PB_DIR/pb_hooks/"
-        systemctl restart office-tools-pb office-tools-pay 2>/dev/null || true
-        success "Backend files synced and services restarted"
-    else
-    section "Step 7 — Setting up backend"
-
-    # 7a. Copy backend files
     mkdir -p "$BACKEND_DIR"
-    rsync -av "$REPO_DIR/backend/" "$BACKEND_DIR/"
+    rsync -a "$REPO_DIR/backend/" "$BACKEND_DIR/"
 
-    # 7b. Write .env
     cat > "$BACKEND_DIR/.env" << ENVEOF
-# ── Grin Wallet ──────────────────────────────────────────────────────────────
+# Office Tools backend config
 GRIN_OWNER_URL=http://127.0.0.1:3420/v3/owner
-GRIN_WALLET_PASS=${GRIN_WALLET_PASS}
+GRIN_WALLET_PASS=${_GW_PASS}
 GRIN_FOREIGN_URL=http://127.0.0.1:3415/v2/foreign
-
-# ── PocketBase ───────────────────────────────────────────────────────────────
 PB_URL=http://127.0.0.1:8090
 PB_ADMIN_EMAIL=${PB_ADMIN_EMAIL}
-PB_ADMIN_PASSWORD=${PB_ADMIN_PASSWORD}
-
-# ── Server ───────────────────────────────────────────────────────────────────
+PB_ADMIN_PASSWORD=${_PB_PASS}
 PORT=3001
-CORS_ORIGINS=https://${DOMAIN}
+CORS_ORIGINS=https://${domain}
 PAYMENT_EXPIRY_MINUTES=30
-
-# ── Plan amounts in nanogrin (1 GRIN = 1,000,000,000 nanogrin) ───────────────
 PLAN_PRO_MONTHLY_NANOGRIN=10000000000
 PLAN_PRO_YEARLY_NANOGRIN=100000000000
 PLAN_LIFETIME_NANOGRIN=500000000000
 ENVEOF
-
     chmod 600 "$BACKEND_DIR/.env"
-    chown root:root "$BACKEND_DIR/.env"
 
-    # 7c. npm install
-    cd "$BACKEND_DIR"
-    npm install --omit=dev
-    cd /
-
+    cd "$BACKEND_DIR" && npm install --omit=dev && cd /
     success "Backend files ready at $BACKEND_DIR"
 
-    # 7d. Download latest PocketBase
-    section "Step 7b — Downloading PocketBase"
-
+    # Download PocketBase
+    section "Downloading PocketBase"
     mkdir -p "$PB_DIR"
-    PB_VERSION=$(curl -s https://api.github.com/repos/pocketbase/pocketbase/releases/latest \
+    local pb_ver
+    pb_ver=$(curl -s https://api.github.com/repos/pocketbase/pocketbase/releases/latest \
         | grep '"tag_name"' | cut -d'"' -f4 | sed 's/v//')
-    PB_ZIP="pocketbase_${PB_VERSION}_linux_amd64.zip"
-    PB_URL_DL="https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/${PB_ZIP}"
-
-    curl -L "$PB_URL_DL" -o "/tmp/${PB_ZIP}"
-    unzip -o "/tmp/${PB_ZIP}" -d "$PB_DIR"
+    local pb_zip="pocketbase_${pb_ver}_linux_amd64.zip"
+    curl -L "https://github.com/pocketbase/pocketbase/releases/download/v${pb_ver}/${pb_zip}" \
+        -o "/tmp/${pb_zip}"
+    unzip -o "/tmp/${pb_zip}" -d "$PB_DIR"
     chmod +x "$PB_DIR/pocketbase"
-    rm -f "/tmp/${PB_ZIP}"
-
-    # Copy pb_hooks and pb_schema
+    rm -f "/tmp/${pb_zip}"
     mkdir -p "$PB_DIR/pb_hooks"
     cp "$BACKEND_DIR/pb_hooks/main.pb.js" "$PB_DIR/pb_hooks/"
-
     chown -R www-data:www-data "$PB_DIR"
-    success "PocketBase $PB_VERSION installed at $PB_DIR"
+    success "PocketBase ${pb_ver} installed at $PB_DIR"
 
-    # 7e. Create systemd services
-    section "Step 7c — Creating systemd services"
-
-    # PocketBase service
+    # Systemd services
+    section "Creating systemd services"
     cat > /etc/systemd/system/office-tools-pb.service << PBEOF
 [Unit]
 Description=Office Tools — PocketBase
 After=network.target
-Wants=network.target
-
 [Service]
 Type=simple
 User=www-data
@@ -499,18 +454,14 @@ Restart=on-failure
 RestartSec=5s
 StandardOutput=journal
 StandardError=journal
-
 [Install]
 WantedBy=multi-user.target
 PBEOF
 
-    # Grin payment server service
     cat > /etc/systemd/system/office-tools-pay.service << PAYEOF
 [Unit]
 Description=Office Tools — Grin Payment Server
 After=network.target office-tools-pb.service
-Wants=network.target
-
 [Service]
 Type=simple
 User=www-data
@@ -522,7 +473,6 @@ Restart=on-failure
 RestartSec=5s
 StandardOutput=journal
 StandardError=journal
-
 [Install]
 WantedBy=multi-user.target
 PAYEOF
@@ -531,91 +481,388 @@ PAYEOF
     systemctl enable office-tools-pb office-tools-pay
     systemctl start  office-tools-pb
 
-    # Give PocketBase time to initialize before creating superuser
-    info "Waiting for PocketBase to initialize..."
+    info "Waiting for PocketBase to initialize (3 s)…"
     sleep 3
 
-    # Create superuser using credentials entered during setup
-    if [[ -n "$PB_ADMIN_EMAIL" && -n "$PB_ADMIN_PASSWORD" ]]; then
-        info "Creating PocketBase superuser: $PB_ADMIN_EMAIL"
-        "$PB_DIR/pocketbase" superuser upsert "$PB_ADMIN_EMAIL" "$PB_ADMIN_PASSWORD" \
-            && success "PocketBase superuser created: $PB_ADMIN_EMAIL" \
+    if [[ -n "$PB_ADMIN_EMAIL" && -n "$_PB_PASS" ]]; then
+        "$PB_DIR/pocketbase" superuser upsert "$PB_ADMIN_EMAIL" "$_PB_PASS" \
+            && success "PocketBase superuser created" \
             || warn "Superuser creation failed — run manually: $PB_DIR/pocketbase superuser upsert EMAIL PASS"
-    else
-        warn "PB_ADMIN_EMAIL or PB_ADMIN_PASSWORD not set — skipping superuser creation."
-        warn "Run manually: $PB_DIR/pocketbase superuser upsert EMAIL PASS"
     fi
 
     systemctl start office-tools-pay || \
-        warn "Grin payment server failed to start — check 'journalctl -u office-tools-pay'. Is your Grin wallet running?"
+        warn "Payment server failed to start — check: journalctl -u office-tools-pay"
 
-    success "systemd services created and started"
-    fi  # end else (first-time backend setup)
-fi    # end SETUP_BACKEND
+    success "Backend services enabled and started"
+}
 
-# ─── Done ─────────────────────────────────────────────────────────────────────
-section "Deployment Complete"
+sync_backend() {
+    section "Syncing backend files"
+    rsync -a --exclude='.env' "$REPO_DIR/backend/" "$BACKEND_DIR/"
+    cd "$BACKEND_DIR" && npm install --omit=dev && cd /
+    cp "$BACKEND_DIR/pb_hooks/main.pb.js" "$PB_DIR/pb_hooks/" 2>/dev/null || true
+    systemctl restart office-tools-pb office-tools-pay 2>/dev/null || true
+    success "Backend synced and services restarted"
+}
 
-echo -e "${BOLD}${GREEN}  ✔  https://${DOMAIN}  is live${RESET}"
-echo ""
+# ─── Summary printer ──────────────────────────────────────────────────────────
+print_summary() {
+    local domain="$1"
+    echo ""
+    echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo -e "${BOLD}${GREEN}  ✔  https://${domain}  is live${RESET}"
+    echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo ""
+    echo -e "  ${BOLD}Site:${RESET}           https://${domain}/"
+    echo -e "  ${BOLD}PocketBase UI:${RESET}  https://${domain}/_/"
+    echo -e "  ${BOLD}PB API:${RESET}         https://${domain}/pb-api/"
+    echo -e "  ${BOLD}Web root:${RESET}       ${WEB_ROOT}"
+    echo -e "  ${BOLD}nginx config:${RESET}   ${NGINX_CONF_PATH}"
+    echo -e "  ${BOLD}Repo:${RESET}           ${REPO_DIR}"
+    echo -e "  ${BOLD}Logs:${RESET}           ${LOG_DIR}/"
+    echo ""
+}
 
-echo -e "${BOLD}── Locations ───────────────────────────────────────────────────${RESET}"
-echo -e "  Web root       : ${WEB_ROOT}"
-echo -e "  nginx config   : ${NGINX_CONF_PATH}"
-echo -e "  Git repo       : ${REPO_DIR}"
-echo -e "  Deploy logs    : ${LOG_DIR}/"
-echo -e "  This run log   : ${LOG_FILE}"
-echo -e "  SSL cert       : /etc/letsencrypt/live/${DOMAIN}/"
-echo ""
+# ─── Banner & status ──────────────────────────────────────────────────────────
+show_banner() {
+    clear
+    echo ""
+    echo -e "${BOLD}${CYAN}╔═══════════════════════════════════════════════════════╗${RESET}"
+    echo -e "${BOLD}${CYAN}║       Office Tools — Deploy Manager                   ║${RESET}"
+    echo -e "${BOLD}${CYAN}║       github.com/noobvie/Office_Tools                 ║${RESET}"
+    echo -e "${BOLD}${CYAN}╚═══════════════════════════════════════════════════════╝${RESET}"
+    echo ""
+    echo -e "  ${DIM}OS: ${OS_NAME}${RESET}"
+}
 
-if [[ "${SETUP_BACKEND,,}" == "y" ]]; then
-    echo -e "${BOLD}── Backend ─────────────────────────────────────────────────────${RESET}"
-    echo -e "  PocketBase dir : ${PB_DIR}"
-    echo -e "  PocketBase bin : ${PB_DIR}/pocketbase"
-    echo -e "  Backend dir    : ${BACKEND_DIR}"
-    echo -e "  Backend .env   : ${BACKEND_DIR}/.env  ${DIM}(chmod 600, secrets here)${RESET}"
-    echo -e "  PB schema      : ${BACKEND_DIR}/pb_schema.json"
-    echo -e "  PB hooks       : ${PB_DIR}/pb_hooks/main.pb.js"
+show_status() {
+    load_conf
+    echo -e "  ${BOLD}Current status${RESET}"
+    echo -e "  ──────────────────────────────────────────────────"
+
+    if [[ -n "$DOMAIN" ]]; then
+        echo -e "  ${GREEN}●${RESET} Domain     : ${BOLD}${DOMAIN}${RESET}"
+    else
+        echo -e "  ${DIM}○ Domain     : not configured${RESET}"
+    fi
+
+    if [[ -d "$REPO_DIR/.git" ]]; then
+        local commit; commit=$(git -C "$REPO_DIR" log -1 --format='%h %s' 2>/dev/null || echo "unknown")
+        echo -e "  ${GREEN}●${RESET} Repo       : ${DIM}${commit}${RESET}"
+    else
+        echo -e "  ${DIM}○ Repo       : not cloned${RESET}"
+    fi
+
+    local svcs=("nginx" "office-tools-pb" "office-tools-pay")
+    for svc in "${svcs[@]}"; do
+        if systemctl is-active --quiet "$svc" 2>/dev/null; then
+            echo -e "  ${GREEN}●${RESET} ${svc}  ${DIM}running${RESET}"
+        elif systemctl list-unit-files "${svc}.service" &>/dev/null 2>&1 \
+             && systemctl list-unit-files "${svc}.service" 2>/dev/null | grep -q "${svc}"; then
+            echo -e "  ${YELLOW}●${RESET} ${svc}  ${DIM}stopped${RESET}"
+        fi
+    done
+    echo ""
+}
+
+# ─── Option 1: Install / Update ───────────────────────────────────────────────
+opt_1_install_update() {
+    show_banner
+    section "Option 1 — Install / Update"
+
+    echo -e "  This will:"
+    echo -e "    ${CYAN}·${RESET} Update OS packages   ${DIM}(${OS_FAMILY})${RESET}"
+    echo -e "    ${CYAN}·${RESET} Install / update:    nginx · certbot · Node.js · git · curl"
+    echo -e "    ${CYAN}·${RESET} Pull latest code     ${DIM}(Office Tools GitHub)${RESET}"
+    echo -e "    ${CYAN}·${RESET} Sync frontend files  ${DIM}→ $WEB_ROOT${RESET}"
+    echo -e "    ${CYAN}·${RESET} Restart services     ${DIM}(if already configured)${RESET}"
+    echo ""
+    echo -ne "  ${BOLD}Proceed? [Y/n]: ${RESET}"; read -r _c
+    [[ "${_c,,}" == "n" ]] && return 0
+
+    mkdir -p "$LOG_DIR"
+    local logf="$LOG_DIR/install_$(date +%Y%m%d_%H%M%S).log"
+    info "Logging to: $logf"
+
+    (
+        set -euo pipefail
+        exec > >(tee "$logf") 2>&1
+        pkg_update_os
+        install_base_packages
+        install_nodejs
+        pull_repo
+        load_conf
+        sync_frontend "${DOMAIN:-}"
+        if [[ -n "$DOMAIN" ]]; then
+            [[ -d "$BACKEND_DIR" ]] && sync_backend || true
+            systemctl reload nginx 2>/dev/null || true
+        fi
+    ) || warn "Some steps had errors — check $logf"
+
+    load_conf
+    if [[ -n "$DOMAIN" ]]; then
+        success "Update complete — https://${DOMAIN}"
+    else
+        success "Packages installed. Run Option 2 to configure a domain."
+    fi
+
+    press_enter
+}
+
+# ─── Option 2: Add / Configure Domain ─────────────────────────────────────────
+opt_2_add_domain() {
+    show_banner
+    section "Option 2 — Add / Configure Domain"
+
+    load_conf
+
+    # Prerequisites check
+    if ! command -v nginx &>/dev/null; then
+        warn "nginx not installed. Run Option 1 first."
+        press_enter; return 0
+    fi
+    if ! command -v certbot &>/dev/null; then
+        warn "certbot not installed. Run Option 1 first."
+        press_enter; return 0
+    fi
+    if [[ ! -d "$REPO_DIR/.git" ]]; then
+        warn "Repository not cloned. Run Option 1 first."
+        press_enter; return 0
+    fi
+
+    # Domain prompt
+    echo ""
+    [[ -n "$DOMAIN" ]] && echo -e "  ${DIM}Current domain: ${DOMAIN}${RESET}"
+    while true; do
+        local _prompt="  ${BOLD}Domain name${RESET}"
+        [[ -n "$DOMAIN" ]] && _prompt+=" (Enter = keep ${DIM}[$DOMAIN]${RESET})"
+        _prompt+=": "
+        echo -ne "$_prompt"
+        read -r _new
+        if [[ -n "$_new" ]]; then DOMAIN="$_new"; break
+        elif [[ -n "$DOMAIN" ]]; then break
+        else warn "Domain cannot be empty."; fi
+    done
+
+    # Email prompt
+    while true; do
+        local _eprompt="  ${BOLD}Email for SSL${RESET}"
+        [[ -n "$EMAIL" ]] && _eprompt+=" (Enter = keep ${DIM}[$EMAIL]${RESET})"
+        _eprompt+=": "
+        echo -ne "$_eprompt"
+        read -r _new
+        if [[ -n "$_new" ]]; then EMAIL="$_new"; break
+        elif [[ -n "$EMAIL" ]]; then break
+        else warn "Email cannot be empty."; fi
+    done
+
+    # Backend — only prompt on first install
+    local _do_backend=false
+    if [[ ! -x "$PB_DIR/pocketbase" ]]; then
+        echo ""
+        echo -e "  ${DIM}Backend services (PocketBase + Grin payment server) are optional.${RESET}"
+        echo -ne "  Set up backend? [Y/n]: "
+        read -r _b; _b="${_b:-Y}"
+        [[ "${_b,,}" == "y" ]] && _do_backend=true && SETUP_BACKEND="y"
+    else
+        info "Backend already installed — will sync files only"
+    fi
+
+    echo ""
+    echo -e "  Domain   : ${BOLD}${DOMAIN}${RESET}"
+    echo -e "  Email    : ${DOMAIN:+$EMAIL}"
+    echo -e "  Web root : $WEB_ROOT"
+    echo ""
+    echo -ne "  ${BOLD}Proceed? [Y/n]: ${RESET}"; read -r _c
+    [[ "${_c,,}" == "n" ]] && return 0
+
+    mkdir -p "$LOG_DIR"
+    local logf="$LOG_DIR/domain_$(date +%Y%m%d_%H%M%S).log"
+    info "Logging to: $logf"
+
+    (
+        set -euo pipefail
+        exec > >(tee "$logf") 2>&1
+
+        sync_frontend "$DOMAIN"
+        write_nginx_http "$DOMAIN"
+        get_ssl "$DOMAIN" "$EMAIL"
+        write_nginx_https "$DOMAIN"
+
+        if [[ "$_do_backend" == true ]]; then
+            setup_backend_first "$DOMAIN"
+        elif [[ -d "$BACKEND_DIR" ]]; then
+            sync_backend
+        fi
+    ) || { warn "Errors during setup — check $logf"; press_enter; return 0; }
+
+    save_conf
+    print_summary "$DOMAIN"
+    press_enter
+}
+
+# ─── Option 3: Remove / Switch Domain ─────────────────────────────────────────
+opt_3_remove_switch() {
+    show_banner
+    section "Option 3 — Remove / Switch Domain"
+
+    load_conf
+
+    if [[ -z "$DOMAIN" ]]; then
+        warn "No domain configured. Nothing to remove or switch."
+        press_enter; return 0
+    fi
+
+    echo -e "  Configured domain: ${BOLD}${DOMAIN}${RESET}"
+    echo ""
+    echo -e "    ${YELLOW}a)${RESET}  Remove domain         ${DIM}nginx config + SSL cert only — files kept${RESET}"
+    echo -e "    ${YELLOW}b)${RESET}  Switch to new domain  ${DIM}remove old config, set up new domain + SSL${RESET}"
+    echo -e "    ${YELLOW}0)${RESET}  Back"
+    echo ""
+    echo -ne "  Choose [a/b/0]: "; read -r _sub
+
+    case "${_sub,,}" in
+      a)
+        echo ""
+        echo -ne "  ${BOLD}${YELLOW}Type 'yes' to confirm removing config for ${DOMAIN}: ${RESET}"
+        read -r _c
+        [[ "$_c" != "yes" ]] && info "Aborted."; [[ "$_c" != "yes" ]] && press_enter && return 0
+
+        # Remove nginx config
+        if [[ -e "$NGINX_CONF_PATH" ]]; then
+            rm -f "$NGINX_CONF_PATH"
+            success "Removed: $NGINX_CONF_PATH"
+        fi
+        if [[ -n "$NGINX_ENABLED_PATH" && -L "$NGINX_ENABLED_PATH" ]]; then
+            rm -f "$NGINX_ENABLED_PATH"
+            success "Removed symlink: $NGINX_ENABLED_PATH"
+        fi
+        if nginx -t 2>/dev/null; then
+            systemctl reload nginx
+            success "nginx reloaded"
+        else
+            warn "nginx config test failed — check /etc/nginx/ manually"
+        fi
+
+        # Remove SSL cert
+        if [[ -d "/etc/letsencrypt/live/${DOMAIN}" ]]; then
+            certbot delete --cert-name "$DOMAIN" --non-interactive 2>/dev/null || {
+                rm -rf "/etc/letsencrypt/live/${DOMAIN}"
+                rm -f  "/etc/letsencrypt/renewal/${DOMAIN}.conf"
+            }
+            success "SSL certificate removed for $DOMAIN"
+        fi
+
+        local _old="$DOMAIN"
+        DOMAIN=""
+        save_conf
+        success "Domain '$_old' removed. Use Option 2 to configure a new domain."
+        ;;
+
+      b)
+        echo ""
+        while true; do
+            echo -ne "  ${BOLD}New domain name${RESET}: "
+            read -r _new
+            [[ -n "$_new" ]] && break
+            warn "Domain cannot be empty."
+        done
+        echo -ne "  ${BOLD}Email for SSL${RESET} (Enter = keep [$EMAIL]): "
+        read -r _em; [[ -n "$_em" ]] && EMAIL="$_em"
+
+        echo ""
+        echo -e "  Will remove: ${BOLD}${DOMAIN}${RESET}"
+        echo -e "  Will set up: ${BOLD}${_new}${RESET}"
+        echo ""
+        echo -ne "  ${BOLD}Proceed? [Y/n]: ${RESET}"; read -r _c
+        [[ "${_c,,}" == "n" ]] && return 0
+
+        mkdir -p "$LOG_DIR"
+        local logf="$LOG_DIR/switch_$(date +%Y%m%d_%H%M%S).log"
+
+        (
+            set -euo pipefail
+            exec > >(tee "$logf") 2>&1
+
+            section "Removing old domain: $DOMAIN"
+            rm -f "$NGINX_CONF_PATH" 2>/dev/null || true
+            [[ -n "$NGINX_ENABLED_PATH" ]] && rm -f "$NGINX_ENABLED_PATH" 2>/dev/null || true
+            certbot delete --cert-name "$DOMAIN" --non-interactive 2>/dev/null || true
+            nginx -t 2>/dev/null && systemctl reload nginx || true
+            success "Old domain removed"
+
+            DOMAIN="$_new"
+
+            section "Setting up new domain: $DOMAIN"
+            sync_frontend "$DOMAIN"
+            write_nginx_http "$DOMAIN"
+            get_ssl "$DOMAIN" "$EMAIL"
+            write_nginx_https "$DOMAIN"
+            [[ -d "$BACKEND_DIR" ]] && sync_backend || true
+        ) || { warn "Errors during switch — check $logf"; press_enter; return 0; }
+
+        DOMAIN="$_new"
+        save_conf
+        print_summary "$DOMAIN"
+        ;;
+
+      *) info "Back to main menu." ;;
+    esac
+
+    press_enter
+}
+
+# ─── Option 4: Delete ─────────────────────────────────────────────────────────
+opt_4_delete() {
+    show_banner
+    section "Option 4 — Delete Office Tools"
+
+    echo -e "  ${RED}${BOLD}This will PERMANENTLY remove Office Tools from this server.${RESET}"
     echo ""
 
-    echo -e "${BOLD}── Service commands ────────────────────────────────────────────${RESET}"
-    echo -e "  systemctl status  office-tools-pb     ${DIM}# PocketBase status${RESET}"
-    echo -e "  systemctl status  office-tools-pay    ${DIM}# Grin payment server status${RESET}"
-    echo -e "  systemctl restart office-tools-pb"
-    echo -e "  systemctl restart office-tools-pay"
-    echo -e "  journalctl -fu    office-tools-pb     ${DIM}# live PocketBase logs${RESET}"
-    echo -e "  journalctl -fu    office-tools-pay    ${DIM}# live payment server logs${RESET}"
+    # Locate undeploy.sh
+    local _undeploy=""
+    for _p in \
+        "$SCRIPT_DIR/undeploy.sh" \
+        "$REPO_DIR/undeploy.sh" \
+        "/opt/office-tools/repo/undeploy.sh"; do
+        [[ -f "$_p" ]] && _undeploy="$_p" && break
+    done
+
+    if [[ -z "$_undeploy" ]]; then
+        die "undeploy.sh not found. Copy it next to deploy.sh and retry."
+    fi
+
+    info "Will run: $_undeploy"
+    echo ""
+    bash "$_undeploy"
+}
+
+# ─── Main loop ────────────────────────────────────────────────────────────────
+[[ "$EUID" -ne 0 ]] && die "Run as root: sudo bash deploy.sh"
+detect_os
+
+while true; do
+    show_banner
+    show_status
+
+    echo -e "  ${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo -e "    ${BOLD}1)${RESET}  Install / Update    ${DIM}packages · OS · pull latest code${RESET}"
+    echo -e "    ${BOLD}2)${RESET}  Add Domain          ${DIM}configure domain · SSL · backend${RESET}"
+    echo -e "    ${BOLD}3)${RESET}  Remove / Switch     ${DIM}remove or change active domain${RESET}"
+    echo -e "    ${BOLD}4)${RESET}  Delete              ${DIM}permanently remove Office Tools${RESET}"
+    echo -e "    ${BOLD}0)${RESET}  Exit"
+    echo -e "  ${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo ""
+    echo -ne "  Choose [0-4]: "; read -r _choice
     echo ""
 
-    echo -e "${BOLD}── URLs ────────────────────────────────────────────────────────${RESET}"
-    echo -e "  Site           : ${GREEN}https://${DOMAIN}/${RESET}"
-    echo -e "  Admin panel    : ${GREEN}https://${DOMAIN}/admin/${RESET}        ${DIM}(PocketBase admin credentials)${RESET}"
-    echo -e "  PocketBase UI  : ${GREEN}https://${DOMAIN}/pb-api/_/${RESET}     ${DIM}(first-time: create admin account)${RESET}"
-    echo -e "  PB API root    : ${GREEN}https://${DOMAIN}/pb-api/${RESET}"
-    echo -e "  Payment API    : ${GREEN}https://${DOMAIN}/pay-api/${RESET}"
-    echo ""
-
-    echo -e "${BOLD}${YELLOW}── PocketBase first-time setup (do this now) ───────────────────${RESET}"
-    echo -e "  1. Open  ${BOLD}https://${DOMAIN}/pb-api/_/${RESET}"
-    echo -e "  2. Create admin account — use the email/password you entered"
-    echo -e "  3. Go to  Settings → Import Collections"
-    echo -e "     Paste contents of:  ${BOLD}${BACKEND_DIR}/pb_schema.json${RESET}"
-    echo -e "  4. Configure mail  Settings → Mail  (for welcome/verification emails)"
-    echo -e "  5. Restart PocketBase:  ${BOLD}systemctl restart office-tools-pb${RESET}"
-    echo ""
-fi
-
-echo -e "${BOLD}── nginx commands ──────────────────────────────────────────────${RESET}"
-echo -e "  nginx -t                              ${DIM}# test config${RESET}"
-echo -e "  systemctl reload nginx                ${DIM}# apply config changes${RESET}"
-echo -e "  systemctl status nginx"
-echo -e "  tail -f /var/log/nginx/error.log      ${DIM}# nginx errors${RESET}"
-echo -e "  tail -f /var/log/nginx/access.log     ${DIM}# nginx access${RESET}"
-echo ""
-
-echo -e "${BOLD}── Redeploy after git push ─────────────────────────────────────${RESET}"
-echo -e "  ${BOLD}sudo bash ${REPO_DIR}/deploy.sh${RESET}"
-echo -e "  ${DIM}(re-pulls repo, re-syncs frontend, reloads nginx — SSL not re-requested)${RESET}"
-echo ""
-
-success "All done!"
+    case "$_choice" in
+        1) opt_1_install_update ;;
+        2) opt_2_add_domain     ;;
+        3) opt_3_remove_switch  ;;
+        4) opt_4_delete; break  ;;
+        0) echo -e "${DIM}Goodbye.${RESET}"; exit 0 ;;
+        *) warn "Invalid choice: $_choice" ;;
+    esac
+done

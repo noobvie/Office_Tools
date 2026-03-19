@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Number Base Converter — Office Tools</title>
+  <meta name="description" content="Convert numbers between binary, octal, decimal, and hexadecimal instantly. Supports large integers. Free online base converter — no login needed.">
+  <meta name="keywords" content="binary converter, hex converter, decimal to binary, hexadecimal converter, octal converter, number base conversion, binary to decimal">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Number Base Converter — Office Tools">
+  <meta property="og:description" content="Convert numbers between binary, octal, decimal, and hexadecimal instantly. Supports large integers. Free online base converter — no login needed.">
+  <meta property="og:url" content="https://yourdomain.com/tools/base-converter/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Number Base Converter — Office Tools">
+  <meta name="twitter:description" content="Convert numbers between binary, octal, decimal, and hexadecimal instantly. Supports large integers. Free online base converter — no login needed.">
+  <link rel="canonical" href="https://yourdomain.com/tools/base-converter/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Number Base Converter","description":"Convert numbers between binary, octal, decimal, and hexadecimal instantly. Supports large integers. Free online base converter — no login needed.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://yourdomain.com/tools/base-converter/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .base-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .85rem; }
+    .base-field { }
+    .base-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin-bottom: .3rem; display: flex; justify-content: space-between; align-items: center; }
+    .base-input {
+      width: 100%; box-sizing: border-box;
+      font-family: 'Courier New', monospace; font-size: .95rem; font-weight: 700;
+      background: var(--bg-secondary); color: var(--text);
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      padding: .6rem .85rem; outline: none;
+      transition: border-color var(--transition);
+    }
+    .base-input:focus { border-color: var(--primary); }
+    .base-input.error { border-color: var(--danger); background: rgba(239,68,68,.06); }
+    .info-card { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: .65rem; margin-top: .75rem; }
+    .info-item { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: .55rem .75rem; }
+    .info-item-label { font-size: .7rem; color: var(--text-muted); font-weight: 600; }
+    .info-item-val { font-size: .9rem; font-weight: 700; margin-top: .1rem; font-family: monospace; }
+    .fit-yes { color: #22c55e; } .fit-no { color: var(--danger); }
+    @media (max-width: 500px) { .base-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Base Converter</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔢 Number Base Converter</h1>
+    <p>Convert between binary, octal, decimal, and hexadecimal. Edit any field — all others update instantly.</p>
+  </div>
+
+  <div class="card">
+    <div class="base-grid">
+      <div class="base-field">
+        <div class="base-label">
+          Binary (base 2)
+          <button class="btn btn-sm btn-secondary" id="copyBin">Copy</button>
+        </div>
+        <input type="text" id="fBin" class="base-input" placeholder="0 or 1" spellcheck="false" value="1010">
+      </div>
+      <div class="base-field">
+        <div class="base-label">
+          Octal (base 8)
+          <button class="btn btn-sm btn-secondary" id="copyOct">Copy</button>
+        </div>
+        <input type="text" id="fOct" class="base-input" placeholder="0–7" spellcheck="false">
+      </div>
+      <div class="base-field">
+        <div class="base-label">
+          Decimal (base 10)
+          <button class="btn btn-sm btn-secondary" id="copyDec">Copy</button>
+        </div>
+        <input type="text" id="fDec" class="base-input" placeholder="0–9" spellcheck="false">
+      </div>
+      <div class="base-field">
+        <div class="base-label">
+          Hexadecimal (base 16)
+          <button class="btn btn-sm btn-secondary" id="copyHex">Copy</button>
+        </div>
+        <input type="text" id="fHex" class="base-input" placeholder="0–9 A–F" spellcheck="false">
+      </div>
+    </div>
+    <div id="bcError" class="alert alert-danger mt-2 hidden"></div>
+  </div>
+
+  <div class="card mt-2" id="infoCard" style="display:none">
+    <div style="font-weight:700;margin-bottom:.5rem">Bit Analysis</div>
+    <div class="info-card" id="infoGrid"></div>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const PATTERNS = { fBin: /^[01]+$/, fOct: /^[0-7]+$/, fDec: /^\d+$/, fHex: /^[0-9a-fA-F]+$/ };
+const BASES    = { fBin: 2, fOct: 8, fDec: 10, fHex: 16 };
+let updating = false;
+
+function convert(sourceId) {
+  if (updating) return;
+  updating = true;
+  const errEl = document.getElementById('bcError');
+  errEl.classList.add('hidden');
+  ['fBin','fOct','fDec','fHex'].forEach(id => document.getElementById(id).classList.remove('error'));
+
+  const raw = document.getElementById(sourceId).value.trim();
+
+  if (!raw) {
+    ['fBin','fOct','fDec','fHex'].forEach(id => { if (id !== sourceId) document.getElementById(id).value = ''; });
+    document.getElementById('infoCard').style.display = 'none';
+    updating = false;
+    return;
+  }
+
+  if (!PATTERNS[sourceId].test(raw)) {
+    document.getElementById(sourceId).classList.add('error');
+    errEl.textContent = 'Invalid characters for base ' + BASES[sourceId];
+    errEl.classList.remove('hidden');
+    document.getElementById('infoCard').style.display = 'none';
+    updating = false;
+    return;
+  }
+
+  const val = BigInt('0' + (sourceId === 'fHex' ? 'x' : sourceId === 'fOct' ? 'o' : sourceId === 'fBin' ? 'b' : '') + (sourceId === 'fDec' ? raw : '') + (sourceId !== 'fDec' ? raw : ''));
+  // Use BigInt parsing:
+  let bigVal;
+  try {
+    if (sourceId === 'fBin') bigVal = BigInt('0b' + raw);
+    else if (sourceId === 'fOct') bigVal = BigInt('0o' + raw);
+    else if (sourceId === 'fDec') bigVal = BigInt(raw);
+    else bigVal = BigInt('0x' + raw);
+  } catch(e) {
+    document.getElementById(sourceId).classList.add('error');
+    errEl.textContent = 'Number too large or invalid.';
+    errEl.classList.remove('hidden');
+    updating = false;
+    return;
+  }
+
+  if (sourceId !== 'fBin') document.getElementById('fBin').value = bigVal.toString(2);
+  if (sourceId !== 'fOct') document.getElementById('fOct').value = bigVal.toString(8);
+  if (sourceId !== 'fDec') document.getElementById('fDec').value = bigVal.toString(10);
+  if (sourceId !== 'fHex') document.getElementById('fHex').value = bigVal.toString(16).toUpperCase();
+
+  // Bit info
+  const bits = bigVal.toString(2).length;
+  const ranges = [
+    { label: '8-bit unsigned',   min: 0n, max: 255n },
+    { label: '16-bit unsigned',  min: 0n, max: 65535n },
+    { label: '32-bit unsigned',  min: 0n, max: 4294967295n },
+    { label: '64-bit unsigned',  min: 0n, max: 18446744073709551615n },
+    { label: '8-bit signed',     min: -128n, max: 127n },
+    { label: '16-bit signed',    min: -32768n, max: 32767n },
+    { label: '32-bit signed',    min: -2147483648n, max: 2147483647n },
+    { label: '64-bit signed',    min: -9223372036854775808n, max: 9223372036854775807n },
+  ];
+
+  let infoHtml = `<div class="info-item"><div class="info-item-label">Bit Length</div><div class="info-item-val">${bits} bits</div></div>`;
+  ranges.forEach(r => {
+    const fits = bigVal >= r.min && bigVal <= r.max;
+    infoHtml += `<div class="info-item"><div class="info-item-label">${escHtml(r.label)}</div><div class="info-item-val ${fits ? 'fit-yes' : 'fit-no'}">${fits ? '✓ Fits' : '✗ No'}</div></div>`;
+  });
+  document.getElementById('infoGrid').innerHTML = infoHtml;
+  document.getElementById('infoCard').style.display = '';
+
+  updating = false;
+}
+
+['fBin','fOct','fDec','fHex'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => convert(id));
+  document.getElementById('copy' + id.slice(1, 4).charAt(0).toUpperCase() + id.slice(2, 4))
+    ?.addEventListener('click', function() { copyText(document.getElementById(id).value, this); });
+});
+
+document.getElementById('copyBin').addEventListener('click', function() { copyText(document.getElementById('fBin').value, this); });
+document.getElementById('copyOct').addEventListener('click', function() { copyText(document.getElementById('fOct').value, this); });
+document.getElementById('copyDec').addEventListener('click', function() { copyText(document.getElementById('fDec').value, this); });
+document.getElementById('copyHex').addEventListener('click', function() { copyText(document.getElementById('fHex').value, this); });
+
+convert('fBin');
+</script>
+</body>
+</html>

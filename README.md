@@ -1,6 +1,6 @@
 # Office Tools
 
-A collection of 36 free, browser-based utilities for everyday office and productivity work.
+A collection of 52 free, browser-based utilities for everyday office and productivity work.
 No build step, no framework, no tracking — everything runs locally in your browser.
 
 **Live site:** [https://github.com/noobvie/Office_Tools](https://github.com/noobvie/Office_Tools)
@@ -14,6 +14,9 @@ No build step, no framework, no tracking — everything runs locally in your bro
 |------|-------------|
 | Pomodoro Timer | 25-min focus cycles with short/long breaks, session counter and desktop notifications |
 | Date Calculator | Date difference, add/subtract days, precise age calculator, countdown to any date |
+| World Calendar | View any month in Gregorian, Chinese Lunar (农历), and Islamic Hijri calendars side by side |
+| Stopwatch & Timer | Precise stopwatch with lap times and countdown timer with alarm — accurate to centiseconds |
+| Time Zone Converter | Convert times between any two time zones — world clock for 40+ cities |
 
 ### ✨ Generators
 | Tool | Description |
@@ -22,6 +25,7 @@ No build step, no framework, no tracking — everything runs locally in your bro
 | QR Code Generator | QR codes for URL, text, WiFi, vCard — download as PNG |
 | UUID Generator | UUID v4 (random) and v7 (time-ordered) — single or bulk, one-click copy |
 | Random Number Generator | Random integers or decimals in any range — bulk generation, no-duplicates option |
+| Lorem Ipsum Generator | Generate Lorem Ipsum placeholder text by paragraphs, sentences, words, or list items |
 
 ### 📝 Text & Content
 | Tool | Description |
@@ -30,6 +34,8 @@ No build step, no framework, no tracking — everything runs locally in your bro
 | Markdown Editor | Live split-pane editor with HTML preview, toolbar and export |
 | Text Diff | Side-by-side diff of two text blocks with color-highlighted additions/deletions |
 | Typing Speed Test | WPM and accuracy with real-time error tracking and grade rating |
+| Text Case Converter | Convert to UPPERCASE, lowercase, Title Case, camelCase, snake_case, kebab-case and more |
+| Notepad | Auto-saving scratch pad with up to 5 named notes stored in localStorage |
 
 ### 🔒 Encoding & Crypto
 | Tool | Description |
@@ -38,12 +44,19 @@ No build step, no framework, no tracking — everything runs locally in your bro
 | URL Encoder / Decoder | Percent-encode and decode URLs with before/after diff view |
 | Unix Timestamp | Convert Unix timestamps ↔ human-readable dates. Shows live current timestamp |
 | Hash Generator | SHA-1/256/384/512 and HMAC from text or files — uses Web Crypto API, 100% local |
+| HTML Entity Encoder | Encode & decode HTML entities (&amp;, &lt;, &gt;) — includes common entity reference table |
+| JWT Decoder | Decode JSON Web Tokens — view header, payload, expiry and claims. Fully local |
+| Number Base Converter | Convert between binary, octal, decimal, and hexadecimal — shows bit-length and signed/unsigned ranges |
 
 ### 🧮 Calculators
 | Tool | Description |
 |------|-------------|
 | Percentage Calculator | What is X% of Y? X is what % of Y? Percentage change between two values |
 | Aspect Ratio Calculator | Find missing dimension from ratio. Common presets: 16:9, 4:3, 1:1 |
+| Unit Converter | Convert length, weight, temperature, volume, area, speed and data units — all results shown at once |
+| Loan Calculator | Monthly payment, total interest, and yearly amortization schedule for any loan |
+| Tip Calculator | Calculate tip and split the bill — quick buttons for 10%–25%, per-person total |
+| Number to Words | Spell out any number in English — supports up to one quadrillion, with ordinal and currency modes |
 
 ### 💻 Development
 | Tool | Description |
@@ -51,11 +64,14 @@ No build step, no framework, no tracking — everything runs locally in your bro
 | JSON Editor | Validate, format, minify JSON with syntax highlighting and interactive tree view |
 | CSV ↔ JSON | Convert between CSV and JSON — table preview, file upload, download |
 | Crontab Explainer | Parse cron expressions into plain English — shows next 10 run times |
+| Regex Tester | Live regex match highlighting with capture groups and g/i/m/s flag toggles |
+| SQL Formatter | Beautify and minify SQL — uppercase keywords, configurable indent, comma style |
 
 ### 🎨 Design
 | Tool | Description |
 |------|-------------|
 | Color Converter | Convert HEX, RGB, HSL, HSV, CMYK — live preview, shades generator, named colors |
+| Character Map | Browse and copy special characters, symbols, arrows, math, currency, Greek and emoji |
 
 ### 🌐 Network & Web
 | Tool | Description |
@@ -173,32 +189,57 @@ No build step, no `npm install`, no environment variables required for the front
 
 ## Production Deployment
 
-### One-shot deploy script (recommended)
+### Deploy Manager (interactive menu)
 
-Runs on a fresh **Debian/Ubuntu** server as root. Handles everything automatically.
+`deploy.sh` is a menu-driven deployment manager. Supports **Debian · Ubuntu · AlmaLinux · Rocky Linux · CentOS Stream**.
 
 ```bash
 git clone https://github.com/noobvie/Office_Tools.git
 sudo bash Office_Tools/deploy.sh
 ```
 
-The script will prompt for:
-- Your domain (e.g. `tools.example.com`)
-- Email for Let's Encrypt SSL
-- Whether to set up the backend (PocketBase + Grin payment server)
-- If yes: Grin wallet password, PocketBase admin credentials
+On launch it detects the OS, shows current status, and presents a menu:
 
-What it does automatically:
+```
+  1)  Install / Update    — packages · OS · pull latest code
+  2)  Add Domain          — configure domain · SSL · backend
+  3)  Remove / Switch     — remove or change active domain
+  4)  Delete              — permanently remove Office Tools
+  0)  Exit
+```
 
-| Step | Action |
-|------|--------|
-| 1 | Installs nginx, certbot, Node.js 20 |
-| 2 | `git clone` / `git pull` from GitHub |
-| 3 | Patches `js/config.js` with your domain |
-| 4 | Deploys frontend only to `/var/www/office-tools/` (excludes `backend/`, `.git`) |
-| 5 | Writes secure nginx config — HSTS, TLS 1.2/1.3, security headers, gzip |
-| 6 | Issues Let's Encrypt SSL certificate via certbot |
-| 7 | *(optional)* Sets up PocketBase + Grin payment server as systemd services |
+#### Option 1 — Install / Update
+
+| Action | Detail |
+|--------|--------|
+| Update OS packages | `apt upgrade` (Debian/Ubuntu) or `dnf upgrade` (AlmaLinux/Rocky) |
+| Install packages | nginx · certbot · python3-certbot-nginx · git · curl · Node.js 20 |
+| EPEL (RHEL only) | Installs EPEL release for certbot availability |
+| SELinux (RHEL only) | Sets `httpd_can_network_connect` for nginx → PocketBase proxying |
+| Firewall (RHEL only) | Opens HTTP + HTTPS via `firewall-cmd` if firewalld is active |
+| Pull / clone repo | `git pull` if repo exists, `git clone` if first run |
+| Sync frontend | `rsync` → `/var/www/office-tools/`, patches domain placeholders |
+| Restart services | Reloads nginx, restarts backend services if configured |
+
+#### Option 2 — Add / Configure Domain
+
+Prompts for domain name and Let's Encrypt email, then:
+1. Syncs frontend and patches all `yourdomain.com` placeholders in HTML + `config.js`
+2. Writes HTTP nginx config and runs `certbot --nginx` for SSL
+3. Overwrites config with hardened HTTPS block (HSTS, TLS 1.2/1.3, security headers, gzip, `client_max_body_size 1100M`)
+4. Optionally sets up PocketBase + Grin payment server as systemd services (first run only)
+
+All settings are saved to `/opt/office-tools/deploy.conf` for future runs.
+
+#### Option 3 — Remove / Switch Domain
+
+- **Remove:** deletes nginx vhost config + Let's Encrypt certificate for the current domain
+- **Switch:** removes old domain config, then runs a full Option 2 setup for a new domain
+
+#### Option 4 — Delete
+
+Hands off to `undeploy.sh` which prompts for confirmation and removes:
+services · systemd unit files · nginx config · SSL certificate · all directories
 
 **Server layout after deploy:**
 
@@ -207,15 +248,15 @@ What it does automatically:
 /opt/office-tools/repo/       ← git repo
 /opt/office-tools/backend/    ← Node.js payment server + .env
 /opt/office-tools/pocketbase/ ← PocketBase binary + data
+/opt/office-tools/deploy.conf ← saved domain + settings
+/var/log/office-tools/        ← per-run deploy logs
 ```
 
-**Redeploy after a git push:**
+**Update / redeploy after a git push:**
 
 ```bash
-sudo bash /opt/office-tools/repo/deploy.sh
+sudo bash /opt/office-tools/repo/deploy.sh   # choose option 1
 ```
-
-Re-pulls, re-syncs frontend, reloads nginx. SSL cert is not re-requested if still valid.
 
 ---
 

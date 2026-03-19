@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stopwatch &amp; Countdown Timer — Office Tools</title>
+  <meta name="description" content="Free online stopwatch with lap times and countdown timer with alarm. Precise to milliseconds. No install needed — runs entirely in your browser.">
+  <meta name="keywords" content="stopwatch online, countdown timer, lap timer, online timer free, web stopwatch milliseconds">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Stopwatch &amp; Countdown Timer — Office Tools">
+  <meta property="og:description" content="Free online stopwatch with lap times and countdown timer with alarm. Precise to milliseconds. No install needed — runs entirely in your browser.">
+  <meta property="og:url" content="https://yourdomain.com/tools/timer/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Stopwatch &amp; Countdown Timer — Office Tools">
+  <meta name="twitter:description" content="Free online stopwatch with lap times and countdown timer with alarm. Precise to milliseconds. No install needed — runs entirely in your browser.">
+  <link rel="canonical" href="https://yourdomain.com/tools/timer/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Stopwatch & Countdown Timer","description":"Free online stopwatch with lap times and countdown timer with alarm. Precise to milliseconds. No install needed — runs entirely in your browser.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://yourdomain.com/tools/timer/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .timer-display {
+      font-size: 3.5rem;
+      font-weight: 800;
+      font-family: 'Courier New', monospace;
+      text-align: center;
+      letter-spacing: .05em;
+      color: var(--primary);
+      padding: 1.5rem 0 1rem;
+    }
+    .timer-display.danger { color: var(--danger); }
+    .timer-controls {
+      display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap;
+      padding-bottom: .5rem;
+    }
+    .tab-bar {
+      display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 1.25rem;
+    }
+    .tab-bar button {
+      flex: 1; background: none; border: none; padding: .65rem 1rem;
+      font-size: .95rem; cursor: pointer; color: var(--text-muted);
+      border-bottom: 3px solid transparent; margin-bottom: -2px;
+      transition: color var(--transition), border-color var(--transition);
+    }
+    .tab-bar button.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+    .lap-table { width: 100%; border-collapse: collapse; font-size: .87rem; margin-top: .5rem; }
+    .lap-table th { text-align: left; padding: .4rem .6rem; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border); }
+    .lap-table td { padding: .4rem .6rem; border-bottom: 1px solid var(--border); }
+    .lap-table tr:last-child td { border-bottom: none; }
+    .countdown-inputs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .75rem; }
+    .countdown-inputs label { display: block; font-size: .78rem; color: var(--text-muted); margin-bottom: .3rem; text-align: center; }
+    .countdown-inputs input { text-align: center; font-size: 1.2rem; font-weight: 700; }
+    .cd-alert { background: rgba(var(--danger-rgb,220,53,69),.12); border: 1px solid var(--danger);
+      border-radius: var(--radius); padding: .75rem 1rem; text-align: center;
+      color: var(--danger); font-weight: 700; font-size: 1rem; }
+    @media (max-width: 480px) { .timer-display { font-size: 2.4rem; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Timer</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>⏱️ Stopwatch &amp; Countdown Timer</h1>
+    <p>Precise stopwatch with lap times, and a countdown timer with audio alarm.</p>
+  </div>
+
+  <div class="card">
+    <div class="tab-bar">
+      <button class="active" data-tab-target="swPane">⏱ Stopwatch</button>
+      <button data-tab-target="cdPane">⏳ Countdown</button>
+    </div>
+
+    <!-- STOPWATCH -->
+    <div class="tab-pane active" id="swPane">
+      <div class="timer-display" id="swDisplay">00:00:00.00</div>
+      <div class="timer-controls">
+        <button class="btn btn-primary" id="swStartBtn">Start</button>
+        <button class="btn btn-secondary" id="swLapBtn" disabled>Lap</button>
+        <button class="btn btn-secondary" id="swResetBtn">Reset</button>
+      </div>
+      <div id="swLapContainer" style="max-height:260px;overflow-y:auto;margin-top:.75rem">
+        <table class="lap-table" id="swLapTable" style="display:none">
+          <thead><tr><th>#</th><th>Split</th><th>Total</th></tr></thead>
+          <tbody id="swLapBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- COUNTDOWN -->
+    <div class="tab-pane" id="cdPane">
+      <div class="countdown-inputs mt-2">
+        <div><label for="cdH">Hours</label><input type="number" id="cdH" class="form-input" min="0" max="99" value="0"></div>
+        <div><label for="cdM">Minutes</label><input type="number" id="cdM" class="form-input" min="0" max="59" value="5"></div>
+        <div><label for="cdS">Seconds</label><input type="number" id="cdS" class="form-input" min="0" max="59" value="0"></div>
+      </div>
+      <div class="timer-display" id="cdDisplay">00:05:00</div>
+      <div class="timer-controls">
+        <button class="btn btn-primary" id="cdStartBtn">Start</button>
+        <button class="btn btn-secondary" id="cdResetBtn">Reset</button>
+      </div>
+      <div id="cdAlert" class="cd-alert mt-3 hidden">⏰ Time's up!</div>
+    </div>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+/* ── Tab switching ──────────────────────────────────────── */
+document.querySelectorAll('.tab-bar button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tabTarget).classList.add('active');
+  });
+});
+
+/* ── Stopwatch ──────────────────────────────────────────── */
+let swRunning = false, swStart = 0, swElapsed = 0, swRaf = null;
+let swLaps = [];
+
+function swFmt(ms) {
+  const cs  = Math.floor(ms / 10) % 100;
+  const s   = Math.floor(ms / 1000) % 60;
+  const m   = Math.floor(ms / 60000) % 60;
+  const h   = Math.floor(ms / 3600000);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(cs).padStart(2,'0')}`;
+}
+
+function swTick() {
+  swElapsed = performance.now() - swStart;
+  document.getElementById('swDisplay').textContent = swFmt(swElapsed);
+  swRaf = requestAnimationFrame(swTick);
+}
+
+document.getElementById('swStartBtn').addEventListener('click', () => {
+  if (!swRunning) {
+    swStart = performance.now() - swElapsed;
+    swRunning = true;
+    swRaf = requestAnimationFrame(swTick);
+    document.getElementById('swStartBtn').textContent = 'Pause';
+    document.getElementById('swLapBtn').disabled = false;
+  } else {
+    cancelAnimationFrame(swRaf);
+    swRunning = false;
+    document.getElementById('swStartBtn').textContent = 'Resume';
+    document.getElementById('swLapBtn').disabled = true;
+  }
+});
+
+document.getElementById('swLapBtn').addEventListener('click', () => {
+  const prev  = swLaps.length ? swLaps[swLaps.length-1].total : 0;
+  const total = swElapsed;
+  swLaps.push({ num: swLaps.length+1, split: total - prev, total });
+  const tbl = document.getElementById('swLapTable');
+  tbl.style.display = '';
+  const row = document.createElement('tr');
+  row.innerHTML = `<td>${swLaps.length}</td><td>${swFmt(total - prev)}</td><td>${swFmt(total)}</td>`;
+  document.getElementById('swLapBody').prepend(row);
+});
+
+document.getElementById('swResetBtn').addEventListener('click', () => {
+  cancelAnimationFrame(swRaf);
+  swRunning = false; swElapsed = 0; swLaps = [];
+  document.getElementById('swDisplay').textContent = '00:00:00.00';
+  document.getElementById('swStartBtn').textContent = 'Start';
+  document.getElementById('swLapBtn').disabled = true;
+  document.getElementById('swLapBody').innerHTML = '';
+  document.getElementById('swLapTable').style.display = 'none';
+});
+
+/* ── Countdown ──────────────────────────────────────────── */
+let cdRunning = false, cdRemaining = 0, cdLast = 0, cdRaf2 = null;
+
+function cdFmt(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+function cdGetInput() {
+  const h = parseInt(document.getElementById('cdH').value) || 0;
+  const m = parseInt(document.getElementById('cdM').value) || 0;
+  const s = parseInt(document.getElementById('cdS').value) || 0;
+  return (h * 3600 + m * 60 + s) * 1000;
+}
+
+function cdUpdateDisplay() {
+  const disp = document.getElementById('cdDisplay');
+  disp.textContent = cdFmt(cdRemaining);
+  disp.classList.toggle('danger', cdRemaining <= 10000 && cdRemaining > 0);
+}
+
+['cdH','cdM','cdS'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    if (!cdRunning) {
+      cdRemaining = cdGetInput();
+      cdUpdateDisplay();
+    }
+  });
+});
+
+cdRemaining = cdGetInput();
+cdUpdateDisplay();
+
+function beep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.6, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(); osc.stop(ctx.currentTime + 0.4);
+  } catch(e) {}
+}
+
+function cdTick(ts) {
+  const delta = ts - cdLast;
+  cdLast = ts;
+  cdRemaining = Math.max(0, cdRemaining - delta);
+  cdUpdateDisplay();
+  if (cdRemaining <= 0) {
+    cdRunning = false;
+    document.getElementById('cdStartBtn').textContent = 'Start';
+    document.getElementById('cdAlert').classList.remove('hidden');
+    beep();
+    return;
+  }
+  cdRaf2 = requestAnimationFrame(cdTick);
+}
+
+document.getElementById('cdStartBtn').addEventListener('click', () => {
+  if (!cdRunning) {
+    if (cdRemaining <= 0) { cdRemaining = cdGetInput(); cdUpdateDisplay(); }
+    if (cdRemaining <= 0) return;
+    document.getElementById('cdAlert').classList.add('hidden');
+    cdRunning = true;
+    cdLast = performance.now();
+    document.getElementById('cdStartBtn').textContent = 'Pause';
+    cdRaf2 = requestAnimationFrame(cdTick);
+  } else {
+    cancelAnimationFrame(cdRaf2);
+    cdRunning = false;
+    document.getElementById('cdStartBtn').textContent = 'Resume';
+  }
+});
+
+document.getElementById('cdResetBtn').addEventListener('click', () => {
+  cancelAnimationFrame(cdRaf2);
+  cdRunning = false;
+  cdRemaining = cdGetInput();
+  cdUpdateDisplay();
+  document.getElementById('cdStartBtn').textContent = 'Start';
+  document.getElementById('cdAlert').classList.add('hidden');
+  document.getElementById('cdDisplay').classList.remove('danger');
+});
+</script>
+</body>
+</html>

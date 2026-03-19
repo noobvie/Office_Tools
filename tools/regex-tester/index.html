@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Regex Tester — Office Tools</title>
+  <meta name="description" content="Test regular expressions live with real-time match highlighting, capture groups, and global/case-insensitive/multiline flag toggles. Free online regex tester — no signup.">
+  <meta name="keywords" content="regex tester, regular expression tester, online regex, regex debugger, regex match highlighter, regex groups">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Regex Tester — Office Tools">
+  <meta property="og:description" content="Test regular expressions live with real-time match highlighting, capture groups, and global/case-insensitive/multiline flag toggles. Free online regex tester — no signup.">
+  <meta property="og:url" content="https://yourdomain.com/tools/regex-tester/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Regex Tester — Office Tools">
+  <meta name="twitter:description" content="Test regular expressions live with real-time match highlighting, capture groups, and global/case-insensitive/multiline flag toggles. Free online regex tester — no signup.">
+  <link rel="canonical" href="https://yourdomain.com/tools/regex-tester/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Regex Tester","description":"Test regular expressions live with real-time match highlighting, capture groups, and global/case-insensitive/multiline flag toggles. Free online regex tester — no signup.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://yourdomain.com/tools/regex-tester/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .pattern-row { display: flex; gap: .5rem; align-items: center; }
+    .pattern-input {
+      flex: 1; font-family: 'Courier New', monospace; font-size: .92rem;
+      background: var(--bg-secondary); border: 1.5px solid var(--border);
+      color: var(--text); border-radius: var(--radius); padding: .55rem .9rem;
+      outline: none; transition: border-color var(--transition);
+    }
+    .pattern-input:focus { border-color: var(--primary); }
+    .pattern-input.error { border-color: var(--danger); }
+    .flag-box { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+    .flag-chk { display: flex; align-items: center; gap: .3rem; font-size: .85rem;
+      font-family: monospace; cursor: pointer; color: var(--text); }
+    .rx-textarea {
+      width: 100%; box-sizing: border-box; min-height: 160px; resize: vertical;
+      font-family: 'Courier New', monospace; font-size: .88rem;
+      background: var(--bg-secondary); color: var(--text);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: .75rem 1rem; outline: none;
+    }
+    .rx-textarea:focus { border-color: var(--primary); }
+    .match-preview {
+      min-height: 80px; padding: .75rem 1rem;
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: var(--radius); font-family: 'Courier New', monospace;
+      font-size: .88rem; line-height: 1.65; white-space: pre-wrap; word-break: break-word;
+    }
+    .match-preview mark { background: #fef08a; color: #000; border-radius: 2px; }
+    [data-theme="dark"] .match-preview mark,
+    [data-theme="matrix"] .match-preview mark { background: #ca8a04; color: #fff; }
+    .match-table { width: 100%; border-collapse: collapse; font-size: .83rem; margin-top: .5rem; }
+    .match-table th { text-align: left; padding: .4rem .65rem; color: var(--text-muted); font-weight: 600; border-bottom: 2px solid var(--border); }
+    .match-table td { padding: .4rem .65rem; border-bottom: 1px solid var(--border); font-family: 'Courier New', monospace; vertical-align: top; }
+    .tab-bar { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 1rem; }
+    .tab-bar button { flex: 1; background: none; border: none; padding: .55rem 1rem; font-size: .9rem;
+      cursor: pointer; color: var(--text-muted); border-bottom: 3px solid transparent; margin-bottom:-2px;
+      transition: color var(--transition), border-color var(--transition); }
+    .tab-bar button.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; }
+    .tab-pane { display: none; } .tab-pane.active { display: block; }
+    .stats-row { font-size: .78rem; color: var(--text-muted); margin-top: .4rem; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Regex Tester</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔍 Regex Tester</h1>
+    <p>Live match highlighting with capture groups and g/i/m/s flag toggles.</p>
+  </div>
+
+  <div class="card">
+    <label class="form-label">Pattern</label>
+    <div class="pattern-row">
+      <input type="text" id="rxPattern" class="pattern-input" placeholder="e.g. \b\w+@\w+\.\w+\b" spellcheck="false" value="\b\w+\b">
+      <div class="flag-box">
+        <label class="flag-chk"><input type="checkbox" id="fG" checked> g</label>
+        <label class="flag-chk"><input type="checkbox" id="fI"> i</label>
+        <label class="flag-chk"><input type="checkbox" id="fM"> m</label>
+        <label class="flag-chk"><input type="checkbox" id="fS"> s</label>
+      </div>
+    </div>
+    <div id="rxError" class="alert alert-danger mt-2 hidden"></div>
+  </div>
+
+  <div class="card mt-2">
+    <div class="tab-bar">
+      <button class="active" data-tab-target="matchPane">Match</button>
+      <button data-tab-target="replacePane">Replace</button>
+    </div>
+
+    <div class="tab-pane active" id="matchPane">
+      <label class="form-label">Test String</label>
+      <textarea class="rx-textarea" id="rxInput" spellcheck="false">The quick brown fox jumps over the lazy dog. Email: test@example.com. Phone: 123-456-7890.</textarea>
+      <div class="stats-row" id="rxStats">Characters: 0 &nbsp;|&nbsp; Matches: 0</div>
+      <div class="form-label mt-2">Match Preview</div>
+      <div class="match-preview" id="matchPreview"></div>
+      <div id="matchList" style="overflow-x:auto;margin-top:.75rem"></div>
+    </div>
+
+    <div class="tab-pane" id="replacePane">
+      <label class="form-label">Test String</label>
+      <textarea class="rx-textarea" id="rxInputReplace" spellcheck="false">Hello world. The world is beautiful.</textarea>
+      <label class="form-label mt-2">Replacement</label>
+      <input type="text" id="rxReplacement" class="form-input" placeholder="$1 or replacement text" value="[MATCH]">
+      <label class="form-label mt-2">Result</label>
+      <div class="match-preview" id="replaceResult"></div>
+    </div>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+document.querySelectorAll('.tab-bar button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tabTarget).classList.add('active');
+    run();
+  });
+});
+
+function buildRegex() {
+  const pat  = document.getElementById('rxPattern').value;
+  const flags = (document.getElementById('fG').checked ? 'g' : '')
+              + (document.getElementById('fI').checked ? 'i' : '')
+              + (document.getElementById('fM').checked ? 'm' : '')
+              + (document.getElementById('fS').checked ? 's' : '');
+  return new RegExp(pat, flags);
+}
+
+function run() {
+  const errEl = document.getElementById('rxError');
+  errEl.classList.add('hidden');
+  document.getElementById('rxPattern').classList.remove('error');
+
+  let rx;
+  try {
+    rx = buildRegex();
+  } catch(e) {
+    document.getElementById('rxPattern').classList.add('error');
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+    document.getElementById('matchPreview').innerHTML = '';
+    document.getElementById('matchList').innerHTML = '';
+    return;
+  }
+
+  // Match tab
+  const text = document.getElementById('rxInput').value;
+  const charCount = text.length;
+  let matchCount = 0;
+  let highlighted = '';
+  let matchRows = '';
+  let lastIdx = 0;
+
+  if (document.getElementById('fG').checked) {
+    let m;
+    rx.lastIndex = 0;
+    const allMatches = [];
+    while ((m = rx.exec(text)) !== null) {
+      allMatches.push({ idx: m.index, len: m[0].length, match: m[0], groups: [...m].slice(1) });
+      if (!rx.global) break;
+      if (m[0].length === 0) rx.lastIndex++;
+    }
+    matchCount = allMatches.length;
+    allMatches.forEach((am, i) => {
+      highlighted += escHtml(text.slice(lastIdx, am.idx));
+      highlighted += '<mark>' + escHtml(am.match) + '</mark>';
+      lastIdx = am.idx + am.len;
+      const grps = am.groups.map((g,gi) => `<span style="opacity:.7">$${gi+1}: ${escHtml(String(g ?? ''))}</span>`).join(' ');
+      matchRows += `<tr><td>${i+1}</td><td>${am.idx}</td><td>${am.len}</td><td>${escHtml(am.match)}</td><td>${grps || '—'}</td></tr>`;
+    });
+    highlighted += escHtml(text.slice(lastIdx));
+  } else {
+    const m = rx.exec(text);
+    if (m) {
+      matchCount = 1;
+      highlighted = escHtml(text.slice(0, m.index)) + '<mark>' + escHtml(m[0]) + '</mark>' + escHtml(text.slice(m.index + m[0].length));
+      const grps = [...m].slice(1).map((g,gi) => `<span style="opacity:.7">$${gi+1}: ${escHtml(String(g ?? ''))}</span>`).join(' ');
+      matchRows = `<tr><td>1</td><td>${m.index}</td><td>${m[0].length}</td><td>${escHtml(m[0])}</td><td>${grps || '—'}</td></tr>`;
+    } else {
+      highlighted = escHtml(text);
+    }
+  }
+
+  document.getElementById('matchPreview').innerHTML = highlighted;
+  document.getElementById('rxStats').innerHTML = `Characters: ${charCount} &nbsp;|&nbsp; Matches: <strong>${matchCount}</strong>`;
+
+  if (matchRows) {
+    document.getElementById('matchList').innerHTML = `<table class="match-table"><thead><tr><th>#</th><th>Index</th><th>Length</th><th>Match</th><th>Groups</th></tr></thead><tbody>${matchRows}</tbody></table>`;
+  } else {
+    document.getElementById('matchList').innerHTML = matchCount === 0 ? '<div style="color:var(--text-muted);font-size:.85rem;margin-top:.5rem">No matches found.</div>' : '';
+  }
+
+  // Replace tab
+  const replText  = document.getElementById('rxInputReplace').value;
+  const replStr   = document.getElementById('rxReplacement').value;
+  try {
+    const rx2 = buildRegex();
+    document.getElementById('replaceResult').textContent = replText.replace(rx2, replStr);
+  } catch(e) {}
+}
+
+['rxPattern','fG','fI','fM','fS','rxInput','rxReplacement','rxInputReplace'].forEach(id => {
+  document.getElementById(id).addEventListener('input', run);
+  document.getElementById(id).addEventListener('change', run);
+});
+run();
+</script>
+</body>
+</html>

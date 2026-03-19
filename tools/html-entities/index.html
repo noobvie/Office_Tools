@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTML Entity Encoder &amp; Decoder — Office Tools</title>
+  <meta name="description" content="Encode special characters to HTML entities (&amp;amp;, &amp;lt;, &amp;gt;, &amp;quot;) and decode them back instantly. Essential for web developers. Free, runs in your browser.">
+  <meta name="keywords" content="HTML entity encoder, HTML encode decode, HTML escape, ampersand encoder, HTML special characters, HTML escape tool">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="HTML Entity Encoder &amp; Decoder — Office Tools">
+  <meta property="og:description" content="Encode special characters to HTML entities and decode them back instantly. Essential for web developers. Free, runs in your browser.">
+  <meta property="og:url" content="https://yourdomain.com/tools/html-entities/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="HTML Entity Encoder &amp; Decoder — Office Tools">
+  <meta name="twitter:description" content="Encode special characters to HTML entities and decode them back instantly. Essential for web developers. Free, runs in your browser.">
+  <link rel="canonical" href="https://yourdomain.com/tools/html-entities/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"HTML Entity Encoder & Decoder","description":"Encode special characters to HTML entities and decode them back instantly. Essential for web developers. Free, runs in your browser.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://yourdomain.com/tools/html-entities/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .he-textarea {
+      width: 100%; box-sizing: border-box; min-height: 180px; resize: vertical;
+      font-family: 'Courier New', monospace; font-size: .88rem; line-height: 1.6;
+      background: var(--bg-secondary); color: var(--text);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: .75rem 1rem; outline: none;
+      transition: border-color var(--transition);
+    }
+    .he-textarea:focus { border-color: var(--primary); }
+    .tab-bar { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 1rem; }
+    .tab-bar button { flex: 1; background: none; border: none; padding: .6rem 1rem; font-size: .9rem;
+      cursor: pointer; color: var(--text-muted); border-bottom: 3px solid transparent; margin-bottom:-2px;
+      transition: color var(--transition), border-color var(--transition); }
+    .tab-bar button.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; }
+    .tab-pane { display: none; } .tab-pane.active { display: block; }
+    .ref-table { width: 100%; border-collapse: collapse; font-size: .83rem; margin-top: .5rem; }
+    .ref-table th { text-align: left; padding: .4rem .65rem; color: var(--text-muted); font-weight: 600; border-bottom: 2px solid var(--border); }
+    .ref-table td { padding: .4rem .65rem; border-bottom: 1px solid var(--border); font-family: 'Courier New', monospace; }
+    .ref-table .char-cell { font-size: 1.2rem; text-align: center; }
+    .ref-table tr:last-child td { border-bottom: none; }
+    .ref-table tr { cursor: pointer; transition: background var(--transition); }
+    .ref-table tr:hover { background: var(--bg-secondary); }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">HTML Entities</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🏷️ HTML Entity Encoder &amp; Decoder</h1>
+    <p>Encode special characters to HTML entities and decode them back. Click any row in the reference table to copy it.</p>
+  </div>
+
+  <div class="card">
+    <div class="tab-bar">
+      <button class="active" data-tab-target="encPane">Encode</button>
+      <button data-tab-target="decPane">Decode</button>
+    </div>
+
+    <div class="tab-pane active" id="encPane">
+      <label class="form-label">Plain Text Input</label>
+      <textarea class="he-textarea" id="encInput" placeholder="Paste text with special characters like <, >, &, &quot;"></textarea>
+      <div style="display:flex;align-items:center;gap:.75rem;margin-top:.6rem;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:.35rem;font-size:.85rem;cursor:pointer">
+          <input type="checkbox" id="encNonAscii"> Encode all non-ASCII chars to &#NNN;
+        </label>
+      </div>
+      <label class="form-label mt-2">Encoded Output</label>
+      <textarea class="he-textarea" id="encOutput" readonly></textarea>
+      <div class="btn-group mt-2">
+        <button class="btn btn-secondary" id="copyEnc">Copy</button>
+        <button class="btn btn-secondary" id="dlEnc">Download</button>
+      </div>
+    </div>
+
+    <div class="tab-pane" id="decPane">
+      <label class="form-label">HTML with Entities</label>
+      <textarea class="he-textarea" id="decInput" placeholder="Paste HTML like &amp;amp; &amp;lt; &amp;gt;"></textarea>
+      <label class="form-label mt-2">Decoded Plain Text</label>
+      <textarea class="he-textarea" id="decOutput" readonly></textarea>
+      <div class="btn-group mt-2">
+        <button class="btn btn-secondary" id="copyDec">Copy</button>
+        <button class="btn btn-secondary" id="dlDec">Download</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-2">
+    <div style="font-weight:700;margin-bottom:.5rem">📚 Common Entity Reference <span style="font-size:.78rem;font-weight:400;color:var(--text-muted)">(click a row to copy entity)</span></div>
+    <div style="overflow-x:auto">
+      <table class="ref-table" id="refTable">
+        <thead><tr><th>Char</th><th>Name</th><th>Decimal</th><th>Hex</th><th>Entity</th></tr></thead>
+        <tbody id="refBody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+document.querySelectorAll('.tab-bar button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tabTarget).classList.add('active');
+  });
+});
+
+function encode(str, nonAscii) {
+  let out = '';
+  for (const ch of str) {
+    const cp = ch.codePointAt(0);
+    if (ch === '&') out += '&amp;';
+    else if (ch === '<') out += '&lt;';
+    else if (ch === '>') out += '&gt;';
+    else if (ch === '"') out += '&quot;';
+    else if (ch === "'") out += '&#39;';
+    else if (nonAscii && cp > 127) out += `&#${cp};`;
+    else out += ch;
+  }
+  return out;
+}
+
+function decode(str) {
+  const d = document.createElement('div');
+  d.innerHTML = str;
+  return d.textContent;
+}
+
+document.getElementById('encInput').addEventListener('input', () => {
+  const nonAscii = document.getElementById('encNonAscii').checked;
+  document.getElementById('encOutput').value = encode(document.getElementById('encInput').value, nonAscii);
+});
+document.getElementById('encNonAscii').addEventListener('change', () => {
+  const nonAscii = document.getElementById('encNonAscii').checked;
+  document.getElementById('encOutput').value = encode(document.getElementById('encInput').value, nonAscii);
+});
+document.getElementById('decInput').addEventListener('input', () => {
+  document.getElementById('decOutput').value = decode(document.getElementById('decInput').value);
+});
+document.getElementById('copyEnc').addEventListener('click', function() { copyText(document.getElementById('encOutput').value, this); });
+document.getElementById('copyDec').addEventListener('click', function() { copyText(document.getElementById('decOutput').value, this); });
+
+function dlText(text, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+  a.download = filename; a.click(); URL.revokeObjectURL(a.href);
+}
+document.getElementById('dlEnc').addEventListener('click', () => dlText(document.getElementById('encOutput').value, 'encoded.txt'));
+document.getElementById('dlDec').addEventListener('click', () => dlText(document.getElementById('decOutput').value, 'decoded.txt'));
+
+// Reference table
+const ENTITIES = [
+  { char: '&', name: 'ampersand',    dec: '&#38;',  hex: '&#x26;', entity: '&amp;' },
+  { char: '<', name: 'less-than',    dec: '&#60;',  hex: '&#x3C;', entity: '&lt;' },
+  { char: '>', name: 'greater-than', dec: '&#62;',  hex: '&#x3E;', entity: '&gt;' },
+  { char: '"', name: 'quotation',    dec: '&#34;',  hex: '&#x22;', entity: '&quot;' },
+  { char: "'", name: 'apostrophe',   dec: '&#39;',  hex: '&#x27;', entity: '&#39;' },
+  { char: ' ', name: 'non-breaking space', dec: '&#160;', hex: '&#xA0;', entity: '&nbsp;' },
+  { char: '©', name: 'copyright',    dec: '&#169;', hex: '&#xA9;', entity: '&copy;' },
+  { char: '®', name: 'registered',   dec: '&#174;', hex: '&#xAE;', entity: '&reg;' },
+  { char: '™', name: 'trade mark',   dec: '&#8482;',hex: '&#x2122;',entity: '&trade;' },
+  { char: '€', name: 'euro',         dec: '&#8364;',hex: '&#x20AC;',entity: '&euro;' },
+  { char: '£', name: 'pound',        dec: '&#163;', hex: '&#xA3;', entity: '&pound;' },
+  { char: '¥', name: 'yen',          dec: '&#165;', hex: '&#xA5;', entity: '&yen;' },
+  { char: '§', name: 'section',      dec: '&#167;', hex: '&#xA7;', entity: '&sect;' },
+  { char: '°', name: 'degree',       dec: '&#176;', hex: '&#xB0;', entity: '&deg;' },
+  { char: '±', name: 'plus-minus',   dec: '&#177;', hex: '&#xB1;', entity: '&plusmn;' },
+  { char: '×', name: 'multiply',     dec: '&#215;', hex: '&#xD7;', entity: '&times;' },
+  { char: '÷', name: 'divide',       dec: '&#247;', hex: '&#xF7;', entity: '&divide;' },
+  { char: '…', name: 'ellipsis',     dec: '&#8230;',hex: '&#x2026;',entity: '&hellip;' },
+  { char: '—', name: 'em dash',      dec: '&#8212;',hex: '&#x2014;',entity: '&mdash;' },
+  { char: '–', name: 'en dash',      dec: '&#8211;',hex: '&#x2013;',entity: '&ndash;' },
+  { char: '"', name: 'left dquote',  dec: '&#8220;',hex: '&#x201C;',entity: '&ldquo;' },
+  { char: '"', name: 'right dquote', dec: '&#8221;',hex: '&#x201D;',entity: '&rdquo;' },
+  { char: '←', name: 'left arrow',   dec: '&#8592;',hex: '&#x2190;',entity: '&larr;' },
+  { char: '→', name: 'right arrow',  dec: '&#8594;',hex: '&#x2192;',entity: '&rarr;' },
+  { char: '↑', name: 'up arrow',     dec: '&#8593;',hex: '&#x2191;',entity: '&uarr;' },
+  { char: '↓', name: 'down arrow',   dec: '&#8595;',hex: '&#x2193;',entity: '&darr;' },
+];
+
+const tbody = document.getElementById('refBody');
+ENTITIES.forEach(e => {
+  const tr = document.createElement('tr');
+  tr.title = 'Click to copy entity';
+  tr.innerHTML = `<td class="char-cell">${e.char === ' ' ? '&nbsp;' : escHtml(e.char)}</td><td>${escHtml(e.name)}</td><td>${escHtml(e.dec)}</td><td>${escHtml(e.hex)}</td><td><strong>${escHtml(e.entity)}</strong></td>`;
+  tr.addEventListener('click', () => copyText(e.entity, tr));
+  tbody.appendChild(tr);
+});
+</script>
+</body>
+</html>

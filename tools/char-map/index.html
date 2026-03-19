@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Character Map &amp; Symbol Picker — Office Tools</title>
+  <meta name="description" content="Browse and copy special characters, symbols, arrows, math operators, currency signs, and emoji. Click any character to copy it to your clipboard. Free online character map.">
+  <meta name="keywords" content="character map, special characters, copy symbols, unicode symbols, arrow symbols, math symbols, currency symbols, emoji picker">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Character Map &amp; Symbol Picker — Office Tools">
+  <meta property="og:description" content="Browse and copy special characters, symbols, arrows, math operators, currency signs, and emoji. Click any character to copy it to your clipboard. Free online character map.">
+  <meta property="og:url" content="https://yourdomain.com/tools/char-map/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Character Map &amp; Symbol Picker — Office Tools">
+  <meta name="twitter:description" content="Browse and copy special characters, symbols, arrows, math operators, currency signs, and emoji. Click any character to copy it to your clipboard.">
+  <link rel="canonical" href="https://yourdomain.com/tools/char-map/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Character Map & Symbol Picker","description":"Browse and copy special characters, symbols, arrows, math operators, currency signs, and emoji. Click any character to copy it to your clipboard. Free online character map.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://yourdomain.com/tools/char-map/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .cat-bar { display: flex; gap: .35rem; flex-wrap: wrap; margin-bottom: .75rem; }
+    .cat-btn { padding: .35rem .75rem; border-radius: 2rem; border: 1.5px solid var(--border);
+      background: none; cursor: pointer; font-size: .82rem; color: var(--text); transition: all var(--transition); }
+    .cat-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 700; }
+    .char-grid { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .5rem; }
+    .char-tile {
+      width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; border: 1.5px solid var(--border); border-radius: var(--radius);
+      cursor: pointer; background: var(--bg-secondary); position: relative;
+      transition: border-color var(--transition), background var(--transition);
+      user-select: none;
+    }
+    .char-tile:hover { border-color: var(--primary); background: var(--bg-secondary); }
+    .char-tile .tooltip {
+      display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+      background: var(--text); color: var(--bg-secondary); font-size: .65rem; white-space: nowrap;
+      padding: .2rem .5rem; border-radius: 4px; pointer-events: none; z-index: 10;
+    }
+    .char-tile:hover .tooltip { display: block; }
+    .char-tile .copied-tip {
+      display: none; position: absolute; inset: 0; background: var(--primary);
+      color: #fff; font-size: .65rem; align-items: center; justify-content: center;
+      border-radius: var(--radius);
+    }
+    .char-tile.copied .copied-tip { display: flex; }
+    .char-tile.copied .tooltip { display: none; }
+    .recent-strip { display: flex; gap: .35rem; flex-wrap: wrap; min-height: 44px; margin-bottom: .5rem; }
+    .detail-box { font-size: .8rem; color: var(--text-muted); margin-top: .5rem; min-height: 1.2em; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Character Map</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔣 Character Map &amp; Symbol Picker</h1>
+    <p>Click any character to copy. Hover for details. Search by name or character.</p>
+  </div>
+
+  <div class="card">
+    <div style="margin-bottom:.5rem">
+      <div style="font-size:.78rem;font-weight:700;color:var(--text-muted);margin-bottom:.35rem">Recently Copied</div>
+      <div class="recent-strip" id="recentStrip"></div>
+    </div>
+    <input type="text" id="charSearch" class="form-input" placeholder="Search by name or character…" style="margin-bottom:.75rem">
+    <div class="cat-bar" id="catBar"></div>
+    <div class="char-grid" id="charGrid"></div>
+    <div class="detail-box" id="detailBox"></div>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const CHARS = [
+  // Arrows
+  { ch:'←', cat:'Arrows', name:'leftwards arrow' },
+  { ch:'→', cat:'Arrows', name:'rightwards arrow' },
+  { ch:'↑', cat:'Arrows', name:'upwards arrow' },
+  { ch:'↓', cat:'Arrows', name:'downwards arrow' },
+  { ch:'↔', cat:'Arrows', name:'left right arrow' },
+  { ch:'↕', cat:'Arrows', name:'up down arrow' },
+  { ch:'⇐', cat:'Arrows', name:'leftwards double arrow' },
+  { ch:'⇒', cat:'Arrows', name:'rightwards double arrow' },
+  { ch:'⇑', cat:'Arrows', name:'upwards double arrow' },
+  { ch:'⇓', cat:'Arrows', name:'downwards double arrow' },
+  { ch:'⇔', cat:'Arrows', name:'left right double arrow' },
+  { ch:'⟵', cat:'Arrows', name:'long leftwards arrow' },
+  { ch:'⟶', cat:'Arrows', name:'long rightwards arrow' },
+  { ch:'➜', cat:'Arrows', name:'heavy round-tipped rightwards arrow' },
+  { ch:'➡', cat:'Arrows', name:'black rightwards arrow' },
+  { ch:'⬅', cat:'Arrows', name:'black leftwards arrow' },
+  { ch:'⬆', cat:'Arrows', name:'black upwards arrow' },
+  { ch:'⬇', cat:'Arrows', name:'black downwards arrow' },
+  // Math
+  { ch:'±', cat:'Math', name:'plus-minus sign' },
+  { ch:'×', cat:'Math', name:'multiplication sign' },
+  { ch:'÷', cat:'Math', name:'division sign' },
+  { ch:'√', cat:'Math', name:'square root' },
+  { ch:'∞', cat:'Math', name:'infinity' },
+  { ch:'≈', cat:'Math', name:'almost equal to' },
+  { ch:'≠', cat:'Math', name:'not equal to' },
+  { ch:'≤', cat:'Math', name:'less-than or equal to' },
+  { ch:'≥', cat:'Math', name:'greater-than or equal to' },
+  { ch:'∑', cat:'Math', name:'n-ary summation' },
+  { ch:'∏', cat:'Math', name:'n-ary product' },
+  { ch:'∂', cat:'Math', name:'partial differential' },
+  { ch:'∫', cat:'Math', name:'integral' },
+  { ch:'π', cat:'Math', name:'greek small letter pi' },
+  { ch:'²', cat:'Math', name:'superscript two' },
+  { ch:'³', cat:'Math', name:'superscript three' },
+  { ch:'¼', cat:'Math', name:'vulgar fraction one quarter' },
+  { ch:'½', cat:'Math', name:'vulgar fraction one half' },
+  { ch:'¾', cat:'Math', name:'vulgar fraction three quarters' },
+  { ch:'°', cat:'Math', name:'degree sign' },
+  { ch:'‰', cat:'Math', name:'per mille sign' },
+  // Currency
+  { ch:'$', cat:'Currency', name:'dollar sign' },
+  { ch:'€', cat:'Currency', name:'euro sign' },
+  { ch:'£', cat:'Currency', name:'pound sign' },
+  { ch:'¥', cat:'Currency', name:'yen sign' },
+  { ch:'¢', cat:'Currency', name:'cent sign' },
+  { ch:'₹', cat:'Currency', name:'indian rupee sign' },
+  { ch:'₩', cat:'Currency', name:'won sign' },
+  { ch:'₪', cat:'Currency', name:'new sheqel sign' },
+  { ch:'₺', cat:'Currency', name:'turkish lira sign' },
+  { ch:'₿', cat:'Currency', name:'bitcoin sign' },
+  { ch:'₽', cat:'Currency', name:'ruble sign' },
+  { ch:'฿', cat:'Currency', name:'thai baht sign' },
+  // Punctuation
+  { ch:'…', cat:'Punctuation', name:'horizontal ellipsis' },
+  { ch:'·', cat:'Punctuation', name:'middle dot' },
+  { ch:'•', cat:'Punctuation', name:'bullet' },
+  { ch:'™', cat:'Punctuation', name:'trade mark sign' },
+  { ch:'©', cat:'Punctuation', name:'copyright sign' },
+  { ch:'®', cat:'Punctuation', name:'registered sign' },
+  { ch:'§', cat:'Punctuation', name:'section sign' },
+  { ch:'¶', cat:'Punctuation', name:'pilcrow sign' },
+  { ch:'†', cat:'Punctuation', name:'dagger' },
+  { ch:'‡', cat:'Punctuation', name:'double dagger' },
+  { ch:'″', cat:'Punctuation', name:'double prime' },
+  { ch:'′', cat:'Punctuation', name:'prime' },
+  { ch:'«', cat:'Punctuation', name:'left-pointing double angle quotation mark' },
+  { ch:'»', cat:'Punctuation', name:'right-pointing double angle quotation mark' },
+  { ch:'\u2018', cat:'Punctuation', name:'left single quotation mark' },
+  { ch:'\u2019', cat:'Punctuation', name:'right single quotation mark' },
+  { ch:'\u201C', cat:'Punctuation', name:'left double quotation mark' },
+  { ch:'\u201D', cat:'Punctuation', name:'right double quotation mark' },
+  { ch:'\u201A', cat:'Punctuation', name:'single low-9 quotation mark' },
+  { ch:'\u201E', cat:'Punctuation', name:'double low-9 quotation mark' },
+  // Latin
+  { ch:'à', cat:'Latin', name:'latin small letter a with grave' },
+  { ch:'á', cat:'Latin', name:'latin small letter a with acute' },
+  { ch:'â', cat:'Latin', name:'latin small letter a with circumflex' },
+  { ch:'ã', cat:'Latin', name:'latin small letter a with tilde' },
+  { ch:'ä', cat:'Latin', name:'latin small letter a with diaeresis' },
+  { ch:'å', cat:'Latin', name:'latin small letter a with ring above' },
+  { ch:'æ', cat:'Latin', name:'latin small letter ae' },
+  { ch:'ç', cat:'Latin', name:'latin small letter c with cedilla' },
+  { ch:'è', cat:'Latin', name:'latin small letter e with grave' },
+  { ch:'é', cat:'Latin', name:'latin small letter e with acute' },
+  { ch:'ê', cat:'Latin', name:'latin small letter e with circumflex' },
+  { ch:'ë', cat:'Latin', name:'latin small letter e with diaeresis' },
+  { ch:'ì', cat:'Latin', name:'latin small letter i with grave' },
+  { ch:'í', cat:'Latin', name:'latin small letter i with acute' },
+  { ch:'î', cat:'Latin', name:'latin small letter i with circumflex' },
+  { ch:'ï', cat:'Latin', name:'latin small letter i with diaeresis' },
+  { ch:'ñ', cat:'Latin', name:'latin small letter n with tilde' },
+  { ch:'ò', cat:'Latin', name:'latin small letter o with grave' },
+  { ch:'ó', cat:'Latin', name:'latin small letter o with acute' },
+  { ch:'ô', cat:'Latin', name:'latin small letter o with circumflex' },
+  { ch:'õ', cat:'Latin', name:'latin small letter o with tilde' },
+  { ch:'ö', cat:'Latin', name:'latin small letter o with diaeresis' },
+  { ch:'ø', cat:'Latin', name:'latin small letter o with stroke' },
+  { ch:'ù', cat:'Latin', name:'latin small letter u with grave' },
+  { ch:'ú', cat:'Latin', name:'latin small letter u with acute' },
+  { ch:'û', cat:'Latin', name:'latin small letter u with circumflex' },
+  { ch:'ü', cat:'Latin', name:'latin small letter u with diaeresis' },
+  { ch:'ý', cat:'Latin', name:'latin small letter y with acute' },
+  { ch:'þ', cat:'Latin', name:'latin small letter thorn' },
+  { ch:'ÿ', cat:'Latin', name:'latin small letter y with diaeresis' },
+  { ch:'Æ', cat:'Latin', name:'latin capital letter ae' },
+  { ch:'Ø', cat:'Latin', name:'latin capital letter o with stroke' },
+  { ch:'Å', cat:'Latin', name:'latin capital letter a with ring above' },
+  // Greek
+  { ch:'α', cat:'Greek', name:'greek small letter alpha' },
+  { ch:'β', cat:'Greek', name:'greek small letter beta' },
+  { ch:'γ', cat:'Greek', name:'greek small letter gamma' },
+  { ch:'δ', cat:'Greek', name:'greek small letter delta' },
+  { ch:'ε', cat:'Greek', name:'greek small letter epsilon' },
+  { ch:'ζ', cat:'Greek', name:'greek small letter zeta' },
+  { ch:'η', cat:'Greek', name:'greek small letter eta' },
+  { ch:'θ', cat:'Greek', name:'greek small letter theta' },
+  { ch:'ι', cat:'Greek', name:'greek small letter iota' },
+  { ch:'κ', cat:'Greek', name:'greek small letter kappa' },
+  { ch:'λ', cat:'Greek', name:'greek small letter lambda' },
+  { ch:'μ', cat:'Greek', name:'greek small letter mu' },
+  { ch:'ν', cat:'Greek', name:'greek small letter nu' },
+  { ch:'ξ', cat:'Greek', name:'greek small letter xi' },
+  { ch:'ο', cat:'Greek', name:'greek small letter omicron' },
+  { ch:'π', cat:'Greek', name:'greek small letter pi' },
+  { ch:'ρ', cat:'Greek', name:'greek small letter rho' },
+  { ch:'σ', cat:'Greek', name:'greek small letter sigma' },
+  { ch:'τ', cat:'Greek', name:'greek small letter tau' },
+  { ch:'υ', cat:'Greek', name:'greek small letter upsilon' },
+  { ch:'φ', cat:'Greek', name:'greek small letter phi' },
+  { ch:'χ', cat:'Greek', name:'greek small letter chi' },
+  { ch:'ψ', cat:'Greek', name:'greek small letter psi' },
+  { ch:'ω', cat:'Greek', name:'greek small letter omega' },
+  { ch:'Α', cat:'Greek', name:'greek capital letter alpha' },
+  { ch:'Β', cat:'Greek', name:'greek capital letter beta' },
+  { ch:'Γ', cat:'Greek', name:'greek capital letter gamma' },
+  { ch:'Δ', cat:'Greek', name:'greek capital letter delta' },
+  { ch:'Ε', cat:'Greek', name:'greek capital letter epsilon' },
+  { ch:'Ζ', cat:'Greek', name:'greek capital letter zeta' },
+  { ch:'Η', cat:'Greek', name:'greek capital letter eta' },
+  { ch:'Θ', cat:'Greek', name:'greek capital letter theta' },
+  { ch:'Λ', cat:'Greek', name:'greek capital letter lambda' },
+  { ch:'Μ', cat:'Greek', name:'greek capital letter mu' },
+  { ch:'Ξ', cat:'Greek', name:'greek capital letter xi' },
+  { ch:'Π', cat:'Greek', name:'greek capital letter pi' },
+  { ch:'Σ', cat:'Greek', name:'greek capital letter sigma' },
+  { ch:'Φ', cat:'Greek', name:'greek capital letter phi' },
+  { ch:'Ψ', cat:'Greek', name:'greek capital letter psi' },
+  { ch:'Ω', cat:'Greek', name:'greek capital letter omega' },
+  // Emoji
+  { ch:'😀', cat:'Emoji', name:'grinning face' },
+  { ch:'😂', cat:'Emoji', name:'face with tears of joy' },
+  { ch:'😊', cat:'Emoji', name:'smiling face with smiling eyes' },
+  { ch:'😍', cat:'Emoji', name:'smiling face with heart-eyes' },
+  { ch:'🤔', cat:'Emoji', name:'thinking face' },
+  { ch:'😎', cat:'Emoji', name:'smiling face with sunglasses' },
+  { ch:'🙏', cat:'Emoji', name:'folded hands' },
+  { ch:'👍', cat:'Emoji', name:'thumbs up' },
+  { ch:'👎', cat:'Emoji', name:'thumbs down' },
+  { ch:'❤️', cat:'Emoji', name:'red heart' },
+  { ch:'🔥', cat:'Emoji', name:'fire' },
+  { ch:'⭐', cat:'Emoji', name:'star' },
+  { ch:'✅', cat:'Emoji', name:'check mark button' },
+  { ch:'❌', cat:'Emoji', name:'cross mark' },
+  { ch:'⚠️', cat:'Emoji', name:'warning' },
+  { ch:'💡', cat:'Emoji', name:'light bulb' },
+  { ch:'🎉', cat:'Emoji', name:'party popper' },
+  { ch:'🚀', cat:'Emoji', name:'rocket' },
+  { ch:'📌', cat:'Emoji', name:'pushpin' },
+  { ch:'📋', cat:'Emoji', name:'clipboard' },
+  { ch:'📅', cat:'Emoji', name:'calendar' },
+  { ch:'🔑', cat:'Emoji', name:'key' },
+  { ch:'💰', cat:'Emoji', name:'money bag' },
+  { ch:'📊', cat:'Emoji', name:'bar chart' },
+  { ch:'🌍', cat:'Emoji', name:'globe showing europe-africa' },
+  // Misc
+  { ch:'☀️', cat:'Misc', name:'sun' },
+  { ch:'☁️', cat:'Misc', name:'cloud' },
+  { ch:'❄️', cat:'Misc', name:'snowflake' },
+  { ch:'☂️', cat:'Misc', name:'umbrella' },
+  { ch:'☎️', cat:'Misc', name:'telephone' },
+  { ch:'✉️', cat:'Misc', name:'envelope' },
+  { ch:'🏠', cat:'Misc', name:'house' },
+  { ch:'✓', cat:'Misc', name:'check mark' },
+  { ch:'✗', cat:'Misc', name:'ballot x' },
+  { ch:'☐', cat:'Misc', name:'ballot box' },
+  { ch:'☑', cat:'Misc', name:'ballot box with check' },
+  { ch:'☒', cat:'Misc', name:'ballot box with x' },
+  { ch:'♠', cat:'Misc', name:'black spade suit' },
+  { ch:'♣', cat:'Misc', name:'black club suit' },
+  { ch:'♥', cat:'Misc', name:'black heart suit' },
+  { ch:'♦', cat:'Misc', name:'black diamond suit' },
+  { ch:'♻', cat:'Misc', name:'recycling symbol' },
+  { ch:'☯', cat:'Misc', name:'yin yang' },
+  { ch:'✿', cat:'Misc', name:'flower' },
+  { ch:'❀', cat:'Misc', name:'black florette' },
+  { ch:'★', cat:'Misc', name:'black star' },
+  { ch:'☆', cat:'Misc', name:'white star' },
+  { ch:'♪', cat:'Misc', name:'eighth note' },
+  { ch:'♫', cat:'Misc', name:'beamed eighth notes' },
+];
+
+const CATS = ['All', ...new Set(CHARS.map(c => c.cat))];
+let activeCat = 'All';
+let recent = JSON.parse(localStorage.getItem('ot-charmap-recent') || '[]');
+
+function saveRecent(ch) {
+  recent = [ch, ...recent.filter(c => c !== ch)].slice(0, 10);
+  localStorage.setItem('ot-charmap-recent', JSON.stringify(recent));
+  renderRecent();
+}
+
+function renderRecent() {
+  const strip = document.getElementById('recentStrip');
+  if (recent.length === 0) {
+    strip.innerHTML = '<span style="font-size:.8rem;color:var(--text-muted)">— none yet —</span>';
+    return;
+  }
+  strip.innerHTML = recent.map(ch => {
+    const entry = CHARS.find(c => c.ch === ch);
+    return `<div class="char-tile" title="${entry ? entry.name : ch}" onclick="copyCh('${ch.replace(/'/g,"\\'")}', this)">${ch}<div class="copied-tip">✓</div></div>`;
+  }).join('');
+}
+
+function copyCh(ch, el) {
+  navigator.clipboard.writeText(ch).then(() => {
+    el.classList.add('copied');
+    setTimeout(() => el.classList.remove('copied'), 1000);
+    saveRecent(ch);
+    const entry = CHARS.find(c => c.ch === ch);
+    if (entry) {
+      const cp = ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0');
+      document.getElementById('detailBox').textContent = `U+${cp} · ${entry.name} · HTML: &#${ch.codePointAt(0)};`;
+    }
+  });
+}
+
+function buildCatBar() {
+  const bar = document.getElementById('catBar');
+  bar.innerHTML = CATS.map(cat => `<button class="cat-btn${cat === activeCat ? ' active' : ''}" data-cat="${cat}">${cat}</button>`).join('');
+  bar.querySelectorAll('.cat-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeCat = btn.dataset.cat;
+      bar.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderGrid();
+    });
+  });
+}
+
+function renderGrid(query) {
+  const grid = document.getElementById('charGrid');
+  const q = (query || '').toLowerCase().trim();
+  const filtered = CHARS.filter(c => {
+    const catOk = activeCat === 'All' || c.cat === activeCat;
+    const searchOk = !q || c.ch.includes(q) || c.name.includes(q) || c.cat.toLowerCase().includes(q);
+    return catOk && searchOk;
+  });
+  grid.innerHTML = filtered.map(c => {
+    const cp = c.ch.codePointAt(0).toString(16).toUpperCase().padStart(4,'0');
+    const safe = c.ch.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<div class="char-tile" onclick="copyCh('${safe}', this)">
+      ${c.ch}
+      <div class="tooltip">U+${cp}<br>${c.name}</div>
+      <div class="copied-tip">✓</div>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('charSearch').addEventListener('input', function() {
+  renderGrid(this.value);
+});
+
+buildCatBar();
+renderRecent();
+renderGrid();
+</script>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loan &amp; Mortgage Calculator — Office Tools</title>
+  <meta name="description" content="Calculate monthly loan payments, total interest, and see a full amortization breakdown. Works for mortgages, car loans, and personal loans. Free, instant, no login.">
+  <meta name="keywords" content="loan calculator, mortgage calculator, monthly payment calculator, amortization schedule, interest calculator, EMI calculator">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Loan &amp; Mortgage Calculator — Office Tools">
+  <meta property="og:description" content="Calculate monthly loan payments, total interest, and see a full amortization breakdown. Works for mortgages, car loans, and personal loans. Free, instant, no login.">
+  <meta property="og:url" content="https://yourdomain.com/tools/loan-calculator/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Loan &amp; Mortgage Calculator — Office Tools">
+  <meta name="twitter:description" content="Calculate monthly loan payments, total interest, and see a full amortization breakdown. Works for mortgages, car loans, and personal loans. Free, instant, no login.">
+  <link rel="canonical" href="https://yourdomain.com/tools/loan-calculator/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Loan & Mortgage Calculator","description":"Calculate monthly loan payments, total interest, and see a full amortization breakdown. Works for mortgages, car loans, and personal loans. Free, instant, no login.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://yourdomain.com/tools/loan-calculator/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .loan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    .term-row { display: grid; grid-template-columns: 1fr auto; gap: .5rem; }
+    .result-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: .75rem; }
+    .result-stat { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: .85rem 1rem; }
+    .result-stat-label { font-size: .75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+    .result-stat-val { font-size: 1.6rem; font-weight: 800; color: var(--primary); margin-top: .2rem; }
+    .result-stat-val.big { font-size: 2rem; }
+    .pi-bar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; margin-top: .75rem; }
+    .pi-principal { background: var(--primary); }
+    .pi-interest { background: var(--danger); }
+    .pi-legend { display: flex; gap: 1.25rem; font-size: .8rem; margin-top: .4rem; color: var(--text-muted); }
+    .pi-legend span::before { content: '■ '; }
+    .pi-legend .leg-p::before { color: var(--primary); }
+    .pi-legend .leg-i::before { color: var(--danger); }
+    .amort-table { width: 100%; border-collapse: collapse; font-size: .83rem; margin-top: .5rem; }
+    .amort-table th { text-align: right; padding: .4rem .65rem; color: var(--text-muted); font-weight: 600; border-bottom: 2px solid var(--border); }
+    .amort-table th:first-child { text-align: left; }
+    .amort-table td { text-align: right; padding: .4rem .65rem; border-bottom: 1px solid var(--border); font-family: 'Courier New', monospace; }
+    .amort-table td:first-child { text-align: left; font-family: inherit; font-weight: 600; }
+    @media (max-width: 520px) { .loan-grid { grid-template-columns: 1fr; } .result-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Loan Calculator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🏦 Loan &amp; Mortgage Calculator</h1>
+    <p>Monthly payment, total interest, and yearly amortization schedule.</p>
+  </div>
+
+  <div class="card">
+    <div class="loan-grid">
+      <div>
+        <label class="form-label">Loan Amount ($)</label>
+        <input type="number" id="loanAmount" class="form-input" value="250000" min="0" step="0.01">
+      </div>
+      <div>
+        <label class="form-label">Annual Interest Rate (%)</label>
+        <input type="number" id="loanRate" class="form-input" value="6.5" min="0" step="0.01">
+      </div>
+    </div>
+    <div class="mt-2">
+      <label class="form-label">Loan Term</label>
+      <div class="term-row">
+        <input type="number" id="loanTerm" class="form-input" value="30" min="1">
+        <select id="loanTermUnit" class="form-input" style="width:120px">
+          <option value="years">Years</option>
+          <option value="months">Months</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-2" id="loanResults" style="display:none">
+    <div class="result-grid">
+      <div class="result-stat" style="grid-column: 1 / -1">
+        <div class="result-stat-label">Monthly Payment</div>
+        <div class="result-stat-val big" id="resMonthly">—</div>
+      </div>
+      <div class="result-stat">
+        <div class="result-stat-label">Total Payment</div>
+        <div class="result-stat-val" id="resTotal">—</div>
+      </div>
+      <div class="result-stat">
+        <div class="result-stat-label">Total Interest</div>
+        <div class="result-stat-val" id="resInterest">—</div>
+      </div>
+    </div>
+
+    <div class="mt-2">
+      <div style="font-size:.82rem;color:var(--text-muted);font-weight:600;margin-bottom:.4rem">
+        Principal vs Interest — <span id="resPct"></span>
+      </div>
+      <div class="pi-bar">
+        <div class="pi-principal" id="piPrincipal" style="width:50%"></div>
+        <div class="pi-interest" id="piInterest" style="width:50%"></div>
+      </div>
+      <div class="pi-legend">
+        <span class="leg-p" id="legP">Principal: —</span>
+        <span class="leg-i" id="legI">Interest: —</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-2" id="amortCard" style="display:none">
+    <div style="font-weight:700;margin-bottom:.5rem">📊 Amortization Schedule (per year)</div>
+    <div style="overflow-x:auto">
+      <table class="amort-table" id="amortTable">
+        <thead><tr><th>Year</th><th>Principal Paid</th><th>Interest Paid</th><th>Remaining Balance</th></tr></thead>
+        <tbody id="amortBody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+function fmtUSD(n) { return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+function compute() {
+  const P = parseFloat(document.getElementById('loanAmount').value) || 0;
+  const annualRate = parseFloat(document.getElementById('loanRate').value) || 0;
+  const termVal = parseInt(document.getElementById('loanTerm').value) || 0;
+  const unit = document.getElementById('loanTermUnit').value;
+  const n = unit === 'years' ? termVal * 12 : termVal;
+  const r = annualRate / 100 / 12;
+
+  if (P <= 0 || n <= 0) {
+    document.getElementById('loanResults').style.display = 'none';
+    document.getElementById('amortCard').style.display = 'none';
+    return;
+  }
+
+  let M;
+  if (r === 0) {
+    M = P / n;
+  } else {
+    M = P * (r * Math.pow(1+r, n)) / (Math.pow(1+r, n) - 1);
+  }
+
+  const totalPayment = M * n;
+  const totalInterest = totalPayment - P;
+  const iPct = (totalInterest / totalPayment * 100).toFixed(1);
+  const pPct = (P / totalPayment * 100).toFixed(1);
+
+  document.getElementById('resMonthly').textContent = fmtUSD(M);
+  document.getElementById('resTotal').textContent = fmtUSD(totalPayment);
+  document.getElementById('resInterest').textContent = fmtUSD(totalInterest);
+  document.getElementById('resPct').textContent = `${pPct}% Principal / ${iPct}% Interest`;
+  document.getElementById('piPrincipal').style.width = pPct + '%';
+  document.getElementById('piInterest').style.width = iPct + '%';
+  document.getElementById('legP').textContent = `Principal: ${fmtUSD(P)}`;
+  document.getElementById('legI').textContent = `Interest: ${fmtUSD(totalInterest)}`;
+
+  document.getElementById('loanResults').style.display = '';
+  document.getElementById('amortCard').style.display = '';
+
+  // Build yearly amortization
+  let balance = P;
+  const tbody = document.getElementById('amortBody');
+  tbody.innerHTML = '';
+  const totalYears = Math.ceil(n / 12);
+  for (let yr = 1; yr <= totalYears; yr++) {
+    let yrPrincipal = 0, yrInterest = 0;
+    const months = yr === totalYears ? (n - (totalYears-1)*12) : 12;
+    for (let mo = 0; mo < months; mo++) {
+      const intPmt = balance * r;
+      const prinPmt = Math.min(M - intPmt, balance);
+      yrInterest += intPmt;
+      yrPrincipal += prinPmt;
+      balance = Math.max(0, balance - prinPmt);
+    }
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>Year ${yr}</td><td>${fmtUSD(yrPrincipal)}</td><td>${fmtUSD(yrInterest)}</td><td>${fmtUSD(balance)}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+['loanAmount','loanRate','loanTerm','loanTermUnit'].forEach(id =>
+  document.getElementById(id).addEventListener('input', compute)
+);
+compute();
+</script>
+</body>
+</html>

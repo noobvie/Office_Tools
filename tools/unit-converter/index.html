@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unit Converter — Office Tools</title>
+  <meta name="description" content="Convert length, weight, temperature, volume, area, speed, and data units instantly. Supports metric and imperial. Free online unit converter — no login needed.">
+  <meta name="keywords" content="unit converter, length converter, weight converter, temperature converter, metric imperial, km to miles, kg to lbs, celsius fahrenheit">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Unit Converter — Office Tools">
+  <meta property="og:description" content="Convert length, weight, temperature, volume, area, speed, and data units instantly. Supports metric and imperial. Free online unit converter — no login needed.">
+  <meta property="og:url" content="https://yourdomain.com/tools/unit-converter/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Unit Converter — Office Tools">
+  <meta name="twitter:description" content="Convert length, weight, temperature, volume, area, speed, and data units instantly. Supports metric and imperial. Free online unit converter — no login needed.">
+  <link rel="canonical" href="https://yourdomain.com/tools/unit-converter/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Unit Converter","description":"Convert length, weight, temperature, volume, area, speed, and data units instantly. Supports metric and imperial. Free online unit converter — no login needed.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://yourdomain.com/tools/unit-converter/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .cat-bar { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .cat-btn { padding: .4rem .85rem; border-radius: 2rem; border: 1.5px solid var(--border);
+      background: none; cursor: pointer; font-size: .85rem; color: var(--text); transition: all var(--transition); }
+    .cat-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 700; }
+    .input-row { display: grid; grid-template-columns: 1fr 200px; gap: .75rem; align-items: end; }
+    .results-table { width: 100%; border-collapse: collapse; margin-top: .75rem; font-size: .9rem; }
+    .results-table th { text-align: left; padding: .45rem .65rem; color: var(--text-muted); font-weight: 600; border-bottom: 2px solid var(--border); }
+    .results-table td { padding: .45rem .65rem; border-bottom: 1px solid var(--border); }
+    .results-table tr:last-child td { border-bottom: none; }
+    .results-table .val { font-weight: 700; color: var(--primary); font-family: 'Courier New', monospace; }
+    .results-table .copy-cell { text-align: right; }
+    @media (max-width: 500px) { .input-row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Unit Converter</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>📐 Unit Converter</h1>
+    <p>Convert length, weight, temperature, volume, area, speed, and data units. All results shown at once.</p>
+  </div>
+
+  <div class="card">
+    <div class="cat-bar" id="catBar"></div>
+    <div class="input-row">
+      <input type="number" id="ucInput" class="form-input" placeholder="Enter value" value="1" step="any">
+      <select id="ucFromUnit" class="form-input"></select>
+    </div>
+    <div id="ucResults"></div>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const CATEGORIES = {
+  Length: {
+    base: 'm',
+    units: {
+      mm: 0.001, cm: 0.01, m: 1, km: 1000,
+      in: 0.0254, ft: 0.3048, yd: 0.9144, mi: 1609.344, nmi: 1852
+    }
+  },
+  Weight: {
+    base: 'kg',
+    units: {
+      mg: 1e-6, g: 0.001, kg: 1, t: 1000,
+      oz: 0.0283495, lb: 0.453592, st: 6.35029
+    }
+  },
+  Temperature: { special: true, units: ['°C','°F','K'] },
+  Volume: {
+    base: 'l',
+    units: {
+      ml: 0.001, l: 1, 'm³': 1000,
+      tsp: 0.00492892, tbsp: 0.0147868, 'fl oz': 0.0295735,
+      cup: 0.236588, pt: 0.473176, qt: 0.946353, 'gal(US)': 3.78541
+    }
+  },
+  Area: {
+    base: 'm²',
+    units: {
+      'mm²': 1e-6, 'cm²': 1e-4, 'm²': 1, 'km²': 1e6,
+      'in²': 6.4516e-4, 'ft²': 0.092903, ac: 4046.86, ha: 10000
+    }
+  },
+  Speed: {
+    base: 'm/s',
+    units: {
+      'm/s': 1, 'km/h': 1/3.6, mph: 0.44704, knots: 0.514444, 'ft/s': 0.3048
+    }
+  },
+  Data: { special: 'data', units: ['B','KB','MB','GB','TB','PB'] }
+};
+
+let currentCat = 'Length';
+
+function getUnitNames(cat) {
+  const c = CATEGORIES[cat];
+  if (c.special === true) return c.units;
+  if (c.special === 'data') return c.units;
+  return Object.keys(c.units);
+}
+
+// Build category buttons
+const catBar = document.getElementById('catBar');
+Object.keys(CATEGORIES).forEach(cat => {
+  const btn = document.createElement('button');
+  btn.className = 'cat-btn' + (cat === currentCat ? ' active' : '');
+  btn.textContent = cat;
+  btn.addEventListener('click', () => {
+    currentCat = cat;
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    rebuildFromSelect();
+    compute();
+  });
+  catBar.appendChild(btn);
+});
+
+function rebuildFromSelect() {
+  const sel = document.getElementById('ucFromUnit');
+  sel.innerHTML = '';
+  getUnitNames(currentCat).forEach(u => {
+    const opt = document.createElement('option');
+    opt.value = u; opt.textContent = u;
+    sel.appendChild(opt);
+  });
+}
+
+function convertTemp(val, from, to) {
+  let celsius;
+  if (from === '°C') celsius = val;
+  else if (from === '°F') celsius = (val - 32) * 5/9;
+  else celsius = val - 273.15;
+  if (to === '°C') return celsius;
+  if (to === '°F') return celsius * 9/5 + 32;
+  return celsius + 273.15;
+}
+
+function convertData(val, from, to, base1024) {
+  const idx1024 = ['B','KB','MB','GB','TB','PB'];
+  const fromI = idx1024.indexOf(from);
+  const toI   = idx1024.indexOf(to);
+  if (fromI < 0 || toI < 0) return NaN;
+  const factor = base1024 ? 1024 : 1000;
+  return val * Math.pow(factor, fromI - toI);
+}
+
+function fmtNum(n) {
+  if (n === 0) return '0';
+  if (Math.abs(n) < 1e-10) return n.toExponential(6);
+  if (Math.abs(n) >= 1e15) return n.toExponential(6);
+  const s = parseFloat(n.toPrecision(10));
+  return s.toString();
+}
+
+function compute() {
+  const raw = parseFloat(document.getElementById('ucInput').value);
+  const fromUnit = document.getElementById('ucFromUnit').value;
+  const resDiv = document.getElementById('ucResults');
+
+  if (isNaN(raw)) { resDiv.innerHTML = ''; return; }
+
+  const cat = CATEGORIES[currentCat];
+  let rows = '';
+
+  if (cat.special === true) {
+    // Temperature
+    cat.units.forEach(to => {
+      const val = to === fromUnit ? raw : convertTemp(raw, fromUnit, to);
+      rows += `<tr>
+        <td>${escHtml(to)}</td>
+        <td class="val">${fmtNum(val)}</td>
+        <td class="copy-cell"><button class="btn btn-sm btn-secondary" onclick="copyText('${fmtNum(val)}', this)">Copy</button></td>
+      </tr>`;
+    });
+  } else if (cat.special === 'data') {
+    cat.units.forEach(to => {
+      const v1024 = convertData(raw, fromUnit, to, true);
+      const v1000 = convertData(raw, fromUnit, to, false);
+      if (to === fromUnit) {
+        rows += `<tr><td>${escHtml(to)}</td><td class="val" colspan="2">${fmtNum(raw)}</td><td class="copy-cell"><button class="btn btn-sm btn-secondary" onclick="copyText('${fmtNum(raw)}', this)">Copy</button></td></tr>`;
+      } else {
+        rows += `<tr>
+          <td>${escHtml(to)}</td>
+          <td class="val">${fmtNum(v1024)} <span style="font-size:.75rem;color:var(--text-muted)">(1024)</span></td>
+          <td>${fmtNum(v1000)} <span style="font-size:.75rem;color:var(--text-muted)">(1000)</span></td>
+          <td class="copy-cell"><button class="btn btn-sm btn-secondary" onclick="copyText('${fmtNum(v1024)}', this)">Copy</button></td>
+        </tr>`;
+      }
+    });
+  } else {
+    // Factor-based
+    const inBase = raw * cat.units[fromUnit];
+    Object.entries(cat.units).forEach(([to, factor]) => {
+      const val = inBase / factor;
+      rows += `<tr>
+        <td>${escHtml(to)}</td>
+        <td class="val">${fmtNum(val)}</td>
+        <td class="copy-cell"><button class="btn btn-sm btn-secondary" onclick="copyText('${fmtNum(val)}', this)">Copy</button></td>
+      </tr>`;
+    });
+  }
+
+  resDiv.innerHTML = `<table class="results-table"><thead><tr><th>Unit</th><th>Value</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+document.getElementById('ucInput').addEventListener('input', compute);
+document.getElementById('ucFromUnit').addEventListener('change', compute);
+
+rebuildFromSelect();
+compute();
+</script>
+</body>
+</html>

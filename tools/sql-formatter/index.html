@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SQL Formatter — Beautify &amp; Minify SQL — Office Tools</title>
+  <meta name="description" content="Format, beautify, and minify SQL queries online. Supports SELECT, INSERT, UPDATE, DELETE, CREATE. Uppercase keywords, configurable indentation. Runs locally — no data sent.">
+  <meta name="keywords" content="SQL formatter, SQL beautifier, format SQL online, SQL pretty print, SQL minifier, SQL indentation, SQL query formatter">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="SQL Formatter — Beautify &amp; Minify SQL — Office Tools">
+  <meta property="og:description" content="Format, beautify, and minify SQL queries online. Supports SELECT, INSERT, UPDATE, DELETE, CREATE. Uppercase keywords, configurable indentation. Runs locally — no data sent.">
+  <meta property="og:url" content="https://yourdomain.com/tools/sql-formatter/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="SQL Formatter — Office Tools">
+  <meta name="twitter:description" content="Format, beautify, and minify SQL queries online. Uppercase keywords, configurable indentation. Runs locally — no data sent.">
+  <link rel="canonical" href="https://yourdomain.com/tools/sql-formatter/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"SQL Formatter","description":"Format, beautify, and minify SQL queries online. Supports SELECT, INSERT, UPDATE, DELETE, CREATE. Uppercase keywords, configurable indentation. Runs locally — no data sent.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://yourdomain.com/tools/sql-formatter/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .sql-io { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .sql-textarea {
+      width: 100%; box-sizing: border-box; min-height: 280px; resize: vertical;
+      font-family: 'Courier New', monospace; font-size: .86rem; line-height: 1.6;
+      background: var(--bg-secondary); color: var(--text);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: .75rem 1rem; outline: none;
+      transition: border-color var(--transition);
+    }
+    .sql-textarea:focus { border-color: var(--primary); }
+    .opt-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: end; }
+    .opt-group { flex: 1; min-width: 130px; }
+    @media (max-width: 640px) { .sql-io { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">SQL Formatter</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🗄️ SQL Formatter</h1>
+    <p>Beautify and minify SQL queries. Uppercase keywords, configurable indent, comma style. Runs locally — no data sent.</p>
+  </div>
+
+  <div class="card">
+    <div class="opt-row">
+      <div class="opt-group">
+        <label class="form-label">Keyword Case</label>
+        <select id="kwCase" class="form-input">
+          <option value="upper">UPPER</option>
+          <option value="lower">lower</option>
+          <option value="preserve">Preserve</option>
+        </select>
+      </div>
+      <div class="opt-group">
+        <label class="form-label">Indent</label>
+        <select id="indent" class="form-input">
+          <option value="2">2 spaces</option>
+          <option value="4" selected>4 spaces</option>
+          <option value="tab">Tab</option>
+        </select>
+      </div>
+      <div class="opt-group">
+        <label class="form-label">Comma Style</label>
+        <select id="commaStyle" class="form-input">
+          <option value="end">End of line</option>
+          <option value="start">Start of line</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-group mt-2">
+      <button class="btn btn-primary" id="fmtBtn">Format</button>
+      <button class="btn btn-secondary" id="minBtn">Minify</button>
+    </div>
+  </div>
+
+  <div class="sql-io mt-2">
+    <div>
+      <label class="form-label">Input SQL</label>
+      <textarea class="sql-textarea" id="sqlIn" spellcheck="false">select u.id, u.name, u.email, o.total from users u inner join orders o on u.id = o.user_id where u.active = 1 and o.total > 100 order by o.total desc limit 50</textarea>
+    </div>
+    <div>
+      <label class="form-label" style="display:flex;justify-content:space-between;align-items:center">
+        Formatted Output
+        <button class="btn btn-sm btn-secondary" id="copyOut">Copy</button>
+      </label>
+      <textarea class="sql-textarea" id="sqlOut" readonly spellcheck="false"></textarea>
+    </div>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const KEYWORDS = ['SELECT','FROM','WHERE','AND','OR','NOT','IN','JOIN','LEFT JOIN','RIGHT JOIN','INNER JOIN',
+  'OUTER','FULL','ON','GROUP BY','ORDER BY','HAVING','LIMIT','OFFSET','INSERT','INTO','VALUES','UPDATE',
+  'SET','DELETE','CREATE','TABLE','INDEX','DROP','ALTER','ADD','COLUMN','PRIMARY','KEY','FOREIGN',
+  'REFERENCES','DISTINCT','AS','CASE','WHEN','THEN','ELSE','END','UNION','ALL','WITH','EXISTS',
+  'NULL','IS','BETWEEN','LIKE','COUNT','SUM','AVG','MAX','MIN','LEFT','RIGHT','INNER','OUTER','FULL'];
+
+const NEWLINE_BEFORE = ['SELECT','FROM','WHERE','GROUP BY','ORDER BY','HAVING','LIMIT','OFFSET',
+  'UNION','UNION ALL','JOIN','LEFT JOIN','RIGHT JOIN','INNER JOIN','OUTER JOIN','FULL OUTER JOIN',
+  'INSERT','INTO','VALUES','UPDATE','SET','DELETE','CREATE','DROP','ALTER','WITH'];
+
+const INDENT_AFTER = ['SELECT','INSERT','UPDATE','SET','VALUES'];
+
+function getIndent() {
+  const v = document.getElementById('indent').value;
+  return v === 'tab' ? '\t' : ' '.repeat(parseInt(v));
+}
+
+function applyCase(word, mode) {
+  if (mode === 'upper') return word.toUpperCase();
+  if (mode === 'lower') return word.toLowerCase();
+  return word;
+}
+
+function tokenize(sql) {
+  // Split into tokens: strings, comments, identifiers, keywords, operators, whitespace
+  const re = /('(?:''|[^'])*'|"(?:""|[^"])*"|--[^\n]*|\/\*[\s\S]*?\*\/|[A-Za-z_][A-Za-z0-9_]*|\d+(?:\.\d+)?|[^\s]|\s+)/g;
+  return sql.match(re) || [];
+}
+
+function formatSQL(sql) {
+  const kwCase    = document.getElementById('kwCase').value;
+  const indentStr = getIndent();
+  const commaEnd  = document.getElementById('commaStyle').value === 'end';
+
+  const tokens = tokenize(sql);
+  let out = '';
+  let indent = 0;
+  let i = 0;
+  let lastNonWs = '';
+
+  // Build multi-word keywords lookup
+  const kwSet = new Set(KEYWORDS.map(k => k.toUpperCase()));
+  const nlSet = new Set(NEWLINE_BEFORE.map(k => k.toUpperCase()));
+
+  // Try to match multi-word keywords starting at position i
+  function matchMulti(arr, pos) {
+    const tries = ['GROUP BY','ORDER BY','LEFT JOIN','RIGHT JOIN','INNER JOIN','FULL OUTER JOIN','OUTER JOIN','UNION ALL'];
+    for (const t of tries) {
+      const words = t.split(' ');
+      let ok = true;
+      let ti = pos;
+      for (const w of words) {
+        while (ti < arr.length && /^\s+$/.test(arr[ti])) ti++;
+        if (ti >= arr.length || arr[ti].toUpperCase() !== w) { ok = false; break; }
+        ti++;
+      }
+      if (ok) return { kw: t, advance: ti - pos };
+    }
+    return null;
+  }
+
+  const processed = [];
+  while (i < tokens.length) {
+    const tok = tokens[i];
+    if (/^\s+$/.test(tok)) { i++; continue; } // skip whitespace tokens, we control spacing
+
+    // Try multi-word
+    const multi = matchMulti(tokens, i);
+    if (multi) {
+      processed.push({ type: 'kw', val: applyCase(multi.kw, kwCase), orig: multi.kw });
+      i += multi.advance;
+      continue;
+    }
+
+    const upper = tok.toUpperCase();
+    if (kwSet.has(upper) && !/^'|^"/.test(tok)) {
+      processed.push({ type: 'kw', val: applyCase(tok, kwCase), orig: upper });
+    } else if (tok === ',') {
+      processed.push({ type: 'comma' });
+    } else if (tok === '(') {
+      processed.push({ type: 'open' });
+    } else if (tok === ')') {
+      processed.push({ type: 'close' });
+    } else if (/^--/.test(tok) || /^\/\*/.test(tok)) {
+      processed.push({ type: 'comment', val: tok });
+    } else {
+      processed.push({ type: 'val', val: tok });
+    }
+    i++;
+  }
+
+  let lines = [];
+  let curLine = '';
+  let depth = 0;
+
+  function pushLine() {
+    if (curLine.trim()) lines.push(indentStr.repeat(depth) + curLine.trim());
+    curLine = '';
+  }
+
+  for (let j = 0; j < processed.length; j++) {
+    const t = processed[j];
+    if (t.type === 'kw') {
+      if (nlSet.has(t.orig.toUpperCase())) {
+        pushLine();
+        curLine = t.val;
+        if (INDENT_AFTER.includes(t.orig.toUpperCase())) {
+          // next tokens indented
+        }
+      } else {
+        curLine += (curLine.trim() ? ' ' : '') + t.val;
+      }
+    } else if (t.type === 'comma') {
+      if (commaEnd) {
+        curLine += ',';
+        pushLine();
+      } else {
+        pushLine();
+        curLine = ', ';
+      }
+    } else if (t.type === 'open') {
+      curLine += '(';
+      depth++;
+    } else if (t.type === 'close') {
+      depth = Math.max(0, depth - 1);
+      curLine += ')';
+    } else if (t.type === 'comment') {
+      pushLine();
+      lines.push(indentStr.repeat(depth) + t.val.trim());
+    } else {
+      curLine += (curLine.trim() ? ' ' : '') + t.val;
+    }
+  }
+  pushLine();
+
+  return lines.join('\n');
+}
+
+function minifySQL(sql) {
+  // Remove comments, collapse whitespace
+  return sql
+    .replace(/--[^\n]*/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+document.getElementById('fmtBtn').addEventListener('click', () => {
+  document.getElementById('sqlOut').value = formatSQL(document.getElementById('sqlIn').value);
+});
+document.getElementById('minBtn').addEventListener('click', () => {
+  document.getElementById('sqlOut').value = minifySQL(document.getElementById('sqlIn').value);
+});
+document.getElementById('copyOut').addEventListener('click', function() {
+  copyText(document.getElementById('sqlOut').value, this);
+});
+
+// Auto-format on load
+formatSQL && (document.getElementById('sqlOut').value = formatSQL(document.getElementById('sqlIn').value));
+</script>
+</body>
+</html>
