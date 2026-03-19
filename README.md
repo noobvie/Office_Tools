@@ -1,9 +1,81 @@
 # Office Tools
 
-A collection of free, open-source browser-based tools for everyday office and productivity use.
-No backend. No login. No tracking. Everything runs locally in your browser.
+A collection of 28 free, browser-based utilities for everyday office and productivity work.
+No build step, no framework, no tracking — everything runs locally in your browser.
 
-**Live site:** _add your GitHub Pages / Netlify URL here_
+**Live site:** [https://github.com/noobvie/Office_Tools](https://github.com/noobvie/Office_Tools)
+
+---
+
+## Tools
+
+### ⏱️ Productivity & Time
+| Tool | Description |
+|------|-------------|
+| Pomodoro Timer | 25-min focus cycles with short/long breaks, session counter and desktop notifications |
+| Date Calculator | Date difference, add/subtract days, precise age calculator, countdown to any date |
+
+### ✨ Generators
+| Tool | Description |
+|------|-------------|
+| Password Generator | Secure random passwords — custom length, character sets, exclude ambiguous chars |
+| QR Code Generator | QR codes for URL, text, WiFi, vCard — download as PNG |
+| UUID Generator | UUID v4 (random) and v7 (time-ordered) — single or bulk, one-click copy |
+| Random Number Generator | Random integers or decimals in any range — bulk generation, no-duplicates option |
+
+### 📝 Text & Content
+| Tool | Description |
+|------|-------------|
+| Word Counter | Words, characters, sentences, reading time and keyword density — live |
+| Markdown Editor | Live split-pane editor with HTML preview, toolbar and export |
+| Text Diff | Side-by-side diff of two text blocks with color-highlighted additions/deletions |
+| Typing Speed Test | WPM and accuracy with real-time error tracking and grade rating |
+
+### 🔒 Encoding & Crypto
+| Tool | Description |
+|------|-------------|
+| Base64 Converter | Encode/decode text or files to/from Base64 — supports drag-and-drop |
+| URL Encoder / Decoder | Percent-encode and decode URLs with before/after diff view |
+| Unix Timestamp | Convert Unix timestamps ↔ human-readable dates. Shows live current timestamp |
+| Hash Generator | SHA-1/256/384/512 and HMAC from text or files — uses Web Crypto API, 100% local |
+
+### 🧮 Calculators
+| Tool | Description |
+|------|-------------|
+| Percentage Calculator | What is X% of Y? X is what % of Y? Percentage change between two values |
+| Aspect Ratio Calculator | Find missing dimension from ratio. Common presets: 16:9, 4:3, 1:1 |
+
+### 💻 Development
+| Tool | Description |
+|------|-------------|
+| JSON Editor | Validate, format, minify JSON with syntax highlighting and interactive tree view |
+| CSV ↔ JSON | Convert between CSV and JSON — table preview, file upload, download |
+| Crontab Explainer | Parse cron expressions into plain English — shows next 10 run times |
+
+### 🎨 Design
+| Tool | Description |
+|------|-------------|
+| Color Converter | Convert HEX, RGB, HSL, HSV, CMYK — live preview, shades generator, named colors |
+
+### 🌐 Network & Web
+| Tool | Description |
+|------|-------------|
+| Currency Converter | 40+ currencies with live exchange rates, popular pairs and quick-convert table |
+| What Is My IP? | Public IP, ISP, country, city, coordinates and IPv6 support status |
+| Campaign URL Builder | Build UTM-tagged URLs for Google Analytics — history and QR code generation |
+
+### ✨ Visual & Design
+| Tool | Description |
+|------|-------------|
+| Screenshot Beautifier | Gradient backgrounds, padding, shadows and rounded corners — download PNG |
+| Contrast Checker | WCAG AA/AAA contrast ratios for foreground/background pairs — live preview |
+| Palette Extractor | Upload an image to extract dominant colors as HEX swatches and CSS variables |
+
+### 🎲 Fun & Productivity
+| Tool | Description |
+|------|-------------|
+| Fake Data Generator | Realistic test data — names, emails, phones, addresses. Download CSV or JSON |
+| Wheel of Names | Animated spinning wheel to randomly pick a winner. Remove or keep winners |
 
 ---
 
@@ -11,19 +83,30 @@ No backend. No login. No tracking. Everything runs locally in your browser.
 
 ```
 Office_Tools/
-├── index.html              ← Hub page (tool grid)
+├── index.html                  ← Hub page — tool grid, search, category filter
 ├── css/
-│   └── style.css           ← Shared styles, dark/light theme
+│   └── style.css               ← Shared styles, dark/light/matrix themes
 ├── js/
-│   └── common.js           ← Shared nav, theme toggle, utilities
-├── assets/
-│   └── icons/              ← SVG icons per tool
+│   ├── config.js               ← PocketBase URL, Grin payment server URL
+│   ├── common.js               ← Shared nav, theme toggle, utilities
+│   └── auth.js                 ← Login/register/session state (PocketBase SDK)
+├── auth/
+│   ├── login.html
+│   ├── register.html
+│   ├── dashboard.html          ← User account + subscription status
+│   └── upgrade.html            ← Pro upgrade — Grin payment flow
+├── admin/
+│   └── index.html              ← Admin dashboard (PocketBase admin credentials)
+├── backend/
+│   ├── grin-payment-server.js  ← Node.js/Express — Grin invoice creation & finalization
+│   ├── package.json
+│   ├── .env.example
+│   ├── pb_schema.json          ← PocketBase collection definitions
+│   ├── pb_hooks/main.pb.js     ← PocketBase server-side hooks
+│   └── README.md               ← Backend setup guide
 └── tools/
-    ├── password-generator/
-    │   └── index.html
-    ├── word-counter/
-    │   └── index.html
-    └── ... (one folder per tool)
+    └── <tool-name>/
+        └── index.html          ← One self-contained HTML file per tool
 ```
 
 Each tool lives in its own folder under `tools/` with a self-contained `index.html`.
@@ -33,101 +116,59 @@ Shared CSS and JS are loaded from the root `css/` and `js/` folders.
 
 ## Tech Stack
 
-- **HTML / CSS / Vanilla JS only** — no framework, no build step
+### Frontend
+- **HTML / CSS / Vanilla JS** — no framework, no build step
+- External libraries loaded via CDN where needed (qrcode.js, marked.js, PapaParse, diff.js, cronstrue)
 - Deploys to GitHub Pages, Netlify, or Cloudflare Pages as-is
-- External libraries loaded via CDN where needed (listed per tool below)
+
+### Backend (optional — for auth and Pro features)
+| Component | Role |
+|-----------|------|
+| [PocketBase](https://pocketbase.io) | Auth, database, REST API, admin UI |
+| Node.js + Express | Grin payment server — invoice creation and finalization |
+| Grin Wallet | Crypto payment receiver via Owner API v3 |
+
+The frontend works fully without the backend. Auth and Pro features are opt-in.
 
 ---
 
 ## Development Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/Office_Tools.git
+git clone https://github.com/noobvie/Office_Tools.git
 cd Office_Tools
 
 # Option A — Python (no install needed on most systems)
-python3 -m http.server 8080
+python3 -m http.server 8181
 
 # Option B — Node
 npx serve .
 
-# Then open: http://localhost:8080
+# Then open: http://localhost:8181
 ```
 
-No build step, no `npm install`, no environment variables required.
+No build step, no `npm install`, no environment variables required for the frontend.
 
 ---
 
-## Tool Checklist
+## Backend Setup
 
-### Phase 1 — Foundation
-- [ ] **Hub page** (`index.html`) — responsive grid of all tools, category filters, dark/light toggle
-
----
-
-### Phase 2 — Quick Wins (pure JS, no external API)
-
-| # | Tool | Folder | Description | Libraries |
-|---|------|--------|-------------|-----------|
-| 1 | Password Generator | `tools/password-generator/` | Generate secure random passwords with options: length, uppercase, lowercase, numbers, symbols, exclude ambiguous chars | None |
-| 2 | Word Counter | `tools/word-counter/` | Count words, characters (with/without spaces), sentences, paragraphs, estimated reading time, keyword density | None |
-| 3 | Base64 Converter | `tools/base64-converter/` | Encode and decode text or files to/from Base64. Supports file drag-and-drop | None |
-| 4 | URL Encoder / Decoder | `tools/url-encoder/` | Percent-encode and decode URLs. Shows before/after diff | None |
-| 5 | Unix Timestamp Converter | `tools/unix-timestamp/` | Convert Unix timestamp ↔ human-readable date/time. Shows current timestamp live | None |
-| 6 | QR Code Generator | `tools/qr-generator/` | Generate QR codes for URL, plain text, WiFi, vCard. Download as PNG/SVG | [qrcode.js](https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js) |
-| 7 | Date Calculator | `tools/date-calculator/` | Difference between two dates (days/weeks/months/years), add/subtract days, countdown to a date, precise age from birthdate | None |
-| 8 | Percentage Calculator | `tools/percentage-calculator/` | What is X% of Y? X is what % of Y? Percentage change between two values | None |
-| 9 | Aspect Ratio Calculator | `tools/aspect-ratio/` | Calculate missing dimension given ratio and one side. Common presets (16:9, 4:3, 1:1, etc.) | None |
-| 10 | Random Number Generator | `tools/random-number/` | Generate one or many random integers/decimals in a range. Exclude duplicates option. Copy all | None |
-| 11 | UUID Generator | `tools/uuid-generator/` | Generate UUID v4 (random) and v7 (time-ordered). Bulk generation. Copy all. Uses built-in `crypto.randomUUID()` | None |
-| 12 | Pomodoro Timer | `tools/pomodoro/` | Focus timer using 25-min work / 5-min break / 15-min long break cycles. Desktop notification support | None |
-
----
-
-### Phase 3 — Medium Effort
-
-| # | Tool | Folder | Description | Libraries |
-|---|------|--------|-------------|-----------|
-| 13 | JSON Editor | `tools/json-editor/` | Paste or upload JSON, validate, format/minify, syntax-highlighted view, copy output | [CodeMirror 6](https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/) |
-| 14 | Text Diff | `tools/text-diff/` | Side-by-side or inline diff of two text blocks with color highlighting of additions/removals | [diff.js](https://cdnjs.cloudflare.com/ajax/libs/diff/5.1.0/diff.min.js) |
-| 15 | Markdown Editor | `tools/markdown-editor/` | Live split-pane markdown editor with HTML preview. Export as HTML or copy markdown | [marked.js](https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js) |
-| 16 | CSV ↔ JSON Converter | `tools/csv-json/` | Convert CSV to JSON or JSON to CSV. Preview table. Download output. Handles quoted fields | [PapaParse](https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js) |
-| 17 | Hash Generator | `tools/hash-generator/` | Generate SHA-256, SHA-384, SHA-512, HMAC hashes from text or file. Uses Web Crypto API | None |
-| 18 | Color Converter | `tools/color-converter/` | Convert between HEX, RGB, HSL, HSV, CMYK. Live color preview swatch. Copy each format | None |
-| 19 | Crontab Explainer | `tools/crontab/` | Parse any cron expression and display human-readable description. Show next 5 run times | [cronstrue](https://cdnjs.cloudflare.com/ajax/libs/cronstrue/2.47.0/cronstrue.min.js) |
-| 20 | Typing Speed Test | `tools/typing-speed/` | 1-minute typing test. WPM, accuracy %, incorrect words highlighted. Multiple passage options | None |
-
----
-
-### Phase 4 — Needs External API
-
-| # | Tool | Folder | Description | API |
-|---|------|--------|-------------|-----|
-| 21 | Currency Converter | `tools/currency/` | Convert between 150+ currencies. Shows rate and last update time | [exchangerate-api.com](https://www.exchangerate-api.com/) free tier |
-| 22 | What Is My IP? | `tools/my-ip/` | Show public IP, ISP, country, city, timezone | [ipify.org](https://api.ipify.org) (IP only, free, no key) |
-| 23 | Campaign URL Builder | `tools/utm-builder/` | Append UTM parameters (source, medium, campaign, term, content) to any URL. Copy final URL | None |
-
----
-
-### Phase 5 — Visual / Canvas Tools
-
-| # | Tool | Folder | Description | Libraries |
-|---|------|--------|-------------|-----------|
-| 24 | Screenshot Beautifier | `tools/screenshot-beautifier/` | Upload screenshot, add gradient background, padding, rounded corners, drop shadow. Download PNG | None (Canvas API) |
-| 25 | Color Contrast Checker | `tools/contrast-checker/` | Enter foreground + background color. Shows contrast ratio, WCAG AA/AAA pass/fail badges | None |
-| 26 | Image Palette Extractor | `tools/palette-extractor/` | Upload an image, extract 5–10 dominant colors as HEX swatches. Copy palette | None (Canvas API) |
-| 27 | Fake Data Generator | `tools/fake-data/` | Generate N rows of fake names, emails, phone numbers, addresses, dates. Download CSV/JSON | None |
-| 28 | Wheel of Names | `tools/wheel-of-names/` | Enter a list of names, spin the animated wheel, pick a random winner. Remove winner option | None (Canvas API) |
+See [backend/README.md](backend/README.md) for full setup instructions covering:
+- PocketBase install and collection import (`pb_schema.json`)
+- Grin payment server setup (`.env.example`)
+- nginx reverse proxy config
+- systemd service files for both services
+- Frontend config (`js/config.js`) for connecting to your backend
 
 ---
 
 ## Contributing
 
-1. Each tool must work **fully offline** (no required network calls, except Phase 4 tools)
+1. Each tool must work **fully offline** (no required network calls, except Network & Web tools)
 2. No frameworks — vanilla HTML/CSS/JS only
 3. Each tool page must include the shared nav header and link back to the hub
 4. All tools must be **mobile-responsive**
-5. No cookies, no localStorage abuse, no analytics
+5. No cookies, no analytics, no localStorage abuse
 
 ---
 
