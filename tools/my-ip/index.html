@@ -151,32 +151,102 @@
 
 <script src="../../js/common.js"></script>
 <script>
-let myIp = null;
+let myIp  = null;
 let ipData = null;
 
+// ── Country code → full name (no external dependency) ─────────────
+function countryName(code) {
+  try { return new Intl.DisplayNames(['en'], { type: 'region' }).of(code); } catch { return code; }
+}
+
+// ── Fetch with timeout ────────────────────────────────────────────
+function fetchJson(url, ms = 5000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { signal: ctrl.signal })
+    .then(r => { clearTimeout(timer); return r.json(); })
+    .catch(e => { clearTimeout(timer); throw e; });
+}
+
+// ── Primary IP detection — tries sources in order ─────────────────
+async function detectIp() {
+  // Each entry: [url, extractor_fn]
+  const sources = [
+    ['https://ipinfo.io/json',          d => d.ip],
+    ['https://api.my-ip.io/ip.json',    d => d.ip],
+    ['https://jsonip.com',              d => d.ip],
+    ['https://ip-api.com/json',         d => d.query],   // returns IP in query field
+  ];
+  for (const [url, extract] of sources) {
+    try {
+      const data = await fetchJson(url);
+      const ip = extract(data);
+      if (ip && ip.length > 3) return { ip, raw: data, src: url };
+    } catch { /* try next */ }
+  }
+  return null;
+}
+
+// ── Fetch geo details from ip-api.com ────────────────────────────
+async function fetchGeo(ip) {
+  const fields = 'status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query';
+  try {
+    const data = await fetchJson(`https://ip-api.com/json/${encodeURIComponent(ip)}?fields=${fields}`);
+    if (data.status === 'success') return data;
+  } catch { }
+  return null;
+}
+
+// ── Main fetch flow ───────────────────────────────────────────────
 async function fetchIp() {
   const display = document.getElementById('ipDisplay');
   display.innerHTML = '<span class="loading-pulse"></span><span class="text-muted">Detecting your IP…</span>';
+  document.getElementById('ipActions').style.display = 'none';
 
-  try {
-    // Primary: ipify (returns just IP, very reliable)
-    const ipRes = await fetch('https://api.ipify.org?format=json');
-    const ipJson = await ipRes.json();
-    myIp = ipJson.ip;
-
-    // Secondary: ip-api.com for geo/ISP details (free, no key)
-    const geoRes = await fetch(`https://ip-api.com/json/${myIp}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query`);
-    ipData = await geoRes.json();
-
-    renderIp();
-  } catch(e) {
-    display.innerHTML = `<div class="alert alert-danger" style="text-align:left">Failed to detect IP: ${e.message}. Check your connection.</div>`;
+  const detected = await detectIp();
+  if (!detected) {
+    display.innerHTML = `<div class="alert alert-danger" style="text-align:left">
+      Could not detect your IP — all detection services failed.<br>
+      <small>This can happen behind strict firewalls, captive portals, or DNS-blocking networks.</small>
+    </div>`;
+    return;
   }
+
+  myIp = detected.ip;
+
+  // If ip-api.com was the source that succeeded, we already have geo
+  if (detected.raw && detected.raw.status === 'success' && detected.raw.country) {
+    ipData = detected.raw;
+  } else {
+    // Fetch geo separately
+    ipData = await fetchGeo(myIp);
+
+    // If ipinfo.io was the source, supplement missing fields from its raw data
+    if (!ipData && detected.raw && detected.raw.country) {
+      const [lat, lon] = (detected.raw.loc || ',').split(',').map(Number);
+      ipData = {
+        status:      'success',
+        query:       myIp,
+        country:     countryName(detected.raw.country),
+        countryCode: detected.raw.country,
+        regionName:  detected.raw.region   || '',
+        city:        detected.raw.city     || '',
+        zip:         detected.raw.postal   || '',
+        lat, lon,
+        timezone:    detected.raw.timezone || '',
+        isp:         detected.raw.org      || '',
+        org:         detected.raw.org      || '',
+        as:          detected.raw.org      || '',
+      };
+    }
+  }
+
+  renderIp();
 }
 
 function renderIp() {
-  const display  = document.getElementById('ipDisplay');
-  const isV6     = myIp.includes(':');
+  const display   = document.getElementById('ipDisplay');
+  const isV6      = myIp.includes(':');
   const typeColor = isV6 ? 'badge-primary' : 'badge-success';
 
   display.innerHTML = `
@@ -189,69 +259,89 @@ function renderIp() {
   document.getElementById('ipActions').style.display = '';
 
   if (ipData && ipData.status === 'success') {
-    // Details
+    const country = ipData.country || countryName(ipData.countryCode) || ipData.countryCode || '—';
     const details = [
-      { lbl: '🌍 Country', val: `${ipData.country} (${ipData.countryCode})` },
-      { lbl: '🏙️ Region / City', val: `${ipData.regionName}, ${ipData.city}` },
-      { lbl: '📮 ZIP / Postal', val: ipData.zip || '—' },
-      { lbl: '🕐 Timezone', val: ipData.timezone },
-      { lbl: '📡 ISP', val: ipData.isp },
-      { lbl: '🏢 Organization', val: ipData.org || '—' },
-      { lbl: '🔢 AS Number', val: ipData.as || '—' },
-      { lbl: '📍 Coordinates', val: `${ipData.lat}, ${ipData.lon}` },
+      { lbl: '🌍 Country',      val: `${country}${ipData.countryCode ? ' (' + ipData.countryCode + ')' : ''}` },
+      { lbl: '🏙️ Region / City', val: [ipData.regionName, ipData.city].filter(Boolean).join(', ') || '—' },
+      { lbl: '📮 ZIP / Postal', val: ipData.zip        || '—' },
+      { lbl: '🕐 Timezone',     val: ipData.timezone   || '—' },
+      { lbl: '📡 ISP',          val: ipData.isp        || '—' },
+      { lbl: '🏢 Organization', val: ipData.org        || '—' },
+      { lbl: '🔢 AS Number',    val: ipData.as         || '—' },
+      { lbl: '📍 Coordinates',  val: (ipData.lat && ipData.lon) ? `${ipData.lat}, ${ipData.lon}` : '—' },
     ];
-    const grid = document.getElementById('detailGrid');
-    grid.innerHTML = details.map(d => `
+    document.getElementById('detailGrid').innerHTML = details.map(d => `
       <div class="detail-card">
         <div class="lbl">${d.lbl}</div>
         <div class="val">${escHtml(d.val)}</div>
       </div>`).join('');
     document.getElementById('detailCard').classList.remove('hidden');
 
-    // Location
-    document.getElementById('mapLabel').textContent = `${ipData.city}, ${ipData.regionName}, ${ipData.country}`;
-    document.getElementById('mapCoord').textContent = `${ipData.lat}°, ${ipData.lon}°`;
-    const mapLink = `https://www.openstreetmap.org/?mlat=${ipData.lat}&mlon=${ipData.lon}&zoom=10`;
-    document.getElementById('mapBox').innerHTML += `
-      <a href="${mapLink}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm mt-2" style="margin-top:.75rem">🗺️ Open in OpenStreetMap</a>`;
-    document.getElementById('locationCard').classList.remove('hidden');
+    if (ipData.lat && ipData.lon) {
+      const loc     = [ipData.city, ipData.regionName, country].filter(Boolean).join(', ');
+      const mapLink = `https://www.openstreetmap.org/?mlat=${ipData.lat}&mlon=${ipData.lon}&zoom=10`;
+      document.getElementById('mapLabel').textContent = loc;
+      document.getElementById('mapCoord').textContent = `${ipData.lat}°, ${ipData.lon}°`;
+      document.getElementById('mapBox').innerHTML += `
+        <a href="${mapLink}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm mt-2" style="margin-top:.75rem">🗺️ Open in OpenStreetMap</a>`;
+      document.getElementById('locationCard').classList.remove('hidden');
+    }
   }
 }
 
-// IPv6 check
+// ── IPv6 check — tries multiple sources ──────────────────────────
 async function checkIpv6() {
-  const card = document.getElementById('ipv6Card');
+  const card   = document.getElementById('ipv6Card');
   const result = document.getElementById('ipv6Result');
   card.classList.remove('hidden');
   result.innerHTML = '<span class="loading-pulse"></span> Checking IPv6 support…';
-  try {
-    const res = await fetch('https://api6.ipify.org?format=json');
-    const { ip } = await res.json();
-    result.innerHTML = `<div class="alert alert-success">✓ IPv6 supported — your IPv6 address: <code style="word-break:break-all">${escHtml(ip)}</code></div>`;
-  } catch {
-    result.innerHTML = `<div class="alert alert-warning" style="background:var(--warning-dim);color:var(--warning);border:1px solid rgba(245,158,11,.2)">⚠ IPv6 not detected or not supported by your network.</div>`;
+
+  const v6sources = [
+    ['https://ipv6.icanhazip.com',          r => r.trim()],
+    ['https://api6.ipify.org?format=json',  r => JSON.parse(r).ip],
+    ['https://v6.ident.me',                 r => r.trim()],
+  ];
+
+  for (const [url, parse] of v6sources) {
+    try {
+      const ctrl  = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 4000);
+      const res   = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(timer);
+      const text = await res.text();
+      const ip   = parse(text);
+      if (ip && ip.includes(':')) {
+        result.innerHTML = `<div class="alert alert-success">✓ IPv6 supported — your IPv6 address: <code style="word-break:break-all">${escHtml(ip)}</code></div>`;
+        return;
+      }
+    } catch { /* try next */ }
   }
+  result.innerHTML = `<div class="alert" style="background:var(--warning-dim);color:var(--warning)">⚠ IPv6 not detected on your network.</div>`;
 }
 
-// Multi-source verify
+// ── Multi-source verify ───────────────────────────────────────────
 document.getElementById('verifyBtn').addEventListener('click', async () => {
   const grid = document.getElementById('verifyGrid');
   const sources = [
-    { name: 'ipify.org',    url: 'https://api.ipify.org?format=json',    parse: d => d.ip },
-    { name: 'api64.ipify',  url: 'https://api64.ipify.org?format=json',  parse: d => d.ip },
-    { name: 'ip-api.com',   url: 'https://ip-api.com/json?fields=query',  parse: d => d.query },
+    { name: 'ipinfo.io',   url: 'https://ipinfo.io/json',          parse: d => d.ip },
+    { name: 'my-ip.io',    url: 'https://api.my-ip.io/ip.json',    parse: d => d.ip },
+    { name: 'jsonip.com',  url: 'https://jsonip.com',              parse: d => d.ip },
+    { name: 'ip-api.com',  url: 'https://ip-api.com/json',         parse: d => d.query },
   ];
-  grid.innerHTML = sources.map(s => `<div class="detail-card" id="src-${s.name}"><div class="lbl">${s.name}</div><div class="val"><span class="loading-pulse"></span></div></div>`).join('');
+  grid.innerHTML = sources.map(s =>
+    `<div class="detail-card" id="vsrc-${s.name}"><div class="lbl">${s.name}</div><div class="val"><span class="loading-pulse"></span></div></div>`
+  ).join('');
 
   sources.forEach(async s => {
-    const card = document.getElementById(`src-${s.name}`);
+    const card = document.getElementById(`vsrc-${s.name}`);
     try {
-      const res = await fetch(s.url);
-      const data = await res.json();
-      const ip = s.parse(data);
+      const data = await fetchJson(s.url, 6000);
+      const ip   = s.parse(data);
+      if (!ip) throw new Error('empty');
       const match = ip === myIp;
-      card.querySelector('.val').innerHTML = `${escHtml(ip)} <span class="badge ${match ? 'badge-success' : 'badge-warning'}">${match ? '✓ Match' : '≠ Different'}</span>`;
-    } catch(e) {
+      card.querySelector('.val').innerHTML =
+        `${escHtml(ip)} <span class="badge ${match ? 'badge-success' : 'badge-warning'}">${match ? '✓ Match' : '≠ Different'}</span>`;
+    } catch {
       card.querySelector('.val').innerHTML = `<span class="badge badge-danger">Failed</span>`;
     }
   });
