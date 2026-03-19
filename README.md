@@ -1,6 +1,6 @@
 # Office Tools
 
-A collection of 31 free, browser-based utilities for everyday office and productivity work.
+A collection of 32 free, browser-based utilities for everyday office and productivity work.
 No build step, no framework, no tracking — everything runs locally in your browser.
 
 **Live site:** [https://github.com/noobvie/Office_Tools](https://github.com/noobvie/Office_Tools)
@@ -76,6 +76,11 @@ No build step, no framework, no tracking — everything runs locally in your bro
 |------|-------------|
 | Fake Data Generator | Realistic test data — names, emails, phones, addresses. Download CSV or JSON |
 | Wheel of Names | Animated spinning wheel to randomly pick a winner. Remove or keep winners |
+
+### 🔒 Security & Certificates
+| Tool | Description |
+|------|-------------|
+| CSR Decoder | Decode a Certificate Signing Request — subject, key size & quality, SANs, signature algorithm, SHA-256/SHA-1/MD5 fingerprints |
 
 ### 🖼️ Images & PDF
 | Tool | Description |

@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSR Decoder — Office Tools</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .csr-input {
+      width: 100%;
+      min-height: 180px;
+      font-family: 'Courier New', monospace;
+      font-size: .8rem;
+      resize: vertical;
+    }
+
+    /* Status banner */
+    .csr-status {
+      display: flex; align-items: center; gap: .6rem;
+      padding: .65rem 1rem;
+      border-radius: var(--radius);
+      font-size: .88rem; font-weight: 600;
+      margin-bottom: .75rem;
+    }
+    .csr-status.ok  { background: var(--success-dim); color: var(--success); }
+    .csr-status.err { background: var(--danger-dim);  color: var(--danger); }
+    .csr-status .dot { font-size: 1.1rem; }
+
+    /* Info table */
+    .info-table { width: 100%; border-collapse: collapse; }
+    .info-table tr { border-bottom: 1px solid var(--border); }
+    .info-table tr:last-child { border-bottom: none; }
+    .info-table td { padding: .55rem .5rem; vertical-align: middle; }
+    .info-label {
+      font-size: .78rem; font-weight: 700; color: var(--text-muted);
+      white-space: nowrap; width: 180px; padding-right: 1rem !important;
+    }
+    .info-val {
+      font-size: .86rem; color: var(--text); word-break: break-all;
+    }
+    .info-val.mono { font-family: 'Courier New', monospace; font-size: .78rem; }
+    .info-action { width: 60px; text-align: right; }
+    .info-action button { white-space: nowrap; }
+    .info-missing { color: var(--text-light); font-style: italic; font-size: .84rem; }
+
+    /* Quality badge */
+    .qbadge {
+      display: inline-block;
+      border-radius: 20px; padding: .1rem .55rem;
+      font-size: .72rem; font-weight: 700; margin-left: .4rem;
+      vertical-align: middle; letter-spacing: .03em;
+    }
+    .qbadge.strong { background: var(--success-dim); color: var(--success); }
+    .qbadge.ok     { background: var(--warning-dim); color: var(--warning); }
+    .qbadge.weak   { background: var(--danger-dim);  color: var(--danger); }
+
+    /* SAN list */
+    .san-list { display: flex; flex-direction: column; gap: .35rem; }
+    .san-row { display: flex; align-items: center; gap: .5rem; font-size: .84rem; }
+    .san-type {
+      display: inline-block; border-radius: 4px; padding: .1rem .45rem;
+      font-size: .7rem; font-weight: 700; flex-shrink: 0; min-width: 3.5rem; text-align: center;
+    }
+    .san-dns   { background: var(--primary-dim); color: var(--primary); }
+    .san-ip    { background: var(--success-dim); color: var(--success); }
+    .san-email { background: var(--warning-dim); color: var(--warning); }
+    .san-uri   { background: var(--bg-secondary); color: var(--text-muted); }
+    .san-val   { word-break: break-all; }
+
+    /* Fingerprint */
+    .fp-row { display: flex; align-items: center; gap: .75rem; padding: .45rem 0; border-bottom: 1px solid var(--border); }
+    .fp-row:last-child { border-bottom: none; }
+    .fp-algo { font-size: .75rem; font-weight: 700; color: var(--text-muted); width: 55px; flex-shrink: 0; }
+    .fp-val  { font-family: 'Courier New', monospace; font-size: .72rem; flex: 1; word-break: break-all; color: var(--text); }
+
+    /* Full DN box */
+    .dn-box {
+      background: var(--bg-secondary); border-radius: var(--radius);
+      padding: .65rem .85rem; font-family: 'Courier New', monospace;
+      font-size: .8rem; word-break: break-all; color: var(--text);
+    }
+
+    /* Summary chips */
+    .summary-chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .75rem; }
+    .chip {
+      display: inline-flex; align-items: center; gap: .3rem;
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: 20px; padding: .25rem .7rem; font-size: .78rem;
+    }
+    .chip.chip-ok   { border-color: var(--success); color: var(--success); background: var(--success-dim); }
+    .chip.chip-warn { border-color: var(--warning); color: var(--warning); background: var(--warning-dim); }
+    .chip.chip-bad  { border-color: var(--danger);  color: var(--danger);  background: var(--danger-dim); }
+
+    /* Section card header */
+    .section-head {
+      font-size: .77rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .06em; color: var(--text-muted); margin-bottom: .6rem;
+    }
+
+    @media (max-width: 560px) {
+      .info-label { width: 120px; }
+      .info-action { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">CSR Decoder</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>&#128272; CSR Decoder</h1>
+    <p>Paste a Certificate Signing Request (PEM format) to instantly decode all fields — subject, key info, SANs, fingerprints. Nothing leaves your browser.</p>
+  </div>
+
+  <!-- Input card -->
+  <div class="card">
+    <div class="form-group" style="margin-bottom:.6rem">
+      <label>Certificate Signing Request (PEM)</label>
+      <textarea class="csr-input" id="csrInput"
+        placeholder="-----BEGIN CERTIFICATE REQUEST-----&#10;MIIByjCCATMCAQAw...&#10;-----END CERTIFICATE REQUEST-----"></textarea>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center">
+      <button class="btn btn-primary" id="decodeBtn">Decode CSR</button>
+      <button class="btn btn-secondary" id="clearBtn">Clear</button>
+      <label class="btn btn-ghost" style="cursor:pointer;margin:0">
+        Upload file
+        <input type="file" id="fileInput" accept=".csr,.pem,.cer,.req" style="display:none">
+      </label>
+      <button class="btn btn-ghost btn-sm" id="exampleBtn" style="margin-left:auto">Load example</button>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results" style="display:none">
+
+    <!-- Status + summary chips -->
+    <div id="statusBanner" class="csr-status ok">
+      <span class="dot" id="statusDot">&#10003;</span>
+      <span id="statusText">Valid CSR</span>
+    </div>
+
+    <div class="summary-chips" id="summaryChips"></div>
+
+    <!-- Subject -->
+    <div class="card">
+      <div class="section-head">Subject</div>
+      <table class="info-table" id="subjectTable"></table>
+    </div>
+
+    <!-- Key Info -->
+    <div class="card mt-2">
+      <div class="section-head">Public Key</div>
+      <table class="info-table" id="keyTable"></table>
+    </div>
+
+    <!-- Signature -->
+    <div class="card mt-2">
+      <div class="section-head">Signature</div>
+      <table class="info-table" id="sigTable"></table>
+    </div>
+
+    <!-- SANs (shown only if present) -->
+    <div class="card mt-2" id="sanCard" style="display:none">
+      <div class="section-head">Subject Alternative Names (SANs)</div>
+      <div id="sanList" class="san-list"></div>
+    </div>
+
+    <!-- Fingerprints -->
+    <div class="card mt-2">
+      <div class="section-head">CSR Fingerprints</div>
+      <div id="fpList"></div>
+    </div>
+
+    <!-- Full Subject DN -->
+    <div class="card mt-2">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+        <span class="section-head" style="margin:0">Full Subject DN</span>
+        <button class="btn btn-ghost btn-sm" id="copyDnBtn">Copy</button>
+      </div>
+      <div class="dn-box" id="fullDn"></div>
+    </div>
+
+    <!-- PEM preview -->
+    <div class="card mt-2">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+        <span class="section-head" style="margin:0">Formatted PEM</span>
+        <button class="btn btn-ghost btn-sm" id="copyPemBtn">Copy</button>
+      </div>
+      <div class="dn-box" id="pemOut" style="white-space:pre;overflow-x:auto;font-size:.72rem;max-height:200px;overflow-y:auto"></div>
+    </div>
+
+  </div>
+
+  <div id="errorCard" class="card mt-2" style="display:none">
+    <div class="alert alert-danger" id="errorMsg"></div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/node-forge@1.3.1/dist/forge.min.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+// ── Helpers ───────────────────────────────────────────────────────────
+function escAttr(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function badge(cls, text) {
+  return `<span class="qbadge ${cls}">${text}</span>`;
+}
+function infoRow(label, value, opts = {}) {
+  const { mono = false, badge: bdg = null, missing = false } = opts;
+  const valHtml = missing
+    ? `<span class="info-missing">—</span>`
+    : `<span class="info-val${mono ? ' mono' : ''}">${escHtml(String(value))}${bdg || ''}</span>`;
+  const copyCell = (!missing && value)
+    ? `<td class="info-action"><button class="btn btn-ghost btn-sm kv-copy" data-val="${escAttr(String(value))}">Copy</button></td>`
+    : `<td class="info-action"></td>`;
+  return `<tr><td class="info-label">${label}</td><td>${valHtml}</td>${copyCell}</tr>`;
+}
+function fmtSigAlgo(raw) {
+  const map = {
+    'sha1WithRSAEncryption':   'SHA-1 with RSA Encryption',
+    'sha256WithRSAEncryption': 'SHA-256 with RSA Encryption',
+    'sha384WithRSAEncryption': 'SHA-384 with RSA Encryption',
+    'sha512WithRSAEncryption': 'SHA-512 with RSA Encryption',
+    'ecdsa-with-SHA1':         'ECDSA with SHA-1',
+    'ecdsa-with-SHA256':       'ECDSA with SHA-256',
+    'ecdsa-with-SHA384':       'ECDSA with SHA-384',
+    'ecdsa-with-SHA512':       'ECDSA with SHA-512',
+    'md5WithRSAEncryption':    'MD5 with RSA (INSECURE)',
+  };
+  return map[raw] || raw;
+}
+function sigAlgoQuality(raw) {
+  if (/sha1/i.test(raw) || /md5/i.test(raw)) return 'weak';
+  if (/sha256|sha384|sha512/i.test(raw)) return 'strong';
+  return 'ok';
+}
+function keyQuality(algo, bits) {
+  if (algo === 'RSA') {
+    if (bits >= 3072) return 'strong';
+    if (bits >= 2048) return 'ok';
+    return 'weak';
+  }
+  if (algo === 'EC') {
+    if (bits >= 384) return 'strong';
+    if (bits >= 256) return 'ok';
+    return 'weak';
+  }
+  return 'ok';
+}
+function chip(cls, icon, text) {
+  return `<span class="chip ${cls}">${icon} ${text}</span>`;
+}
+function fingerprint(binaryStr, algo) {
+  const md = forge.md[algo].create();
+  md.update(binaryStr, 'binary');
+  return md.digest().toHex().match(/.{2}/g).join(':').toUpperCase();
+}
+
+// ── Example CSR ──────────────────────────────────────────────────────
+// A publicly available test CSR (from SSL testing resources)
+const EXAMPLE_CSR = `-----BEGIN CERTIFICATE REQUEST-----
+MIIEVDCCAjwCAQAwgZYxCzAJBgNVBAYTAlVTMRMwEQYDVQQIDApDYWxpZm9ybmlh
+MRYwFAYDVQQHDA1TYW4gRnJhbmNpc2NvMRwwGgYDVQQKDBNFeGFtcGxlIENvcnBv
+cmF0aW9uMRMwEQYDVQQLDApFbmdpbmVlcmluZzEXMBUGA1UEAwwOd3d3LmV4YW1w
+bGUuY29tMRAwDgYJKoZIhvcNAQkBFgFAMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A
+MIIBCgKCAQEA17RAlmZWAaWcPSyAoVfS+wckwnFdKN3gUlO5BPrxeZ2l1f0KZAHH
+d7k7bxGnHjlp/TvPVy5j7MoKHQNq0dGWd1AuPt+C1VGDa0T7qrA5f4J3F8h8kLnk
+U/Qs2VpVWaekdxHlFTJiJBcVCCHJvAJf8XiXM+zJBfz3uxs5gHrqMDq5NcVdAFxJ
+RyKRr3Y4m4JZEhxb0wlrh7vKJzHjVxX6U1Y4Qy0PkZ8NmFJ1r5Z6K8LtJRq8eMlG
+5bXfbZbvkn0hJblL6lB4dU5TzMkq7Qe/yJBz3qL7gZmCJNKRrQ1RBEJZiX4Hm5Np
+D5D7wMK7nh9VBClFpWGPz0w4nO3q4QIDAQABMH0wEQYJKoZIhvcNAQkOMQQwAjAA
+MCkGA1UdEQQiMCCCDnd3dy5leGFtcGxlLmNvbYIOYXBpLmV4YW1wbGUuY29tMA4G
+A1UdDwEB/wQEAwIFoDAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwDQYJ
+KoZIhvcNAQELBQADggEBAJZY6Xm1amn6VeHbAGXNs+VZyRRf3FrFmC3RKB+lBqb3
+f4VHgJJT0FkLlhxW4PxKL0zFBNP4Wc8fWNv8kSWJFKlgT9i9yLcmDFq8BfCJWcj
+tILRNY9TrH2rqdVv8Fqh7kxjWF+u2N6qqHm0fy4USBR0KLs7s2WlHMEfh5SXPBK
+QJdQFDe4XlY9q1n0Kv2mVvMH0fA4hnkjL6ePJXRBWPY0gIaXV3c0kQ9M9XkjJsf
+BKT4rEnpNwcBCx4XzH7I9U+YzLpuSIkQmxOJAVx6pA1Y7sJ4sBVL3Zn5IHNFw7X
+fF/pu24cGRFyO9akyLGVsIJhJ/g55LjQxhI=
+-----END CERTIFICATE REQUEST-----`;
+
+document.getElementById('exampleBtn').addEventListener('click', () => {
+  document.getElementById('csrInput').value = EXAMPLE_CSR;
+});
+
+// ── File upload ───────────────────────────────────────────────────────
+document.getElementById('fileInput').addEventListener('change', function() {
+  const f = this.files[0]; if (!f) return;
+  const reader = new FileReader();
+  reader.onload = e => { document.getElementById('csrInput').value = e.target.result.trim(); };
+  reader.readAsText(f);
+});
+
+// ── Decode ────────────────────────────────────────────────────────────
+document.getElementById('decodeBtn').addEventListener('click', decode);
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.getElementById('csrInput').value = '';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('errorCard').style.display = 'none';
+});
+document.getElementById('csrInput').addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') decode();
+});
+
+function decode() {
+  const raw = document.getElementById('csrInput').value.trim();
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('errorCard').style.display = 'none';
+
+  if (!raw) { showError('Paste a PEM-encoded CSR first.'); return; }
+
+  // Detect type
+  if (/BEGIN CERTIFICATE(?!\s+REQUEST)/i.test(raw)) {
+    showError('This looks like a certificate (not a CSR). Paste a "BEGIN CERTIFICATE REQUEST" block.');
+    return;
+  }
+  if (/BEGIN.*(PRIVATE|RSA|EC) KEY/i.test(raw)) {
+    showError('This is a private key — never share or paste your private key into any online tool. Paste a CSR instead.');
+    return;
+  }
+  if (!/BEGIN (NEW )?CERTIFICATE REQUEST/i.test(raw)) {
+    showError('No certificate request found. Make sure to paste the full PEM block including the -----BEGIN CERTIFICATE REQUEST----- header.');
+    return;
+  }
+
+  let csr;
+  try {
+    csr = forge.pki.certificationRequestFromPem(raw);
+  } catch (e) {
+    showError('Failed to parse CSR: ' + e.message);
+    return;
+  }
+
+  // ── Verify signature ─────────────────────────────────────────────
+  let sigValid = false;
+  try { sigValid = csr.verify(); } catch (e) { sigValid = false; }
+
+  // ── Subject attributes ───────────────────────────────────────────
+  const attrs = {};
+  csr.subject.attributes.forEach(a => {
+    const key = a.shortName || a.name || a.type;
+    if (key && !attrs[key]) attrs[key] = a.value;
+  });
+  const CN = attrs.CN || null;
+  const O  = attrs.O  || null;
+  const OU = attrs.OU || null;
+  const L  = attrs.L  || null;
+  const ST = attrs.ST || null;
+  const C  = attrs.C  || null;
+  const E  = attrs.E  || attrs.emailAddress || null;
+
+  // Full DN string
+  const dnParts = csr.subject.attributes.map(a => `${a.shortName || a.type}=${a.value}`);
+  const fullDn  = dnParts.join(', ');
+
+  // ── Public key ───────────────────────────────────────────────────
+  const pubKey = csr.publicKey;
+  let keyAlgo, keyBits, keyExp, keyKq;
+  if (pubKey.n) {
+    keyAlgo = 'RSA';
+    keyBits = pubKey.n.bitLength();
+    keyExp  = pubKey.e.toString(10);
+    keyKq   = keyQuality('RSA', keyBits);
+  } else if (pubKey.params) {
+    // EC key — forge stores curve OID in params
+    keyAlgo = 'EC (Elliptic Curve)';
+    // Try to extract bit size from curve OID
+    const curveOidMap = {
+      '1.2.840.10045.3.1.7':  { name: 'P-256 (secp256r1)', bits: 256 },
+      '1.3.132.0.34':         { name: 'P-384 (secp384r1)', bits: 384 },
+      '1.3.132.0.35':         { name: 'P-521 (secp521r1)', bits: 521 },
+    };
+    const oid = forge.asn1.derToOid(pubKey.params);
+    const curve = curveOidMap[oid] || { name: oid, bits: 256 };
+    keyAlgo = `EC — ${curve.name}`;
+    keyBits = curve.bits;
+    keyExp  = null;
+    keyKq   = keyQuality('EC', curve.bits);
+  } else {
+    keyAlgo = 'Unknown';
+    keyBits = null;
+    keyExp  = null;
+    keyKq   = 'ok';
+  }
+
+  // ── Signature algorithm ──────────────────────────────────────────
+  const sigOidRaw = forge.pki.oids[csr.signatureOid] || csr.signatureOid;
+  const sigAlgoFriendly = fmtSigAlgo(sigOidRaw);
+  const sigKq = sigAlgoQuality(sigOidRaw);
+
+  // ── SANs ─────────────────────────────────────────────────────────
+  const sans = [];
+  const extReq = csr.getAttribute({ name: 'extensionRequest' });
+  if (extReq && extReq.extensions) {
+    extReq.extensions.forEach(ext => {
+      if (ext.name === 'subjectAltName' && ext.altNames) {
+        ext.altNames.forEach(an => {
+          if (an.type === 2) sans.push({ type: 'DNS',   value: an.value, cls: 'san-dns' });
+          else if (an.type === 7) sans.push({ type: 'IP',    value: an.ip || an.value, cls: 'san-ip' });
+          else if (an.type === 1) sans.push({ type: 'Email', value: an.value, cls: 'san-email' });
+          else if (an.type === 6) sans.push({ type: 'URI',   value: an.value, cls: 'san-uri' });
+          else sans.push({ type: 'Other', value: String(an.value), cls: 'san-uri' });
+        });
+      }
+    });
+  }
+
+  // ── Fingerprints ─────────────────────────────────────────────────
+  const b64     = raw.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '');
+  const binStr  = atob(b64);
+  const fp256   = fingerprint(binStr, 'sha256');
+  const fp1     = fingerprint(binStr, 'sha1');
+  const fpMd5   = fingerprint(binStr, 'md5');
+
+  // ── Render ───────────────────────────────────────────────────────
+  // Status banner
+  const banner = document.getElementById('statusBanner');
+  const dot    = document.getElementById('statusDot');
+  const stText = document.getElementById('statusText');
+  if (sigValid) {
+    banner.className = 'csr-status ok';
+    dot.textContent = '✓';
+    stText.textContent = 'Valid CSR — signature verified';
+  } else {
+    banner.className = 'csr-status err';
+    dot.textContent = '✗';
+    stText.textContent = 'CSR decoded but signature could not be verified';
+  }
+
+  // Summary chips
+  const chips = [];
+  if (keyBits) {
+    const kChipCls = keyKq === 'strong' ? 'chip-ok' : keyKq === 'ok' ? 'chip-warn' : 'chip-bad';
+    chips.push(chip(kChipCls, keyKq === 'weak' ? '⚠' : '✓',
+      `${keyBits}-bit ${keyAlgo.split(' ')[0]} key`));
+  }
+  const sChipCls = sigKq === 'strong' ? 'chip-ok' : sigKq === 'ok' ? 'chip-warn' : 'chip-bad';
+  chips.push(chip(sChipCls, sigKq === 'weak' ? '⚠' : '✓', sigAlgoFriendly));
+  if (sans.length) chips.push(chip('', '&#128279;', `${sans.length} SAN${sans.length !== 1 ? 's' : ''}`));
+  document.getElementById('summaryChips').innerHTML = chips.join('');
+
+  // Subject table
+  document.getElementById('subjectTable').innerHTML = [
+    infoRow('Common Name (CN)',       CN, { missing: !CN }),
+    infoRow('Organization (O)',       O,  { missing: !O }),
+    infoRow('Org. Unit (OU)',         OU, { missing: !OU }),
+    infoRow('City / Locality (L)',    L,  { missing: !L }),
+    infoRow('State / Province (ST)', ST, { missing: !ST }),
+    infoRow('Country (C)',            C,  { missing: !C }),
+    infoRow('Email',                  E,  { missing: !E }),
+  ].join('');
+
+  // Key table
+  const kBdg = keyBits ? badge(keyKq,
+    keyKq === 'strong' ? 'SECURE' : keyKq === 'ok' ? 'ACCEPTABLE' : 'WEAK — UPGRADE') : null;
+  document.getElementById('keyTable').innerHTML = [
+    infoRow('Algorithm', keyAlgo),
+    keyBits ? infoRow('Key Size', keyBits + ' bits', { badge: kBdg }) : '',
+    keyExp  ? infoRow('Public Exponent', keyExp)                      : '',
+  ].join('');
+
+  // Signature table
+  const sBdg = badge(sigKq, sigKq === 'strong' ? 'SECURE' : sigKq === 'ok' ? 'ACCEPTABLE' : 'DEPRECATED');
+  document.getElementById('sigTable').innerHTML = [
+    infoRow('Algorithm', sigAlgoFriendly, { badge: sBdg }),
+    infoRow('Signature OID', csr.signatureOid, { mono: true }),
+    infoRow('Verification', sigValid ? '✓ Valid — CSR was signed with the matching private key' : '✗ Could not verify signature', { missing: false }),
+  ].join('');
+
+  // SANs
+  const sanCard = document.getElementById('sanCard');
+  if (sans.length) {
+    sanCard.style.display = '';
+    document.getElementById('sanList').innerHTML = sans.map(s => `
+      <div class="san-row">
+        <span class="san-type ${s.cls}">${s.type}</span>
+        <span class="san-val">${escHtml(s.value)}</span>
+        <button class="btn btn-ghost btn-sm kv-copy" data-val="${escAttr(s.value)}" style="margin-left:auto">Copy</button>
+      </div>`).join('');
+  } else {
+    sanCard.style.display = 'none';
+  }
+
+  // Fingerprints
+  document.getElementById('fpList').innerHTML = [
+    { algo: 'SHA-256', val: fp256 },
+    { algo: 'SHA-1',   val: fp1 },
+    { algo: 'MD5',     val: fpMd5 },
+  ].map(({ algo, val }) => `
+    <div class="fp-row">
+      <span class="fp-algo">${algo}</span>
+      <span class="fp-val">${escHtml(val)}</span>
+      <button class="btn btn-ghost btn-sm kv-copy" data-val="${escAttr(val)}" style="flex-shrink:0">Copy</button>
+    </div>`).join('');
+
+  // Full DN
+  document.getElementById('fullDn').textContent = fullDn;
+  document.getElementById('copyDnBtn').onclick = () => copyText(fullDn, document.getElementById('copyDnBtn'));
+
+  // PEM output
+  document.getElementById('pemOut').textContent = raw;
+  document.getElementById('copyPemBtn').onclick = () => copyText(raw, document.getElementById('copyPemBtn'));
+
+  // Show results
+  document.getElementById('results').style.display = '';
+
+  // Wire copy buttons
+  document.querySelectorAll('.kv-copy').forEach(btn => {
+    btn.addEventListener('click', () => copyText(btn.dataset.val, btn));
+  });
+}
+
+function showError(msg) {
+  document.getElementById('errorMsg').textContent = msg;
+  document.getElementById('errorCard').style.display = '';
+}
+</script>
+</body>
+</html>
