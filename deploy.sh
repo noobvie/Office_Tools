@@ -1041,14 +1041,22 @@ opt_5_update_repo() {
     (
         set -euo pipefail
         exec > >(tee "$logf") 2>&1
+
+        git -C "$REPO_DIR" fetch origin
         git -C "$REPO_DIR" checkout "$target_branch"
-        git -C "$REPO_DIR" pull origin "$target_branch" --ff-only
+        git -C "$REPO_DIR" reset --hard "origin/$target_branch"
         success "Repo updated: $(git -C "$REPO_DIR" log -1 --format='%h %s')"
+
         load_conf
         sync_frontend "${DOMAIN:-}"
-        if [[ -n "${DOMAIN:-}" ]]; then
-            [[ -d "$BACKEND_DIR" ]] && sync_backend || true
-            systemctl reload nginx 2>/dev/null || true
+
+        # Sync backend if installed
+        [[ -d "$BACKEND_DIR" ]] && sync_backend || true
+
+        # Always reload nginx if it's running
+        if systemctl is-active --quiet nginx 2>/dev/null; then
+            systemctl reload nginx
+            success "nginx reloaded"
         fi
     ) || { warn "Update failed — check $logf"; press_enter; return 0; }
 
