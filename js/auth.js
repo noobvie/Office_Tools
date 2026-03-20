@@ -223,17 +223,9 @@ const OTAuth = (() => {
 
   /* ── Auth nav rendering ───────────────────────────────────── */
   function _rootPath() {
-    // Detect depth from current path to determine relative root
-    const depth = window.location.pathname.split('/').filter(Boolean).length;
-    const base = window.location.pathname.includes('/Office_Tools/')
-      ? window.location.pathname.split('/Office_Tools/')[0] + '/Office_Tools/'
-      : '/';
-    // Simple: use relative paths
-    const segs = window.location.pathname.split('/').filter(p => p && !p.includes('.html'));
-    // Count how many dirs deep inside Office_Tools
-    const idx = segs.indexOf('Office_Tools');
-    const deep = idx >= 0 ? segs.length - idx - 1 : 0;
-    return deep === 0 ? './' : '../'.repeat(deep);
+    // Count directory segments (excluding filename) to determine how many '../' to prepend
+    const dirs = window.location.pathname.split('/').filter(p => p && !p.endsWith('.html'));
+    return dirs.length === 0 ? './' : '../'.repeat(dirs.length);
   }
 
   function renderAuthNav() {

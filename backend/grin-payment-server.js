@@ -11,17 +11,25 @@
 
 'use strict';
 require('dotenv').config();
-const express  = require('express');
-const cors     = require('cors');
-const fetch    = require('node-fetch');
+const express      = require('express');
+const cors         = require('cors');
+const fetch        = require('node-fetch');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
+const fs           = require('fs');
+const os           = require('os');
+const path         = require('path');
 
+const execFileAsync = promisify(execFile);
 const app  = express();
 const PORT = process.env.PORT || 3001;
 
 // ── Config ────────────────────────────────────────────────────
-const PB_URL         = process.env.PB_URL         || 'http://127.0.0.1:8090';
-const GRIN_OWNER_URL = process.env.GRIN_OWNER_URL  || 'http://127.0.0.1:3420/v3/owner';
-const EXPIRY_MINS    = parseInt(process.env.PAYMENT_EXPIRY_MINUTES || '30', 10);
+const PB_URL               = process.env.PB_URL                || 'http://127.0.0.1:8090';
+const GRIN_WALLET_BIN      = process.env.GRIN_WALLET_BIN       || 'grin-wallet';
+const GRIN_WALLET_PASS     = process.env.GRIN_WALLET_PASS      || '';
+const GRIN_RECEIVING_ADDR  = process.env.GRIN_RECEIVING_ADDRESS || '';
+const EXPIRY_MINS          = parseInt(process.env.PAYMENT_EXPIRY_MINUTES || '30', 10);
 const CORS_ORIGINS   = (process.env.CORS_ORIGINS || 'http://localhost:8080').split(',').map(s => s.trim());
 
 const PLAN_AMOUNTS = {
@@ -92,43 +100,96 @@ async function pbGet(path) {
   return data;
 }
 
-// ── Grin wallet helpers (Owner API v3) ───────────────────────
-let walletToken = null;
+// ── PocketBase collection auto-init ──────────────────────────
+const REQUIRED_COLLECTIONS = [
+  { name: 'short_urls', fields: [
+      { name: 'code',     type: 'text',   required: true  },
+      { name: 'long_url', type: 'text',   required: true  },
+      { name: 'expires',  type: 'date',   required: false },
+  ]},
+  { name: 'pastes', fields: [
+      { name: 'code',            type: 'text',   required: true  },
+      { name: 'title',           type: 'text',   required: false },
+      { name: 'content',         type: 'text',   required: true  },
+      { name: 'syntax',          type: 'text',   required: false },
+      { name: 'expires',         type: 'date',   required: false },
+      { name: 'burn_after_read', type: 'bool',   required: false },
+  ]},
+  { name: 'file_shares', fields: [
+      { name: 'code',          type: 'text',   required: true  },
+      { name: 'original_name', type: 'text',   required: false },
+      { name: 'file_size',     type: 'number', required: false },
+      { name: 'file',          type: 'file',   required: true,
+        options: { maxSize: 1073741824, maxSelect: 1 } },
+      { name: 'expires',       type: 'date',   required: false },
+  ]},
+];
 
-async function openWallet() {
-  if (walletToken) return walletToken;
-  const res  = await fetch(GRIN_OWNER_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0', id: 1,
-      method: 'open_wallet',
-      params: { name: null, slatepack_secret: process.env.GRIN_WALLET_PASS },
-    }),
-  });
-  const data = await res.json();
-  if (data.error) throw new Error('Grin wallet open failed: ' + data.error.message);
-  walletToken = data.result.value;
-  return walletToken;
+async function initCollections() {
+  try {
+    const token = await getPbAdminToken();
+    for (const col of REQUIRED_COLLECTIONS) {
+      // Check if exists
+      const check = await fetch(`${PB_URL}/api/collections/${col.name}`, {
+        headers: { 'Authorization': token },
+      });
+      if (check.status === 200) {
+        console.log(`[collections] ${col.name}: already exists`);
+        continue;
+      }
+      // Create
+      const res  = await fetch(`${PB_URL}/api/collections`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': token },
+        body:    JSON.stringify({ name: col.name, type: 'base', fields: col.fields }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        console.log(`[collections] ${col.name}: created`);
+      } else {
+        console.warn(`[collections] ${col.name}: failed — ${data.message || JSON.stringify(data)}`);
+      }
+    }
+  } catch (err) {
+    console.warn('[collections] init skipped:', err.message);
+  }
 }
 
-async function grinRpc(method, params) {
-  const token = await openWallet();
-  const res = await fetch(GRIN_OWNER_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params: { token, ...params } }),
-  });
-  const data = await res.json();
-  if (data.error) {
-    // Token may have expired — reset and retry once
-    if (data.error.code === -32099) {
-      walletToken = null;
-      return grinRpc(method, params);
-    }
-    throw new Error(`Grin RPC ${method} failed: ${data.error.message}`);
+// ── Grin wallet CLI helpers ───────────────────────────────────
+async function grinWallet(args) {
+  const baseArgs = GRIN_WALLET_PASS ? ['-p', GRIN_WALLET_PASS, ...args] : args;
+  try {
+    const { stdout, stderr } = await execFileAsync(GRIN_WALLET_BIN, baseArgs, {
+      timeout: 60000,
+      maxBuffer: 2 * 1024 * 1024,
+    });
+    return stdout + (stderr || '');
+  } catch (err) {
+    const out = (err.stdout || '') + (err.stderr || '');
+    throw new Error(`grin-wallet ${args[0]} failed: ${err.message}\n${out}`);
   }
-  return data.result.Ok ?? data.result;
+}
+
+function extractSlatepack(output) {
+  const m = output.match(/(BEGINSLATEPACK[\s\S]+?ENDSLATEPACK\.)/);
+  if (!m) throw new Error('No slatepack found in wallet output. Output was:\n' + output.slice(0, 500));
+  return m[1];
+}
+
+async function grinInvoice(destAddress, amountGrin) {
+  const out = await grinWallet(['invoice', '-d', destAddress, String(amountGrin)]);
+  return extractSlatepack(out);
+}
+
+async function grinFinalize(responseSlatepack) {
+  // Write response to temp file and finalize
+  const tmpFile = path.join(os.tmpdir(), `grin_resp_${Date.now()}.slatepack`);
+  fs.writeFileSync(tmpFile, responseSlatepack);
+  try {
+    await grinWallet(['finalize', '-i', tmpFile]);
+  } finally {
+    fs.unlink(tmpFile, () => {});
+  }
 }
 
 // Verify user token against PocketBase
@@ -163,48 +224,38 @@ async function getUserFromToken(authHeader) {
 app.post('/api/payment/initiate', async (req, res) => {
   try {
     const user = await getUserFromToken(req.headers.authorization);
-    const { plan } = req.body;
+    const { plan, grin_address } = req.body;
 
     if (!PLAN_AMOUNTS[plan]) {
       return res.status(400).json({ error: 'Invalid plan: ' + plan });
     }
+    if (!GRIN_RECEIVING_ADDR) {
+      return res.status(500).json({ error: 'GRIN_RECEIVING_ADDRESS not configured in server .env' });
+    }
 
     const amountNano = PLAN_AMOUNTS[plan];
+    const amountGrin = amountNano / 1e9;
     const expiresAt  = new Date(Date.now() + EXPIRY_MINS * 60 * 1000).toISOString();
 
-    // Create Grin invoice slate
-    const slate = await grinRpc('issue_invoice_tx', {
-      args: {
-        amount: amountNano,
-        message: `Office Tools ${plan} subscription`,
-        target_slate_version: null,
-      },
-    });
-
-    // Serialize to slatepack
-    const slatepack = await grinRpc('slate_to_slatepack', {
-      slate,
-      recipients: [],
-      ttl_blocks: null,
-    });
+    // Create invoice via grin-wallet CLI: grin-wallet invoice -d <receiving_addr> <amount>
+    const slatepack = await grinInvoice(GRIN_RECEIVING_ADDR, amountGrin);
 
     // Store in PocketBase
     const payment = await pbPost('/api/collections/grin_payments/records', {
-      user:         user.id,
+      user:        user.id,
       plan,
-      amount_grin:  amountNano / 1e9,
-      amount_nano:  amountNano,
-      status:       'pending',
-      expires_at:   expiresAt,
-      slate_id:     slate.id,
+      amount_grin: amountGrin,
+      amount_nano: amountNano,
+      status:      'pending',
+      expires_at:  expiresAt,
     });
 
     res.json({
-      payment_id: payment.id,
+      payment_id:  payment.id,
       slatepack,
-      amount_grin: amountNano / 1e9,
+      amount_grin: amountGrin,
       plan,
-      expires_at: expiresAt,
+      expires_at:  expiresAt,
     });
   } catch (err) {
     console.error('[initiate]', err.message);
@@ -234,22 +285,13 @@ app.post('/api/payment/respond', async (req, res) => {
       return res.status(410).json({ error: 'Payment expired' });
     }
 
-    // Decode response slatepack back to slate
-    const responseSlate = await grinRpc('slatepack_to_slate', { slatepack: response_slatepack });
-
-    // Finalize the transaction
-    const finalSlate = await grinRpc('finalize_tx', { slate: responseSlate });
-
-    // Post to network
-    await grinRpc('post_tx', { slate: finalSlate, fluff: false });
-
-    const txId = finalSlate.id;
+    // Finalize via grin-wallet CLI: reads response slatepack, broadcasts tx
+    await grinFinalize(response_slatepack);
 
     // Update payment record
     await pbPatch(`/api/collections/grin_payments/records/${payment_id}`, {
       status:       'confirmed',
       confirmed_at: new Date().toISOString(),
-      tx_id:        txId,
     });
 
     // Create subscription
@@ -264,7 +306,7 @@ app.post('/api/payment/respond', async (req, res) => {
       expires_at:        expiresAt,
     });
 
-    res.json({ success: true, tx_id: txId, plan: payment.plan });
+    res.json({ success: true, plan: payment.plan });
   } catch (err) {
     console.error('[respond]', err.message);
     // Mark as failed
@@ -298,6 +340,9 @@ app.get('/api/health', (_, res) => res.json({ status: 'ok', ts: new Date().toISO
 // ── Start ─────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`Grin payment server running on port ${PORT}`);
-  console.log(`PocketBase: ${PB_URL}`);
-  console.log(`Grin Owner API: ${GRIN_OWNER_URL}`);
+  console.log(`PocketBase:      ${PB_URL}`);
+  console.log(`Grin wallet:     ${GRIN_WALLET_BIN}`);
+  console.log(`Receiving addr:  ${GRIN_RECEIVING_ADDR || '(not set — configure GRIN_RECEIVING_ADDRESS in .env)'}`);
+  // Auto-create required PocketBase collections
+  initCollections();
 });

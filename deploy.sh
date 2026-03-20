@@ -413,15 +413,17 @@ setup_backend_first() {
     echo -ne "  PocketBase admin email:    "; read -r PB_ADMIN_EMAIL
     echo -ne "  PocketBase admin password: "; read -rs _PB_PASS; echo ""
     echo -ne "  Grin wallet password:      "; read -rs _GW_PASS; echo ""
+    echo ""
+    info "Get your Grin receiving address with: grin-wallet address"
+    echo -ne "  Grin receiving address (Enter to skip): "; read -r _GW_ADDR
 
     mkdir -p "$BACKEND_DIR"
     rsync -a "$REPO_DIR/backend/" "$BACKEND_DIR/"
 
     cat > "$BACKEND_DIR/.env" << ENVEOF
 # Office Tools backend config
-GRIN_OWNER_URL=http://127.0.0.1:3420/v3/owner
 GRIN_WALLET_PASS=${_GW_PASS}
-GRIN_FOREIGN_URL=http://127.0.0.1:3415/v2/foreign
+GRIN_RECEIVING_ADDRESS=${_GW_ADDR}
 PB_URL=http://127.0.0.1:8090
 PB_ADMIN_EMAIL=${PB_ADMIN_EMAIL}
 PB_ADMIN_PASSWORD=${_PB_PASS}
@@ -971,10 +973,22 @@ opt_4_set_admin() {
     PB_ADMIN_EMAIL="$_email"
     save_conf
 
-    # Offer to (re-)create collections now that we have valid credentials
-    echo ""
-    echo -ne "  Create / verify PocketBase collections now? [Y/n]: "; read -r _c
-    [[ "${_c,,}" != "n" ]] && setup_pb_collections "$_email" "$_pass"
+    # Offer to set Grin receiving address
+    if [[ -f "$BACKEND_DIR/.env" ]]; then
+        echo ""
+        echo -ne "  Grin receiving address (Enter to skip): "; read -r _gaddr
+        if [[ -n "$_gaddr" ]]; then
+            if grep -q "^GRIN_RECEIVING_ADDRESS=" "$BACKEND_DIR/.env"; then
+                sed -i "s|^GRIN_RECEIVING_ADDRESS=.*|GRIN_RECEIVING_ADDRESS=${_gaddr}|" "$BACKEND_DIR/.env"
+            else
+                echo "GRIN_RECEIVING_ADDRESS=${_gaddr}" >> "$BACKEND_DIR/.env"
+            fi
+            success "GRIN_RECEIVING_ADDRESS updated"
+        fi
+    fi
+
+    # (Re-)create collections now that we have valid credentials
+    setup_pb_collections "$_email" "$_pass"
 
     press_enter
 }

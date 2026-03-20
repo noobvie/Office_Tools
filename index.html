@@ -28,11 +28,10 @@
       border-bottom: 1px solid var(--border);
       padding: .55rem 1.5rem;
       display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
       gap: .45rem;
-      overflow-x: auto;
-      scrollbar-width: none;
     }
-    .cat-filter::-webkit-scrollbar { display: none; }
     .cat-chip {
       white-space: nowrap;
       padding: .3rem .85rem;
@@ -72,24 +71,21 @@
 <section class="hero">
   <h1>Free <span>Online Tools</span> for Everyday Work</h1>
   <p>52 browser-based utilities — no login, no tracking, no install.</p>
-  <div class="search-wrap">
-    <span class="search-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
-    <input type="text" id="searchInput" placeholder="Search tools…" autocomplete="off">
-  </div>
 </section>
+<input type="text" id="searchInput" style="display:none" autocomplete="off">
 
 <div class="cat-filter" id="catFilter">
   <button class="cat-chip active" data-cat="all">All</button>
+  <button class="cat-chip" data-cat="Images &amp; PDF">🖼️ Images &amp; PDF</button>
   <button class="cat-chip" data-cat="Productivity &amp; Time">⏱️ Productivity</button>
-  <button class="cat-chip" data-cat="Generators">✨ Generators</button>
-  <button class="cat-chip" data-cat="Text &amp; Content">📝 Text</button>
-  <button class="cat-chip" data-cat="Encoding &amp; Crypto">🔒 Encoding</button>
   <button class="cat-chip" data-cat="Calculators">🧮 Calculators</button>
   <button class="cat-chip" data-cat="Development">💻 Dev</button>
-  <button class="cat-chip" data-cat="Design &amp; Visual">🎨 Design</button>
   <button class="cat-chip" data-cat="Network &amp; Security">🌐 Network</button>
-  <button class="cat-chip" data-cat="Images &amp; PDF">🖼️ Images &amp; PDF</button>
+  <button class="cat-chip" data-cat="Generators">✨ Generators</button>
+  <button class="cat-chip" data-cat="Text &amp; Content">📝 Text</button>
   <button class="cat-chip" data-cat="Share">📤 Share</button>
+  <button class="cat-chip" data-cat="Design &amp; Visual">🎨 Design</button>
+  <button class="cat-chip" data-cat="Encoding &amp; Crypto">🔒 Encoding</button>
 </div>
 
 <main class="hub-main" id="hubMain">
@@ -431,17 +427,10 @@
 
 </main>
 
-<footer style="border-top:1px solid var(--border);margin-top:3rem;padding:2rem 1.5rem;text-align:center;font-size:.8rem;color:var(--text-muted)">
+<footer style="border-top:1px solid var(--border);margin-top:3rem;padding:1.25rem 1.5rem;text-align:center;font-size:.8rem;color:var(--text-muted)">
   <div style="max-width:780px;margin:0 auto">
-    <p style="margin-bottom:.6rem">
-      <strong style="color:var(--text)">Self-host in minutes</strong> —
-      <code style="font-size:.78rem;background:var(--bg-secondary);padding:.1rem .4rem;border-radius:4px">sudo bash deploy.sh</code>
-      &nbsp;·&nbsp; install · domain · update · delete &nbsp;·&nbsp; Debian · Ubuntu · AlmaLinux · Rocky Linux
-    </p>
-    <p style="margin-bottom:.4rem">
-      52 tools &nbsp;·&nbsp; No login &nbsp;·&nbsp; No tracking &nbsp;·&nbsp; 100% browser-based
-    </p>
     <p>
+      <strong style="color:var(--text)">Self-host in minutes</strong> &nbsp;·&nbsp;
       Open source on GitHub:&nbsp;
       <a href="https://github.com/noobvie/Office_Tools" style="color:var(--primary);text-decoration:none" target="_blank" rel="noopener">Office Tools</a>
       &nbsp;·&nbsp;
