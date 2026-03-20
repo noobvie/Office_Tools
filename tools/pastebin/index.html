@@ -281,7 +281,11 @@ document.getElementById('createBtn').addEventListener('click', async () => {
     document.getElementById('createResult').classList.remove('hidden');
 
   } catch (err) {
-    errBox.textContent = err.message;
+    let msg = err.message || '';
+    if (msg.includes('Missing or invalid collection') || msg.includes('Failed to fetch') || msg.includes('Load failed') || msg.includes('NetworkError')) {
+      msg = '⚙️ Backend not configured. This tool requires a PocketBase server with a "pastes" collection. Update PB_URL in js/config.js and create the collection in your PocketBase admin.';
+    }
+    errBox.textContent = msg;
     errBox.classList.remove('hidden');
   } finally {
     btn.textContent = 'Create Paste'; btn.disabled = false;

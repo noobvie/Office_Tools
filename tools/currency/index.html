@@ -152,11 +152,12 @@
     <div class="form-row">
       <div class="form-group">
         <label>From</label>
-        <select id="fromCurrency"></select>
+        <input type="text" id="fromCurrency" list="currencyDatalist" placeholder="Search currency…" autocomplete="off">
       </div>
       <div class="form-group">
         <label>To</label>
-        <select id="toCurrency"></select>
+        <input type="text" id="toCurrency" list="currencyDatalist" placeholder="Search currency…" autocomplete="off">
+        <datalist id="currencyDatalist"></datalist>
       </div>
     </div>
 
@@ -235,19 +236,21 @@ const POPULAR_PAIRS = [
 let rates = null;
 let lastFetch = null;
 
-// Populate selects
+// Build datalist + set defaults
 function buildSelects() {
-  const codes = Object.keys(CURRENCIES);
-  [document.getElementById('fromCurrency'), document.getElementById('toCurrency')].forEach((sel, i) => {
-    codes.forEach(code => {
-      const opt = document.createElement('option');
-      opt.value = code;
-      opt.textContent = `${code} — ${CURRENCIES[code]}`;
-      if (i === 0 && code === 'USD') opt.selected = true;
-      if (i === 1 && code === 'EUR') opt.selected = true;
-      sel.appendChild(opt);
-    });
+  const dl = document.getElementById('currencyDatalist');
+  Object.entries(CURRENCIES).forEach(([code, name]) => {
+    const opt = document.createElement('option');
+    opt.value = `${code} — ${name}`;
+    dl.appendChild(opt);
   });
+  document.getElementById('fromCurrency').value = 'USD — US Dollar';
+  document.getElementById('toCurrency').value   = 'EUR — Euro';
+}
+
+function getCurrencyCode(val) {
+  const m = String(val).trim().match(/^([A-Z]{3})\b/);
+  return m ? m[1] : null;
 }
 
 async function fetchRates(base = 'USD') {
@@ -288,9 +291,9 @@ function convertAmount(amount, from, to) {
 
 function doConvert() {
   const amount = parseFloat(document.getElementById('amountInput').value);
-  const from   = document.getElementById('fromCurrency').value;
-  const to     = document.getElementById('toCurrency').value;
-  if (isNaN(amount) || !rates) return;
+  const from   = getCurrencyCode(document.getElementById('fromCurrency').value);
+  const to     = getCurrencyCode(document.getElementById('toCurrency').value);
+  if (isNaN(amount) || !rates || !from || !to) return;
 
   const result = convertAmount(amount, from, to);
   if (result === null) return;
@@ -320,8 +323,8 @@ function renderPopular() {
     card.className = 'popular-card';
     card.innerHTML = `<div class="pair">${a} / ${b}</div><div class="rate-val">${rate ? rate.toFixed(4) : '—'}</div>`;
     card.addEventListener('click', () => {
-      document.getElementById('fromCurrency').value = a;
-      document.getElementById('toCurrency').value   = b;
+      document.getElementById('fromCurrency').value = `${a} — ${CURRENCIES[a]}`;
+      document.getElementById('toCurrency').value   = `${b} — ${CURRENCIES[b]}`;
       doConvert();
     });
     grid.appendChild(card);
@@ -342,19 +345,21 @@ function renderQuickTable(from, to) {
 }
 
 document.getElementById('swapBtn').addEventListener('click', () => {
-  const from = document.getElementById('fromCurrency').value;
-  const to   = document.getElementById('toCurrency').value;
-  document.getElementById('fromCurrency').value = to;
-  document.getElementById('toCurrency').value   = from;
+  const fromEl = document.getElementById('fromCurrency');
+  const toEl   = document.getElementById('toCurrency');
+  const tmp = fromEl.value; fromEl.value = toEl.value; toEl.value = tmp;
   doConvert();
 });
 
 document.getElementById('convertBtn').addEventListener('click', doConvert);
 document.getElementById('amountInput').addEventListener('input', doConvert);
-document.getElementById('fromCurrency').addEventListener('change', doConvert);
-document.getElementById('toCurrency').addEventListener('change', doConvert);
+['fromCurrency','toCurrency'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('change', doConvert);
+  el.addEventListener('input', () => { if (getCurrencyCode(el.value)) doConvert(); });
+});
 document.getElementById('refreshBtn').addEventListener('click', async () => {
-  const base = document.getElementById('fromCurrency').value;
+  const base = getCurrencyCode(document.getElementById('fromCurrency').value) || 'USD';
   localStorage.removeItem(`ot-rates-${base}`);
   localStorage.removeItem(`ot-rates-${base}-ts`);
   document.getElementById('offlineNotice').classList.add('hidden');

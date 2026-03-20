@@ -423,17 +423,34 @@ document.querySelectorAll('[data-example]').forEach(btn => {
   });
 });
 
-// Detect my IP
+// Detect my IP — tries multiple sources with fallback
 document.getElementById('myIpBtn').addEventListener('click', async () => {
   const btn = document.getElementById('myIpBtn');
   btn.disabled = true; btn.textContent = 'Detecting…';
-  try {
-    const res  = await fetch('https://api.ipify.org?format=json');
-    const data = await res.json();
-    document.getElementById('ipInput').value = data.ip;
-    lookup(data.ip);
-  } catch {
-    alert('Could not detect your IP. Check your connection.');
+
+  const tryFetch = async (url, extract) => {
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 5000);
+    const r = await fetch(url, { signal: ctrl.signal });
+    return extract(await r.json());
+  };
+  const sources = [
+    () => tryFetch('https://api4.ipify.org?format=json', d => d.ip),
+    () => tryFetch('https://api.ipify.org?format=json',  d => d.ip),
+    () => tryFetch('https://jsonip.com',                 d => d.ip),
+    () => tryFetch('https://api.my-ip.io/ip.json',       d => d.ip),
+  ];
+
+  let ip = null;
+  for (const fn of sources) {
+    try { const v = await fn(); if (v && v.length > 3) { ip = v; break; } } catch {}
+  }
+
+  if (ip) {
+    document.getElementById('ipInput').value = ip;
+    lookup(ip);
+  } else {
+    resultArea.innerHTML = '<div class="lookup-error mt-2">&#10007; Could not detect your IP — all sources failed. Check your connection.</div>';
   }
   btn.disabled = false; btn.innerHTML = '&#128269; My IP';
 });

@@ -364,7 +364,11 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
     document.getElementById('shareResult').classList.remove('hidden');
 
   } catch (err) {
-    showUploadError(err.message);
+    let msg = err.message || '';
+    if (msg.includes('Missing or invalid collection') || msg.includes('Failed to fetch') || msg.includes('Load failed') || msg.includes('NetworkError')) {
+      msg = '⚙️ Backend not configured. This tool requires a PocketBase server with a "file_shares" collection. Update PB_URL in js/config.js and create the collection in your PocketBase admin.';
+    }
+    showUploadError(msg);
   } finally {
     btn.disabled = false;
     document.getElementById('progressBox').classList.add('hidden');

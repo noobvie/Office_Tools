@@ -164,7 +164,9 @@
 
 <script src="../../js/common.js"></script>
 <script>
-let myIp  = null;
+let myIp   = null;
+let myIpv4 = null;
+let myIpv6 = null;
 let ipData = null;
 
 // ── Country code → full name (no external dependency) ─────────────
@@ -181,22 +183,36 @@ function fetchJson(url, ms = 5000) {
     .catch(e => { clearTimeout(timer); throw e; });
 }
 
-// ── Primary IP detection — tries sources in order ─────────────────
-async function detectIp() {
-  // Each entry: [url, extractor_fn]
-  const sources = [
-    ['https://ipinfo.io/json',          d => d.ip],
-    ['https://api.my-ip.io/ip.json',    d => d.ip],
-    ['https://jsonip.com',              d => d.ip],
-    ['https://ip-api.com/json',         d => d.query],   // returns IP in query field
-  ];
-  for (const [url, extract] of sources) {
-    try {
-      const data = await fetchJson(url);
-      const ip = extract(data);
-      if (ip && ip.length > 3) return { ip, raw: data, src: url };
-    } catch { /* try next */ }
-  }
+// ── Protocol-specific IP detection ────────────────────────────────
+async function fetchText(url, ms = 5000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { signal: ctrl.signal })
+    .then(r => { clearTimeout(timer); return r.text(); })
+    .catch(e => { clearTimeout(timer); throw e; });
+}
+
+async function detectIpv4() {
+  try {
+    const d = await fetchJson('https://api4.ipify.org?format=json');
+    if (d.ip && /^\d+\.\d+\.\d+\.\d+$/.test(d.ip)) return d.ip;
+  } catch {}
+  try {
+    const t = await fetchText('https://ipv4.icanhazip.com');
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(t.trim())) return t.trim();
+  } catch {}
+  return null;
+}
+
+async function detectIpv6() {
+  try {
+    const d = await fetchJson('https://api6.ipify.org?format=json');
+    if (d.ip && d.ip.includes(':')) return d.ip;
+  } catch {}
+  try {
+    const t = await fetchText('https://v6.ident.me');
+    if (t.trim().includes(':')) return t.trim();
+  } catch {}
   return null;
 }
 
@@ -210,14 +226,18 @@ async function fetchGeo(ip) {
   return null;
 }
 
-// ── Main fetch flow ───────────────────────────────────────────────
+// ── Main fetch flow — detects IPv4 and IPv6 simultaneously ────────
 async function fetchIp() {
   const display = document.getElementById('ipDisplay');
   display.innerHTML = '<span class="loading-pulse"></span><span class="text-muted">Detecting your IP…</span>';
   document.getElementById('ipActions').style.display = 'none';
 
-  const detected = await detectIp();
-  if (!detected) {
+  const [v4, v6] = await Promise.all([detectIpv4(), detectIpv6()]);
+  myIpv4 = v4;
+  myIpv6 = v6;
+  myIp   = v4 || v6; // prefer IPv4 for geo lookup
+
+  if (!myIp) {
     display.innerHTML = `<div class="alert alert-danger" style="text-align:left">
       Could not detect your IP — all detection services failed.<br>
       <small>This can happen behind strict firewalls, captive portals, or DNS-blocking networks.</small>
@@ -225,48 +245,45 @@ async function fetchIp() {
     return;
   }
 
-  myIp = detected.ip;
+  // Fetch geo for primary IP
+  ipData = await fetchGeo(myIp);
 
-  // If ip-api.com was the source that succeeded, we already have geo
-  if (detected.raw && detected.raw.status === 'success' && detected.raw.country) {
-    ipData = detected.raw;
-  } else {
-    // Fetch geo separately
-    ipData = await fetchGeo(myIp);
-
-    // If ipinfo.io was the source, supplement missing fields from its raw data
-    if (!ipData && detected.raw && detected.raw.country) {
-      const [lat, lon] = (detected.raw.loc || ',').split(',').map(Number);
-      ipData = {
-        status:      'success',
-        query:       myIp,
-        country:     countryName(detected.raw.country),
-        countryCode: detected.raw.country,
-        regionName:  detected.raw.region   || '',
-        city:        detected.raw.city     || '',
-        zip:         detected.raw.postal   || '',
-        lat, lon,
-        timezone:    detected.raw.timezone || '',
-        isp:         detected.raw.org      || '',
-        org:         detected.raw.org      || '',
-        as:          detected.raw.org      || '',
-      };
-    }
+  // Fallback: try ipinfo.io for geo
+  if (!ipData) {
+    try {
+      const d = await fetchJson('https://ipinfo.io/json');
+      if (d && d.country) {
+        const [lat, lon] = (d.loc || ',').split(',').map(Number);
+        ipData = {
+          status: 'success', query: d.ip,
+          country: countryName(d.country), countryCode: d.country,
+          regionName: d.region || '', city: d.city || '',
+          zip: d.postal || '', lat, lon,
+          timezone: d.timezone || '', isp: d.org || '', org: d.org || '', as: d.org || '',
+        };
+      }
+    } catch {}
   }
 
   renderIp();
 }
 
 function renderIp() {
-  const display   = document.getElementById('ipDisplay');
-  const isV6      = myIp.includes(':');
-  const typeColor = isV6 ? 'badge-primary' : 'badge-success';
+  const display = document.getElementById('ipDisplay');
+  let html = '';
 
-  display.innerHTML = `
-    <div class="ip-address">${escHtml(myIp)}</div>
-    <div class="ip-label">Your Public IP Address</div>
-    <span class="ip-type-badge badge ${typeColor}">${isV6 ? 'IPv6' : 'IPv4'}</span>
-  `;
+  if (myIpv4) {
+    html += `<div class="ip-address">${escHtml(myIpv4)}</div>
+    <div class="ip-label">IPv4 Address</div>
+    <span class="ip-type-badge badge badge-success">IPv4</span>`;
+  }
+  if (myIpv6) {
+    if (myIpv4) html += '<div style="margin:.75rem 0;border-top:1px solid var(--border)"></div>';
+    html += `<div class="ip-address" style="${myIpv4 ? 'font-size:1.5rem' : ''}">${escHtml(myIpv6)}</div>
+    <div class="ip-label">IPv6 Address</div>
+    <span class="ip-type-badge badge badge-primary">IPv6</span>`;
+  }
+  display.innerHTML = html;
 
   document.getElementById('copyIpBtn').onclick = () => copyText(myIp, document.getElementById('copyIpBtn'));
   document.getElementById('ipActions').style.display = '';
@@ -302,34 +319,16 @@ function renderIp() {
   }
 }
 
-// ── IPv6 check — tries multiple sources ──────────────────────────
-async function checkIpv6() {
+// ── IPv6 status — populated from already-detected myIpv6 ─────────
+function showIpv6Status() {
   const card   = document.getElementById('ipv6Card');
   const result = document.getElementById('ipv6Result');
   card.classList.remove('hidden');
-  result.innerHTML = '<span class="loading-pulse"></span> Checking IPv6 support…';
-
-  const v6sources = [
-    ['https://ipv6.icanhazip.com',          r => r.trim()],
-    ['https://api6.ipify.org?format=json',  r => JSON.parse(r).ip],
-    ['https://v6.ident.me',                 r => r.trim()],
-  ];
-
-  for (const [url, parse] of v6sources) {
-    try {
-      const ctrl  = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 4000);
-      const res   = await fetch(url, { signal: ctrl.signal });
-      clearTimeout(timer);
-      const text = await res.text();
-      const ip   = parse(text);
-      if (ip && ip.includes(':')) {
-        result.innerHTML = `<div class="alert alert-success">✓ IPv6 supported — your IPv6 address: <code style="word-break:break-all">${escHtml(ip)}</code></div>`;
-        return;
-      }
-    } catch { /* try next */ }
+  if (myIpv6) {
+    result.innerHTML = `<div class="alert alert-success">✓ IPv6 supported — your address: <code style="word-break:break-all">${escHtml(myIpv6)}</code></div>`;
+  } else {
+    result.innerHTML = `<div class="alert" style="background:var(--warning-dim);color:var(--warning)">⚠ IPv6 not detected on your network.</div>`;
   }
-  result.innerHTML = `<div class="alert" style="background:var(--warning-dim);color:var(--warning)">⚠ IPv6 not detected on your network.</div>`;
 }
 
 // ── Multi-source verify ───────────────────────────────────────────
@@ -362,7 +361,7 @@ document.getElementById('verifyBtn').addEventListener('click', async () => {
 
 document.getElementById('refreshIpBtn').addEventListener('click', fetchIp);
 
-fetchIp().then(() => checkIpv6());
+fetchIp().then(() => showIpv6Status());
 </script>
 </body>
 </html>

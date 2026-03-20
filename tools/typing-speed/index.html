@@ -24,10 +24,13 @@
       line-height: 1.9;
       padding: 1.25rem;
       background: var(--bg-secondary);
+      border: 2px solid var(--border);
       border-radius: var(--radius);
       font-family: 'Georgia', serif;
       letter-spacing: .01em;
       min-height: 140px;
+      max-height: 220px;
+      overflow-y: auto;
       user-select: none;
       position: relative;
     }
@@ -209,36 +212,139 @@
 
 <script src="../../js/common.js"></script>
 <script>
-const PASSAGES = [
-  // 0: Common words
+// Sentence banks — randomly assembled each test for infinite variety
+const SENTENCE_BANKS = [
+  // 0: Common Words
   [
-    "the quick brown fox jumps over the lazy dog and the dog barked loudly at the fox as it ran away through the dense forest",
-    "she sells sea shells by the sea shore and the shells she sells are surely sea shells from the sea floor",
-    "how much wood would a woodchuck chuck if a woodchuck could chuck wood it would chuck as much wood as it could",
-    "to be or not to be that is the question whether it is nobler in the mind to suffer the slings and arrows of outrageous fortune",
+    "the quick brown fox jumps over the lazy dog near the river bank",
+    "she walked slowly through the quiet park as leaves fell around her feet",
+    "he opened the old wooden door and stepped into the warm sunlit room",
+    "the children played happily in the garden while their parents watched from the porch",
+    "a gentle breeze carried the scent of wildflowers across the open meadow",
+    "the birds sang cheerfully as the morning sun rose above the hills",
+    "they sat together by the fire sharing stories from their long journey",
+    "the old clock on the wall ticked steadily through the silent night",
+    "rain fell softly on the rooftops creating a peaceful rhythm in the air",
+    "the cat sat on the window ledge watching the world go by outside",
+    "every morning she made a cup of tea and read the newspaper by the window",
+    "the narrow road twisted through the forest before opening onto a wide green valley",
+    "he smiled and nodded as the stranger asked him for directions to the market",
+    "the moon reflected on the still lake like a silver coin in dark water",
+    "they finished dinner and moved to the living room to talk and laugh together",
+    "a small boat drifted on the river as the fisherman waited patiently",
+    "the mountains were covered in snow and looked beautiful against the clear blue sky",
+    "she picked up the phone and dialed the number she had written on the paper",
+    "the dog barked twice then ran across the yard to greet the returning visitor",
+    "the market was crowded and noisy with vendors calling out their prices",
+    "he leaned back in his chair and stared at the ceiling thinking carefully",
+    "the train pulled into the station right on time and the doors slid open",
+    "they walked side by side along the beach as the sun set over the water",
+    "the young student stayed up late reading books by the light of a small lamp",
+    "after the storm the air smelled fresh and clean and the streets shone with rain",
   ],
   // 1: Programming
   [
-    "function fibonacci returns the nth number in the sequence by recursively calling itself with decremented values until reaching the base cases of zero and one",
-    "the event loop processes callbacks from the queue after the call stack is empty allowing javascript to perform non-blocking operations despite being single threaded",
-    "docker containers package applications with their dependencies ensuring consistent environments from development through production using a layered filesystem and namespace isolation",
-    "git branches allow developers to work on features in isolation merging changes back into the main branch after code review and passing all automated tests",
+    "functions are reusable blocks of code that accept inputs and return outputs",
+    "variables store data values that can be referenced and changed throughout a program",
+    "a loop repeats a block of code until a given condition becomes false",
+    "arrays hold multiple values in a single named structure accessible by index",
+    "recursion occurs when a function calls itself to solve progressively smaller subproblems",
+    "version control systems track every change to a codebase over time",
+    "an api defines how two software components communicate with each other",
+    "asynchronous code allows the program to continue running while waiting for a result",
+    "unit tests verify that individual functions or components behave as expected",
+    "a database stores structured data that can be queried inserted and updated efficiently",
+    "the browser renders html css and javascript to display a web page to the user",
+    "containers isolate applications and their dependencies into portable lightweight units",
+    "continuous integration automatically builds and tests code whenever changes are pushed",
+    "a stack is a last in first out data structure often used for undo operations",
+    "binary search finds an element in a sorted array in logarithmic time",
+    "memory leaks occur when allocated memory is never freed causing usage to grow",
+    "design patterns are reusable solutions to commonly occurring software design problems",
+    "the dom represents the structure of a web page as a tree of objects",
+    "hashing converts data of any size to a fixed length string used for fast lookup",
+    "tcp ensures reliable ordered delivery of data packets between network hosts",
+    "a promise represents a value that may be available now or in the future",
+    "object oriented programming models software as a collection of interacting objects",
+    "sql is used to query and manipulate data stored in relational databases",
+    "the http protocol transfers data between clients and servers on the web",
+    "a cache stores frequently accessed data in fast memory to reduce latency",
   ],
   // 2: Literature
   [
-    "it was the best of times it was the worst of times it was the age of wisdom it was the age of foolishness it was the epoch of belief",
-    "call me ishmael some years ago never mind how long precisely having little or no money in my purse and nothing particular to interest me on shore",
-    "all happy families are alike each unhappy family is unhappy in its own way everything was in confusion in the oblonskys house",
+    "it was the best of times it was the worst of times",
+    "all happy families are alike each unhappy family is unhappy in its own way",
     "it is a truth universally acknowledged that a single man in possession of a good fortune must be in want of a wife",
+    "call me ishmael some years ago never mind how long precisely having little money in my purse",
+    "the sky above the port was the color of television tuned to a dead channel",
+    "happy families are all alike every unhappy family is unhappy in its own way",
+    "in the beginning was the word and the word was with god and the word was god",
+    "last night i dreamt i went to manderley again",
+    "it was a bright cold day in april and the clocks were striking thirteen",
+    "all children except one grow up",
+    "someone must have slandered josef k for one morning without having done anything wrong he was arrested",
+    "the man in black fled across the desert and the gunslinger followed",
+    "where now who now when now unquestioning i simply answer unhearing unheeding i am",
+    "in my younger and more vulnerable years my father gave me some advice",
+    "it was a queer sultry summer the summer they electrocuted the rosenbergs",
+    "riverrun past eve and adams from swerve of shore to bend of bay",
+    "one hundred years of solitude would pass before the colonel faced a firing squad",
+    "whether i shall turn out to be the hero of my own life these pages must show",
+    "you better not never tell nobody but god",
+    "the sky grew darker painted blue on blue one stroke at a time into the color of oblivion",
+    "it was love at first sight the first time he saw the chaplain he fell madly in love with him",
+    "many years later as he faced the firing squad colonel aureliano buendia was to remember that distant afternoon",
+    "as gregor samsa awoke one morning from uneasy dreams he found himself transformed into a gigantic insect",
+    "it was the day my grandmother exploded",
+    "the past is never dead it is not even past",
   ],
   // 3: Science
   [
-    "the theory of general relativity describes gravity not as a force but as a curvature of spacetime caused by mass and energy affecting the motion of objects",
-    "deoxyribonucleic acid carries the genetic instructions used in the growth development functioning and reproduction of all known living organisms and many viruses",
-    "quantum entanglement is a phenomenon where two particles become interconnected such that the quantum state of one particle cannot be described independently of the other",
-    "the periodic table organizes chemical elements by their atomic number electron configuration and recurring chemical properties revealing patterns in elemental behavior",
+    "gravity curves spacetime causing massive objects to attract each other",
+    "dna carries the genetic instructions for the growth and reproduction of all living organisms",
+    "quantum entanglement links two particles so measuring one instantly affects the other",
+    "the periodic table organizes elements by their atomic number and chemical properties",
+    "natural selection drives evolution by favouring traits that improve survival and reproduction",
+    "photosynthesis converts sunlight water and carbon dioxide into glucose and oxygen",
+    "black holes are regions of spacetime where gravity is so strong that nothing can escape",
+    "neurons transmit electrical signals throughout the brain and nervous system",
+    "the speed of light in a vacuum is approximately three hundred thousand kilometres per second",
+    "plate tectonics explains how continents move and why earthquakes and volcanoes occur",
+    "the big bang theory describes the origin of the universe from an extremely hot dense state",
+    "antibiotics kill or inhibit bacteria but are ineffective against viral infections",
+    "entropy is a measure of disorder and tends to increase in any closed system",
+    "the mitochondria produce most of the cellular energy needed for life",
+    "climate change is caused primarily by human emissions of greenhouse gases",
+    "stem cells can differentiate into many different types of specialised cells",
+    "the immune system recognises and destroys pathogens using specialised white blood cells",
+    "chemical reactions involve the breaking and forming of bonds between atoms",
+    "telescopes gather light from distant objects allowing us to study the universe",
+    "the half life of a radioactive element is the time for half its atoms to decay",
+    "sound travels as longitudinal pressure waves through air at about 343 metres per second",
+    "vaccines train the immune system to recognise and fight specific pathogens",
+    "dark matter and dark energy make up most of the mass and energy in the universe",
+    "crispr allows scientists to edit dna sequences with unprecedented precision",
+    "the carbon cycle moves carbon through the atmosphere oceans land and living organisms",
   ],
 ];
+
+// Randomly assemble a passage of ~75 words from shuffled sentences
+function getPassage() {
+  const cat = parseInt(document.getElementById('passageSelect').value);
+  const bank = SENTENCE_BANKS[cat] || SENTENCE_BANKS[0];
+  // Fisher-Yates shuffle of a copy
+  const pool = [...bank];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  let text = '';
+  let i = 0;
+  while (text.split(' ').filter(Boolean).length < 72 && i < pool.length) {
+    text += (text ? ' ' : '') + pool[i++];
+  }
+  return text;
+}
 
 let passage = '';
 let charIndex = 0;
@@ -252,12 +358,6 @@ let testActive = false;
 let testDone = false;
 let history = [];
 let totalTyped = 0;
-
-function getPassage() {
-  const cat = parseInt(document.getElementById('passageSelect').value);
-  const arr = PASSAGES[cat];
-  return arr[Math.floor(Math.random() * arr.length)];
-}
 
 function renderPassage() {
   const display = document.getElementById('passageDisplay');

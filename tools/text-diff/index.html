@@ -156,7 +156,82 @@
   </div>
 </main>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/diff/5.2.0/diff.min.js" crossorigin="anonymous"></script>
+<script>
+/* Inline LCS-based diff — no CDN required */
+window.Diff = (function () {
+  'use strict';
+
+  function lcsChunks(a, b) {
+    const m = a.length, n = b.length;
+    if (m === 0 && n === 0) return [];
+    if (m === 0) return [{_type: 'add', _vals: b.slice()}];
+    if (n === 0) return [{_type: 'del', _vals: a.slice()}];
+
+    // Guard against extremely large inputs
+    if (m * n > 4000000) {
+      const r = [];
+      if (m) r.push({_type: 'del', _vals: a.slice()});
+      if (n) r.push({_type: 'add', _vals: b.slice()});
+      return r;
+    }
+
+    const dp = new Array(m + 1);
+    for (let i = 0; i <= m; i++) dp[i] = new Int32Array(n + 1);
+    for (let i = 1; i <= m; i++)
+      for (let j = 1; j <= n; j++)
+        dp[i][j] = a[i-1] === b[j-1]
+          ? dp[i-1][j-1] + 1
+          : Math.max(dp[i-1][j], dp[i][j-1]);
+
+    const ops = [];
+    let i = m, j = n;
+    while (i > 0 || j > 0) {
+      if (i > 0 && j > 0 && a[i-1] === b[j-1]) {
+        ops.push({t: 'eq',  v: a[i-1]}); i--; j--;
+      } else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) {
+        ops.push({t: 'add', v: b[j-1]}); j--;
+      } else {
+        ops.push({t: 'del', v: a[i-1]}); i--;
+      }
+    }
+    ops.reverse();
+
+    const chunks = [];
+    for (const op of ops) {
+      const last = chunks[chunks.length - 1];
+      if (last && last._type === op.t) last._vals.push(op.v);
+      else chunks.push({_type: op.t, _vals: [op.v]});
+    }
+    return chunks;
+  }
+
+  function toResult(chunks, join) {
+    return chunks.map(c => {
+      const obj = {value: c._vals.join(join)};
+      if (c._type === 'add') obj.added = true;
+      else if (c._type === 'del') obj.removed = true;
+      return obj;
+    });
+  }
+
+  function diffLines(oldStr, newStr) {
+    const a = oldStr === '' ? [] : oldStr.split('\n');
+    const b = newStr === '' ? [] : newStr.split('\n');
+    return toResult(lcsChunks(a, b), '\n').map(p => ({...p, value: p.value + '\n'}));
+  }
+
+  function diffWords(oldStr, newStr) {
+    const tok = s => s.match(/\S+|\s+/g) || [];
+    return toResult(lcsChunks(tok(oldStr), tok(newStr)), '');
+  }
+
+  function diffChars(oldStr, newStr) {
+    return toResult(lcsChunks(oldStr.split(''), newStr.split('')), '');
+  }
+
+  return {diffLines, diffWords, diffChars};
+}());
+</script>
 <script src="../../js/common.js"></script>
 <script>
 document.getElementById('swapBtn').addEventListener('click', () => {
@@ -193,8 +268,6 @@ document.getElementById('diffBtn').addEventListener('click', () => {
   const orig = document.getElementById('origInput').value;
   const mod  = document.getElementById('modInput').value;
   const mode = document.getElementById('diffMode').value;
-
-  if (!window.Diff) { alert('Diff library not loaded. Check your internet connection.'); return; }
 
   let parts;
   if (mode === 'lines')  parts = Diff.diffLines(orig, mod);

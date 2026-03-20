@@ -30,6 +30,14 @@ press_enter() {
     read -r
 }
 
+# Returns 0 (true=proceed) or 1 (abort — n or 0 pressed)
+ask_proceed() {
+    local prompt="${1:-Proceed}"
+    echo -ne "  ${BOLD}${prompt}? [Y/n/0]: ${RESET}"; read -r _ap
+    [[ "${_ap,,}" == "n" || "$_ap" == "0" ]] && return 1
+    return 0
+}
+
 # ─── Paths ────────────────────────────────────────────────────────────────────
 REPO_URL="https://github.com/noobvie/Office_Tools.git"
 REPO_DIR="/opt/office-tools/repo"
@@ -383,6 +391,11 @@ NGINXEOF
 get_ssl() {
     local domain="$1" email="$2"
     section "Getting Let's Encrypt SSL for ${domain}"
+    echo -e "  ${YELLOW}${BOLD}[!] Cloudflare users:${RESET} ${YELLOW}If your domain uses Cloudflare,${RESET}"
+    echo -e "  ${YELLOW}    set the DNS record to ${BOLD}DNS only${RESET}${YELLOW} (grey cloud) before continuing.${RESET}"
+    echo -e "  ${YELLOW}    Leaving it on ${BOLD}Proxied${RESET}${YELLOW} (orange cloud) will cause certificate${RESET}"
+    echo -e "  ${YELLOW}    generation to fail. You can re-enable proxying after SSL is issued.${RESET}"
+    echo ""
     certbot --nginx -d "$domain" \
         --non-interactive --agree-tos \
         -m "$email" --redirect
@@ -481,19 +494,113 @@ PAYEOF
     systemctl enable office-tools-pb office-tools-pay
     systemctl start  office-tools-pb
 
-    info "Waiting for PocketBase to initialize (3 s)…"
-    sleep 3
+    info "Waiting for PocketBase to initialize…"
+    local _waited=0
+    while ! curl -s "http://127.0.0.1:8090/api/health" | grep -q '"code":200' 2>/dev/null; do
+        sleep 2; _waited=$((_waited+2))
+        [[ $_waited -ge 30 ]] && { warn "PocketBase did not respond in 30 s"; break; }
+    done
 
     if [[ -n "$PB_ADMIN_EMAIL" && -n "$_PB_PASS" ]]; then
         "$PB_DIR/pocketbase" superuser upsert "$PB_ADMIN_EMAIL" "$_PB_PASS" \
-            && success "PocketBase superuser created" \
-            || warn "Superuser creation failed — run manually: $PB_DIR/pocketbase superuser upsert EMAIL PASS"
+            && success "PocketBase superuser created: $PB_ADMIN_EMAIL" \
+            || warn "Superuser creation failed — use Option 4 to retry"
+        setup_pb_collections "$PB_ADMIN_EMAIL" "$_PB_PASS"
     fi
 
     systemctl start office-tools-pay || \
         warn "Payment server failed to start — check: journalctl -u office-tools-pay"
 
     success "Backend services enabled and started"
+}
+
+# ─── PocketBase collection auto-setup ─────────────────────────────────────────
+# Creates short_urls, pastes, shared_files collections via PocketBase API.
+# Requires Node.js (installed in Option 1). Safe to call multiple times.
+setup_pb_collections() {
+    local email="$1" pass="$2"
+    section "Setting up PocketBase collections"
+
+    if ! command -v node &>/dev/null; then
+        warn "Node.js not found — skipping collection setup. Run Option 1 first."
+        return 1
+    fi
+
+    # Write temp Node.js script
+    local tmp="/tmp/_pb_init_collections.js"
+    cat > "$tmp" << 'NODESCRIPT'
+const http = require('http');
+const email = process.env.PB_EMAIL;
+const pass  = process.env.PB_PASS;
+
+function req(method, path, body, token) {
+  return new Promise((res, rej) => {
+    const data = body ? JSON.stringify(body) : null;
+    const hdrs = { 'Content-Type': 'application/json' };
+    if (token) hdrs['Authorization'] = 'Bearer ' + token;
+    if (data)  hdrs['Content-Length'] = Buffer.byteLength(data);
+    const r = http.request({ hostname:'127.0.0.1', port:8090, path, method, headers:hdrs }, rsp => {
+      let d = '';
+      rsp.on('data', c => d += c);
+      rsp.on('end', () => { try { res({ status: rsp.statusCode, body: JSON.parse(d) }); } catch { res({ status: rsp.statusCode, body: d }); } });
+    });
+    r.on('error', rej);
+    if (data) r.write(data);
+    r.end();
+  });
+}
+
+const COLLECTIONS = [
+  { name: 'short_urls', type: 'base', fields: [
+      { name: 'code',     type: 'text', required: true  },
+      { name: 'long_url', type: 'text', required: true  },
+      { name: 'expires',  type: 'date', required: false }
+  ]},
+  { name: 'pastes', type: 'base', fields: [
+      { name: 'code',            type: 'text', required: true  },
+      { name: 'title',           type: 'text', required: false },
+      { name: 'content',         type: 'text', required: true  },
+      { name: 'syntax',          type: 'text', required: false },
+      { name: 'expires',         type: 'date', required: false },
+      { name: 'burn_after_read', type: 'bool', required: false }
+  ]},
+  { name: 'file_shares', type: 'base', fields: [
+      { name: 'code',          type: 'text', required: true  },
+      { name: 'original_name', type: 'text', required: false },
+      { name: 'file_size',     type: 'number', required: false },
+      { name: 'file',          type: 'file', required: true,
+        options: { maxSize: 1073741824, maxSelect: 1 }   },
+      { name: 'expires',       type: 'date', required: false }
+  ]},
+];
+
+async function main() {
+  // Authenticate — try new API (PB 0.23+) then fall back to old
+  let token = null;
+  for (const path of ['/api/superusers/auth-with-password', '/api/admins/auth-with-password']) {
+    try {
+      const r = await req('POST', path, { identity: email, password: pass });
+      if (r.body && r.body.token) { token = r.body.token; break; }
+    } catch {}
+  }
+  if (!token) { console.error('AUTH_FAILED: could not authenticate with PocketBase'); process.exit(1); }
+  console.log('  Authenticated with PocketBase');
+
+  for (const col of COLLECTIONS) {
+    const check = await req('GET', '/api/collections/' + col.name, null, token);
+    if (check.status === 200) { console.log('  EXISTS:   ' + col.name); continue; }
+    const r = await req('POST', '/api/collections', col, token);
+    if (r.body && r.body.name) console.log('  CREATED:  ' + col.name);
+    else console.error('  FAILED:   ' + col.name + ' — ' + (r.body && r.body.message || JSON.stringify(r.body)));
+  }
+}
+main().catch(e => { console.error('ERROR: ' + e.message); process.exit(1); });
+NODESCRIPT
+
+    PB_EMAIL="$email" PB_PASS="$pass" node "$tmp" \
+        && success "PocketBase collections ready" \
+        || warn "Some collections may need manual creation — visit https://${DOMAIN}/_/"
+    rm -f "$tmp"
 }
 
 sync_backend() {
@@ -577,8 +684,7 @@ opt_1_install_update() {
     echo -e "    ${CYAN}·${RESET} Sync frontend files  ${DIM}→ $WEB_ROOT${RESET}"
     echo -e "    ${CYAN}·${RESET} Restart services     ${DIM}(if already configured)${RESET}"
     echo ""
-    echo -ne "  ${BOLD}Proceed? [Y/n]: ${RESET}"; read -r _c
-    [[ "${_c,,}" == "n" ]] && return 0
+    ask_proceed "Proceed" || return 0
 
     mkdir -p "$LOG_DIR"
     local logf="$LOG_DIR/install_$(date +%Y%m%d_%H%M%S).log"
@@ -633,12 +739,14 @@ opt_2_add_domain() {
     # Domain prompt
     echo ""
     [[ -n "$DOMAIN" ]] && echo -e "  ${DIM}Current domain: ${DOMAIN}${RESET}"
+    echo -e "  ${DIM}(enter 0 at any prompt to cancel and return to menu)${RESET}"
     while true; do
         local _prompt="  ${BOLD}Domain name${RESET}"
         [[ -n "$DOMAIN" ]] && _prompt+=" (Enter = keep ${DIM}[$DOMAIN]${RESET})"
         _prompt+=": "
         echo -ne "$_prompt"
         read -r _new
+        [[ "$_new" == "0" ]] && return 0
         if [[ -n "$_new" ]]; then DOMAIN="$_new"; break
         elif [[ -n "$DOMAIN" ]]; then break
         else warn "Domain cannot be empty."; fi
@@ -651,6 +759,7 @@ opt_2_add_domain() {
         _eprompt+=": "
         echo -ne "$_eprompt"
         read -r _new
+        [[ "$_new" == "0" ]] && return 0
         if [[ -n "$_new" ]]; then EMAIL="$_new"; break
         elif [[ -n "$EMAIL" ]]; then break
         else warn "Email cannot be empty."; fi
@@ -673,8 +782,7 @@ opt_2_add_domain() {
     echo -e "  Email    : ${DOMAIN:+$EMAIL}"
     echo -e "  Web root : $WEB_ROOT"
     echo ""
-    echo -ne "  ${BOLD}Proceed? [Y/n]: ${RESET}"; read -r _c
-    [[ "${_c,,}" == "n" ]] && return 0
+    ask_proceed "Proceed" || return 0
 
     mkdir -p "$LOG_DIR"
     local logf="$LOG_DIR/domain_$(date +%Y%m%d_%H%M%S).log"
@@ -774,8 +882,7 @@ opt_3_remove_switch() {
         echo -e "  Will remove: ${BOLD}${DOMAIN}${RESET}"
         echo -e "  Will set up: ${BOLD}${_new}${RESET}"
         echo ""
-        echo -ne "  ${BOLD}Proceed? [Y/n]: ${RESET}"; read -r _c
-        [[ "${_c,,}" == "n" ]] && return 0
+        ask_proceed "Proceed" || return 0
 
         mkdir -p "$LOG_DIR"
         local logf="$LOG_DIR/switch_$(date +%Y%m%d_%H%M%S).log"
@@ -812,10 +919,67 @@ opt_3_remove_switch() {
     press_enter
 }
 
-# ─── Option 4: Update from Repo ───────────────────────────────────────────────
-opt_4_update_repo() {
+# ─── Option 4: Set / Reset Admin Account ─────────────────────────────────────
+opt_4_set_admin() {
     show_banner
-    section "Option 4 — Update from Repository"
+    section "Option 4 — Set / Reset Admin Account"
+
+    if [[ ! -x "$PB_DIR/pocketbase" ]]; then
+        warn "PocketBase is not installed. Run Option 2 to set up the backend first."
+        press_enter; return 0
+    fi
+
+    echo ""
+    echo -e "  Use this option to create or reset the PocketBase admin account."
+    echo -e "  The admin UI is accessible at: ${BOLD}https://${DOMAIN:-<your-domain>}/_/${RESET}"
+    echo ""
+    echo -ne "  Admin email (0 to cancel): "; read -r _email
+    [[ "$_email" == "0" || -z "$_email" ]] && return 0
+
+    echo -ne "  New password (min 8 chars): "; read -rs _pass; echo ""
+    [[ "$_pass" == "0" || -z "$_pass" ]] && return 0
+    if [[ ${#_pass} -lt 8 ]]; then
+        warn "Password must be at least 8 characters."; press_enter; return 0
+    fi
+    echo -ne "  Confirm password:          "; read -rs _pass2; echo ""
+    if [[ "$_pass" != "$_pass2" ]]; then
+        warn "Passwords do not match."; press_enter; return 0
+    fi
+
+    # Ensure PocketBase is running
+    if ! systemctl is-active --quiet office-tools-pb 2>/dev/null; then
+        info "Starting PocketBase…"
+        systemctl start office-tools-pb
+        sleep 3
+    fi
+
+    "$PB_DIR/pocketbase" superuser upsert "$_email" "$_pass" \
+        && success "Admin account set — you can now log in at https://${DOMAIN:-<domain>}/_/" \
+        || { warn "Failed to update admin account."; press_enter; return 0; }
+
+    # Update .env so payment server can authenticate
+    if [[ -f "$BACKEND_DIR/.env" ]]; then
+        sed -i "s|^PB_ADMIN_EMAIL=.*|PB_ADMIN_EMAIL=${_email}|"   "$BACKEND_DIR/.env"
+        sed -i "s|^PB_ADMIN_PASSWORD=.*|PB_ADMIN_PASSWORD=${_pass}|" "$BACKEND_DIR/.env"
+        systemctl restart office-tools-pay 2>/dev/null || true
+        success ".env updated and payment server restarted"
+    fi
+
+    PB_ADMIN_EMAIL="$_email"
+    save_conf
+
+    # Offer to (re-)create collections now that we have valid credentials
+    echo ""
+    echo -ne "  Create / verify PocketBase collections now? [Y/n]: "; read -r _c
+    [[ "${_c,,}" != "n" ]] && setup_pb_collections "$_email" "$_pass"
+
+    press_enter
+}
+
+# ─── Option 5: Update from Repo ───────────────────────────────────────────────
+opt_5_update_repo() {
+    show_banner
+    section "Option 5 — Update from Repository"
 
     if [[ ! -d "$REPO_DIR/.git" ]]; then
         warn "Repository not cloned yet. Run Option 1 to install first."
@@ -853,8 +1017,9 @@ opt_4_update_repo() {
         echo ""
     fi
 
-    echo -ne "  Branch number or name (Enter = keep ${DIM}[${current_branch}]${RESET}): "
+    echo -ne "  Branch number or name (Enter = keep ${DIM}[${current_branch}]${RESET}, 0 to cancel): "
     read -r _input
+    [[ "$_input" == "0" ]] && return 0
 
     local target_branch="$current_branch"
     if [[ -n "$_input" ]]; then
@@ -867,8 +1032,7 @@ opt_4_update_repo() {
 
     echo ""
     echo -e "  Target:  ${BOLD}${target_branch}${RESET}"
-    echo -ne "  ${BOLD}Proceed? [Y/n]: ${RESET}"; read -r _c
-    [[ "${_c,,}" == "n" ]] && return 0
+    ask_proceed "Proceed" || return 0
 
     mkdir -p "$LOG_DIR"
     local logf="$LOG_DIR/update_$(date +%Y%m%d_%H%M%S).log"
@@ -935,20 +1099,22 @@ while true; do
     echo -e "    ${BOLD}1)${RESET}   Install / Update    ${DIM}packages · OS · pull latest code${RESET}"
     echo -e "    ${BOLD}2)${RESET}   Add Domain          ${DIM}configure domain · SSL · backend${RESET}"
     echo -e "    ${BOLD}3)${RESET}   Remove / Switch     ${DIM}remove or change active domain${RESET}"
-    echo -e "    ${BOLD}4)${RESET}   Update from Repo    ${DIM}pull specific branch · restart services${RESET}"
+    echo -e "    ${BOLD}4)${RESET}   Set Admin Account   ${DIM}set/reset PocketBase admin credentials${RESET}"
+    echo -e "    ${BOLD}5)${RESET}   Update from Repo    ${DIM}pull specific branch · restart services${RESET}"
     echo -e "  ${DIM}  ──────────────────────────────────────────────${RESET}"
     echo -e "  ${RED}  DEL)${RESET} Delete              ${DIM}permanently remove Office Tools${RESET}"
     echo -e "    ${BOLD}0)${RESET}   Exit"
     echo -e "  ${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
-    echo -ne "  Choose [0-4 / del]: "; read -r _choice
+    echo -ne "  Choose [0-5 / del]: "; read -r _choice
     echo ""
 
     case "${_choice,,}" in
         1)   opt_1_install_update ;;
         2)   opt_2_add_domain     ;;
         3)   opt_3_remove_switch  ;;
-        4)   opt_4_update_repo    ;;
+        4)   opt_4_set_admin      ;;
+        5)   opt_5_update_repo    ;;
         del) opt_del_delete; break ;;
         0)   echo -e "${DIM}Goodbye.${RESET}"; exit 0 ;;
         *)   warn "Invalid choice: $_choice" ;;

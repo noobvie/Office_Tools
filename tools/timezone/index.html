@@ -91,13 +91,14 @@
     <div class="tz-grid">
       <div>
         <label class="form-label">From</label>
-        <select id="fromTz" class="form-input"></select>
+        <input type="text" id="fromTzInput" class="form-input" placeholder="Search city…" autocomplete="off" list="tzDatalist">
         <input type="datetime-local" id="fromTime" class="form-input mt-2">
       </div>
       <div class="tz-arrow">→</div>
       <div>
         <label class="form-label">To</label>
-        <select id="toTz" class="form-input"></select>
+        <input type="text" id="toTzInput" class="form-input" placeholder="Search city…" autocomplete="off" list="tzDatalist">
+        <datalist id="tzDatalist"></datalist>
         <div class="tz-result" id="tzResult">—</div>
         <div class="tz-result-date" id="tzResultDate"></div>
       </div>
@@ -114,65 +115,72 @@
 <script src="../../js/config.js"></script>
 <script src="../../js/common.js"></script>
 <script>
-const ZONES = [
-  { label: 'UTC',              tz: 'UTC' },
-  { label: 'New York',         tz: 'America/New_York' },
+// UTC first, rest sorted alphabetically
+const ZONES_RAW = [
+  { label: 'Adelaide',         tz: 'Australia/Adelaide' },
+  { label: 'Amsterdam',        tz: 'Europe/Amsterdam' },
+  { label: 'Auckland',         tz: 'Pacific/Auckland' },
+  { label: 'Bangkok',          tz: 'Asia/Bangkok' },
+  { label: 'Berlin',           tz: 'Europe/Berlin' },
+  { label: 'Buenos Aires',     tz: 'America/Argentina/Buenos_Aires' },
+  { label: 'Cairo',            tz: 'Africa/Cairo' },
   { label: 'Chicago',          tz: 'America/Chicago' },
   { label: 'Denver',           tz: 'America/Denver' },
-  { label: 'Los Angeles',      tz: 'America/Los_Angeles' },
-  { label: 'Vancouver',        tz: 'America/Vancouver' },
-  { label: 'Toronto',          tz: 'America/Toronto' },
-  { label: 'São Paulo',        tz: 'America/Sao_Paulo' },
-  { label: 'Buenos Aires',     tz: 'America/Argentina/Buenos_Aires' },
-  { label: 'London',           tz: 'Europe/London' },
-  { label: 'Paris',            tz: 'Europe/Paris' },
-  { label: 'Berlin',           tz: 'Europe/Berlin' },
-  { label: 'Madrid',           tz: 'Europe/Madrid' },
-  { label: 'Rome',             tz: 'Europe/Rome' },
-  { label: 'Amsterdam',        tz: 'Europe/Amsterdam' },
-  { label: 'Warsaw',           tz: 'Europe/Warsaw' },
-  { label: 'Kyiv',             tz: 'Europe/Kiev' },
-  { label: 'Moscow',           tz: 'Europe/Moscow' },
-  { label: 'Cairo',            tz: 'Africa/Cairo' },
-  { label: 'Lagos',            tz: 'Africa/Lagos' },
-  { label: 'Johannesburg',     tz: 'Africa/Johannesburg' },
-  { label: 'Dubai',            tz: 'Asia/Dubai' },
-  { label: 'Karachi',          tz: 'Asia/Karachi' },
-  { label: 'Mumbai',           tz: 'Asia/Kolkata' },
   { label: 'Dhaka',            tz: 'Asia/Dhaka' },
-  { label: 'Bangkok',          tz: 'Asia/Bangkok' },
-  { label: 'Singapore',        tz: 'Asia/Singapore' },
-  { label: 'Kuala Lumpur',     tz: 'Asia/Kuala_Lumpur' },
-  { label: 'Shanghai',         tz: 'Asia/Shanghai' },
+  { label: 'Dubai',            tz: 'Asia/Dubai' },
+  { label: 'Saigon',           tz: 'Asia/Ho_Chi_Minh' },
   { label: 'Hong Kong',        tz: 'Asia/Hong_Kong' },
+  { label: 'Honolulu',         tz: 'Pacific/Honolulu' },
+  { label: 'Johannesburg',     tz: 'Africa/Johannesburg' },
+  { label: 'Karachi',          tz: 'Asia/Karachi' },
+  { label: 'Kuala Lumpur',     tz: 'Asia/Kuala_Lumpur' },
+  { label: 'Kyiv',             tz: 'Europe/Kiev' },
+  { label: 'Lagos',            tz: 'Africa/Lagos' },
+  { label: 'London',           tz: 'Europe/London' },
+  { label: 'Los Angeles',      tz: 'America/Los_Angeles' },
+  { label: 'Madrid',           tz: 'Europe/Madrid' },
+  { label: 'Moscow',           tz: 'Europe/Moscow' },
+  { label: 'Mumbai',           tz: 'Asia/Kolkata' },
+  { label: 'New York',         tz: 'America/New_York' },
+  { label: 'Paris',            tz: 'Europe/Paris' },
+  { label: 'Perth',            tz: 'Australia/Perth' },
+  { label: 'Rome',             tz: 'Europe/Rome' },
+  { label: 'São Paulo',        tz: 'America/Sao_Paulo' },
+  { label: 'Seoul',            tz: 'Asia/Seoul' },
+  { label: 'Shanghai',         tz: 'Asia/Shanghai' },
+  { label: 'Singapore',        tz: 'Asia/Singapore' },
+  { label: 'Sydney',           tz: 'Australia/Sydney' },
   { label: 'Taipei',           tz: 'Asia/Taipei' },
   { label: 'Tokyo',            tz: 'Asia/Tokyo' },
-  { label: 'Seoul',            tz: 'Asia/Seoul' },
-  { label: 'Perth',            tz: 'Australia/Perth' },
-  { label: 'Adelaide',         tz: 'Australia/Adelaide' },
-  { label: 'Sydney',           tz: 'Australia/Sydney' },
-  { label: 'Auckland',         tz: 'Pacific/Auckland' },
-  { label: 'Honolulu',         tz: 'Pacific/Honolulu' },
+  { label: 'Toronto',          tz: 'America/Toronto' },
+  { label: 'Vancouver',        tz: 'America/Vancouver' },
+  { label: 'Warsaw',           tz: 'Europe/Warsaw' },
 ];
+const ZONES = [{ label: 'UTC', tz: 'UTC' }, ...ZONES_RAW];
 
-const WORLD_CITIES = ['Europe/London','America/New_York','America/Los_Angeles','America/Sao_Paulo','Asia/Dubai','Asia/Kolkata','Asia/Singapore','Asia/Tokyo'];
+const WORLD_CITIES = ['Europe/London','America/New_York','America/Los_Angeles','America/Sao_Paulo','Asia/Dubai','Europe/Paris','Asia/Ho_Chi_Minh','Asia/Kolkata','Asia/Singapore','Asia/Tokyo'];
+// Note: Saigon = Asia/Ho_Chi_Minh label set in ZONES_RAW above
 
-const fromTzEl  = document.getElementById('fromTz');
-const toTzEl    = document.getElementById('toTz');
-const fromTimeEl = document.getElementById('fromTime');
-
-// Populate selects
+// Populate datalist
+const dl = document.getElementById('tzDatalist');
 ZONES.forEach(z => {
-  [fromTzEl, toTzEl].forEach(sel => {
-    const opt = document.createElement('option');
-    opt.value = z.tz;
-    opt.textContent = z.label;
-    sel.appendChild(opt);
-  });
+  const opt = document.createElement('option');
+  opt.value = z.label;
+  dl.appendChild(opt);
 });
 
-// Default: UTC → New York
-toTzEl.value = 'America/New_York';
+const fromTzInput = document.getElementById('fromTzInput');
+const toTzInput   = document.getElementById('toTzInput');
+const fromTimeEl  = document.getElementById('fromTime');
+
+function getTzCode(label) {
+  const z = ZONES.find(z => z.label.toLowerCase() === label.trim().toLowerCase());
+  return z ? z.tz : null;
+}
+
+// Defaults
+fromTzInput.value = 'UTC';
+toTzInput.value   = 'New York';
 
 // Set default datetime to now
 function localIso() {
@@ -182,8 +190,8 @@ function localIso() {
 fromTimeEl.value = localIso();
 
 function convert() {
-  const fromTz = fromTzEl.value;
-  const toTz   = toTzEl.value;
+  const fromTz = getTzCode(fromTzInput.value) || 'UTC';
+  const toTz   = getTzCode(toTzInput.value)   || 'UTC';
   const rawVal = fromTimeEl.value;
   if (!rawVal) return;
 
@@ -225,8 +233,10 @@ function convert() {
   document.getElementById('tzOffset').textContent = `Difference: ${sign}${diff}h`;
 }
 
-fromTzEl.addEventListener('change', convert);
-toTzEl.addEventListener('change', convert);
+fromTzInput.addEventListener('change', convert);
+fromTzInput.addEventListener('input', () => { if (getTzCode(fromTzInput.value)) convert(); });
+toTzInput.addEventListener('change', convert);
+toTzInput.addEventListener('input', () => { if (getTzCode(toTzInput.value)) convert(); });
 fromTimeEl.addEventListener('input', convert);
 convert();
 

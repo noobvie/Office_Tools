@@ -19,16 +19,35 @@
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Office Tools","url":"https://yourdomain.com/","description":"52 free browser-based utilities for everyday office and productivity work. No login, no tracking — everything runs locally.","potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://yourdomain.com/?q={search_term_string}"},"query-input":"required name=search_term_string"}}</script>
   <link rel="stylesheet" href="css/style.css">
   <style>
-    .hub-stats {
+    /* ── Category filter chips ── */
+    .cat-filter {
+      position: sticky;
+      top: 52px;
+      z-index: 90;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: .55rem 1.5rem;
       display: flex;
-      justify-content: center;
-      gap: 2rem;
-      margin-top: 1.5rem;
-      flex-wrap: wrap;
+      gap: .45rem;
+      overflow-x: auto;
+      scrollbar-width: none;
     }
-    .hub-stat { text-align: center; }
-    .hub-stat-num { font-size: 1.6rem; font-weight: 800; color: var(--primary); }
-    .hub-stat-label { font-size: .78rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+    .cat-filter::-webkit-scrollbar { display: none; }
+    .cat-chip {
+      white-space: nowrap;
+      padding: .3rem .85rem;
+      border-radius: 50px;
+      border: 1.5px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      font-size: .8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition);
+      flex-shrink: 0;
+    }
+    .cat-chip:hover { border-color: var(--primary); color: var(--primary); }
+    .cat-chip.active { border-color: var(--primary); color: var(--primary); background: var(--primary-dim, color-mix(in srgb, var(--primary) 12%, transparent)); }
 
     #noResults { display: none; text-align: center; padding: 3rem; color: var(--text-muted); }
     #noResults .big { font-size: 2.5rem; }
@@ -40,6 +59,10 @@
   <a href="index.html" class="header-logo">
     <span class="logo-icon">🛠️</span> Office Tools
   </a>
+  <div class="header-search-wrap">
+    <span class="header-search-icon"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+    <input type="text" id="headerSearch" placeholder="Search tools…" autocomplete="off">
+  </div>
   <div class="header-actions">
     <div id="authNav" style="display:flex;gap:.5rem;align-items:center"></div>
     <button class="theme-toggle" id="themeToggle"></button>
@@ -48,17 +71,26 @@
 
 <section class="hero">
   <h1>Free <span>Online Tools</span> for Everyday Work</h1>
-  <p>52 browser-based utilities — password generator, PDF toolkit, URL shortener, JSON editor, QR code maker, and more. No login, no tracking, no install.</p>
+  <p>52 browser-based utilities — no login, no tracking, no install.</p>
   <div class="search-wrap">
     <span class="search-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
     <input type="text" id="searchInput" placeholder="Search tools…" autocomplete="off">
   </div>
-  <div class="hub-stats">
-    <div class="hub-stat"><div class="hub-stat-num">52</div><div class="hub-stat-label">Live Tools</div></div>
-    <div class="hub-stat"><div class="hub-stat-num">100%</div><div class="hub-stat-label">Free</div></div>
-    <div class="hub-stat"><div class="hub-stat-num">0</div><div class="hub-stat-label">Logins</div></div>
-  </div>
 </section>
+
+<div class="cat-filter" id="catFilter">
+  <button class="cat-chip active" data-cat="all">All</button>
+  <button class="cat-chip" data-cat="Productivity &amp; Time">⏱️ Productivity</button>
+  <button class="cat-chip" data-cat="Generators">✨ Generators</button>
+  <button class="cat-chip" data-cat="Text &amp; Content">📝 Text</button>
+  <button class="cat-chip" data-cat="Encoding &amp; Crypto">🔒 Encoding</button>
+  <button class="cat-chip" data-cat="Calculators">🧮 Calculators</button>
+  <button class="cat-chip" data-cat="Development">💻 Dev</button>
+  <button class="cat-chip" data-cat="Design &amp; Visual">🎨 Design</button>
+  <button class="cat-chip" data-cat="Network &amp; Security">🌐 Network</button>
+  <button class="cat-chip" data-cat="Images &amp; PDF">🖼️ Images &amp; PDF</button>
+  <button class="cat-chip" data-cat="Share">📤 Share</button>
+</div>
 
 <main class="hub-main" id="hubMain">
 
@@ -122,6 +154,16 @@
         <div class="tool-card-icon">📄</div>
         <div class="tool-card-name">Lorem Ipsum Generator</div>
         <div class="tool-card-desc">Generate Lorem Ipsum placeholder text by paragraphs, sentences, or words. Classic or random start.</div>
+      </a>
+      <a href="tools/fake-data/index.html" class="tool-card" data-name="Fake Data Generator test data names emails phones addresses CSV JSON mock">
+        <div class="tool-card-icon">🧪</div>
+        <div class="tool-card-name">Fake Data Generator</div>
+        <div class="tool-card-desc">Generate realistic test data — names, emails, phones, addresses and more. Download CSV or JSON.</div>
+      </a>
+      <a href="tools/wheel-of-names/index.html" class="tool-card" data-name="Wheel of Names random picker spinner winner lucky draw">
+        <div class="tool-card-icon">🎡</div>
+        <div class="tool-card-name">Wheel of Names</div>
+        <div class="tool-card-desc">Animated spinning wheel to randomly pick a winner from your list. Remove or keep winners.</div>
       </a>
     </div>
   </section>
@@ -274,9 +316,9 @@
     </div>
   </section>
 
-  <!-- ── Design ── -->
-  <section class="category-section" data-category="Design">
-    <div class="category-title">🎨 Design</div>
+  <!-- ── Design & Visual ── -->
+  <section class="category-section" data-category="Design &amp; Visual">
+    <div class="category-title">🎨 Design &amp; Visual</div>
     <div class="tools-grid">
       <a href="tools/color-converter/index.html" class="tool-card" data-name="Color Converter HEX RGB HSL HSV CMYK palette shades tints">
         <div class="tool-card-icon">🎨</div>
@@ -288,12 +330,27 @@
         <div class="tool-card-name">Character Map</div>
         <div class="tool-card-desc">Browse and copy special characters, symbols, arrows, math, currency, Greek, and emoji. Click to copy.</div>
       </a>
+      <a href="tools/screenshot-beautifier/index.html" class="tool-card" data-name="Screenshot Beautifier background gradient shadow padding rounded corners frame">
+        <div class="tool-card-icon">🖼️</div>
+        <div class="tool-card-name">Screenshot Beautifier</div>
+        <div class="tool-card-desc">Add gradient backgrounds, padding, shadows and rounded corners to screenshots. Download PNG.</div>
+      </a>
+      <a href="tools/contrast-checker/index.html" class="tool-card" data-name="Color Contrast Checker WCAG AA AAA accessibility foreground background ratio">
+        <div class="tool-card-icon">♿</div>
+        <div class="tool-card-name">Contrast Checker</div>
+        <div class="tool-card-desc">Check WCAG AA/AAA contrast ratios for foreground/background color pairs with live preview.</div>
+      </a>
+      <a href="tools/palette-extractor/index.html" class="tool-card" data-name="Image Palette Extractor dominant colors HEX CSS variables k-means">
+        <div class="tool-card-icon">🎨</div>
+        <div class="tool-card-name">Palette Extractor</div>
+        <div class="tool-card-desc">Upload an image to extract its dominant color palette as HEX swatches and CSS variables.</div>
+      </a>
     </div>
   </section>
 
-  <!-- ── Network & Web ── -->
-  <section class="category-section" data-category="Network &amp; Web">
-    <div class="category-title">🌐 Network &amp; Web</div>
+  <!-- ── Network & Security ── -->
+  <section class="category-section" data-category="Network &amp; Security">
+    <div class="category-title">🌐 Network &amp; Security</div>
     <div class="tools-grid">
       <a href="tools/currency/index.html" class="tool-card" data-name="Currency Converter exchange rate live forex USD EUR GBP JPY">
         <div class="tool-card-icon">💱</div>
@@ -315,52 +372,6 @@
         <div class="tool-card-name">Campaign URL Builder</div>
         <div class="tool-card-desc">Build UTM-tagged URLs for Google Analytics campaign tracking with history and QR.</div>
       </a>
-    </div>
-  </section>
-
-  <!-- ── Visual & Design ── -->
-  <section class="category-section" data-category="Visual &amp; Design">
-    <div class="category-title">✨ Visual &amp; Design</div>
-    <div class="tools-grid">
-      <a href="tools/screenshot-beautifier/index.html" class="tool-card" data-name="Screenshot Beautifier background gradient shadow padding rounded corners frame">
-        <div class="tool-card-icon">🖼️</div>
-        <div class="tool-card-name">Screenshot Beautifier</div>
-        <div class="tool-card-desc">Add gradient backgrounds, padding, shadows and rounded corners to screenshots. Download PNG.</div>
-      </a>
-      <a href="tools/contrast-checker/index.html" class="tool-card" data-name="Color Contrast Checker WCAG AA AAA accessibility foreground background ratio">
-        <div class="tool-card-icon">♿</div>
-        <div class="tool-card-name">Contrast Checker</div>
-        <div class="tool-card-desc">Check WCAG AA/AAA contrast ratios for foreground/background color pairs with live preview.</div>
-      </a>
-      <a href="tools/palette-extractor/index.html" class="tool-card" data-name="Image Palette Extractor dominant colors HEX CSS variables k-means">
-        <div class="tool-card-icon">🎨</div>
-        <div class="tool-card-name">Palette Extractor</div>
-        <div class="tool-card-desc">Upload an image to extract its dominant color palette as HEX swatches and CSS variables.</div>
-      </a>
-    </div>
-  </section>
-
-  <!-- ── Fun & Productivity ── -->
-  <section class="category-section" data-category="Fun &amp; Productivity">
-    <div class="category-title">🎲 Fun &amp; Productivity</div>
-    <div class="tools-grid">
-      <a href="tools/fake-data/index.html" class="tool-card" data-name="Fake Data Generator test data names emails phones addresses CSV JSON mock">
-        <div class="tool-card-icon">🧪</div>
-        <div class="tool-card-name">Fake Data Generator</div>
-        <div class="tool-card-desc">Generate realistic test data — names, emails, phones, addresses and more. Download CSV or JSON.</div>
-      </a>
-      <a href="tools/wheel-of-names/index.html" class="tool-card" data-name="Wheel of Names random picker spinner winner lucky draw">
-        <div class="tool-card-icon">🎡</div>
-        <div class="tool-card-name">Wheel of Names</div>
-        <div class="tool-card-desc">Animated spinning wheel to randomly pick a winner from your list. Remove or keep winners.</div>
-      </a>
-    </div>
-  </section>
-
-  <!-- ── Security & Certificates ── -->
-  <section class="category-section" data-category="Security &amp; Certificates">
-    <div class="category-title">&#128274; Security &amp; Certificates</div>
-    <div class="tools-grid">
       <a href="tools/csr-decoder/index.html" class="tool-card" data-name="CSR Decoder Certificate Signing Request PEM decode subject SAN fingerprint SSL TLS">
         <div class="tool-card-icon">&#128272;</div>
         <div class="tool-card-name">CSR Decoder</div>
@@ -443,26 +454,56 @@
 <script src="js/common.js"></script>
 <script src="js/auth.js"></script>
 <script>
-  // Search / filter
-  const searchInput = document.getElementById('searchInput');
-  const noResults = document.getElementById('noResults');
+  const searchInput  = document.getElementById('searchInput');
+  const headerSearch = document.getElementById('headerSearch');
+  const noResults    = document.getElementById('noResults');
   const noResultsTerm = document.getElementById('noResultsTerm');
 
-  searchInput.addEventListener('input', () => {
+  // ── Category chips ────────────────────────────────────────
+  let activeCat = 'all';
+  document.querySelectorAll('.cat-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      activeCat = chip.dataset.cat;
+      // Clear search when switching category
+      searchInput.value = '';
+      headerSearch.value = '';
+      applyFilters();
+    });
+  });
+
+  // ── Search / filter ───────────────────────────────────────
+  function applyFilters() {
     const q = searchInput.value.toLowerCase().trim();
+    // If searching, ignore chip — show all matching; otherwise respect chip
+    const catFilter = q ? 'all' : activeCat;
     let visible = 0;
+
     document.querySelectorAll('.tool-card').forEach(card => {
       const text = (card.dataset.name + ' ' + card.textContent).toLowerCase();
-      const match = !q || text.includes(q);
-      card.style.display = match ? '' : 'none';
-      if (match && !card.classList.contains('coming-soon')) visible++;
+      const matchSearch = !q || text.includes(q);
+      card.style.display = matchSearch ? '' : 'none';
+      if (matchSearch && !card.classList.contains('coming-soon')) visible++;
     });
+
     document.querySelectorAll('.category-section').forEach(sec => {
-      const anyVisible = [...sec.querySelectorAll('.tool-card')].some(c => c.style.display !== 'none');
+      const catMatch = catFilter === 'all' || sec.dataset.category === catFilter;
+      const anyVisible = catMatch && [...sec.querySelectorAll('.tool-card')].some(c => c.style.display !== 'none');
       sec.style.display = anyVisible ? '' : 'none';
     });
+
     noResults.style.display = q && visible === 0 ? '' : 'none';
     noResultsTerm.textContent = q;
+  }
+
+  headerSearch.addEventListener('input', () => {
+    searchInput.value = headerSearch.value;
+    applyFilters();
+  });
+  searchInput.addEventListener('input', () => {
+    if (headerSearch.value !== searchInput.value) headerSearch.value = searchInput.value;
+    applyFilters();
   });
 </script>
 </body>

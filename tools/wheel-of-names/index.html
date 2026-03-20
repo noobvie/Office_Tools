@@ -187,6 +187,7 @@ const canvas = document.getElementById('wheelCanvas');
 const ctx    = canvas.getContext('2d');
 let names    = [];
 let spinning = false;
+let stopRequested = false;
 let currentAngle = 0;
 let history  = [];
 let spinCount = 0;
@@ -310,10 +311,16 @@ function getWinner(finalAngle) {
 }
 
 function spin() {
-  if (spinning || names.length === 0) return;
+  const btn = document.getElementById('spinBtn');
+
+  // Click while spinning = stop early
+  if (spinning) { stopRequested = true; return; }
+  if (names.length === 0) return;
+
   spinning = true;
+  stopRequested = false;
   document.getElementById('winnerBanner').style.display = 'none';
-  document.getElementById('spinBtn').disabled = true;
+  btn.textContent = '⏹ Stop';
 
   const duration = +document.getElementById('spinDuration').value;
   const extraSpins = (3 + Math.random() * 5) * Math.PI * 2;
@@ -321,13 +328,17 @@ function spin() {
   const startAngle = currentAngle;
   const start = performance.now();
 
-  // Tick tracking
   const slice = (Math.PI * 2) / names.length;
   let lastSlice = -1;
 
   function frame(now) {
-    const elapsed = now - start;
-    const t = Math.min(elapsed / duration, 1);
+    let t;
+    if (stopRequested) {
+      t = 1;
+    } else {
+      const elapsed = now - start;
+      t = Math.min(elapsed / duration, 1);
+    }
     // Ease out cubic
     const ease = 1 - Math.pow(1 - t, 3);
     currentAngle = startAngle + targetDelta * ease;
@@ -342,7 +353,8 @@ function spin() {
       requestAnimationFrame(frame);
     } else {
       spinning = false;
-      document.getElementById('spinBtn').disabled = false;
+      stopRequested = false;
+      btn.textContent = '🎡 Spin!';
       const winner = getWinner(currentAngle);
       showWinner(winner);
       playWin();

@@ -149,35 +149,30 @@ function initToolSidebar() {
   if (!m) return;
   const currentPath = m[1];
 
-  // Inject toggle button into header
-  const headerActions = document.querySelector('.header-actions');
-  if (!headerActions) return;
-  const toggleBtn = document.createElement('button');
-  toggleBtn.className = 'ot-sidebar-btn';
-  toggleBtn.id = 'otSidebarToggle';
-  toggleBtn.innerHTML = '☰ Tools';
-  toggleBtn.title = 'Browse all tools (Ctrl+K)';
-  headerActions.prepend(toggleBtn);
-
-  // Build sidebar + backdrop
-  const backdrop = document.createElement('div');
-  backdrop.className = 'ot-sidebar-backdrop';
-
+  // Build permanent left sidebar
   const sidebar = document.createElement('div');
   sidebar.className = 'ot-sidebar';
   sidebar.innerHTML = `
     <div class="ot-sidebar-head">
       <strong>🛠️ All Tools</strong>
-      <button class="ot-sidebar-close" title="Close (Esc)">✕</button>
     </div>
     <div class="ot-sidebar-search">
-      <input type="text" id="otSidebarSearch" placeholder="Search tools… (Ctrl+K)" autocomplete="off">
+      <input type="text" id="otSidebarSearch" placeholder="Search tools…" autocomplete="off">
     </div>
     <div class="ot-sidebar-list" id="otSidebarList"></div>
   `;
 
-  document.body.appendChild(backdrop);
   document.body.appendChild(sidebar);
+  document.body.classList.add('has-sidebar');
+
+  // Align sidebar below the sticky header
+  function positionSidebar() {
+    const h = document.querySelector('.site-header')?.offsetHeight || 53;
+    sidebar.style.top = h + 'px';
+    sidebar.style.height = `calc(100vh - ${h}px)`;
+  }
+  positionSidebar();
+  window.addEventListener('resize', positionSidebar);
 
   const searchInput = sidebar.querySelector('#otSidebarSearch');
   const listEl      = sidebar.querySelector('#otSidebarList');
@@ -208,18 +203,11 @@ function initToolSidebar() {
   }
 
   renderList();
-
-  function openSidebar()  { sidebar.classList.add('open');    backdrop.classList.add('show');    setTimeout(() => searchInput.focus(), 40); }
-  function closeSidebar() { sidebar.classList.remove('open'); backdrop.classList.remove('show'); }
-
-  toggleBtn.addEventListener('click', () => sidebar.classList.contains('open') ? closeSidebar() : openSidebar());
-  sidebar.querySelector('.ot-sidebar-close').addEventListener('click', closeSidebar);
-  backdrop.addEventListener('click', closeSidebar);
   searchInput.addEventListener('input', () => renderList(searchInput.value));
 
   // Arrow-key + Enter navigation
   searchInput.addEventListener('keydown', e => {
-    const items  = [...listEl.querySelectorAll('.ot-sidebar-item')];
+    const items   = [...listEl.querySelectorAll('.ot-sidebar-item')];
     const focused = listEl.querySelector('.ot-sidebar-item.focused');
     let idx = items.indexOf(focused);
     if (e.key === 'ArrowDown') {
@@ -236,18 +224,14 @@ function initToolSidebar() {
       items[idx]?.scrollIntoView({ block: 'nearest' });
     } else if (e.key === 'Enter' && focused) {
       focused.click();
-    } else if (e.key === 'Escape') {
-      closeSidebar();
     }
   });
 
-  // Ctrl+K / Escape global shortcuts
+  // Ctrl+K focuses the sidebar search
   document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
       e.preventDefault();
-      sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
-    } else if (e.key === 'Escape' && sidebar.classList.contains('open')) {
-      closeSidebar();
+      searchInput.focus();
     }
   });
 }

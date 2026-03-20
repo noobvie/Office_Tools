@@ -266,8 +266,20 @@ function generate() {
   if (activeFields.length === 0) { alert('Select at least one field.'); return; }
   const rows = +document.getElementById('rowCount').value;
   generatedData = Array.from({length:rows}, () => {
+    // Shared name for this row so First Name / Last Name / Full Name / Email / Username all match
+    const rowFirst = rnd(FIRST_NAMES);
+    const rowLast  = rnd(LAST_NAMES);
     const row = {};
-    activeFields.forEach(f => { row[f] = GEN[f](); });
+    activeFields.forEach(f => {
+      switch (f) {
+        case 'First Name': row[f] = rowFirst; break;
+        case 'Last Name':  row[f] = rowLast;  break;
+        case 'Full Name':  row[f] = `${rowFirst} ${rowLast}`; break;
+        case 'Email':      row[f] = `${rowFirst.toLowerCase()}.${rowLast.toLowerCase()}${rndInt(1,99)}@${rnd(DOMAINS)}`; break;
+        case 'Username':   row[f] = `${rowFirst.toLowerCase()}${rowLast.slice(0,4).toLowerCase()}${rndInt(10,99)}`; break;
+        default:           row[f] = GEN[f]();
+      }
+    });
     return row;
   });
   renderTable();
