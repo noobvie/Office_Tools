@@ -187,8 +187,11 @@ install_nodejs() {
 pull_repo() {
     section "Pulling Office Tools from GitHub"
     if [[ -d "$REPO_DIR/.git" ]]; then
-        info "Repo found — pulling latest…"
-        git -C "$REPO_DIR" pull --ff-only
+        info "Repo found — fetching latest…"
+        git -C "$REPO_DIR" fetch origin
+        local branch
+        branch=$(git -C "$REPO_DIR" branch --show-current 2>/dev/null || echo "master")
+        git -C "$REPO_DIR" reset --hard "origin/$branch"
     else
         info "Cloning $REPO_URL…"
         mkdir -p "$(dirname "$REPO_DIR")"
