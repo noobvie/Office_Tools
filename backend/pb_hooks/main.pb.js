@@ -10,6 +10,59 @@
  * Docs: https://pocketbase.io/docs/js-overview/
  */
 
+// ── Auto-create required collections on startup ───────────────
+onServe((e) => {
+  e.next(); // let PocketBase finish starting first
+
+  const COLLECTIONS = [
+    {
+      name: 'short_urls',
+      fields: [
+        { name: 'code',     type: 'text', required: true  },
+        { name: 'long_url', type: 'text', required: true  },
+        { name: 'expires',  type: 'date', required: false },
+      ],
+    },
+    {
+      name: 'pastes',
+      fields: [
+        { name: 'code',            type: 'text', required: true  },
+        { name: 'title',           type: 'text', required: false },
+        { name: 'content',         type: 'text', required: true  },
+        { name: 'syntax',          type: 'text', required: false },
+        { name: 'expires',         type: 'date', required: false },
+        { name: 'burn_after_read', type: 'bool', required: false },
+      ],
+    },
+    {
+      name: 'file_shares',
+      fields: [
+        { name: 'code',          type: 'text',   required: true  },
+        { name: 'original_name', type: 'text',   required: false },
+        { name: 'file_size',     type: 'number', required: false },
+        { name: 'file',          type: 'file',   required: true,
+          maxSize: 1073741824, maxSelect: 1 },
+        { name: 'expires',       type: 'date',   required: false },
+      ],
+    },
+  ];
+
+  for (const def of COLLECTIONS) {
+    try {
+      $app.findCollectionByNameOrId(def.name);
+      // exists — skip
+    } catch (_) {
+      try {
+        const col = new Collection({ name: def.name, type: 'base', fields: def.fields });
+        $app.save(col);
+        console.log('[init] Created collection: ' + def.name);
+      } catch (err) {
+        console.log('[init] Failed to create ' + def.name + ': ' + err);
+      }
+    }
+  }
+});
+
 // ── Auto-expire subscriptions ────────────────────────────────
 // Runs daily at 03:00: marks subscriptions past their expires_at as expired
 cronAdd("expire-subscriptions", "0 3 * * *", () => {
