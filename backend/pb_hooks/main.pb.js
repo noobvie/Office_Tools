@@ -11,9 +11,8 @@
  */
 
 // ── Auto-create required collections on startup ───────────────
-onServe((e) => {
-  e.next(); // let PocketBase finish starting first
-
+// Top-level code runs when PocketBase loads this file (on every start).
+;(function initCollections() {
   const COLLECTIONS = [
     {
       name: 'short_urls',
@@ -50,7 +49,7 @@ onServe((e) => {
   for (const def of COLLECTIONS) {
     try {
       $app.findCollectionByNameOrId(def.name);
-      // exists — skip
+      // already exists — skip
     } catch (_) {
       try {
         const col = new Collection({ name: def.name, type: 'base', fields: def.fields });
@@ -61,7 +60,7 @@ onServe((e) => {
       }
     }
   }
-});
+}());
 
 // ── Auto-expire subscriptions ────────────────────────────────
 // Runs daily at 03:00: marks subscriptions past their expires_at as expired
