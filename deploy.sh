@@ -267,16 +267,16 @@ setup_cobalt() {
     [[ ! -d "$api_dir" ]] && api_dir="$COBALT_DIR/api"
     [[ ! -d "$api_dir" ]] && die "cobalt API directory not found in $COBALT_DIR — unexpected repo structure"
 
-    # Upgrade npm to v11+ — npm v10's workspace hoisting has bugs that prevent
-    # cobalt's dependencies (e.g. dotenv) from being found at runtime.
-    info "Upgrading npm to latest…"
-    npm install -g npm@latest --quiet 2>/dev/null || true
+    # cobalt uses pnpm workspaces — npm cannot resolve workspace:^ protocol.
+    if ! command -v pnpm &>/dev/null; then
+        info "Installing pnpm (required by cobalt)…"
+        npm install -g pnpm || die "pnpm install failed"
+    fi
+    local pnpm_bin; pnpm_bin=$(which pnpm)
 
-    # Install Node.js dependencies from workspace root (resolves workspace: links).
-    # Do NOT use --omit=dev — cobalt's workspace setup resolves some runtime deps
-    # through the dev dependency tree (e.g. dotenv).
-    (cd "$COBALT_DIR" && npm install) \
-        || die "npm install failed in $COBALT_DIR"
+    # Install all workspace dependencies from the monorepo root.
+    (cd "$COBALT_DIR" && pnpm install) \
+        || die "pnpm install failed in $COBALT_DIR"
 
     # Write .env
     local api_url="http://127.0.0.1:9000/"
@@ -301,7 +301,7 @@ Type=simple
 User=www-data
 Group=www-data
 WorkingDirectory=${api_dir}
-ExecStart=/usr/bin/npm start
+ExecStart=${pnpm_bin} start
 Environment=TZ=UTC
 EnvironmentFile=-${api_dir}/.env
 Restart=on-failure
@@ -333,7 +333,8 @@ sync_cobalt() {
     local api_dir="$COBALT_DIR/packages/api"
     [[ ! -d "$api_dir" ]] && api_dir="$COBALT_DIR/api"
     if [[ -d "$COBALT_DIR" ]]; then
-        (cd "$COBALT_DIR" && npm install) || true
+        command -v pnpm &>/dev/null || npm install -g pnpm || true
+        (cd "$COBALT_DIR" && pnpm install) || true
         chown -R www-data:www-data "$COBALT_DIR"
     fi
     systemctl restart office-tools-cobalt 2>/dev/null || true
@@ -1687,8 +1688,9 @@ _admin_update_cobalt() {
     local api_dir="$COBALT_DIR/packages/api"
     [[ ! -d "$api_dir" ]] && api_dir="$COBALT_DIR/api"
     if [[ -d "$COBALT_DIR" ]]; then
-        info "Installing updated npm dependencies…"
-        (cd "$COBALT_DIR" && npm install) || warn "npm install failed"
+        info "Installing updated pnpm dependencies…"
+        command -v pnpm &>/dev/null || npm install -g pnpm || true
+        (cd "$COBALT_DIR" && pnpm install) || warn "pnpm install failed"
         chown -R www-data:www-data "$COBALT_DIR"
     fi
 
