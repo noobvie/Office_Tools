@@ -273,10 +273,10 @@
   <div class="prereqs-box">
     <strong>📋 Quick Setup Notes</strong>
     <ul>
-      <li><b>Single video</b> — works immediately, no setup needed.</li>
-      <li><b>Playlist</b> — requires a free <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">YouTube Data API v3</a> key (enter below when a playlist URL is detected).</li>
-      <li><b>Cobalt backend</b> (default) — MP4 up to 1080p + true MP3. Uses <a href="https://github.com/imputnet/cobalt" target="_blank" rel="noopener">api.cobalt.tools</a> or your own self-hosted instance.</li>
-      <li><b>Invidious backend</b> — no cobalt needed, works independently. Video up to ~720p, audio as M4A/WEBM.</li>
+      <li><b>⚡ Local (default)</b> — uses the <strong>office-tools-yt</strong> service on this server (yt-dlp + ffmpeg). Installed automatically by <code>deploy.sh</code> step 1. MP4 up to 1080p + true MP3.</li>
+      <li><b>Cobalt</b> — uses the public <a href="https://github.com/imputnet/cobalt" target="_blank" rel="noopener">cobalt.tools</a> API or your own self-hosted instance. MP4 up to 1080p + true MP3.</li>
+      <li><b>Invidious</b> — independent fallback, no yt-dlp needed. Video up to ~720p, audio as M4A/WEBM (not MP3).</li>
+      <li><b>Playlist</b> — requires a free <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">YouTube Data API v3</a> key (shown automatically when a playlist URL is pasted).</li>
     </ul>
   </div>
 
@@ -295,7 +295,8 @@
       <div class="form-group" style="margin:0">
         <label>Backend</label><br>
         <div class="backend-toggle">
-          <button class="backend-btn active" data-backend="cobalt">Cobalt</button>
+          <button class="backend-btn active" data-backend="local">⚡ Local</button>
+          <button class="backend-btn"        data-backend="cobalt">Cobalt</button>
           <button class="backend-btn"        data-backend="invidious">Invidious</button>
         </div>
       </div>
@@ -303,7 +304,7 @@
 
     <!-- Backend info (updates with selection) -->
     <div class="backend-info" id="backendInfo">
-      <b>Cobalt</b> — MP4 up to 1080p, true MP3 audio. Requires cobalt instance (public or self-hosted).
+      <b>Local (yt-dlp)</b> — your self-hosted yt-dlp server. MP4 up to 1080p + true MP3. Fastest — no external dependency.
     </div>
 
     <!-- URL input -->
@@ -321,7 +322,7 @@
         <label for="videoQuality">Video quality</label>
         <select id="videoQuality">
           <option value="max">Best available</option>
-          <option value="1080" selected>1080p (Cobalt only)</option>
+          <option value="1080" selected>1080p (Local/Cobalt)</option>
           <option value="720">720p</option>
           <option value="480">480p</option>
           <option value="360">360p</option>
@@ -330,7 +331,7 @@
         </select>
       </div>
       <div class="form-group" id="audioBitrateGroup" style="display:none">
-        <label for="audioBitrate">Audio bitrate (Cobalt)</label>
+        <label for="audioBitrate">Audio bitrate (Local/Cobalt)</label>
         <select id="audioBitrate">
           <option value="320">320 kbps</option>
           <option value="256">256 kbps</option>
@@ -378,6 +379,25 @@
     </summary>
     <div style="margin-top:.85rem;display:flex;flex-direction:column;gap:.85rem">
 
+      <!-- Local yt-server URL -->
+      <div>
+        <div class="form-group" style="margin-bottom:.3rem">
+          <label for="localUrl">⚡ Local yt-server URL <span style="font-weight:400;color:var(--success);font-size:.78rem">(default — recommended)</span></label>
+          <div class="cfg-row">
+            <div class="form-group">
+              <input type="url" id="localUrl" placeholder="/yt-api/" autocomplete="off">
+            </div>
+            <button class="btn" id="saveLocalBtn" style="margin-bottom:1px">Save</button>
+            <button class="btn" id="resetLocalBtn" style="margin-bottom:1px">Reset</button>
+          </div>
+        </div>
+        <p class="api-key-note">
+          Default: <code>/yt-api/</code> — your self-hosted <strong>office-tools-yt</strong> service (Node.js + yt-dlp + ffmpeg).
+          Deployed automatically by <code>deploy.sh</code> step 1. Supports MP4 up to 1080p and true MP3 audio.
+          No external API, no rate limit, no third-party dependency.
+        </p>
+      </div>
+
       <!-- Cobalt URL -->
       <div>
         <div class="form-group" style="margin-bottom:.3rem">
@@ -391,10 +411,9 @@
           </div>
         </div>
         <p class="api-key-note">
-          Default: <code>https://api.cobalt.tools/</code> —
-          Self-host options: <a href="https://github.com/imputnet/cobalt" target="_blank" rel="noopener">cobalt</a>
-          or the included <code>yt-server/</code> (Node.js + yt-dlp, no third-party dependency).
-          Run <code>cd yt-server &amp;&amp; npm i &amp;&amp; node server.js</code>, then set URL to <code>http://localhost:9000/</code>.
+          Default: <code>https://api.cobalt.tools/</code> — public cobalt instance (open-source, no key needed).
+          <a href="https://github.com/imputnet/cobalt" target="_blank" rel="noopener">Self-host</a> for no rate limits.
+          Supports MP4 up to 1080p and true MP3 audio. Uses same API protocol as Local.
         </p>
       </div>
 
@@ -411,11 +430,10 @@
           </div>
         </div>
         <p class="api-key-note">
-          Default: <code>https://inv.tux.pizza</code> — Any public
-          <a href="https://api.invidious.io/" target="_blank" rel="noopener">Invidious instance</a>
-          works. Choose one close to you, or
-          <a href="https://github.com/iv-org/invidious" target="_blank" rel="noopener">self-host</a>.
-          <b>Invidious gives video up to ~720p, audio as M4A/WEBM (not MP3).</b>
+          Default: <code>https://inv.tux.pizza</code> — any public
+          <a href="https://api.invidious.io/" target="_blank" rel="noopener">Invidious instance</a> works.
+          <a href="https://github.com/iv-org/invidious" target="_blank" rel="noopener">Self-host</a> for reliability.
+          <b>Video up to ~720p, audio as M4A/WEBM (not MP3).</b> Useful as independent fallback when Local is unavailable.
         </p>
       </div>
 
@@ -435,28 +453,29 @@
   /* ══════════════════════════════════════════
      CONSTANTS & DEFAULTS
   ══════════════════════════════════════════ */
-  // After deploy, _patch_domain replaces 'yourdomain.com' → your actual domain,
-  // so this automatically points to your self-hosted yt-server via nginx /yt-api/.
-  // Fallback: public cobalt is used only in local dev (localhost/127.0.0.1).
-  const DEFAULT_COBALT    = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-    ? 'https://api.cobalt.tools/'
-    : (location.origin + '/yt-api/');
+  // Local default: after deploy, nginx proxies /yt-api/ → office-tools-yt (port 9000).
+  // In local dev (localhost/127.0.0.1) the local server isn't running, so fall back to cobalt.
+  const IS_LOCAL_DEV   = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const DEFAULT_LOCAL    = IS_LOCAL_DEV ? 'http://localhost:9000/' : (location.origin + '/yt-api/');
+  const DEFAULT_COBALT   = 'https://api.cobalt.tools/';
   const DEFAULT_INVIDIOUS = 'https://inv.tux.pizza';
 
+  const LS_LOCAL     = 'yt-local-url';
   const LS_COBALT    = 'yt-cobalt-url';
   const LS_INVIDIOUS = 'yt-invidious-url';
   const LS_API_KEY   = 'yt-api-key';
 
   const BACKEND_INFO = {
-    cobalt:    '<b>Cobalt</b> — MP4 up to 1080p, true MP3 audio. Requires cobalt instance (public or self-hosted).',
-    invidious: '<b>Invidious</b> — No cobalt needed. Video up to ~720p (muxed MP4), audio as M4A/WEBM. Works independently.',
+    local:     '<b>⚡ Local (yt-dlp)</b> — your self-hosted yt-dlp server. MP4 up to 1080p + true MP3. Fastest — no external dependency.',
+    cobalt:    '<b>Cobalt</b> — public cobalt.tools API or self-hosted. MP4 up to 1080p + true MP3. External service.',
+    invidious: '<b>Invidious</b> — no yt-dlp needed. Video up to ~720p (muxed MP4), audio as M4A/WEBM. Independent fallback.',
   };
 
   /* ══════════════════════════════════════════
      STATE
   ══════════════════════════════════════════ */
-  let currentMode    = 'video';   // 'video' | 'audio'
-  let currentBackend = 'cobalt';  // 'cobalt' | 'invidious'
+  let currentMode    = 'video';              // 'video' | 'audio'
+  let currentBackend = 'local';              // 'local' | 'cobalt' | 'invidious'
   let playlistItems  = [];
   let isDownloading  = false;
 
@@ -469,6 +488,7 @@
   const apiKeyCard        = document.getElementById('apiKeyCard');
   const ytApiKeyInput     = document.getElementById('ytApiKey');
   const saveKeyBtn        = document.getElementById('saveKeyBtn');
+  const localUrlInput     = document.getElementById('localUrl');
   const cobaltUrlInput    = document.getElementById('cobaltUrl');
   const invidiousUrlInput = document.getElementById('invidiousUrl');
   const backendInfoEl     = document.getElementById('backendInfo');
@@ -479,6 +499,7 @@
      INIT — restore saved settings
   ══════════════════════════════════════════ */
   (function init() {
+    localUrlInput.value     = localStorage.getItem(LS_LOCAL)     || DEFAULT_LOCAL;
     cobaltUrlInput.value    = localStorage.getItem(LS_COBALT)    || DEFAULT_COBALT;
     invidiousUrlInput.value = localStorage.getItem(LS_INVIDIOUS) || DEFAULT_INVIDIOUS;
     const savedKey = localStorage.getItem(LS_API_KEY) || '';
