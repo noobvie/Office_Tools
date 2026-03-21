@@ -256,7 +256,9 @@
   │    yt-dlp auto-updates weekly via cron.             │
   │    Proxied via nginx /yt-api/ → 127.0.0.1:9000.     │
   │    Supports MP4 up to 1080p + true MP3 audio.       │
-  │    No external API — fastest, most reliable.        │
+  │    Uses Android/TV player clients to bypass         │
+  │    bot-detection — no cookies required in most      │
+  │    cases. Cookies are an optional fallback only.    │
   │                                                     │
   │  Backend — Cobalt (external, requires auth):        │
   │    api.cobalt.tools now requires an API key.        │
@@ -281,7 +283,7 @@
   <div class="prereqs-box">
     <strong>📋 Quick Setup Notes</strong>
     <ul>
-      <li><b>⚡ Local (default)</b> — uses the <strong>office-tools-yt</strong> service on this server (yt-dlp + ffmpeg, installed via <code>deploy.sh</code> step 1, auto-updated weekly). MP4 up to 1080p + true MP3. No external dependency.</li>
+      <li><b>⚡ Local (default)</b> — uses the <strong>office-tools-yt</strong> service on this server (yt-dlp + ffmpeg, installed via <code>deploy.sh</code> step 1, auto-updated weekly). Uses Android/TV player clients to bypass bot-detection — no cookies needed in most cases. MP4 up to 1080p + true MP3.</li>
       <li><b>Cobalt</b> — <a href="https://github.com/imputnet/cobalt" target="_blank" rel="noopener">cobalt</a> API. <strong>api.cobalt.tools now requires an API key</strong> — get one free at <a href="https://cobalt.tools/" target="_blank" rel="noopener">cobalt.tools</a> and set it in Advanced, or self-host cobalt without auth.</li>
       <li><b>Invidious</b> — independent fallback, no yt-dlp needed. Video up to ~720p, audio as M4A/WEBM (not MP3).</li>
       <li><b>Playlist</b> — requires a free <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">YouTube Data API v3</a> key (shown automatically when a playlist URL is pasted).</li>
@@ -594,11 +596,13 @@
         const ffWarn = d.ffmpeg ? '' : ' · <span style="color:var(--warning)">⚠ ffmpeg missing — MP3 and 1080p disabled</span>';
         let cookieWarn;
         if (!d.cookies || d.cookies === 'none') {
-          cookieWarn = ' · <span style="color:var(--warning)">⚠ no cookies — bot-detection may block downloads (deploy.sh → Option 6 → i)</span>';
+          cookieWarn = ''; // normal — player client bypass active, no cookies needed
         } else if (d.cookies === 'file:expired') {
-          cookieWarn = ' · <span style="color:var(--danger)">🍪 cookies expired — re-export from browser &amp; re-upload (deploy.sh → Option 6 → i)</span>';
+          cookieWarn = ' · <span style="color:var(--warning)">🍪 cookies expired — re-export from browser (deploy.sh → Option 6 → i)</span>';
         } else if (d.cookies === 'file:missing') {
-          cookieWarn = ' · <span style="color:var(--warning)">🍪 cookies.txt missing — upload file to server (deploy.sh → Option 6 → i)</span>';
+          cookieWarn = ' · <span style="color:var(--warning)">🍪 cookies.txt configured but missing — upload file or disable (deploy.sh → Option 6 → i)</span>';
+        } else if (d.cookies === 'file:unchecked') {
+          cookieWarn = ' · <span style="color:var(--text-muted)">🍪 cookies configured (not yet tested — runs weekly)</span>';
         } else {
           cookieWarn = ` · <span style="color:var(--success)">🍪 cookies: ${escHtml(d.cookies)}</span>`;
         }
@@ -607,7 +611,7 @@
       })
       .catch(() => {
         const hint = IS_LOCAL_DEV
-          ? 'Start locally: <code>cd yt-server &amp;&amp; npm install &amp;&amp; node server.js</code> — or switch to <b>Cobalt</b> backend for testing.'
+          ? 'Start locally: <code>cd yt-server &amp;&amp; npm install &amp;&amp; node server.js</code> — or switch to <b>Invidious</b> backend for testing.'
           : 'Check: <code>systemctl status office-tools-yt</code> · or run <code>deploy.sh → Option 5</code> to redeploy.';
         backendInfoEl.innerHTML = BACKEND_INFO.local +
           ` <span style="color:var(--danger)">✗ not reachable — ${hint}</span>`;
@@ -965,7 +969,7 @@
       if (currentBackend === 'local' && (res.status === 404 || res.status === 502 || res.status === 503)) {
         throw new Error(
           `Local yt-server not reachable (HTTP ${res.status}). ` +
-          `Check: systemctl status office-tools-yt — or switch to Cobalt backend.`
+          `Check: systemctl status office-tools-yt — or switch to Invidious backend.`
         );
       }
       throw new Error(`${label} ${res.status}: ${txt.slice(0, 120)}`);
@@ -982,8 +986,9 @@
       }
       if (currentBackend === 'local' && /sign.in|not.a.bot|cookies|confirm.*age/i.test(code)) {
         throw new Error(
-          `YouTube bot-detection triggered. Fix: upload a cookies.txt to the server ` +
-          `(deploy.sh → Option 6 → i) or switch to Invidious backend as a quick workaround.`
+          `YouTube bot-detection triggered despite player client bypass. ` +
+          `Try: update yt-dlp (deploy.sh → Option 6 → h), switch to Invidious backend, ` +
+          `or upload fresh cookies.txt (deploy.sh → Option 6 → i).`
         );
       }
       throw new Error(`${label}: ` + code);
@@ -1045,7 +1050,7 @@
        * Audio-only adaptive formats.
        * Prefer itag 140 (M4A 128kbps) — plays natively in all browsers.
        * Fallback: itag 251 (WEBM OPUS 160kbps) or any audio format.
-       * NOTE: These are NOT MP3. If you need MP3, use the Cobalt backend.
+       * NOTE: These are NOT MP3. If you need MP3, use the Local backend.
        */
       const audioFmts = (data.adaptiveFormats || []).filter(f => String(f.type).startsWith('audio'));
       const m4a  = audioFmts.find(f => String(f.itag) === '140');
@@ -1062,7 +1067,7 @@
        * Muxed (audio+video) streams — formatStreams.
        * These are pre-merged MP4, so no post-processing needed.
        * Maximum quality: usually 720p (1080p muxed streams no longer exist on YouTube).
-       * For 1080p+, use Cobalt backend which merges adaptive streams server-side.
+       * For 1080p+, use Local backend which merges adaptive streams server-side.
        */
       const quality  = document.getElementById('videoQuality').value;
       const formats  = (data.formatStreams || []);
