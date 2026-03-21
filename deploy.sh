@@ -298,7 +298,7 @@ Group=www-data
 WorkingDirectory=${api_dir}
 ExecStart=/usr/bin/npm start
 Environment=TZ=UTC
-EnvironmentFile=${api_dir}/.env
+EnvironmentFile=-${api_dir}/.env
 Restart=on-failure
 RestartSec=5s
 StandardOutput=journal
