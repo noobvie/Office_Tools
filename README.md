@@ -153,8 +153,8 @@ Supports **Debian · Ubuntu · AlmaLinux · Rocky Linux · CentOS Stream**.
 | 2) Add Domain | Domain + Let's Encrypt SSL · nginx HTTPS config · sitemap.xml domain patching · optional backend |
 | 3) Remove / Switch | Remove nginx vhost + SSL cert, or switch to a new domain |
 | 4) Set / Reset Admin | Create or update PocketBase superuser account |
-| 5) Update from Repo | Pull any branch, sync frontend + backend, restart services |
-| 6) Admin Tasks | Service status · restart all · list URLs/ports · backup/restore DB · clean logs · purge temp |
+| 5) Update from Repo | Pull any branch, sync frontend + backend, update yt-dlp binary, restart services |
+| 6) Admin Tasks | Service status · restart all · list URLs/ports · backup/restore DB · clean logs · purge temp · **update yt-dlp** |
 | DEL) Delete | Remove all services, configs, certs, and directories |
 
 **Security:** HSTS · TLS 1.2/1.3 · security headers · `microphone=(self)` for Speech & Voice · gzip · `client_max_body_size 1100M`

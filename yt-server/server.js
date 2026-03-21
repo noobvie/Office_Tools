@@ -218,7 +218,12 @@ function getTitle(url) {
     proc.stdout.on('data', d => out += d);
     proc.stderr.on('data', () => {}); // suppress
     proc.on('close', code => {
-      if (code !== 0) return reject(new Error(`yt-dlp metadata failed (exit ${code})`));
+      if (code !== 0) {
+        const msg = code === 1
+          ? 'yt-dlp exit 1: update yt-dlp (deploy.sh → Option 1) or video is unavailable/private'
+          : `yt-dlp metadata failed (exit ${code})`;
+        return reject(new Error(msg));
+      }
       try {
         const info = JSON.parse(out);
         resolve(info.title || 'download');

@@ -1198,28 +1198,35 @@ opt_5_update_repo() {
     show_banner
     section "Option 5 — Update from Repository"
 
-    if [[ ! -d "$REPO_DIR/.git" ]]; then
+    # Determine which git repo to use as the reference for branch listing.
+    # Priority: SCRIPT_DIR (where deploy.sh lives) if it's a git repo; else REPO_DIR.
+    local src_dir="$REPO_DIR"
+    if [[ -d "$SCRIPT_DIR/.git" ]] && [[ "$SCRIPT_DIR" != "$REPO_DIR" ]]; then
+        src_dir="$SCRIPT_DIR"
+    elif [[ ! -d "$REPO_DIR/.git" ]]; then
         warn "Repository not cloned yet. Run Option 1 to install first."
         press_enter; return 0
     fi
 
     local current_branch
-    current_branch=$(git -C "$REPO_DIR" branch --show-current 2>/dev/null || echo "unknown")
+    current_branch=$(git -C "$src_dir" branch --show-current 2>/dev/null || echo "unknown")
 
+    echo -e "  Script dir:     ${DIM}${SCRIPT_DIR}${RESET}"
+    echo -e "  Server repo:    ${DIM}${REPO_DIR}${RESET}"
     echo -e "  Remote:         ${DIM}${REPO_URL}${RESET}"
     echo -e "  Current branch: ${BOLD}${current_branch}${RESET}"
-    echo -e "  Last commit:    ${DIM}$(git -C "$REPO_DIR" log -1 --format='%h %s' 2>/dev/null)${RESET}"
+    echo -e "  Last commit:    ${DIM}$(git -C "$src_dir" log -1 --format='%h %s' 2>/dev/null)${RESET}"
     echo ""
 
     info "Fetching remote branch list…"
-    git -C "$REPO_DIR" fetch --quiet origin 2>/dev/null \
+    git -C "$src_dir" fetch --quiet origin 2>/dev/null \
         || warn "Could not reach remote — using cached branch list"
 
     local branches=()
     while IFS= read -r b; do
         [[ -z "$b" ]] && continue
         branches+=("$b")
-    done < <(git -C "$REPO_DIR" branch -r 2>/dev/null \
+    done < <(git -C "$src_dir" branch -r 2>/dev/null \
         | grep -v '\->' | sed 's|[[:space:]]*origin/||')
 
     if [[ "${#branches[@]}" -gt 0 ]]; then
@@ -1259,16 +1266,48 @@ opt_5_update_repo() {
         set -euo pipefail
         exec > >(tee "$logf") 2>&1
 
-        git -C "$REPO_DIR" fetch origin
-        git -C "$REPO_DIR" checkout "$target_branch"
-        git -C "$REPO_DIR" reset --hard "origin/$target_branch"
-        success "Repo updated: $(git -C "$REPO_DIR" log -1 --format='%h %s')"
+        # ── Pull SCRIPT_DIR (the directory deploy.sh was run from) ─────────────
+        if [[ -d "$SCRIPT_DIR/.git" ]] && [[ "$SCRIPT_DIR" != "$REPO_DIR" ]]; then
+            info "Pulling script directory: $SCRIPT_DIR"
+            git -C "$SCRIPT_DIR" fetch origin
+            git -C "$SCRIPT_DIR" checkout "$target_branch"
+            git -C "$SCRIPT_DIR" reset --hard "origin/$target_branch"
+            success "Script dir updated: $(git -C "$SCRIPT_DIR" log -1 --format='%h %s')"
+        fi
+
+        # ── Pull server repo: /opt/office-tools/repo ───────────────────────────
+        if [[ -d "$REPO_DIR/.git" ]]; then
+            info "Pulling server repo: $REPO_DIR"
+            git -C "$REPO_DIR" fetch origin
+            git -C "$REPO_DIR" checkout "$target_branch"
+            git -C "$REPO_DIR" reset --hard "origin/$target_branch"
+            success "Server repo updated: $(git -C "$REPO_DIR" log -1 --format='%h %s')"
+        elif [[ -d "$SCRIPT_DIR/.git" ]]; then
+            # Server repo doesn't exist yet — seed it from SCRIPT_DIR or clone fresh
+            info "Server repo not found — cloning from remote…"
+            mkdir -p "$(dirname "$REPO_DIR")"
+            git clone --branch "$target_branch" "$REPO_URL" "$REPO_DIR"
+            success "Server repo cloned: $(git -C "$REPO_DIR" log -1 --format='%h %s')"
+        fi
 
         load_conf
         sync_frontend "${DOMAIN:-}"
 
         # Sync backend if installed
         [[ -d "$BACKEND_DIR" ]] && sync_backend || true
+
+        # Sync yt-server if installed
+        [[ -f "$YT_SERVER_DIR/package.json" ]] && sync_yt_server || true
+
+        # Update yt-dlp binary — YouTube changes its API frequently; keep it current
+        if command -v yt-dlp &>/dev/null || [[ -x /usr/local/bin/yt-dlp ]]; then
+            info "Updating yt-dlp binary…"
+            curl -sSL "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp" \
+                -o /usr/local/bin/yt-dlp \
+            && chmod +x /usr/local/bin/yt-dlp \
+            && success "yt-dlp $(/usr/local/bin/yt-dlp --version 2>/dev/null) — updated" \
+            || warn "yt-dlp update failed (network issue?) — skipping"
+        fi
 
         # Refresh nginx config so new location blocks (e.g. /yt-api/) are always picked up.
         # Re-write the full config from the current deploy.sh template — safe because the
@@ -1312,10 +1351,11 @@ opt_6_admin_tasks() {
         echo -e "    ${BOLD}e)${RESET}  Restore Database     ${DIM}restore from a previous backup${RESET}"
         echo -e "    ${BOLD}f)${RESET}  Clean Old Logs       ${DIM}delete deploy logs older than 30 days${RESET}"
         echo -e "    ${BOLD}g)${RESET}  Purge Temp Files     ${DIM}yt-dlp temp downloads + file-share uploads${RESET}"
+        echo -e "    ${BOLD}h)${RESET}  Update yt-dlp        ${DIM}download latest yt-dlp binary (fixes download errors)${RESET}"
         echo -e "  ${DIM}  ──────────────────────────────────────────────${RESET}"
         echo -e "    ${BOLD}0)${RESET}  Back"
         echo ""
-        echo -ne "  Choose [a-g / 0]: "; read -r _sub
+        echo -ne "  Choose [a-h / 0]: "; read -r _sub
         echo ""
 
         case "${_sub,,}" in
@@ -1326,6 +1366,7 @@ opt_6_admin_tasks() {
             e)  _admin_restore_db      ;;
             f)  _admin_clean_logs      ;;
             g)  _admin_purge_temp      ;;
+            h)  _admin_update_ytdlp    ;;
             0)  return 0               ;;
             *)  warn "Invalid: $_sub"  ;;
         esac
@@ -1627,6 +1668,30 @@ _admin_purge_temp() {
     echo ""
 
     $purged || info "Nothing was deleted."
+    press_enter
+}
+
+_admin_update_ytdlp() {
+    section "Update yt-dlp"
+    local current=""
+    current=$(/usr/local/bin/yt-dlp --version 2>/dev/null || echo "not found")
+    echo -e "  Current version: ${BOLD}${current}${RESET}"
+    echo ""
+    ask_proceed "Download latest yt-dlp binary from GitHub" || return 0
+    info "Downloading latest yt-dlp…"
+    if curl -sSL "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp" \
+            -o /usr/local/bin/yt-dlp \
+        && chmod +x /usr/local/bin/yt-dlp; then
+        local new_ver
+        new_ver=$(/usr/local/bin/yt-dlp --version 2>/dev/null || echo "unknown")
+        success "yt-dlp updated: ${current} → ${new_ver}"
+        if systemctl is-active --quiet office-tools-yt 2>/dev/null; then
+            systemctl restart office-tools-yt
+            success "office-tools-yt restarted with new yt-dlp."
+        fi
+    else
+        warn "Download failed — check network connectivity."
+    fi
     press_enter
 }
 
