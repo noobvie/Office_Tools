@@ -420,6 +420,8 @@ setup_backend_first() {
     echo -ne "  Grin receiving address (Enter to skip): "; read -r _GW_ADDR
 
     mkdir -p "$BACKEND_DIR"
+    mkdir -p /opt/office-tools/data/uploads
+    chown -R www-data:www-data /opt/office-tools/data
     rsync -a "$REPO_DIR/backend/" "$BACKEND_DIR/"
 
     cat > "$BACKEND_DIR/.env" << ENVEOF
@@ -625,6 +627,9 @@ sync_backend() {
     section "Syncing backend files"
     rsync -a --exclude='.env' "$REPO_DIR/backend/" "$BACKEND_DIR/"
     cd "$BACKEND_DIR" && npm install --omit=dev && cd /
+    # Ensure SQLite data directory exists and is owned by the service user
+    mkdir -p /opt/office-tools/data/uploads
+    chown -R www-data:www-data /opt/office-tools/data
     cp "$BACKEND_DIR/pb_hooks/main.pb.js" "$PB_DIR/pb_hooks/" 2>/dev/null || true
     systemctl restart office-tools-pb office-tools-pay 2>/dev/null || true
     success "Backend synced and services restarted"
