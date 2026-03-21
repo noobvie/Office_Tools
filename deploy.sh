@@ -520,104 +520,103 @@ PAYEOF
 }
 
 # ─── PocketBase collection auto-setup ─────────────────────────────────────────
-# Creates short_urls, pastes, shared_files collections via PocketBase API.
-# Requires Node.js (installed in Option 1). Safe to call multiple times.
+# Creates short_urls, pastes, file_shares collections with public API rules.
+# Uses curl + python3 (always available on Linux). Safe to call multiple times.
 setup_pb_collections() {
     local email="$1" pass="$2"
+    local pb_base="http://127.0.0.1:8090"
     section "Setting up PocketBase collections"
 
-    if ! command -v node &>/dev/null; then
-        warn "Node.js not found — skipping collection setup. Run Option 1 first."
+    # ── Step 1: authenticate ──────────────────────────────────
+    local token=""
+    for auth_path in "/api/superusers/auth-with-password" "/api/admins/auth-with-password"; do
+        local resp
+        resp=$(curl -sf -X POST "${pb_base}${auth_path}" \
+            -H "Content-Type: application/json" \
+            -d "{\"identity\":\"${email}\",\"password\":\"${pass}\"}" 2>&1) || true
+        token=$(echo "$resp" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('token',''))" 2>/dev/null || true)
+        if [ -n "$token" ]; then
+            info "Authenticated with PocketBase (${auth_path})"
+            break
+        fi
+    done
+
+    if [ -z "$token" ]; then
+        warn "PocketBase auth failed — check admin credentials and that PocketBase is running on port 8090"
+        warn "Manual fix: visit https://${DOMAIN:-localhost}/_/ and create collections: short_urls, pastes, file_shares"
         return 1
     fi
 
-    # Write temp Node.js script
-    local tmp="/tmp/_pb_init_collections.js"
-    cat > "$tmp" << 'NODESCRIPT'
-const http = require('http');
-const email = process.env.PB_EMAIL;
-const pass  = process.env.PB_PASS;
+    # ── Step 2: public rules + collection definitions ─────────
+    local rules='"listRule":"","viewRule":"","createRule":"","updateRule":null,"deleteRule":null'
 
-function req(method, path, body, token) {
-  return new Promise((res, rej) => {
-    const data = body ? JSON.stringify(body) : null;
-    const hdrs = { 'Content-Type': 'application/json' };
-    if (token) hdrs['Authorization'] = 'Bearer ' + token;
-    if (data)  hdrs['Content-Length'] = Buffer.byteLength(data);
-    const r = http.request({ hostname:'127.0.0.1', port:8090, path, method, headers:hdrs }, rsp => {
-      let d = '';
-      rsp.on('data', c => d += c);
-      rsp.on('end', () => { try { res({ status: rsp.statusCode, body: JSON.parse(d) }); } catch { res({ status: rsp.statusCode, body: d }); } });
-    });
-    r.on('error', rej);
-    if (data) r.write(data);
-    r.end();
-  });
-}
+    local short_urls_def="{\"name\":\"short_urls\",\"type\":\"base\",${rules},\"fields\":[
+        {\"name\":\"code\",\"type\":\"text\",\"required\":true},
+        {\"name\":\"long_url\",\"type\":\"text\",\"required\":true},
+        {\"name\":\"expires\",\"type\":\"date\",\"required\":false}]}"
 
-// Public access rules: anyone can list/view/create; only admin can update/delete
-const PUBLIC_RULES = { listRule: '', viewRule: '', createRule: '', updateRule: null, deleteRule: null };
+    local pastes_def="{\"name\":\"pastes\",\"type\":\"base\",${rules},\"fields\":[
+        {\"name\":\"code\",\"type\":\"text\",\"required\":true},
+        {\"name\":\"title\",\"type\":\"text\",\"required\":false},
+        {\"name\":\"content\",\"type\":\"text\",\"required\":true},
+        {\"name\":\"syntax\",\"type\":\"text\",\"required\":false},
+        {\"name\":\"expires\",\"type\":\"date\",\"required\":false},
+        {\"name\":\"burn_after_read\",\"type\":\"bool\",\"required\":false}]}"
 
-const COLLECTIONS = [
-  { name: 'short_urls', type: 'base', ...PUBLIC_RULES, fields: [
-      { name: 'code',     type: 'text', required: true  },
-      { name: 'long_url', type: 'text', required: true  },
-      { name: 'expires',  type: 'date', required: false }
-  ]},
-  { name: 'pastes', type: 'base', ...PUBLIC_RULES, fields: [
-      { name: 'code',            type: 'text', required: true  },
-      { name: 'title',           type: 'text', required: false },
-      { name: 'content',         type: 'text', required: true  },
-      { name: 'syntax',          type: 'text', required: false },
-      { name: 'expires',         type: 'date', required: false },
-      { name: 'burn_after_read', type: 'bool', required: false }
-  ]},
-  { name: 'file_shares', type: 'base', ...PUBLIC_RULES, fields: [
-      { name: 'code',          type: 'text', required: true  },
-      { name: 'original_name', type: 'text', required: false },
-      { name: 'file_size',     type: 'number', required: false },
-      { name: 'file',          type: 'file', required: true,
-        options: { maxSize: 1073741824, maxSelect: 1 }   },
-      { name: 'expires',       type: 'date', required: false }
-  ]},
-];
+    local file_shares_def="{\"name\":\"file_shares\",\"type\":\"base\",${rules},\"fields\":[
+        {\"name\":\"code\",\"type\":\"text\",\"required\":true},
+        {\"name\":\"original_name\",\"type\":\"text\",\"required\":false},
+        {\"name\":\"file_size\",\"type\":\"number\",\"required\":false},
+        {\"name\":\"file\",\"type\":\"file\",\"required\":true,\"options\":{\"maxSize\":1073741824,\"maxSelect\":1}},
+        {\"name\":\"expires\",\"type\":\"date\",\"required\":false}]}"
 
-async function main() {
-  // Authenticate — try new API (PB 0.23+) then fall back to old
-  let token = null;
-  const authPaths = ['/api/superusers/auth-with-password', '/api/admins/auth-with-password'];
-  for (const path of authPaths) {
-    try {
-      const r = await req('POST', path, { identity: email, password: pass });
-      console.log('  Auth ' + path + ' → HTTP ' + r.status);
-      if (r.body && r.body.token) { token = r.body.token; break; }
-      if (r.status !== 404) console.error('  Auth error: ' + JSON.stringify(r.body));
-    } catch(e) { console.error('  Auth exception on ' + path + ': ' + e.message); }
-  }
-  if (!token) { console.error('AUTH_FAILED: could not authenticate with PocketBase'); process.exit(1); }
-  console.log('  Authenticated with PocketBase');
+    # ── Step 3: create or patch each collection ───────────────
+    local ok=true
+    for col_name in short_urls pastes file_shares; do
+        local varname="${col_name}_def"
+        local col_json="${!varname}"
 
-  for (const col of COLLECTIONS) {
-    const { fields, ...meta } = col;
-    const check = await req('GET', '/api/collections/' + col.name, null, token);
-    if (check.status === 200) {
-      // Patch rules on existing collection to ensure public access
-      await req('PATCH', '/api/collections/' + col.name, PUBLIC_RULES, token);
-      console.log('  EXISTS:   ' + col.name + ' (rules synced)');
-      continue;
-    }
-    const r = await req('POST', '/api/collections', { ...meta, fields }, token);
-    if (r.body && r.body.name) console.log('  CREATED:  ' + col.name);
-    else console.error('  FAILED:   ' + col.name + ' — ' + (r.body && r.body.message || JSON.stringify(r.body)));
-  }
-}
-main().catch(e => { console.error('ERROR: ' + e.message); process.exit(1); });
-NODESCRIPT
+        # Check if collection already exists
+        local http_status
+        http_status=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: ${token}" \
+            "${pb_base}/api/collections/${col_name}")
 
-    PB_EMAIL="$email" PB_PASS="$pass" node "$tmp" \
-        && success "PocketBase collections ready" \
-        || warn "Some collections may need manual creation — visit https://${DOMAIN}/_/"
-    rm -f "$tmp"
+        if [ "$http_status" = "200" ]; then
+            # Patch rules only (preserve existing fields)
+            local patch_resp
+            patch_resp=$(curl -sf -X PATCH "${pb_base}/api/collections/${col_name}" \
+                -H "Content-Type: application/json" \
+                -H "Authorization: ${token}" \
+                -d "{${rules}}" 2>&1) || true
+            local err
+            err=$(echo "$patch_resp" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('message',''))" 2>/dev/null || true)
+            if [ -n "$err" ]; then
+                warn "  ${col_name}: patch failed — ${err}"; ok=false
+            else
+                success "  ${col_name}: exists — API rules set to public"
+            fi
+        else
+            # Create collection
+            local create_resp
+            create_resp=$(curl -sf -X POST "${pb_base}/api/collections" \
+                -H "Content-Type: application/json" \
+                -H "Authorization: ${token}" \
+                -d "$col_json" 2>&1) || true
+            local created_name
+            created_name=$(echo "$create_resp" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('name',''))" 2>/dev/null || true)
+            if [ "$created_name" = "$col_name" ]; then
+                success "  ${col_name}: created with public API rules"
+            else
+                local err2
+                err2=$(echo "$create_resp" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('message',''))" 2>/dev/null || echo "$create_resp")
+                warn "  ${col_name}: failed — ${err2}"; ok=false
+            fi
+        fi
+    done
+
+    $ok && success "PocketBase collections ready" || \
+        warn "Some collections need attention — visit https://${DOMAIN:-localhost}/_/"
 }
 
 sync_backend() {
