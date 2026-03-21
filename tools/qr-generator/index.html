@@ -3,44 +3,72 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>QR Code Generator — Office Tools</title>
-  <meta name="description" content="Generate QR codes for URLs, plain text, WiFi credentials (SSID + password), and vCard contacts. Customize size and download as PNG. Free, no account required, runs in your browser.">
-  <meta name="keywords" content="QR code generator, free QR maker, WiFi QR code, vCard QR code, URL QR code, QR code PNG download">
+  <title>QR Code &amp; Barcode Generator — Free, Custom Logo &amp; Frame | Office Tools</title>
+  <meta name="description" content="Generate QR codes for URLs, WiFi, contacts, email, SMS and more. Add logos, frame text, and custom colors. Also generate barcodes: Code 128, EAN-13, UPC-A, Code 39 and more. Free, no upload, runs in your browser.">
+  <meta name="keywords" content="qr code generator free, barcode generator online, qr code with logo, frame qr code, wifi qr code, vcard qr code, email qr code, sms qr code, custom qr code, ean-13 barcode, code 128 barcode, upc barcode, micro qr code, rMQR code, download qr code png svg, qr code maker, scan me qr code">
   <meta name="robots" content="index, follow">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Office Tools">
-  <meta property="og:title" content="Free QR Code Generator — URL, Text, WiFi &amp; vCard">
-  <meta property="og:description" content="Generate QR codes for URLs, plain text, WiFi credentials (SSID + password), and vCard contacts. Customize size and download as PNG. Free, no account required, runs in your browser.">
+  <meta property="og:title" content="QR Code &amp; Barcode Generator — Logo, Frame, Custom Colors">
+  <meta property="og:description" content="Generate styled QR codes with logo and frame text. Also generate barcodes: Code 128, EAN-13, UPC-A. Free, browser-based.">
   <meta property="og:url" content="https://tools.grin.money/tools/qr-generator/">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Free QR Code Generator — URL, Text, WiFi &amp; vCard">
-  <meta name="twitter:description" content="Generate QR codes for URLs, plain text, WiFi credentials (SSID + password), and vCard contacts. Customize size and download as PNG. Free, no account required, runs in your browser.">
+  <meta name="twitter:title" content="QR Code &amp; Barcode Generator — Logo, Frame, Custom Colors">
+  <meta name="twitter:description" content="Styled QR codes with logo and frame text. Barcodes: Code 128, EAN-13, UPC-A. Free, no upload.">
   <link rel="canonical" href="https://tools.grin.money/tools/qr-generator/">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"QR Code Generator","description":"Generate QR codes for URLs, plain text, WiFi credentials (SSID + password), and vCard contacts. Customize size and download as PNG. Free, no account required, runs in your browser.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/qr-generator/"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"QR Code & Barcode Generator","description":"Generate QR codes for URLs, WiFi, vCard, email, SMS, location. Add logos and frame text. Generate barcodes: Code 128, EAN-13, UPC-A, Code 39. Free, browser-based.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/qr-generator/"}</script>
   <link rel="stylesheet" href="../../css/style.css">
   <style>
-    #qrPreview {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 220px;
-      background: #fff;
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius-lg);
-      margin: 1rem 0;
-      padding: 1.5rem;
+    /* ── Outer section tabs ── */
+    .section-tabs { display:flex; gap:.5rem; margin-bottom:1rem; border-bottom:2px solid var(--border); padding-bottom:0; }
+    .section-tab { background:none; border:none; padding:.6rem 1.2rem; font-size:.95rem; font-weight:600; color:var(--text-muted); cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-2px; transition:color .15s,border-color .15s; }
+    .section-tab.active { color:var(--primary); border-bottom-color:var(--primary); }
+    .section-panel { display:none; }
+    .section-panel.active { display:block; }
+
+    /* ── Preview area ── */
+    #qrPreview, #bcPreview {
+      display:flex; justify-content:center; align-items:center;
+      min-height:240px; background:#fff; border:1.5px solid var(--border);
+      border-radius:var(--radius-lg); margin:1rem 0; padding:1.5rem;
     }
-    #qrPreview canvas, #qrPreview img { max-width: 220px; max-height: 220px; }
-    #qrPlaceholder { color: var(--text-muted); text-align: center; font-size: .9rem; }
-    .color-row { display: flex; align-items: center; gap: .75rem; }
-    .color-row input[type=color] { width: 44px; height: 36px; border: 1.5px solid var(--border); border-radius: 6px; cursor: pointer; padding: 2px; background: var(--bg-card); }
+    #qrPreview canvas { max-width:100%; }
+    #bcPreview svg, #bcPreview canvas { max-width:100%; }
+    .preview-placeholder { color:var(--text-muted); text-align:center; font-size:.9rem; }
+
+    /* ── Color row ── */
+    .color-row { display:flex; align-items:center; gap:.75rem; }
+    .color-row input[type=color] { width:44px; height:36px; border:1.5px solid var(--border); border-radius:6px; cursor:pointer; padding:2px; background:var(--bg-card); flex-shrink:0; }
+
+    /* ── Logo upload ── */
+    .logo-upload-box { border:2px dashed var(--border); border-radius:var(--radius); padding:.75rem 1rem; cursor:pointer; text-align:center; font-size:.85rem; color:var(--text-muted); transition:border-color .2s; }
+    .logo-upload-box:hover { border-color:var(--primary); }
+    .logo-preview-row { display:flex; align-items:center; gap:.75rem; margin-top:.5rem; }
+    .logo-preview-row img { width:48px; height:48px; object-fit:contain; border:1px solid var(--border); border-radius:6px; background:#fff; }
+
+    /* ── QR types accordion ── */
+    .types-accordion { margin-top:1.5rem; }
+    .types-accordion summary { cursor:pointer; font-weight:600; padding:.5rem 0; list-style:none; display:flex; justify-content:space-between; align-items:center; user-select:none; }
+    .types-accordion summary::after { content:'▼'; font-size:.75rem; color:var(--text-muted); transition:transform .2s; }
+    .types-accordion[open] summary::after { transform:rotate(180deg); }
+    .types-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:.75rem; margin-top:.75rem; }
+    .type-card { background:var(--bg); border:1.5px solid var(--border); border-radius:var(--radius); padding:.75rem 1rem; }
+    .type-card h4 { margin:0 0 .25rem; font-size:.9rem; display:flex; align-items:center; gap:.4rem; }
+    .type-card p { margin:0; font-size:.8rem; color:var(--text-muted); line-height:1.5; }
+    .badge-support { font-size:.7rem; padding:.1rem .4rem; border-radius:99px; font-weight:600; }
+    .badge-ok { background:color-mix(in srgb,var(--success) 15%,transparent); color:var(--success); }
+    .badge-info { background:color-mix(in srgb,var(--primary) 12%,transparent); color:var(--primary); }
+    .badge-no { background:color-mix(in srgb,var(--text-muted) 12%,transparent); color:var(--text-muted); }
+
+    /* ── Barcode format note ── */
+    .bc-note { font-size:.8rem; color:var(--text-muted); margin-top:.3rem; }
   </style>
 </head>
 <body>
 
 <header class="site-header">
   <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
-  <span class="header-tool-name">QR Code Generator</span>
+  <span class="header-tool-name">QR &amp; Barcode Generator</span>
   <div class="header-actions">
     <button class="theme-toggle" id="themeToggle"></button>
   </div>
@@ -48,192 +76,710 @@
 
 <main class="tool-main">
   <div class="tool-header">
-    <h1>📱 QR Code Generator</h1>
-    <p>Generate QR codes for URLs, text, WiFi, or vCard contacts.</p>
+    <h1>📱 QR Code &amp; Barcode Generator</h1>
+    <p>Generate styled QR codes with logo and frame text, or create barcodes in multiple formats.</p>
   </div>
 
-  <div class="card" data-tabs>
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="urlTab">URL / Text</button>
-      <button class="tab-btn" data-tab="wifiTab">WiFi</button>
-      <button class="tab-btn" data-tab="vcardTab">vCard</button>
-    </div>
+  <!-- ── Outer tabs: QR Code / Barcode ── -->
+  <div class="section-tabs">
+    <button class="section-tab active" data-panel="qrPanel">📱 QR Code</button>
+    <button class="section-tab" data-panel="bcPanel">▌▌▌ Barcode</button>
+  </div>
 
-    <!-- URL / Text -->
-    <div class="tab-pane active" id="urlTab">
-      <div class="form-group">
-        <label>URL or Text</label>
-        <textarea id="urlInput" placeholder="https://example.com" style="min-height:90px"></textarea>
+  <!-- ════════════════ QR CODE PANEL ════════════════ -->
+  <div class="section-panel active" id="qrPanel">
+
+    <!-- Content type tabs -->
+    <div class="card" id="qrContentCard">
+      <div class="tabs" id="qrTabs">
+        <button class="tab-btn active" data-qtab="qtUrl">URL / Text</button>
+        <button class="tab-btn" data-qtab="qtWifi">WiFi</button>
+        <button class="tab-btn" data-qtab="qtVcard">vCard</button>
+        <button class="tab-btn" data-qtab="qtEmail">Email</button>
+        <button class="tab-btn" data-qtab="qtPhone">Phone / SMS</button>
+        <button class="tab-btn" data-qtab="qtLocation">Location</button>
       </div>
-    </div>
 
-    <!-- WiFi -->
-    <div class="tab-pane" id="wifiTab">
+      <!-- URL / Text -->
+      <div class="tab-pane active" id="qtUrl">
+        <div class="form-group">
+          <label>URL or Text</label>
+          <textarea id="urlInput" placeholder="https://example.com or any text…" style="min-height:90px"></textarea>
+        </div>
+      </div>
+
+      <!-- WiFi -->
+      <div class="tab-pane" id="qtWifi" style="display:none">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Network Name (SSID)</label>
+            <input type="text" id="wifiSsid" placeholder="MyWiFi">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="text" id="wifiPass" placeholder="password123">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Security Type</label>
+            <select id="wifiSec">
+              <option value="WPA">WPA / WPA2</option>
+              <option value="WEP">WEP</option>
+              <option value="">None (open)</option>
+            </select>
+          </div>
+          <div class="form-group" style="justify-content:flex-end;padding-top:1.4rem">
+            <label class="checkbox-row"><input type="checkbox" id="wifiHidden"> Hidden network</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- vCard -->
+      <div class="tab-pane" id="qtVcard" style="display:none">
+        <div class="form-row">
+          <div class="form-group"><label>First Name</label><input type="text" id="vcFirst" placeholder="John"></div>
+          <div class="form-group"><label>Last Name</label><input type="text" id="vcLast" placeholder="Doe"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Phone</label><input type="text" id="vcPhone" placeholder="+1 234 567 8900"></div>
+          <div class="form-group"><label>Email</label><input type="text" id="vcEmail" placeholder="john@example.com"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Website</label><input type="text" id="vcUrl" placeholder="https://example.com"></div>
+          <div class="form-group"><label>Organization</label><input type="text" id="vcOrg" placeholder="Company Inc."></div>
+        </div>
+        <div class="form-group"><label>Address</label><input type="text" id="vcAddr" placeholder="123 Main St, City, Country"></div>
+      </div>
+
+      <!-- Email -->
+      <div class="tab-pane" id="qtEmail" style="display:none">
+        <div class="form-group"><label>To (email address)</label><input type="text" id="emlTo" placeholder="recipient@example.com"></div>
+        <div class="form-group"><label>Subject</label><input type="text" id="emlSubj" placeholder="Hello!"></div>
+        <div class="form-group"><label>Body (optional)</label><textarea id="emlBody" placeholder="Message body…" style="min-height:70px"></textarea></div>
+      </div>
+
+      <!-- Phone / SMS -->
+      <div class="tab-pane" id="qtPhone" style="display:none">
+        <div class="form-group">
+          <label>Type</label>
+          <select id="phoneType">
+            <option value="tel">📞 Phone call</option>
+            <option value="sms">💬 SMS</option>
+            <option value="whatsapp">🟢 WhatsApp</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Phone Number</label><input type="text" id="phoneNum" placeholder="+1 234 567 8900"></div>
+        <div class="form-group" id="smsBodyRow" style="display:none">
+          <label>Message (optional)</label>
+          <textarea id="smsBody" placeholder="Pre-filled message…" style="min-height:70px"></textarea>
+        </div>
+      </div>
+
+      <!-- Location -->
+      <div class="tab-pane" id="qtLocation" style="display:none">
+        <div class="form-row">
+          <div class="form-group"><label>Latitude</label><input type="number" id="geoLat" placeholder="48.8584" step="any"></div>
+          <div class="form-group"><label>Longitude</label><input type="number" id="geoLng" placeholder="2.2945" step="any"></div>
+        </div>
+        <div class="form-group"><label>Label (optional)</label><input type="text" id="geoLabel" placeholder="Eiffel Tower"></div>
+        <p class="bc-note">Generates a <code>geo:</code> URI. Opens in Google Maps / Apple Maps when scanned.</p>
+      </div>
+    </div><!-- /content card -->
+
+    <!-- QR Options -->
+    <div class="card mt-2">
+      <strong>Appearance &amp; Style</strong>
+      <div class="form-row mt-2">
+        <div class="form-group">
+          <label>Size: <span id="sizeVal">250</span> px</label>
+          <input type="range" id="sizeSlider" min="150" max="600" value="250" step="10">
+        </div>
+        <div class="form-group">
+          <label>Error Correction</label>
+          <select id="ecLevel">
+            <option value="L">Low (7%) — smallest</option>
+            <option value="M" selected>Medium (15%)</option>
+            <option value="Q">Quartile (25%)</option>
+            <option value="H">High (30%) — recommended with logo</option>
+          </select>
+        </div>
+      </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Network Name (SSID)</label>
-          <input type="text" id="wifiSsid" placeholder="MyWiFi">
+          <label>QR Color</label>
+          <div class="color-row">
+            <input type="color" id="colorFg" value="#000000">
+            <input type="text" id="colorFgHex" value="#000000" style="flex:1" maxlength="7">
+          </div>
         </div>
         <div class="form-group">
-          <label>Password</label>
-          <input type="text" id="wifiPass" placeholder="password123">
+          <label>Background Color</label>
+          <div class="color-row">
+            <input type="color" id="colorBg" value="#ffffff">
+            <input type="text" id="colorBgHex" value="#ffffff" style="flex:1" maxlength="7">
+          </div>
         </div>
       </div>
-      <div class="form-group">
-        <label>Security Type</label>
-        <select id="wifiSec">
-          <option value="WPA">WPA/WPA2</option>
-          <option value="WEP">WEP</option>
-          <option value="">None (open)</option>
-        </select>
+
+      <!-- Frame text -->
+      <div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem">
+        <strong style="font-size:.9rem">Frame &amp; Text Decoration</strong>
+        <div class="form-row mt-2">
+          <div class="form-group">
+            <label>Top Text</label>
+            <input type="text" id="frameTopText" placeholder="e.g. Scan Me!" maxlength="40">
+          </div>
+          <div class="form-group">
+            <label>Bottom Text</label>
+            <input type="text" id="frameBottomText" placeholder="e.g. tools.grin.money" maxlength="40">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Text &amp; Frame Color</label>
+            <div class="color-row">
+              <input type="color" id="frameColor" value="#1a56db">
+              <input type="text" id="frameColorHex" value="#1a56db" style="flex:1" maxlength="7">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Frame Border</label>
+            <select id="frameBorder">
+              <option value="none">None</option>
+              <option value="solid">Solid</option>
+              <option value="rounded">Rounded</option>
+            </select>
+          </div>
+        </div>
       </div>
-      <label class="checkbox-row"><input type="checkbox" id="wifiHidden"><label for="wifiHidden">Hidden network</label></label>
+
+      <!-- Logo upload -->
+      <div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem">
+        <strong style="font-size:.9rem">Logo / Icon (optional)</strong>
+        <p class="bc-note" style="margin:.2rem 0 .6rem">Center logo on QR. Use <b>High</b> error correction when adding a logo.</p>
+        <div class="logo-upload-box" id="logoDropZone" onclick="document.getElementById('logoFileInput').click()">
+          📁 Click to upload logo (PNG, JPG, SVG)
+        </div>
+        <input type="file" id="logoFileInput" accept="image/*" style="display:none">
+        <div class="logo-preview-row" id="logoPreviewRow" style="display:none">
+          <img id="logoPreviewImg" src="" alt="logo preview">
+          <div style="flex:1">
+            <label style="font-size:.85rem">Logo size: <span id="logoSizeVal">25</span>% of QR</label>
+            <input type="range" id="logoSizeSlider" min="10" max="35" value="25" step="1" style="width:100%">
+          </div>
+          <button class="btn btn-secondary" id="removeLogoBtn" style="padding:.3rem .7rem;font-size:.8rem">✕ Remove</button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full mt-2" id="generateQrBtn">Generate QR Code</button>
     </div>
 
-    <!-- vCard -->
-    <div class="tab-pane" id="vcardTab">
+    <!-- QR Preview -->
+    <div class="card mt-2">
+      <strong>Preview</strong>
+      <div id="qrPreview">
+        <div class="preview-placeholder">📱 QR code will appear here</div>
+      </div>
+      <!-- Hidden render target for qrcodejs -->
+      <div id="qrHidden" style="position:absolute;left:-9999px;top:-9999px;visibility:hidden"></div>
+      <div id="qrDownloadBtns" style="display:none">
+        <div class="btn-group">
+          <button class="btn btn-primary" id="qrDownloadPng">⬇ PNG</button>
+          <button class="btn btn-secondary" id="qrDownloadSvg">⬇ SVG</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- QR Types Reference -->
+    <div class="card mt-2">
+      <details class="types-accordion">
+        <summary>📖 QR Code Types Reference</summary>
+        <div class="types-grid">
+          <div class="type-card">
+            <h4><span class="badge-support badge-ok">✓ Supported</span> QR Code Model 2</h4>
+            <p>The universal standard used by all phones today. Supports up to 4,296 alphanumeric characters. <b>This is what we generate.</b></p>
+          </div>
+          <div class="type-card">
+            <h4><span class="badge-support badge-ok">✓ Supported</span> Frame QR (Logo + Text)</h4>
+            <p>Standard Model 2 with a center logo and/or decorative text frame — a technique pioneered by Denso Wave. Use High error correction with logos.</p>
+          </div>
+          <div class="type-card">
+            <h4><span class="badge-support badge-info">ℹ Info only</span> QR Code Model 1</h4>
+            <p>Legacy predecessor to Model 2 (1994). Limited to 1,167 numeric chars. Virtually obsolete — no modern scanners require it and no browser JS library generates it.</p>
+          </div>
+          <div class="type-card">
+            <h4><span class="badge-support badge-info">ℹ Info only</span> Micro QR Code</h4>
+            <p>Compact variant (11×11 to 17×17 modules). Max 35 alphanumeric chars. Designed for tiny components and circuit boards. Requires specialized JS libraries not available via CDN.</p>
+          </div>
+          <div class="type-card">
+            <h4><span class="badge-support badge-no">⊘ Proprietary</span> rMQR Code</h4>
+            <p>Rectangular Micro QR — thin, elongated format by Denso Wave (2020). Fits on tubes, sleeves, and small labels. Patent-restricted; no public browser JS implementation exists.</p>
+          </div>
+          <div class="type-card">
+            <h4><span class="badge-support badge-no">⊘ Proprietary</span> SQRC</h4>
+            <p>Secure QR — standard Model 2 with an encrypted private data layer by Denso Wave. The encrypted portion requires a licensed reader. Not generatable in browser JS.</p>
+          </div>
+        </div>
+      </details>
+    </div>
+
+  </div><!-- /qrPanel -->
+
+  <!-- ════════════════ BARCODE PANEL ════════════════ -->
+  <div class="section-panel" id="bcPanel">
+
+    <div class="card">
+      <div class="form-group">
+        <label>Data to encode</label>
+        <input type="text" id="bcInput" placeholder="Enter text or numbers…">
+        <p class="bc-note" id="bcFormatNote">Code 128 — accepts letters, numbers and common symbols.</p>
+      </div>
       <div class="form-row">
-        <div class="form-group"><label>First Name</label><input type="text" id="vcFirst" placeholder="John"></div>
-        <div class="form-group"><label>Last Name</label><input type="text" id="vcLast" placeholder="Doe"></div>
+        <div class="form-group">
+          <label>Format</label>
+          <select id="bcFormat">
+            <optgroup label="Universal">
+              <option value="CODE128">Code 128 (auto — recommended)</option>
+              <option value="CODE39">Code 39</option>
+              <option value="codabar">Codabar</option>
+            </optgroup>
+            <optgroup label="Retail / Product">
+              <option value="EAN13">EAN-13 (13 digits)</option>
+              <option value="EAN8">EAN-8 (8 digits)</option>
+              <option value="UPC">UPC-A (12 digits)</option>
+              <option value="UPCE">UPC-E (8 digits)</option>
+            </optgroup>
+            <optgroup label="Shipping / Logistics">
+              <option value="ITF14">ITF-14 (14 digits)</option>
+              <option value="ITF">ITF (Interleaved 2 of 5)</option>
+            </optgroup>
+            <optgroup label="Other">
+              <option value="MSI">MSI Plessey</option>
+              <option value="pharmacode">Pharmacode (1–131070)</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Line Width: <span id="bcWidthVal">2</span></label>
+          <input type="range" id="bcWidth" min="1" max="4" value="2" step="0.5">
+        </div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Phone</label><input type="text" id="vcPhone" placeholder="+1234567890"></div>
-        <div class="form-group"><label>Email</label><input type="text" id="vcEmail" placeholder="john@example.com"></div>
-      </div>
-      <div class="form-group"><label>Website</label><input type="text" id="vcUrl" placeholder="https://example.com"></div>
-      <div class="form-group"><label>Organization</label><input type="text" id="vcOrg" placeholder="Company Inc."></div>
-    </div>
-  </div>
-
-  <!-- Options -->
-  <div class="card mt-2">
-    <strong>Options</strong>
-    <div class="form-row mt-2">
-      <div class="form-group">
-        <label>Size: <span id="sizeVal">200</span>px</label>
-        <input type="range" id="sizeSlider" min="100" max="400" value="200" step="10">
-      </div>
-      <div class="form-group">
-        <label>Error Correction</label>
-        <select id="ecLevel">
-          <option value="L">Low (7%)</option>
-          <option value="M" selected>Medium (15%)</option>
-          <option value="Q">Quartile (25%)</option>
-          <option value="H">High (30%)</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Foreground Color</label>
-        <div class="color-row">
-          <input type="color" id="colorFg" value="#000000">
-          <input type="text" id="colorFgHex" value="#000000" style="flex:1">
+        <div class="form-group">
+          <label>Height: <span id="bcHeightVal">100</span> px</label>
+          <input type="range" id="bcHeight" min="40" max="200" value="100" step="10">
+        </div>
+        <div class="form-group" style="padding-top:1.5rem">
+          <label class="checkbox-row"><input type="checkbox" id="bcDisplayValue" checked> Show value below barcode</label>
         </div>
       </div>
-      <div class="form-group">
-        <label>Background Color</label>
-        <div class="color-row">
-          <input type="color" id="colorBg" value="#ffffff">
-          <input type="text" id="colorBgHex" value="#ffffff" style="flex:1">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Bar Color</label>
+          <div class="color-row">
+            <input type="color" id="bcColorFg" value="#000000">
+            <input type="text" id="bcColorFgHex" value="#000000" style="flex:1" maxlength="7">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Background</label>
+          <div class="color-row">
+            <input type="color" id="bcColorBg" value="#ffffff">
+            <input type="text" id="bcColorBgHex" value="#ffffff" style="flex:1" maxlength="7">
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full mt-2" id="generateBcBtn">Generate Barcode</button>
+    </div>
+
+    <!-- Barcode Preview -->
+    <div class="card mt-2">
+      <strong>Preview</strong>
+      <div id="bcPreview">
+        <div class="preview-placeholder">▌▌▌ Barcode will appear here</div>
+      </div>
+      <svg id="bcSvg" style="display:none"></svg>
+      <div id="bcDownloadBtns" style="display:none" class="mt-2">
+        <div class="btn-group">
+          <button class="btn btn-primary" id="bcDownloadPng">⬇ PNG</button>
+          <button class="btn btn-secondary" id="bcDownloadSvg">⬇ SVG</button>
         </div>
       </div>
     </div>
-    <button class="btn btn-primary btn-full mt-2" id="generateBtn">Generate QR Code</button>
-  </div>
 
-  <!-- Preview + Download -->
-  <div class="card mt-2">
-    <strong>Preview</strong>
-    <div id="qrPreview">
-      <div id="qrPlaceholder">📱 QR code will appear here</div>
-      <div id="qrContainer" class="hidden"></div>
-    </div>
-    <div class="btn-group" id="downloadBtns" style="display:none">
-      <button class="btn btn-primary" id="downloadPngBtn">Download PNG</button>
-      <button class="btn btn-secondary" id="downloadSvgBtn">Download SVG</button>
-    </div>
-  </div>
+  </div><!-- /bcPanel -->
+
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js" crossorigin="anonymous"></script>
 <script src="../../js/common.js"></script>
 <script>
-document.getElementById('sizeSlider').addEventListener('input', e => {
-  document.getElementById('sizeVal').textContent = e.target.value;
-});
-// Sync color inputs
-['Fg','Bg'].forEach(c => {
-  document.getElementById('color'+c).addEventListener('input', e => {
-    document.getElementById('color'+c+'Hex').value = e.target.value;
-  });
-  document.getElementById('color'+c+'Hex').addEventListener('input', e => {
-    const val = e.target.value;
-    if (/^#[0-9a-fA-F]{6}$/.test(val)) document.getElementById('color'+c).value = val;
+// ── Theme ──
+initThemeToggle('themeToggle');
+
+// ── Outer section tabs ──
+document.querySelectorAll('.section-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.section-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.section-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.panel).classList.add('active');
   });
 });
 
-function getContent() {
-  const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
-  if (activeTab === 'urlTab') return document.getElementById('urlInput').value.trim();
-  if (activeTab === 'wifiTab') {
-    const ssid = document.getElementById('wifiSsid').value;
-    const pass = document.getElementById('wifiPass').value;
-    const sec  = document.getElementById('wifiSec').value;
+// ── QR content type tabs ──
+document.querySelectorAll('#qrTabs .tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#qrTabs .tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#qrContentCard .tab-pane').forEach(p => p.style.display = 'none');
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.qtab).style.display = '';
+  });
+});
+
+// ── Phone type: show SMS body row ──
+document.getElementById('phoneType').addEventListener('change', e => {
+  document.getElementById('smsBodyRow').style.display =
+    (e.target.value === 'sms' || e.target.value === 'whatsapp') ? '' : 'none';
+});
+
+// ── Sync color pickers ──
+function syncColors(pickerId, hexId) {
+  const picker = document.getElementById(pickerId);
+  const hex    = document.getElementById(hexId);
+  picker.addEventListener('input', () => hex.value = picker.value);
+  hex.addEventListener('input', () => {
+    if (/^#[0-9a-fA-F]{6}$/.test(hex.value)) picker.value = hex.value;
+  });
+}
+syncColors('colorFg', 'colorFgHex');
+syncColors('colorBg', 'colorBgHex');
+syncColors('frameColor', 'frameColorHex');
+syncColors('bcColorFg', 'bcColorFgHex');
+syncColors('bcColorBg', 'bcColorBgHex');
+
+// ── Sliders with display ──
+document.getElementById('sizeSlider').addEventListener('input', e =>
+  document.getElementById('sizeVal').textContent = e.target.value);
+document.getElementById('logoSizeSlider').addEventListener('input', e =>
+  document.getElementById('logoSizeVal').textContent = e.target.value);
+document.getElementById('bcWidth').addEventListener('input', e =>
+  document.getElementById('bcWidthVal').textContent = e.target.value);
+document.getElementById('bcHeight').addEventListener('input', e =>
+  document.getElementById('bcHeightVal').textContent = e.target.value);
+
+// ── Logo handling ──
+let logoDataUrl = null;
+document.getElementById('logoFileInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    logoDataUrl = ev.target.result;
+    document.getElementById('logoPreviewImg').src = logoDataUrl;
+    document.getElementById('logoPreviewRow').style.display = 'flex';
+    document.getElementById('logoDropZone').style.display = 'none';
+    // Auto-switch EC to H when logo is present
+    if (document.getElementById('ecLevel').value !== 'H') {
+      document.getElementById('ecLevel').value = 'H';
+    }
+  };
+  reader.readAsDataURL(file);
+});
+document.getElementById('removeLogoBtn').addEventListener('click', () => {
+  logoDataUrl = null;
+  document.getElementById('logoFileInput').value = '';
+  document.getElementById('logoPreviewRow').style.display = 'none';
+  document.getElementById('logoDropZone').style.display = '';
+});
+
+// ── Build QR content string ──
+function getQrContent() {
+  const activeTab = document.querySelector('#qrTabs .tab-btn.active').dataset.qtab;
+  if (activeTab === 'qtUrl') {
+    return document.getElementById('urlInput').value.trim();
+  }
+  if (activeTab === 'qtWifi') {
+    const ssid   = document.getElementById('wifiSsid').value;
+    const pass   = document.getElementById('wifiPass').value;
+    const sec    = document.getElementById('wifiSec').value;
     const hidden = document.getElementById('wifiHidden').checked ? 'true' : 'false';
     return `WIFI:T:${sec};S:${ssid};P:${pass};H:${hidden};;`;
   }
-  if (activeTab === 'vcardTab') {
+  if (activeTab === 'qtVcard') {
     const f = id => document.getElementById(id).value;
-    return `BEGIN:VCARD\nVERSION:3.0\nN:${f('vcLast')};${f('vcFirst')}\nFN:${f('vcFirst')} ${f('vcLast')}\nTEL:${f('vcPhone')}\nEMAIL:${f('vcEmail')}\nURL:${f('vcUrl')}\nORG:${f('vcOrg')}\nEND:VCARD`;
+    return [
+      'BEGIN:VCARD', 'VERSION:3.0',
+      `N:${f('vcLast')};${f('vcFirst')}`,
+      `FN:${f('vcFirst')} ${f('vcLast')}`,
+      `TEL:${f('vcPhone')}`, `EMAIL:${f('vcEmail')}`,
+      `URL:${f('vcUrl')}`, `ORG:${f('vcOrg')}`,
+      f('vcAddr') ? `ADR:;;${f('vcAddr')}` : '',
+      'END:VCARD'
+    ].filter(Boolean).join('\n');
+  }
+  if (activeTab === 'qtEmail') {
+    const to   = document.getElementById('emlTo').value.trim();
+    const subj = encodeURIComponent(document.getElementById('emlSubj').value);
+    const body = encodeURIComponent(document.getElementById('emlBody').value);
+    if (!to) return '';
+    return `mailto:${to}?subject=${subj}&body=${body}`;
+  }
+  if (activeTab === 'qtPhone') {
+    const type = document.getElementById('phoneType').value;
+    const num  = document.getElementById('phoneNum').value.replace(/\s/g, '');
+    const msg  = document.getElementById('smsBody').value;
+    if (!num) return '';
+    if (type === 'tel')       return `tel:${num}`;
+    if (type === 'sms')       return msg ? `smsto:${num}:${msg}` : `sms:${num}`;
+    if (type === 'whatsapp')  return `https://wa.me/${num.replace(/\+/g, '')}${msg ? '?text=' + encodeURIComponent(msg) : ''}`;
+  }
+  if (activeTab === 'qtLocation') {
+    const lat = document.getElementById('geoLat').value;
+    const lng = document.getElementById('geoLng').value;
+    if (!lat || !lng) return '';
+    const label = document.getElementById('geoLabel').value;
+    return label ? `geo:${lat},${lng}?q=${encodeURIComponent(label)}` : `geo:${lat},${lng}`;
   }
   return '';
 }
 
-let qrInstance = null;
-document.getElementById('generateBtn').addEventListener('click', () => {
-  const content = getContent();
-  if (!content) { alert('Please enter content to generate a QR code.'); return; }
+// ── Composite canvas builder (QR + logo + frame text) ──
+function buildComposite(qrCanvas) {
+  return new Promise(resolve => {
+    const qrSize    = qrCanvas.width;
+    const topText   = document.getElementById('frameTopText').value.trim();
+    const botText   = document.getElementById('frameBottomText').value.trim();
+    const frameClr  = document.getElementById('frameColorHex').value || '#1a56db';
+    const bgColor   = document.getElementById('colorBgHex').value || '#ffffff';
+    const border    = document.getElementById('frameBorder').value;
+    const logoSize  = parseInt(document.getElementById('logoSizeSlider').value) / 100;
+
+    const textPad   = 14;
+    const topPad    = topText  ? 36 : (border !== 'none' ? 12 : 0);
+    const botPad    = botText  ? 36 : (border !== 'none' ? 12 : 0);
+    const sidePad   = border !== 'none' ? 12 : 0;
+
+    const totalW = qrSize + sidePad * 2;
+    const totalH = qrSize + topPad + botPad;
+
+    const canvas  = document.createElement('canvas');
+    canvas.width  = totalW;
+    canvas.height = totalH;
+    const ctx     = canvas.getContext('2d');
+
+    // Background
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, totalW, totalH);
+
+    // Border
+    if (border !== 'none') {
+      ctx.strokeStyle = frameClr;
+      ctx.lineWidth   = 3;
+      if (border === 'rounded') {
+        const r = 14;
+        ctx.beginPath();
+        ctx.moveTo(r, 1.5);
+        ctx.lineTo(totalW - r, 1.5);
+        ctx.quadraticCurveTo(totalW - 1.5, 1.5, totalW - 1.5, r);
+        ctx.lineTo(totalW - 1.5, totalH - r);
+        ctx.quadraticCurveTo(totalW - 1.5, totalH - 1.5, totalW - r, totalH - 1.5);
+        ctx.lineTo(r, totalH - 1.5);
+        ctx.quadraticCurveTo(1.5, totalH - 1.5, 1.5, totalH - r);
+        ctx.lineTo(1.5, r);
+        ctx.quadraticCurveTo(1.5, 1.5, r, 1.5);
+        ctx.closePath();
+      } else {
+        ctx.strokeRect(1.5, 1.5, totalW - 3, totalH - 3);
+      }
+      ctx.stroke();
+    }
+
+    // QR code
+    ctx.drawImage(qrCanvas, sidePad, topPad);
+
+    // Top text
+    if (topText) {
+      ctx.font         = `bold 15px system-ui, sans-serif`;
+      ctx.fillStyle    = frameClr;
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(topText, totalW / 2, topPad / 2);
+    }
+
+    // Bottom text
+    if (botText) {
+      ctx.font         = `bold 15px system-ui, sans-serif`;
+      ctx.fillStyle    = frameClr;
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(botText, totalW / 2, qrSize + topPad + botPad / 2);
+    }
+
+    // Logo overlay
+    if (logoDataUrl) {
+      const img   = new Image();
+      img.onload  = () => {
+        const lPx  = qrSize * logoSize;
+        const lx   = sidePad + (qrSize - lPx) / 2;
+        const ly   = topPad  + (qrSize - lPx) / 2;
+        // White backing for logo
+        ctx.fillStyle = '#ffffff';
+        const pad = 4;
+        ctx.beginPath();
+        ctx.roundRect
+          ? ctx.roundRect(lx - pad, ly - pad, lPx + pad * 2, lPx + pad * 2, 6)
+          : ctx.rect(lx - pad, ly - pad, lPx + pad * 2, lPx + pad * 2);
+        ctx.fill();
+        ctx.drawImage(img, lx, ly, lPx, lPx);
+        resolve(canvas);
+      };
+      img.onerror = () => resolve(canvas);
+      img.src = logoDataUrl;
+    } else {
+      resolve(canvas);
+    }
+  });
+}
+
+// ── Generate QR ──
+let lastQrCanvas = null;
+document.getElementById('generateQrBtn').addEventListener('click', async () => {
+  const content = getQrContent();
+  if (!content) { alert('Please fill in the required fields.'); return; }
+
   const size = parseInt(document.getElementById('sizeSlider').value);
   const ec   = document.getElementById('ecLevel').value;
   const fg   = document.getElementById('colorFgHex').value || '#000000';
   const bg   = document.getElementById('colorBgHex').value || '#ffffff';
 
-  const container = document.getElementById('qrContainer');
-  container.innerHTML = '';
-  if (qrInstance) { try { qrInstance.clear(); } catch(e){} }
+  // Render into hidden container
+  const hidden = document.getElementById('qrHidden');
+  hidden.innerHTML = '';
+  try {
+    new QRCode(hidden, { text: content, width: size, height: size,
+      colorDark: fg, colorLight: bg,
+      correctLevel: QRCode.CorrectLevel[ec] || QRCode.CorrectLevel.M });
+  } catch(e) {
+    alert('QR generation failed. Try reducing content length or switching Error Correction to Low.'); return;
+  }
 
-  qrInstance = new QRCode(container, {
-    text: content,
-    width: size,
-    height: size,
-    colorDark: fg,
-    colorLight: bg,
-    correctLevel: QRCode.CorrectLevel[ec] || QRCode.CorrectLevel.M
-  });
+  // Wait a tick for qrcodejs to render canvas
+  await new Promise(r => setTimeout(r, 50));
+  const qrCanvas = hidden.querySelector('canvas');
+  if (!qrCanvas) { alert('QR generation failed.'); return; }
 
-  document.getElementById('qrPlaceholder').classList.add('hidden');
-  container.classList.remove('hidden');
-  document.getElementById('downloadBtns').style.display = '';
+  // Build composite
+  const composite = await buildComposite(qrCanvas);
+  lastQrCanvas = composite;
 
-  document.getElementById('downloadPngBtn').onclick = () => {
-    const canvas = container.querySelector('canvas');
-    if (!canvas) return;
+  const preview = document.getElementById('qrPreview');
+  preview.innerHTML = '';
+  preview.appendChild(composite);
+
+  document.getElementById('qrDownloadBtns').style.display = '';
+});
+
+// ── Download QR ──
+document.getElementById('qrDownloadPng').addEventListener('click', () => {
+  if (!lastQrCanvas) return;
+  const a = document.createElement('a');
+  a.download = 'qrcode.png';
+  a.href = lastQrCanvas.toDataURL('image/png');
+  a.click();
+});
+document.getElementById('qrDownloadSvg').addEventListener('click', () => {
+  if (!lastQrCanvas) return;
+  const w = lastQrCanvas.width, h = lastQrCanvas.height;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><image href="${lastQrCanvas.toDataURL()}" width="${w}" height="${h}"/></svg>`;
+  const a = document.createElement('a');
+  a.download = 'qrcode.svg';
+  a.href = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  a.click();
+});
+
+// ── Barcode format notes ──
+const BC_NOTES = {
+  CODE128: 'Code 128 — accepts letters, numbers and common symbols.',
+  CODE39:  'Code 39 — uppercase A–Z, 0–9 and - . $ / + % space.',
+  codabar: 'Codabar — digits 0–9 and - $ : / . + ; must start/end with A B C D.',
+  EAN13:   'EAN-13 — exactly 13 digits (last digit is check digit, auto-calculated).',
+  EAN8:    'EAN-8 — exactly 8 digits.',
+  UPC:     'UPC-A — exactly 12 digits.',
+  UPCE:    'UPC-E — exactly 8 digits.',
+  ITF14:   'ITF-14 — exactly 14 digits (used on shipping cartons).',
+  ITF:     'ITF — even number of digits only.',
+  MSI:     'MSI Plessey — digits 0–9.',
+  pharmacode: 'Pharmacode — integer between 3 and 131070.',
+};
+document.getElementById('bcFormat').addEventListener('change', e => {
+  document.getElementById('bcFormatNote').textContent = BC_NOTES[e.target.value] || '';
+});
+
+// ── Generate Barcode ──
+let lastBcSvg = null;
+document.getElementById('generateBcBtn').addEventListener('click', () => {
+  const val    = document.getElementById('bcInput').value.trim();
+  const fmt    = document.getElementById('bcFormat').value;
+  const width  = parseFloat(document.getElementById('bcWidth').value);
+  const height = parseInt(document.getElementById('bcHeight').value);
+  const show   = document.getElementById('bcDisplayValue').checked;
+  const fg     = document.getElementById('bcColorFgHex').value || '#000000';
+  const bg     = document.getElementById('bcColorBgHex').value || '#ffffff';
+
+  if (!val) { alert('Please enter data to encode.'); return; }
+
+  const svg = document.getElementById('bcSvg');
+  svg.removeAttribute('xmlns');
+  try {
+    JsBarcode(svg, val, {
+      format: fmt, width, height,
+      displayValue: show, lineColor: fg, background: bg,
+      margin: 10, fontSize: 14
+    });
+  } catch(e) {
+    alert(`Invalid input for ${fmt}.\n${BC_NOTES[fmt] || ''}`); return;
+  }
+
+  lastBcSvg = svg;
+  const preview = document.getElementById('bcPreview');
+  preview.innerHTML = '';
+  const clone = svg.cloneNode(true);
+  clone.style.display = '';
+  clone.style.maxWidth = '100%';
+  preview.appendChild(clone);
+  document.getElementById('bcDownloadBtns').style.display = '';
+});
+
+// ── Download Barcode ──
+document.getElementById('bcDownloadSvg').addEventListener('click', () => {
+  if (!lastBcSvg) return;
+  const data = new XMLSerializer().serializeToString(lastBcSvg);
+  const a = document.createElement('a');
+  a.download = 'barcode.svg';
+  a.href = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(data);
+  a.click();
+});
+document.getElementById('bcDownloadPng').addEventListener('click', () => {
+  if (!lastBcSvg) return;
+  const svgData = new XMLSerializer().serializeToString(lastBcSvg);
+  const img = new Image();
+  const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width  = img.naturalWidth  || parseInt(lastBcSvg.getAttribute('width'))  || 400;
+    canvas.height = img.naturalHeight || parseInt(lastBcSvg.getAttribute('height')) || 150;
+    canvas.getContext('2d').drawImage(img, 0, 0);
+    URL.revokeObjectURL(url);
     const a = document.createElement('a');
-    a.download = 'qrcode.png';
+    a.download = 'barcode.png';
     a.href = canvas.toDataURL('image/png');
     a.click();
   };
-  document.getElementById('downloadSvgBtn').onclick = () => {
-    const canvas = container.querySelector('canvas');
-    if (!canvas) return;
-    const s = size;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}"><image href="${canvas.toDataURL()}" width="${s}" height="${s}"/></svg>`;
-    const a = document.createElement('a');
-    a.download = 'qrcode.svg';
-    a.href = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-    a.click();
-  };
+  img.src = url;
 });
 </script>
 </body>
