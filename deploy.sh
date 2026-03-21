@@ -267,8 +267,10 @@ setup_cobalt() {
     [[ ! -d "$api_dir" ]] && api_dir="$COBALT_DIR/api"
     [[ ! -d "$api_dir" ]] && die "cobalt API directory not found in $COBALT_DIR — unexpected repo structure"
 
-    # Install Node.js dependencies from workspace root (resolves workspace: links)
-    (cd "$COBALT_DIR" && npm install --omit=dev) \
+    # Install Node.js dependencies from workspace root (resolves workspace: links).
+    # Do NOT use --omit=dev — cobalt's workspace setup resolves some runtime deps
+    # through the dev dependency tree (e.g. dotenv).
+    (cd "$COBALT_DIR" && npm install) \
         || die "npm install failed in $COBALT_DIR"
 
     # Write .env
@@ -326,7 +328,7 @@ sync_cobalt() {
     local api_dir="$COBALT_DIR/packages/api"
     [[ ! -d "$api_dir" ]] && api_dir="$COBALT_DIR/api"
     if [[ -d "$COBALT_DIR" ]]; then
-        (cd "$COBALT_DIR" && npm install --omit=dev) || true
+        (cd "$COBALT_DIR" && npm install) || true
         chown -R www-data:www-data "$COBALT_DIR"
     fi
     systemctl restart office-tools-cobalt 2>/dev/null || true
@@ -1681,7 +1683,7 @@ _admin_update_cobalt() {
     [[ ! -d "$api_dir" ]] && api_dir="$COBALT_DIR/api"
     if [[ -d "$COBALT_DIR" ]]; then
         info "Installing updated npm dependencies…"
-        (cd "$COBALT_DIR" && npm install --omit=dev) || warn "npm install failed"
+        (cd "$COBALT_DIR" && npm install) || warn "npm install failed"
         chown -R www-data:www-data "$COBALT_DIR"
     fi
 
