@@ -250,7 +250,7 @@ document.getElementById('shortenBtn').addEventListener('click', async () => {
 
   } catch (err) {
     let msg = err.message || '';
-    if (msg.includes('Missing or invalid collection') || msg.includes('Failed to fetch') || msg.includes('Load failed') || msg.includes('NetworkError')) {
+    if (msg.includes('Missing') || msg.includes('collection') || msg.includes('Failed to fetch') || msg.includes('Load failed') || msg.includes('NetworkError')) {
       msg = '⚙️ Backend not configured. This tool requires a PocketBase server with a "short_urls" collection. Update PB_URL in js/config.js and create the collection in your PocketBase admin.';
     }
     showError(msg);
