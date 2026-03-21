@@ -585,11 +585,14 @@ const COLLECTIONS = [
 async function main() {
   // Authenticate — try new API (PB 0.23+) then fall back to old
   let token = null;
-  for (const path of ['/api/superusers/auth-with-password', '/api/admins/auth-with-password']) {
+  const authPaths = ['/api/superusers/auth-with-password', '/api/admins/auth-with-password'];
+  for (const path of authPaths) {
     try {
       const r = await req('POST', path, { identity: email, password: pass });
+      console.log('  Auth ' + path + ' → HTTP ' + r.status);
       if (r.body && r.body.token) { token = r.body.token; break; }
-    } catch {}
+      if (r.status !== 404) console.error('  Auth error: ' + JSON.stringify(r.body));
+    } catch(e) { console.error('  Auth exception on ' + path + ': ' + e.message); }
   }
   if (!token) { console.error('AUTH_FAILED: could not authenticate with PocketBase'); process.exit(1); }
   console.log('  Authenticated with PocketBase');
