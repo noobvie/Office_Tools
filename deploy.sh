@@ -43,6 +43,7 @@ REPO_URL="https://github.com/noobvie/Office_Tools.git"
 REPO_DIR="/opt/office-tools/repo"
 WEB_ROOT="/var/www/office-tools"
 BACKEND_DIR="/opt/office-tools/backend"
+YT_SERVER_DIR="/opt/office-tools/yt-server"
 PB_DIR="/opt/office-tools/pocketbase"
 DEPLOY_CONF="/opt/office-tools/deploy.conf"
 LOG_DIR="/var/log/office-tools"
@@ -104,6 +105,38 @@ SETUP_BACKEND="${SETUP_BACKEND}"
 PB_ADMIN_EMAIL="${PB_ADMIN_EMAIL}"
 CONFEOF
     chmod 600 "$DEPLOY_CONF"
+}
+
+# ─── System timezone ──────────────────────────────────────────────────────────
+# Forces the server to UTC so logs, PocketBase records, and yt-server timestamps
+# are all consistent.  Browser-based tools are unaffected by server timezone —
+# they already use UTC JS methods internally.
+enforce_utc_timezone() {
+    section "Enforcing UTC system timezone"
+    local current
+    current=$(timedatectl show --property=Timezone --value 2>/dev/null \
+              || cat /etc/timezone 2>/dev/null \
+              || readlink /etc/localtime 2>/dev/null | sed 's|.*/zoneinfo/||' \
+              || echo "unknown")
+
+    if [[ "$current" == "UTC" ]]; then
+        info "System timezone is already UTC — nothing to change."
+        return 0
+    fi
+
+    warn "Current timezone: '${current}' — changing to UTC"
+    if command -v timedatectl &>/dev/null; then
+        timedatectl set-timezone UTC
+    elif [[ -f /usr/share/zoneinfo/UTC ]]; then
+        ln -sf /usr/share/zoneinfo/UTC /etc/localtime
+        echo "UTC" > /etc/timezone
+    else
+        warn "Cannot set timezone automatically — set it manually: timedatectl set-timezone UTC"
+        return 0
+    fi
+
+    success "Timezone set to UTC (was: ${current})"
+    info "All server processes and logs will now use UTC timestamps."
 }
 
 # ─── Package management ────────────────────────────────────────────────────────
@@ -183,6 +216,111 @@ install_nodejs() {
     success "Node.js $(node -v) installed"
 }
 
+# ─── yt-dlp + ffmpeg ──────────────────────────────────────────────────────────
+# Required by the yt-server (YouTube downloader backend).
+# yt-dlp: downloaded as a static binary from GitHub (no pip needed).
+# ffmpeg: installed via OS package manager (needed for MP3 + 1080p merging).
+install_ytdlp_ffmpeg() {
+    section "Installing yt-dlp + ffmpeg (YouTube downloader dependencies)"
+
+    # ── ffmpeg ──────────────────────────────────────────────────────────────
+    if command -v ffmpeg &>/dev/null; then
+        info "ffmpeg already installed: $(ffmpeg -version 2>&1 | head -1 | awk '{print $3}')"
+    else
+        info "Installing ffmpeg…"
+        if [[ "$OS_FAMILY" == "debian" ]]; then
+            pkg_install ffmpeg
+        else
+            # RHEL-family: ffmpeg lives in RPM Fusion (not in default repos).
+            # EPEL is already installed by install_base_packages.
+            local rhel_ver
+            rhel_ver=$(rpm -E %rhel 2>/dev/null || echo 9)
+            local rpm_fusion="https://download1.rpmfusion.org/free/el/rpmfusion-free-release-${rhel_ver}.noarch.rpm"
+            dnf install -y "$rpm_fusion" 2>/dev/null \
+                || warn "RPM Fusion install failed — trying dnf without it"
+            dnf install -y ffmpeg 2>/dev/null \
+                || warn "ffmpeg unavailable — MP3 conversion and 1080p merging will be disabled"
+        fi
+        command -v ffmpeg &>/dev/null \
+            && success "ffmpeg installed: $(ffmpeg -version 2>&1 | head -1)" \
+            || warn "ffmpeg not found — install manually if you need MP3 or 1080p"
+    fi
+
+    # ── yt-dlp (static binary, no pip required) ─────────────────────────────
+    info "Installing / updating yt-dlp from GitHub…"
+    curl -sSL \
+        "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp" \
+        -o /usr/local/bin/yt-dlp
+    chmod +x /usr/local/bin/yt-dlp
+    success "yt-dlp $(/usr/local/bin/yt-dlp --version 2>/dev/null) → /usr/local/bin/yt-dlp"
+}
+
+# ─── yt-server (YouTube download backend) ─────────────────────────────────────
+setup_yt_server() {
+    local domain="${1:-}"
+    section "Setting up yt-dlp server (YouTube download backend)"
+
+    # Copy files from repo
+    mkdir -p "$YT_SERVER_DIR"
+    rsync -a "$REPO_DIR/yt-server/" "$YT_SERVER_DIR/"
+    chown -R www-data:www-data "$YT_SERVER_DIR"
+
+    # Install Node.js dependencies
+    (cd "$YT_SERVER_DIR" && npm install --omit=dev) \
+        || die "npm install failed in $YT_SERVER_DIR"
+
+    # Set CORS origin to actual domain when known
+    local cors_origin="*"
+    [[ -n "$domain" ]] && cors_origin="https://${domain}"
+
+    # Create systemd service
+    cat > /etc/systemd/system/office-tools-yt.service << YTEOF
+[Unit]
+Description=Office Tools — yt-dlp Download Server
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=${YT_SERVER_DIR}
+ExecStart=/usr/bin/node server.js
+Environment=TZ=UTC
+Environment=PORT=9000
+Environment=HOST=127.0.0.1
+Environment=YTDLP=/usr/local/bin/yt-dlp
+Environment=CORS_ORIGIN=${cors_origin}
+Restart=on-failure
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+YTEOF
+
+    systemctl daemon-reload
+    systemctl enable office-tools-yt
+    systemctl restart office-tools-yt
+
+    sleep 2
+    if systemctl is-active --quiet office-tools-yt; then
+        success "yt-dlp server running on http://127.0.0.1:9000/"
+    else
+        warn "yt-dlp server failed to start — check: journalctl -u office-tools-yt -n 30"
+    fi
+}
+
+sync_yt_server() {
+    [[ -d "$REPO_DIR/yt-server" ]] || return 0
+    section "Syncing yt-dlp server"
+    rsync -a "$REPO_DIR/yt-server/" "$YT_SERVER_DIR/"
+    chown -R www-data:www-data "$YT_SERVER_DIR"
+    (cd "$YT_SERVER_DIR" && npm install --omit=dev) || true
+    systemctl restart office-tools-yt 2>/dev/null || true
+    success "yt-dlp server synced and restarted"
+}
+
 # ─── Repo & frontend ──────────────────────────────────────────────────────────
 pull_repo() {
     section "Pulling Office Tools from GitHub"
@@ -208,6 +346,7 @@ sync_frontend() {
         --exclude='.git' \
         --exclude='.gitignore' \
         --exclude='backend' \
+        --exclude='yt-server' \
         --exclude='deploy.sh' \
         --exclude='undeploy.sh' \
         --exclude='*.md' \
@@ -236,6 +375,10 @@ _patch_domain() {
     fi
     find "$dir" -name "*.html" -not -path "*/.git/*" \
         -exec sed -i "s|https://yourdomain\.com|https://${domain}|g" {} \;
+    # Patch domain in sitemap.xml so Google sees the real URLs
+    local sitemap="$dir/sitemap.xml"
+    [[ -f "$sitemap" ]] && \
+        sed -i "s|https://yourdomain\.com|https://${domain}|g" "$sitemap"
 }
 
 # ─── nginx config writers ──────────────────────────────────────────────────────
@@ -282,8 +425,21 @@ server {
         proxy_set_header   X-Forwarded-For   \$proxy_add_x_forwarded_for;
         proxy_set_header   X-Forwarded-Proto \$scheme;
     }
+    location ^~ /yt-api/ {
+        proxy_pass              http://127.0.0.1:9000/;
+        proxy_http_version      1.1;
+        proxy_set_header        Host              \$host;
+        proxy_set_header        X-Real-IP         \$remote_addr;
+        proxy_set_header        X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header        X-Forwarded-Proto \$scheme;
+        proxy_read_timeout      600s;
+        proxy_send_timeout      600s;
+        proxy_request_buffering off;
+        proxy_buffering         off;
+    }
     location ~ /\.                           { deny all; return 404; }
     location /backend/                       { deny all; return 404; }
+    location /yt-server/                     { deny all; return 404; }
     location ~ \.(env|sh|json|md|toml|log)$ { deny all; return 404; }
 }
 NGINXEOF
@@ -325,7 +481,7 @@ server {
     add_header X-Content-Type-Options    "nosniff"                always;
     add_header X-XSS-Protection          "1; mode=block"          always;
     add_header Referrer-Policy           "strict-origin-when-cross-origin" always;
-    add_header Permissions-Policy        "camera=(), microphone=(), geolocation=()" always;
+    add_header Permissions-Policy        "camera=(), microphone=(self), geolocation=()" always;
 
     gzip on; gzip_vary on;
     gzip_types text/plain text/css text/javascript application/javascript application/json image/svg+xml;
@@ -383,9 +539,22 @@ server {
         proxy_send_timeout    600s;
         proxy_request_buffering off;
     }
+    location ^~ /yt-api/ {
+        proxy_pass              http://127.0.0.1:9000/;
+        proxy_http_version      1.1;
+        proxy_set_header        Host              \$host;
+        proxy_set_header        X-Real-IP         \$remote_addr;
+        proxy_set_header        X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header        X-Forwarded-Proto \$scheme;
+        proxy_read_timeout      600s;
+        proxy_send_timeout      600s;
+        proxy_request_buffering off;
+        proxy_buffering         off;
+    }
 
     location ~ /\.                           { deny all; return 404; }
     location /backend/                       { deny all; return 404; }
+    location /yt-server/                     { deny all; return 404; }
     location ~ \.(env|sh|json|md|toml|log)$ { deny all; return 404; }
 }
 NGINXEOF
@@ -472,6 +641,7 @@ User=www-data
 Group=www-data
 WorkingDirectory=${PB_DIR}
 ExecStart=${PB_DIR}/pocketbase serve --http=127.0.0.1:8090
+Environment=TZ=UTC
 Restart=on-failure
 RestartSec=5s
 StandardOutput=journal
@@ -490,6 +660,7 @@ User=www-data
 Group=www-data
 WorkingDirectory=${BACKEND_DIR}
 ExecStart=/usr/bin/node grin-payment-server.js
+Environment=TZ=UTC
 EnvironmentFile=${BACKEND_DIR}/.env
 Restart=on-failure
 RestartSec=5s
@@ -646,6 +817,8 @@ print_summary() {
     echo -e "  ${BOLD}Site:${RESET}           https://${domain}/"
     echo -e "  ${BOLD}PocketBase UI:${RESET}  https://${domain}/_/"
     echo -e "  ${BOLD}PB API:${RESET}         https://${domain}/pb-api/"
+    echo -e "  ${BOLD}YT Downloader:${RESET}  https://${domain}/tools/yt-downloader/"
+    echo -e "  ${BOLD}YT API:${RESET}         https://${domain}/yt-api/   ${DIM}(yt-dlp server, port 9000)${RESET}"
     echo -e "  ${BOLD}Web root:${RESET}       ${WEB_ROOT}"
     echo -e "  ${BOLD}nginx config:${RESET}   ${NGINX_CONF_PATH}"
     echo -e "  ${BOLD}Repo:${RESET}           ${REPO_DIR}"
@@ -683,7 +856,7 @@ show_status() {
         echo -e "  ${DIM}○ Repo       : not cloned${RESET}"
     fi
 
-    local svcs=("nginx" "office-tools-pb" "office-tools-pay")
+    local svcs=("nginx" "office-tools-pb" "office-tools-pay" "office-tools-yt")
     for svc in "${svcs[@]}"; do
         if systemctl is-active --quiet "$svc" 2>/dev/null; then
             echo -e "  ${GREEN}●${RESET} ${svc}  ${DIM}running${RESET}"
@@ -701,8 +874,10 @@ opt_1_install_update() {
     section "Option 1 — Install / Update"
 
     echo -e "  This will:"
+    echo -e "    ${CYAN}·${RESET} Set system timezone  ${DIM}→ UTC (required for consistent timestamps)${RESET}"
     echo -e "    ${CYAN}·${RESET} Update OS packages   ${DIM}(${OS_FAMILY})${RESET}"
     echo -e "    ${CYAN}·${RESET} Install / update:    nginx · certbot · Node.js · git · curl"
+    echo -e "    ${CYAN}·${RESET} Install / update:    yt-dlp · ffmpeg · yt-server ${DIM}(YouTube downloader)${RESET}"
     echo -e "    ${CYAN}·${RESET} Pull latest code     ${DIM}(Office Tools GitHub)${RESET}"
     echo -e "    ${CYAN}·${RESET} Sync frontend files  ${DIM}→ $WEB_ROOT${RESET}"
     echo -e "    ${CYAN}·${RESET} Restart services     ${DIM}(if already configured)${RESET}"
@@ -716,12 +891,19 @@ opt_1_install_update() {
     (
         set -euo pipefail
         exec > >(tee "$logf") 2>&1
+        enforce_utc_timezone
         pkg_update_os
         install_base_packages
         install_nodejs
+        install_ytdlp_ffmpeg
         pull_repo
         load_conf
         sync_frontend "${DOMAIN:-}"
+        if [[ -d "$YT_SERVER_DIR/.git" ]] || [[ -f "$YT_SERVER_DIR/package.json" ]]; then
+            sync_yt_server
+        else
+            setup_yt_server
+        fi
         if [[ -n "$DOMAIN" ]]; then
             [[ -d "$BACKEND_DIR" ]] && sync_backend || true
             systemctl reload nginx 2>/dev/null || true
@@ -1104,6 +1286,338 @@ opt_5_update_repo() {
     press_enter
 }
 
+# ─── Option 6: Admin Tasks ────────────────────────────────────────────────────
+opt_6_admin_tasks() {
+    while true; do
+        show_banner
+        load_conf
+        section "Option 6 — Admin Tasks"
+
+        echo -e "    ${BOLD}a)${RESET}  Service Status       ${DIM}detailed status for all services${RESET}"
+        echo -e "    ${BOLD}b)${RESET}  Restart All Services ${DIM}nginx · PocketBase · payment · yt-server${RESET}"
+        echo -e "    ${BOLD}c)${RESET}  URLs & Ports         ${DIM}list all tool URLs, APIs, and listening ports${RESET}"
+        echo -e "    ${BOLD}d)${RESET}  Backup Database      ${DIM}tar PocketBase data → /opt/office-tools/backups/${RESET}"
+        echo -e "    ${BOLD}e)${RESET}  Restore Database     ${DIM}restore from a previous backup${RESET}"
+        echo -e "    ${BOLD}f)${RESET}  Clean Old Logs       ${DIM}delete deploy logs older than 30 days${RESET}"
+        echo -e "    ${BOLD}g)${RESET}  Purge Temp Files     ${DIM}yt-dlp temp downloads + file-share uploads${RESET}"
+        echo -e "  ${DIM}  ──────────────────────────────────────────────${RESET}"
+        echo -e "    ${BOLD}0)${RESET}  Back"
+        echo ""
+        echo -ne "  Choose [a-g / 0]: "; read -r _sub
+        echo ""
+
+        case "${_sub,,}" in
+            a)  _admin_service_status  ;;
+            b)  _admin_restart_all     ;;
+            c)  _admin_list_urls       ;;
+            d)  _admin_backup_db       ;;
+            e)  _admin_restore_db      ;;
+            f)  _admin_clean_logs      ;;
+            g)  _admin_purge_temp      ;;
+            0)  return 0               ;;
+            *)  warn "Invalid: $_sub"  ;;
+        esac
+    done
+}
+
+_admin_service_status() {
+    section "Service Status"
+    local svcs=("nginx" "office-tools-pb" "office-tools-pay" "office-tools-yt")
+    for svc in "${svcs[@]}"; do
+        if ! systemctl list-unit-files "${svc}.service" &>/dev/null 2>&1 \
+           || ! systemctl list-unit-files "${svc}.service" 2>/dev/null | grep -q "^${svc}"; then
+            echo -e "  ${DIM}○ %-22s not installed${RESET}" "$svc"
+            continue
+        fi
+        if systemctl is-active --quiet "$svc" 2>/dev/null; then
+            local uptime mem pid
+            pid=$(systemctl show -p MainPID --value "$svc" 2>/dev/null || echo "")
+            uptime=$(systemctl show -p ActiveEnterTimestamp --value "$svc" 2>/dev/null \
+                     | sed 's/ [A-Z]*$//' || echo "")
+            mem=""
+            if [[ -n "$pid" ]] && [[ "$pid" != "0" ]]; then
+                mem=$(ps -o rss= -p "$pid" 2>/dev/null | awk '{printf "%.1f MB", $1/1024}')
+            fi
+            printf "  ${GREEN}●${RESET} %-22s ${GREEN}running${RESET}" "$svc"
+            [[ -n "$uptime" ]] && printf "  since %s" "$uptime"
+            [[ -n "$mem"    ]] && printf "  |  mem: %s" "$mem"
+            echo ""
+        else
+            local reason
+            reason=$(systemctl show -p ActiveState --value "$svc" 2>/dev/null || echo "stopped")
+            printf "  ${YELLOW}●${RESET} %-22s ${YELLOW}%s${RESET}\n" "$svc" "$reason"
+            local last_err
+            last_err=$(journalctl -u "$svc" -n 3 --no-pager --output=cat 2>/dev/null | tail -1)
+            [[ -n "$last_err" ]] && echo -e "    ${DIM}Last log: ${last_err}${RESET}"
+        fi
+    done
+    echo ""
+
+    # Port listener table
+    echo -e "  ${BOLD}Listening ports:${RESET}"
+    echo -e "  ────────────────────────────────────────"
+    for port_svc in "80:nginx (HTTP)" "443:nginx (HTTPS)" "8090:PocketBase" "9000:yt-server" "8091:payment-server"; do
+        local port="${port_svc%%:*}" label="${port_svc#*:}"
+        if ss -tlnp 2>/dev/null | grep -q ":${port}\b"; then
+            echo -e "  ${GREEN}●${RESET} :${port}  ${label}"
+        else
+            echo -e "  ${DIM}○ :${port}  ${label} (not listening)${RESET}"
+        fi
+    done
+    echo ""
+    press_enter
+}
+
+_admin_restart_all() {
+    section "Restarting All Services"
+    local svcs=("nginx" "office-tools-pb" "office-tools-pay" "office-tools-yt")
+    local any=false
+    for svc in "${svcs[@]}"; do
+        if systemctl list-unit-files "${svc}.service" 2>/dev/null | grep -q "^${svc}"; then
+            any=true
+            echo -ne "  Restarting ${svc}… "
+            if systemctl restart "$svc" 2>/dev/null; then
+                echo -e "${GREEN}OK${RESET}"
+            else
+                echo -e "${YELLOW}FAILED${RESET}"
+                warn "Check: journalctl -u $svc -n 20"
+            fi
+        fi
+    done
+    $any || warn "No managed services found — run Option 1 to install first."
+    echo ""
+    press_enter
+}
+
+_admin_list_urls() {
+    load_conf
+    section "URLs, APIs & Ports"
+
+    if [[ -z "$DOMAIN" ]]; then
+        warn "No domain configured yet — run Option 2 first."
+        echo -e "  ${DIM}Services are running locally:${RESET}"
+    fi
+
+    local base="https://${DOMAIN:-<your-domain>}"
+
+    echo -e "  ${BOLD}Frontend (nginx → $WEB_ROOT)${RESET}"
+    echo -e "  ${CYAN}·${RESET} Main site      : ${base}/"
+    echo -e "  ${CYAN}·${RESET} All tools      : ${base}/tools/"
+    echo ""
+
+    echo -e "  ${BOLD}Reverse-proxy routes (nginx)${RESET}"
+    echo -e "  ${CYAN}·${RESET} YT Download API: ${base}/yt-api/             → 127.0.0.1:9000"
+    echo -e "  ${CYAN}·${RESET} PocketBase API  : ${base}/api/               → 127.0.0.1:8090"
+    echo -e "  ${CYAN}·${RESET} PocketBase UI   : ${base}/_/                 → 127.0.0.1:8090"
+    echo -e "  ${CYAN}·${RESET} Payment API     : ${base}/pay/               → 127.0.0.1:8091"
+    echo ""
+
+    echo -e "  ${BOLD}Internal services (not exposed directly)${RESET}"
+    echo -e "  ${DIM}·${RESET} nginx           : :80 (HTTP) / :443 (HTTPS)"
+    echo -e "  ${DIM}·${RESET} PocketBase      : 127.0.0.1:8090"
+    echo -e "  ${DIM}·${RESET} Payment server  : 127.0.0.1:8091"
+    echo -e "  ${DIM}·${RESET} yt-dlp server   : 127.0.0.1:9000"
+    echo ""
+
+    echo -e "  ${BOLD}Tool direct URLs${RESET}"
+    local tools=("currency" "loan-calculator" "tip-calculator" "yt-downloader"
+                 "url-shortener" "pastebin" "file-share" "ip-location"
+                 "password-generator" "qr-generator" "unit-converter" "timezone")
+    for t in "${tools[@]}"; do
+        echo -e "  ${DIM}·${RESET} ${base}/tools/${t}/"
+    done
+    echo ""
+
+    echo -e "  ${BOLD}Useful API endpoints${RESET}"
+    echo -e "  ${DIM}·${RESET} YT health check : ${base}/yt-api/health"
+    echo -e "  ${DIM}·${RESET} PocketBase health: http://127.0.0.1:8090/api/health"
+    echo ""
+
+    press_enter
+}
+
+_admin_backup_db() {
+    local backup_dir="/opt/office-tools/backups"
+    mkdir -p "$backup_dir"
+    section "Backup Database"
+
+    if [[ ! -x "$PB_DIR/pocketbase" ]]; then
+        warn "PocketBase not installed — nothing to back up."
+        press_enter; return 0
+    fi
+
+    local ts; ts=$(date +%Y%m%d_%H%M%S)
+    local backup_file="${backup_dir}/pb_backup_${ts}.tar.gz"
+
+    info "Stopping PocketBase briefly for a clean backup…"
+    systemctl stop office-tools-pb 2>/dev/null || true
+    sleep 1
+
+    tar -czf "$backup_file" -C "$PB_DIR" pb_data 2>/dev/null \
+        && success "Backup saved: $backup_file" \
+        || warn "Backup failed — check disk space and permissions"
+
+    info "Restarting PocketBase…"
+    systemctl start office-tools-pb 2>/dev/null || warn "PocketBase failed to restart"
+
+    # Show last 5 backups
+    echo ""
+    echo -e "  ${BOLD}Recent backups:${RESET}"
+    ls -lh "${backup_dir}"/pb_backup_*.tar.gz 2>/dev/null \
+        | tail -5 \
+        | awk '{printf "  · %s  (%s)\n", $NF, $5}' \
+        || echo -e "  ${DIM}(none)${RESET}"
+    echo ""
+    press_enter
+}
+
+_admin_restore_db() {
+    local backup_dir="/opt/office-tools/backups"
+    section "Restore Database"
+
+    if [[ ! -x "$PB_DIR/pocketbase" ]]; then
+        warn "PocketBase not installed."
+        press_enter; return 0
+    fi
+
+    # List backups
+    local backups=()
+    while IFS= read -r f; do
+        [[ -f "$f" ]] && backups+=("$f")
+    done < <(ls -t "${backup_dir}"/pb_backup_*.tar.gz 2>/dev/null)
+
+    if [[ "${#backups[@]}" -eq 0 ]]; then
+        warn "No backups found in ${backup_dir}."
+        press_enter; return 0
+    fi
+
+    echo -e "  ${BOLD}Available backups:${RESET}"
+    local i=1
+    for f in "${backups[@]}"; do
+        local sz; sz=$(du -sh "$f" 2>/dev/null | cut -f1)
+        printf "    ${CYAN}%d)${RESET}  %-50s %s\n" "$i" "$(basename "$f")" "$sz"
+        ((i++))
+    done
+    echo ""
+    echo -ne "  Select backup number (0 to cancel): "
+    read -r _sel
+    [[ "$_sel" == "0" ]] || [[ -z "$_sel" ]] && return 0
+
+    if ! [[ "$_sel" =~ ^[0-9]+$ ]] || (( _sel < 1 || _sel > ${#backups[@]} )); then
+        warn "Invalid selection."; press_enter; return 0
+    fi
+
+    local chosen="${backups[$(( _sel - 1 ))]}"
+    echo ""
+    echo -e "  ${YELLOW}${BOLD}WARNING: This will overwrite the current database with:${RESET}"
+    echo -e "  ${YELLOW}$(basename "$chosen")${RESET}"
+    echo ""
+    ask_proceed "Proceed" || return 0
+
+    info "Stopping PocketBase…"
+    systemctl stop office-tools-pb 2>/dev/null || true
+    sleep 1
+
+    info "Restoring backup…"
+    rm -rf "${PB_DIR}/pb_data"
+    tar -xzf "$chosen" -C "$PB_DIR" \
+        && success "Restore complete" \
+        || warn "Restore failed — check the backup file integrity"
+
+    chown -R www-data:www-data "$PB_DIR" 2>/dev/null || true
+
+    info "Restarting PocketBase…"
+    systemctl start office-tools-pb 2>/dev/null \
+        && success "PocketBase running" \
+        || warn "PocketBase failed to restart — check: journalctl -u office-tools-pb -n 20"
+    press_enter
+}
+
+_admin_clean_logs() {
+    section "Clean Old Logs"
+    mkdir -p "$LOG_DIR"
+
+    local count
+    count=$(find "$LOG_DIR" -type f -name "*.log" -mtime +30 2>/dev/null | wc -l)
+    echo -e "  Log directory : ${LOG_DIR}"
+    echo -e "  Total size    : $(du -sh "$LOG_DIR" 2>/dev/null | cut -f1)"
+    echo -e "  Logs > 30 days: ${count} file(s)"
+    echo ""
+
+    if [[ "$count" -eq 0 ]]; then
+        info "No logs older than 30 days — nothing to clean."
+        press_enter; return 0
+    fi
+
+    ask_proceed "Delete ${count} log file(s) older than 30 days" || return 0
+    find "$LOG_DIR" -type f -name "*.log" -mtime +30 -delete
+    success "Deleted ${count} old log file(s)."
+
+    # Also rotate nginx logs if present
+    if [[ -d /var/log/nginx ]]; then
+        local nginx_old
+        nginx_old=$(find /var/log/nginx -type f -name "*.log.*" -mtime +30 2>/dev/null | wc -l)
+        if [[ "$nginx_old" -gt 0 ]]; then
+            find /var/log/nginx -type f -name "*.log.*" -mtime +30 -delete
+            success "Deleted ${nginx_old} old nginx rotated log(s)."
+        fi
+    fi
+    press_enter
+}
+
+_admin_purge_temp() {
+    section "Purge Temp Files"
+    local purged=false
+
+    # ── yt-dlp temp downloads ──────────────────────────────────────────────
+    local yt_tmp_dir="${YTDL_TEMP_DIR:-/tmp}"
+    local yt_count yt_size
+    yt_count=$(find "$yt_tmp_dir" -maxdepth 1 -name "ytdl-*" 2>/dev/null | wc -l)
+    yt_size=$(find "$yt_tmp_dir" -maxdepth 1 -name "ytdl-*" 2>/dev/null \
+              -exec du -ch {} + 2>/dev/null | tail -1 | cut -f1 || echo "0")
+
+    echo -e "  ${BOLD}yt-dlp temp downloads${RESET}  (${yt_tmp_dir}/ytdl-*)"
+    echo -e "  Files : ${yt_count}   Size : ${yt_size}"
+
+    if [[ "$yt_count" -gt 0 ]]; then
+        echo -ne "  Delete these? [Y/n]: "; read -r _r; _r="${_r:-Y}"
+        if [[ "${_r,,}" == "y" ]]; then
+            find "$yt_tmp_dir" -maxdepth 1 -name "ytdl-*" -delete 2>/dev/null
+            success "Deleted ${yt_count} yt-dlp temp file(s)."
+            purged=true
+        fi
+    fi
+    echo ""
+
+    # ── File-share uploads ─────────────────────────────────────────────────
+    local uploads_dir="/opt/office-tools/data/uploads"
+    if [[ -d "$uploads_dir" ]]; then
+        local fs_count fs_size
+        fs_count=$(find "$uploads_dir" -type f 2>/dev/null | wc -l)
+        fs_size=$(du -sh "$uploads_dir" 2>/dev/null | cut -f1 || echo "0")
+
+        echo -e "  ${BOLD}File-share uploaded files${RESET}  (${uploads_dir})"
+        echo -e "  Files : ${fs_count}   Size : ${fs_size}"
+        echo -e "  ${DIM}Note: these are files shared via the File Share tool.${RESET}"
+        echo -e "  ${YELLOW}Warning: deleting removes files from active shares.${RESET}"
+
+        if [[ "$fs_count" -gt 0 ]]; then
+            echo -ne "  Delete ALL uploaded files? [y/N]: "; read -r _r; _r="${_r:-N}"
+            if [[ "${_r,,}" == "y" ]]; then
+                find "$uploads_dir" -type f -delete 2>/dev/null
+                success "Deleted ${fs_count} uploaded file(s)."
+                purged=true
+            fi
+        fi
+    else
+        echo -e "  ${DIM}File-share uploads dir not found — backend not installed.${RESET}"
+    fi
+    echo ""
+
+    $purged || info "Nothing was deleted."
+    press_enter
+}
+
 # ─── DEL: Delete ──────────────────────────────────────────────────────────────
 opt_del_delete() {
     show_banner
@@ -1144,12 +1658,13 @@ while true; do
     echo -e "    ${BOLD}3)${RESET}   Remove / Switch     ${DIM}remove or change active domain${RESET}"
     echo -e "    ${BOLD}4)${RESET}   Set Admin Account   ${DIM}set/reset PocketBase admin credentials${RESET}"
     echo -e "    ${BOLD}5)${RESET}   Update from Repo    ${DIM}pull specific branch · restart services${RESET}"
+    echo -e "    ${BOLD}6)${RESET}   Admin Tasks         ${DIM}status · restart · URLs · backup · cleanup${RESET}"
     echo -e "  ${DIM}  ──────────────────────────────────────────────${RESET}"
     echo -e "  ${RED}  DEL)${RESET} Delete              ${DIM}permanently remove Office Tools${RESET}"
     echo -e "    ${BOLD}0)${RESET}   Exit"
     echo -e "  ${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
-    echo -ne "  Choose [0-5 / del]: "; read -r _choice
+    echo -ne "  Choose [0-6 / del]: "; read -r _choice
     echo ""
 
     case "${_choice,,}" in
@@ -1158,6 +1673,7 @@ while true; do
         3)   opt_3_remove_switch  ;;
         4)   opt_4_set_admin      ;;
         5)   opt_5_update_repo    ;;
+        6)   opt_6_admin_tasks    ;;
         del) opt_del_delete; break ;;
         0)   echo -e "${DIM}Goodbye.${RESET}"; exit 0 ;;
         *)   warn "Invalid choice: $_choice" ;;

@@ -178,8 +178,10 @@ document.getElementById('diffBtn').addEventListener('click', () => {
   let workdays = 0;
   const start = a < b ? new Date(a) : new Date(b);
   const end   = a < b ? new Date(b) : new Date(a);
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    if (d.getDay() !== 0 && d.getDay() !== 6) workdays++;
+  // Use UTC methods: date inputs parse as UTC midnight, getDay() would return
+  // the previous day's weekday in UTC-1…UTC-12 timezones (Americas etc.).
+  for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    if (d.getUTCDay() !== 0 && d.getUTCDay() !== 6) workdays++;
   }
   document.getElementById('diffWorkdays').textContent = fmt(workdays);
   document.getElementById('diffResult').classList.remove('hidden');

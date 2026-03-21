@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Currency Converter — Office Tools</title>
-  <meta name="description" content="Convert between 40+ currencies with live exchange rates updated daily. Includes popular pairs (USD, EUR, GBP, JPY, AUD) and a quick-compare conversion table. Free, no login.">
-  <meta name="keywords" content="currency converter, exchange rate, USD to EUR, live forex rates, money converter, dollar euro, free currency calculator">
+  <title>Currency &amp; Crypto Converter — Live Rates for 40+ Fiat + BTC, ETH, XMR, GRIN</title>
+  <meta name="description" content="Convert 40+ fiat currencies and crypto (Bitcoin, Ethereum, Monero, Grin) with live exchange rates. Includes USD, EUR, GBP, JPY, BTC, ETH, XMR, GRIN and a quick-compare table. Free, no login.">
+  <meta name="keywords" content="currency converter, crypto converter, exchange rate, USD to BTC, bitcoin price calculator, ethereum converter, monero XMR price, grin GRIN price, USD to EUR, live forex rates, cryptocurrency converter, free currency calculator, bitcoin to usd, eth to usd">
   <meta name="robots" content="index, follow">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Office Tools">
-  <meta property="og:title" content="Free Currency Converter — Live Exchange Rates for 40+ Currencies">
-  <meta property="og:description" content="Convert between 40+ currencies with live exchange rates updated daily. Includes popular pairs (USD, EUR, GBP, JPY, AUD) and a quick-compare conversion table. Free, no login.">
+  <meta property="og:title" content="Currency &amp; Crypto Converter — Fiat + BTC, ETH, XMR, GRIN Live Rates">
+  <meta property="og:description" content="Convert 40+ fiat currencies and crypto (Bitcoin, Ethereum, Monero, Grin) with live rates. Free, no login.">
   <meta property="og:url" content="https://yourdomain.com/tools/currency/">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Free Currency Converter — Live Exchange Rates for 40+ Currencies">
-  <meta name="twitter:description" content="Convert between 40+ currencies with live exchange rates updated daily. Includes popular pairs (USD, EUR, GBP, JPY, AUD) and a quick-compare conversion table. Free, no login.">
+  <meta name="twitter:title" content="Currency &amp; Crypto Converter — Fiat + BTC, ETH, XMR, GRIN">
+  <meta name="twitter:description" content="Convert 40+ fiat currencies and crypto (Bitcoin, Ethereum, Monero, Grin) with live rates. Free, no login.">
   <link rel="canonical" href="https://yourdomain.com/tools/currency/">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Currency Converter","description":"Convert between 40+ currencies with live exchange rates updated daily. Includes popular pairs (USD, EUR, GBP, JPY, AUD) and a quick-compare conversion table. Free, no login.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://yourdomain.com/tools/currency/"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Currency & Crypto Converter","description":"Convert 40+ fiat currencies and crypto (Bitcoin BTC, Ethereum ETH, Monero XMR, Grin GRIN) with live exchange rates. Free, no login.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://yourdomain.com/tools/currency/"}</script>
   <link rel="stylesheet" href="../../css/style.css">
   <style>
     .converter-row {
@@ -111,6 +111,44 @@
     .offline-mode .online-only { display: none; }
 
     .flag { font-size: 1.1rem; }
+
+    /* ── Crypto price card ── */
+    .crypto-tabs {
+      display: flex;
+      gap: .4rem;
+      flex-wrap: wrap;
+      margin-bottom: .85rem;
+    }
+    .crypto-tab {
+      padding: .35rem 1rem;
+      border: 1.5px solid var(--border);
+      background: transparent;
+      border-radius: 6px;
+      font-size: .85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .15s;
+      color: var(--text-muted);
+      letter-spacing: .02em;
+    }
+    .crypto-tab:hover  { border-color: var(--primary); color: var(--primary); }
+    .crypto-tab.active { border-color: var(--primary); background: var(--primary); color: #fff; }
+
+    .cf-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .65rem .85rem;
+      border-radius: var(--radius);
+      background: var(--bg-secondary);
+      gap: 1rem;
+    }
+    .cf-left  { display: flex; flex-direction: column; gap: .1rem; }
+    .cf-right { display: flex; flex-direction: column; align-items: flex-end; gap: .1rem; }
+    .cf-code  { font-weight: 800; font-size: .9rem; }
+    .cf-name  { font-size: .75rem; color: var(--text-muted); }
+    .cf-value { font-family: monospace; font-weight: 800; font-size: 1.05rem; color: var(--primary); }
+    .cf-rev   { font-size: .72rem; color: var(--text-muted); font-family: monospace; }
   </style>
 </head>
 <body>
@@ -125,8 +163,8 @@
 
 <main class="tool-main">
   <div class="tool-header">
-    <h1>💱 Currency Converter</h1>
-    <p>Live exchange rates updated daily via <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener">exchangerate-api.com</a> (free tier).</p>
+    <h1>💱 Currency &amp; Crypto Converter</h1>
+    <p>Fiat rates via <a href="https://open.er-api.com" target="_blank" rel="noopener">open.er-api.com</a> · Crypto (BTC, ETH, XMR, GRIN) via <a href="https://www.coingecko.com" target="_blank" rel="noopener">CoinGecko</a> — both free, no API key.</p>
   </div>
 
   <div id="offlineNotice" class="alert alert-warning hidden">
@@ -196,11 +234,52 @@
       </table>
     </div>
   </div>
+
+  <!-- ── Crypto → Major Currencies ── -->
+  <div class="card mt-2">
+    <div class="flex-between" style="margin-bottom:.75rem">
+      <strong>🪙 Crypto → Major Currencies</strong>
+      <span style="font-size:.76rem;color:var(--text-muted)" id="cryptoTs"></span>
+    </div>
+
+    <!-- Crypto selector tabs -->
+    <div class="crypto-tabs">
+      <button class="crypto-tab active" data-crypto="BTC">₿ BTC</button>
+      <button class="crypto-tab" data-crypto="ETH">Ξ ETH</button>
+      <button class="crypto-tab" data-crypto="XMR">ɱ XMR</button>
+      <button class="crypto-tab" data-crypto="GRIN">◌ GRIN</button>
+    </div>
+
+    <!-- Amount input -->
+    <div class="form-group" style="margin-bottom:.85rem">
+      <label for="cryptoAmount">Amount</label>
+      <input type="number" id="cryptoAmount" value="1" min="0" step="any" style="max-width:180px">
+    </div>
+
+    <!-- Results: one row per major fiat -->
+    <div style="display:flex;flex-direction:column;gap:.4rem" id="cryptoRows"></div>
+
+    <p style="font-size:.75rem;color:var(--text-muted);margin-top:.75rem">
+      Prices via <a href="https://www.coingecko.com" target="_blank" rel="noopener" style="color:var(--primary)">CoinGecko</a> — cached 15 min. Click ↺ Refresh above to force update.
+    </p>
+  </div>
+
+  <div class="card mt-2" style="border-left:3px solid var(--warning,#f59e0b);background:var(--surface2,#1e1e1e)">
+    <p style="font-size:.78rem;color:var(--text-muted);margin:0;line-height:1.6">
+      <strong style="color:var(--text)">⚠ Disclaimer:</strong>
+      Exchange rates and crypto prices shown here are <strong>estimates for informational purposes only</strong>
+      and may be delayed or inaccurate. Do not use these figures for financial transactions, investments, or
+      legal/tax purposes. For accurate and up-to-date rates, always contact your <strong>bank, money transfer
+      provider, or crypto exchange</strong> directly. The operator of this tool accepts no liability for
+      decisions made based on the displayed data.
+    </p>
+  </div>
 </main>
 
 <script src="../../js/common.js"></script>
 <script>
 const CURRENCIES = {
+  // ── Fiat ──
   USD:'US Dollar', EUR:'Euro', GBP:'British Pound', JPY:'Japanese Yen',
   AUD:'Australian Dollar', CAD:'Canadian Dollar', CHF:'Swiss Franc',
   CNY:'Chinese Yuan', HKD:'Hong Kong Dollar', SGD:'Singapore Dollar',
@@ -216,8 +295,9 @@ const CURRENCIES = {
   KES:'Kenyan Shilling', GHS:'Ghanaian Cedi', UAH:'Ukrainian Hryvnia',
 };
 
-// Fallback rates (vs USD, approximate)
+// Fallback rates (vs USD, approximate — crypto updated by CoinGecko at runtime)
 const FALLBACK_RATES = {
+  // Fiat
   USD:1, EUR:0.92, GBP:0.79, JPY:149.5, AUD:1.53, CAD:1.36,
   CHF:0.90, CNY:7.24, HKD:7.82, SGD:1.34, INR:83.1, KRW:1325,
   MXN:17.2, BRL:4.97, ZAR:18.6, SEK:10.4, NOK:10.6, DKK:6.88,
@@ -225,7 +305,22 @@ const FALLBACK_RATES = {
   AED:3.67, SAR:3.75, TRY:30.5, RUB:88.5, PLN:4.0, CZK:22.9,
   HUF:357, ILS:3.7, CLP:918, COP:3950, ARS:870, EGP:30.9,
   NGN:1450, KES:153, GHS:12.5, UAH:37.8,
+  // Crypto: stored as "units per 1 USD" (= 1 / usdPrice)
+  // e.g. 1 USD ≈ 0.0000154 BTC  (at ~$65k/BTC)
+  BTC:  1 / 65000,
+  ETH:  1 / 3500,
+  XMR:  1 / 170,
+  GRIN: 1 / 0.035,   // 1 USD ≈ 28.57 GRIN  (at ~$0.035/GRIN)
 };
+
+// CoinGecko IDs for crypto → used to fetch live prices for the crypto card
+const CRYPTO_IDS     = { BTC:'bitcoin', ETH:'ethereum', XMR:'monero', GRIN:'grin' };
+const CRYPTO_DISPLAY = ['BTC', 'ETH', 'XMR', 'GRIN'];
+const MAJOR_FIATS    = ['USD', 'EUR', 'GBP', 'JPY', 'CNY'];
+const FIAT_SYMBOLS   = { USD:'$', EUR:'€', GBP:'£', JPY:'¥', CNY:'¥' };
+const FIAT_NAMES     = { USD:'US Dollar', EUR:'Euro', GBP:'British Pound', JPY:'Japanese Yen', CNY:'Chinese Yuan' };
+
+let activeCrypto = 'BTC';
 
 const POPULAR_PAIRS = [
   ['USD','EUR'],['USD','GBP'],['USD','JPY'],['EUR','GBP'],
@@ -235,6 +330,7 @@ const POPULAR_PAIRS = [
 
 let rates = null;
 let lastFetch = null;
+let cryptoLastFetch = null;
 
 // Build datalist + set defaults
 function buildSelects() {
@@ -251,6 +347,47 @@ function buildSelects() {
 function getCurrencyCode(val) {
   const m = String(val).trim().match(/^([A-Z]{3})\b/);
   return m ? m[1] : null;
+}
+
+// Fetch live crypto prices from CoinGecko (free, no API key)
+// Merges crypto rates into the shared `rates` object as "units per 1 USD"
+async function fetchCryptoRates() {
+  const cacheKey = 'ot-crypto-rates';
+  const cacheTs  = localStorage.getItem(`${cacheKey}-ts`);
+  const cacheAge = cacheTs ? (Date.now() - parseInt(cacheTs)) / 60000 : Infinity; // minutes
+
+  if (cacheAge < 15) {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      Object.assign(rates, parsed);
+      cryptoLastFetch = new Date(parseInt(cacheTs));
+      return;
+    }
+  }
+
+  try {
+    const ids = Object.values(CRYPTO_IDS).join(',');
+    const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
+    if (!res.ok) throw new Error('CoinGecko HTTP ' + res.status);
+    const data = await res.json();
+
+    const cryptoRates = {};
+    Object.entries(CRYPTO_IDS).forEach(([code, id]) => {
+      const usdPrice = data[id]?.usd;
+      if (usdPrice && usdPrice > 0) {
+        cryptoRates[code] = 1 / usdPrice; // "how many crypto per 1 USD"
+      }
+    });
+
+    Object.assign(rates, cryptoRates);
+    cryptoLastFetch = new Date();
+    localStorage.setItem(cacheKey, JSON.stringify(cryptoRates));
+    localStorage.setItem(`${cacheKey}-ts`, Date.now().toString());
+  } catch (e) {
+    // Fall back to FALLBACK_RATES crypto entries (already in rates)
+    console.warn('CoinGecko failed, using fallback crypto rates:', e.message);
+  }
 }
 
 async function fetchRates(base = 'USD') {
@@ -289,6 +426,13 @@ function convertAmount(amount, from, to) {
   return (amount / fromRate) * toRate;
 }
 
+function fmtFiat(value) {
+  return value.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: value > 1000 ? 0 : 4,
+  });
+}
+
 function doConvert() {
   const amount = parseFloat(document.getElementById('amountInput').value);
   const from   = getCurrencyCode(document.getElementById('fromCurrency').value);
@@ -298,19 +442,19 @@ function doConvert() {
   const result = convertAmount(amount, from, to);
   if (result === null) return;
 
-  const formatted = result.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: result > 1000 ? 0 : 4,
-  });
+  const formatted = fmtFiat(result);
+  const rate1     = convertAmount(1, from, to);
+  const rate1Rev  = convertAmount(1, to, from);
 
   document.getElementById('resultInput').value = result.toFixed(4);
   document.getElementById('resultAmount').textContent = `${formatted} ${to}`;
-  const rate1 = convertAmount(1, from, to);
   document.getElementById('rateInfo').textContent =
-    `1 ${from} = ${rate1.toFixed(4)} ${to}  ·  1 ${to} = ${(1/rate1).toFixed(4)} ${from}`;
+    `1 ${from} = ${fmtFiat(rate1)} ${to}  ·  1 ${to} = ${fmtFiat(rate1Rev)} ${from}`;
   document.getElementById('lastUpdated').textContent =
     lastFetch ? `Rates as of: ${lastFetch.toLocaleString()}` : 'Using fallback rates';
-  document.getElementById('copyResultBtn').onclick = () => copyText(formatted + ' ' + to, document.getElementById('copyResultBtn'));
+
+  document.getElementById('copyResultBtn').onclick = () =>
+    copyText(formatted + ' ' + to, document.getElementById('copyResultBtn'));
   renderQuickTable(from, to);
 }
 
@@ -321,7 +465,8 @@ function renderPopular() {
     const rate = convertAmount(1, a, b);
     const card = document.createElement('div');
     card.className = 'popular-card';
-    card.innerHTML = `<div class="pair">${a} / ${b}</div><div class="rate-val">${rate ? rate.toFixed(4) : '—'}</div>`;
+    const rateStr = rate ? fmtFiat(rate) : '—';
+    card.innerHTML = `<div class="pair">${a} / ${b}</div><div class="rate-val">${rateStr}</div>`;
     card.addEventListener('click', () => {
       document.getElementById('fromCurrency').value = `${a} — ${CURRENCIES[a]}`;
       document.getElementById('toCurrency').value   = `${b} — ${CURRENCIES[b]}`;
@@ -338,10 +483,66 @@ function renderQuickTable(from, to) {
   document.getElementById('tableHeader').textContent = `${from} → ${to}`;
   head.innerHTML = `<tr style="border-bottom:1.5px solid var(--border)"><th style="padding:.4rem .6rem;text-align:left">${from}</th><th style="padding:.4rem .6rem;text-align:left">${to}</th></tr>`;
   body.innerHTML = amounts.map((a, i) => {
-    const r = convertAmount(a, from, to);
+    const r  = convertAmount(a, from, to);
     const bg = i % 2 === 0 ? '' : `style="background:var(--bg-secondary)"`;
-    return `<tr ${bg}><td style="padding:.4rem .6rem;font-weight:600">${a.toLocaleString()}</td><td style="padding:.4rem .6rem;font-family:monospace">${r ? r.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'}</td></tr>`;
+    return `<tr ${bg}><td style="padding:.4rem .6rem;font-weight:600">${a.toLocaleString()}</td><td style="padding:.4rem .6rem;font-family:monospace">${r !== null ? fmtFiat(r) : '—'}</td></tr>`;
   }).join('');
+}
+
+/* ── Crypto price card ─────────────────────────────────────── */
+// Format a fiat value that represents the price of 1 unit of crypto
+// e.g.  65000 USD, 0.035 USD (for GRIN), ¥9,642,000 JPY
+function fmtCryptoPrice(value, fiat) {
+  const sym = FIAT_SYMBOLS[fiat] || '';
+  if (fiat === 'JPY' || fiat === 'CNY') {
+    // No decimals for yen / yuan prices over 1
+    return sym + (value >= 1 ? Math.round(value).toLocaleString('en-US') : value.toFixed(4));
+  }
+  if (value >= 10000)  return sym + Math.round(value).toLocaleString('en-US');
+  if (value >= 100)    return sym + value.toFixed(2);
+  if (value >= 1)      return sym + value.toFixed(4);
+  if (value >= 0.001)  return sym + value.toFixed(6);
+  return sym + value.toExponential(4);
+}
+
+function renderCryptoCard() {
+  if (!rates) return;
+  const amount = parseFloat(document.getElementById('cryptoAmount')?.value) || 1;
+
+  // Update tab active state
+  document.querySelectorAll('.crypto-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.crypto === activeCrypto));
+
+  const rows = MAJOR_FIATS.map(fiat => {
+    const value = convertAmount(amount, activeCrypto, fiat);
+    const formatted = value !== null ? fmtCryptoPrice(value, fiat) : '—';
+    // Rate line: 1 FIAT = X CRYPTO
+    const rev = convertAmount(1, fiat, activeCrypto);
+    let revStr = '—';
+    if (rev !== null) {
+      revStr = rev < 0.000001 ? rev.toExponential(3)
+             : rev < 0.001    ? rev.toFixed(8)
+             : rev < 1        ? rev.toFixed(6)
+             : rev.toFixed(4);
+    }
+    return `
+      <div class="cf-row">
+        <div class="cf-left">
+          <span class="cf-code">${fiat}</span>
+          <span class="cf-name">${FIAT_NAMES[fiat]}</span>
+        </div>
+        <div class="cf-right">
+          <span class="cf-value">${formatted}</span>
+          <span class="cf-rev">1 ${fiat} = ${revStr} ${activeCrypto}</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('cryptoRows').innerHTML = rows;
+
+  const ts = cryptoLastFetch ? cryptoLastFetch.toLocaleTimeString() : 'fallback';
+  const el = document.getElementById('cryptoTs');
+  if (el) el.textContent = `Updated: ${ts}`;
 }
 
 document.getElementById('swapBtn').addEventListener('click', () => {
@@ -362,17 +563,29 @@ document.getElementById('refreshBtn').addEventListener('click', async () => {
   const base = getCurrencyCode(document.getElementById('fromCurrency').value) || 'USD';
   localStorage.removeItem(`ot-rates-${base}`);
   localStorage.removeItem(`ot-rates-${base}-ts`);
+  localStorage.removeItem('ot-crypto-rates');
+  localStorage.removeItem('ot-crypto-rates-ts');
   document.getElementById('offlineNotice').classList.add('hidden');
   await fetchRates(base);
+  await fetchCryptoRates();
   doConvert();
   renderPopular();
+  renderCryptoCard();
 });
 
 async function init() {
   buildSelects();
   await fetchRates('USD');
+  await fetchCryptoRates();
   doConvert();
   renderPopular();
+  renderCryptoCard();
+
+  // Crypto card interactions
+  document.querySelectorAll('.crypto-tab').forEach(btn => {
+    btn.addEventListener('click', () => { activeCrypto = btn.dataset.crypto; renderCryptoCard(); });
+  });
+  document.getElementById('cryptoAmount')?.addEventListener('input', renderCryptoCard);
 }
 
 init();

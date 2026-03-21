@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Compressor &amp; Extractor — Free ZIP Tool, No Upload | Office Tools</title>
+  <meta name="description" content="Compress files into a ZIP archive or extract any ZIP — entirely in your browser. No file upload, no server, 100% private. Works offline.">
+  <meta name="keywords" content="file compressor online, zip files online, extract zip browser, compress zip no upload, online zip tool, free zip extractor, zip archive creator, browser zip tool, client-side zip, compress without software">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="File Compressor &amp; Extractor — Free ZIP Tool, No Upload">
+  <meta property="og:description" content="Create ZIP archives or extract any ZIP file entirely in your browser. No upload, no server — your files never leave your device.">
+  <meta property="og:url" content="https://yourdomain.com/tools/file-compressor/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="File Compressor &amp; Extractor — Free, No Upload">
+  <meta name="twitter:description" content="Compress files to ZIP or extract ZIP archives in your browser. No upload, no server, 100% private.">
+  <link rel="canonical" href="https://yourdomain.com/tools/file-compressor/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"File Compressor & Extractor","description":"Compress files into ZIP archives or extract any ZIP file entirely in your browser. No upload, no server — your files stay on your device.","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://yourdomain.com/tools/file-compressor/","featureList":["Create ZIP archives from multiple files","Extract ZIP contents in browser","No file upload required","100% client-side processing","Works offline"]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Does this tool upload my files to a server?","acceptedAnswer":{"@type":"Answer","text":"No. All compression and extraction happens entirely in your browser using JavaScript. Your files never leave your device."}},{"@type":"Question","name":"What file formats are supported?","acceptedAnswer":{"@type":"Answer","text":"You can create ZIP archives from any file type, and extract ZIP files. The tool uses JSZip which supports the standard ZIP format (DEFLATE compression)."}},{"@type":"Question","name":"Is there a file size limit?","acceptedAnswer":{"@type":"Answer","text":"There is no hard limit, but browser memory constrains large operations. We recommend keeping total file size under 200 MB for reliable performance."}}]}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    /* ── Tabs ── */
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 1.25rem;
+    }
+    .tab-btn {
+      padding: .6rem 1.4rem;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      font-size: .92rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all .15s;
+      font-size: .9rem;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--primary);
+      background: var(--primary-dim, color-mix(in srgb, var(--primary) 8%, transparent));
+      color: var(--primary);
+    }
+    .drop-zone .dz-icon { font-size: 2.2rem; margin-bottom: .5rem; }
+    .drop-zone .dz-hint { font-size: .78rem; margin-top: .35rem; color: var(--text-light); }
+    input[type="file"].hidden-file { display: none; }
+
+    /* ── File list ── */
+    .file-list { display: flex; flex-direction: column; gap: .35rem; margin-top: .75rem; }
+    .file-row {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      padding: .45rem .7rem;
+      background: var(--bg-secondary);
+      border-radius: 6px;
+      font-size: .85rem;
+    }
+    .file-row .fr-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-row .fr-size { color: var(--text-muted); font-size: .78rem; white-space: nowrap; }
+    .file-row .fr-del {
+      background: none; border: none; cursor: pointer;
+      color: var(--text-muted); font-size: 1rem; padding: 0 .2rem;
+      line-height: 1; transition: color .1s;
+    }
+    .file-row .fr-del:hover { color: var(--danger, #ef4444); }
+    .file-row .fr-dl {
+      background: none; border: none; cursor: pointer;
+      color: var(--primary); font-size: .78rem; white-space: nowrap;
+      padding: 0; text-decoration: underline;
+    }
+
+    /* ── Progress / status ── */
+    .status-bar {
+      margin-top: .75rem;
+      font-size: .85rem;
+      color: var(--text-muted);
+      min-height: 1.4rem;
+    }
+    .status-bar.ok  { color: var(--success, #22c55e); }
+    .status-bar.err { color: var(--danger, #ef4444); }
+
+    /* ── Privacy badge ── */
+    .privacy-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      font-size: .75rem;
+      color: var(--success, #22c55e);
+      background: color-mix(in srgb, var(--success, #22c55e) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--success, #22c55e) 25%, transparent);
+      border-radius: 50px;
+      padding: .2rem .7rem;
+    }
+
+    /* ── Options row ── */
+    .options-row {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      flex-wrap: wrap;
+      margin-top: .75rem;
+    }
+    .options-row label { font-size: .85rem; color: var(--text-muted); }
+    .options-row input[type="text"] { flex: 1; min-width: 160px; }
+    .size-warn {
+      font-size: .78rem;
+      color: var(--warning, #f59e0b);
+      margin-top: .4rem;
+      display: none;
+    }
+
+    /* ── Extract file list ── */
+    .ext-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: .5rem;
+    }
+    .ext-file-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      align-items: center;
+      gap: .5rem;
+      padding: .4rem .6rem;
+      border-bottom: 1px solid var(--border);
+      font-size: .85rem;
+    }
+    .ext-file-row:last-child { border-bottom: none; }
+    .ext-file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ext-file-size { color: var(--text-muted); font-size: .78rem; white-space: nowrap; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo">
+    <span class="logo-icon">🛠️</span> Office Tools
+  </a>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <div class="tool-header-icon">🗜️</div>
+    <div>
+      <h1 class="tool-title">File Compressor &amp; Extractor</h1>
+      <p class="tool-desc">Create ZIP archives or extract ZIP files — 100% in your browser.</p>
+    </div>
+    <span class="privacy-badge">🔒 Files never leave your device</span>
+  </div>
+
+  <!-- ── Tab bar ── -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="compress">🗜️ Compress</button>
+    <button class="tab-btn"        data-tab="extract" >📂 Extract</button>
+  </div>
+
+  <!-- ══════════════════════════════ COMPRESS TAB ══════════════════════════════ -->
+  <div class="tab-panel active" id="tabCompress">
+    <div class="card">
+      <!-- Drop zone -->
+      <div class="drop-zone" id="compDrop">
+        <div class="dz-icon">📁</div>
+        <div>Drag &amp; drop files here, or <strong>click to browse</strong></div>
+        <div class="dz-hint">Any file type · Multiple files allowed · Folders not supported</div>
+      </div>
+      <input type="file" id="compFileInput" class="hidden-file" multiple>
+
+      <!-- Size warning -->
+      <div class="size-warn" id="compSizeWarn">
+        ⚠ Total size exceeds 200 MB — compression may be slow or fail depending on your browser's available memory.
+      </div>
+
+      <!-- File list -->
+      <div class="file-list" id="compFileList"></div>
+
+      <!-- Options -->
+      <div class="options-row" id="compOptions" style="display:none">
+        <label for="compFilename">Archive name:</label>
+        <input type="text" id="compFilename" value="archive.zip" spellcheck="false">
+        <label style="display:flex;align-items:center;gap:.35rem;cursor:pointer">
+          <input type="checkbox" id="compCompress" checked>
+          Compress (DEFLATE)
+        </label>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex-between mt-1" id="compActions" style="display:none">
+        <button class="btn btn-secondary" id="compClear">✕ Clear all</button>
+        <button class="btn btn-primary"   id="compCreate">🗜️ Create ZIP</button>
+      </div>
+
+      <div class="status-bar" id="compStatus"></div>
+    </div>
+
+    <!-- Info card -->
+    <div class="card mt-2" style="font-size:.82rem;color:var(--text-muted);line-height:1.7">
+      <strong style="color:var(--text)">ℹ How it works</strong><br>
+      Select any files — they are bundled into a <code>.zip</code> archive using
+      <strong>DEFLATE</strong> compression entirely in your browser via JSZip.
+      The archive is generated in memory and downloaded directly — no upload, no server, no account.
+      <br><br>
+      <strong>Tip:</strong> For files already compressed (JPG, MP4, MP3, PDF) uncheck
+      <em>Compress (DEFLATE)</em> — it won't reduce their size and wastes time.
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════ EXTRACT TAB ══════════════════════════════ -->
+  <div class="tab-panel" id="tabExtract">
+    <div class="card">
+      <!-- Drop zone -->
+      <div class="drop-zone" id="extDrop">
+        <div class="dz-icon">📦</div>
+        <div>Drag &amp; drop a <strong>.zip</strong> file here, or <strong>click to browse</strong></div>
+        <div class="dz-hint">ZIP format · One archive at a time</div>
+      </div>
+      <input type="file" id="extFileInput" class="hidden-file" accept=".zip">
+
+      <div class="status-bar" id="extStatus"></div>
+
+      <!-- Results -->
+      <div id="extResults" style="display:none">
+        <div class="ext-header mt-1">
+          <strong id="extTitle"></strong>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-secondary btn-sm" id="extDownloadAll">⬇ Download All</button>
+            <button class="btn btn-secondary btn-sm" id="extClear">✕ Clear</button>
+          </div>
+        </div>
+        <div id="extFileList" style="border:1px solid var(--border);border-radius:var(--radius)"></div>
+      </div>
+    </div>
+
+    <div class="card mt-2" style="font-size:.82rem;color:var(--text-muted);line-height:1.7">
+      <strong style="color:var(--text)">ℹ Supported formats</strong><br>
+      This tool extracts standard <strong>ZIP</strong> archives (including those created by Windows, macOS,
+      Linux, 7-Zip, WinRAR, and this tool). Password-protected ZIP files are not supported.
+      For other formats (.rar, .7z, .tar.gz), use a desktop application like
+      <a href="https://www.7-zip.org" target="_blank" rel="noopener" style="color:var(--primary)">7-Zip</a> (free).
+    </div>
+  </div>
+
+</main>
+
+<!-- JSZip via CDN -->
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+  initThemeToggle('themeToggle');
+
+  /* ── Tab switching ─────────────────────────────────── */
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab' + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add('active');
+    });
+  });
+
+  /* ═══════════════════════════════════════════════════════
+     COMPRESS
+  ═══════════════════════════════════════════════════════ */
+  const SIZE_WARN_BYTES = 200 * 1024 * 1024; // 200 MB
+  let compFiles = []; // Array of File objects
+
+  const compDrop      = document.getElementById('compDrop');
+  const compFileInput = document.getElementById('compFileInput');
+  const compFileList  = document.getElementById('compFileList');
+  const compSizeWarn  = document.getElementById('compSizeWarn');
+  const compOptions   = document.getElementById('compOptions');
+  const compActions   = document.getElementById('compActions');
+  const compStatus    = document.getElementById('compStatus');
+  const compFilename  = document.getElementById('compFilename');
+  const compCompress  = document.getElementById('compCompress');
+
+  function fmtSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+  }
+
+  function renderCompList() {
+    compFileList.innerHTML = '';
+    if (!compFiles.length) {
+      compOptions.style.display = 'none';
+      compActions.style.display = 'none';
+      compSizeWarn.style.display = 'none';
+      return;
+    }
+    const total = compFiles.reduce((s, f) => s + f.size, 0);
+    compSizeWarn.style.display = total > SIZE_WARN_BYTES ? '' : 'none';
+    compOptions.style.display = '';
+    compActions.style.display = '';
+
+    compFiles.forEach((f, i) => {
+      const row = document.createElement('div');
+      row.className = 'file-row';
+      row.innerHTML = `<span class="fr-name" title="${f.name}">📄 ${f.name}</span>
+        <span class="fr-size">${fmtSize(f.size)}</span>
+        <button class="fr-del" data-i="${i}" title="Remove">✕</button>`;
+      compFileList.appendChild(row);
+    });
+    compFileList.querySelectorAll('.fr-del').forEach(btn => {
+      btn.addEventListener('click', () => {
+        compFiles.splice(Number(btn.dataset.i), 1);
+        renderCompList();
+        compStatus.textContent = '';
+        compStatus.className = 'status-bar';
+      });
+    });
+  }
+
+  function addCompFiles(fileList) {
+    const existing = new Set(compFiles.map(f => f.name + f.size));
+    Array.from(fileList).forEach(f => {
+      if (!existing.has(f.name + f.size)) compFiles.push(f);
+    });
+    renderCompList();
+    compStatus.textContent = '';
+    compStatus.className = 'status-bar';
+  }
+
+  // Drop zone
+  compDrop.addEventListener('click', () => compFileInput.click());
+  compFileInput.addEventListener('change', e => addCompFiles(e.target.files));
+  compDrop.addEventListener('dragover', e => { e.preventDefault(); compDrop.classList.add('drag-over'); });
+  compDrop.addEventListener('dragleave', () => compDrop.classList.remove('drag-over'));
+  compDrop.addEventListener('drop', e => {
+    e.preventDefault();
+    compDrop.classList.remove('drag-over');
+    addCompFiles(e.dataTransfer.files);
+  });
+
+  // Clear
+  document.getElementById('compClear').addEventListener('click', () => {
+    compFiles = [];
+    compFileInput.value = '';
+    renderCompList();
+    compStatus.textContent = '';
+    compStatus.className = 'status-bar';
+  });
+
+  // Create ZIP
+  document.getElementById('compCreate').addEventListener('click', async () => {
+    if (!compFiles.length) return;
+    const btn = document.getElementById('compCreate');
+    btn.disabled = true;
+    compStatus.textContent = '⏳ Building archive…';
+    compStatus.className = 'status-bar';
+
+    try {
+      const zip = new JSZip();
+      const useCompression = compCompress.checked;
+
+      for (const f of compFiles) {
+        const data = await f.arrayBuffer();
+        zip.file(f.name, data, {
+          compression: useCompression ? 'DEFLATE' : 'STORE',
+          compressionOptions: useCompression ? { level: 6 } : undefined
+        });
+      }
+
+      compStatus.textContent = '⏳ Generating ZIP…';
+      const blob = await zip.generateAsync({
+        type: 'blob',
+        compression: useCompression ? 'DEFLATE' : 'STORE',
+        compressionOptions: useCompression ? { level: 6 } : undefined,
+        streamFiles: true
+      }, meta => {
+        compStatus.textContent = `⏳ Compressing… ${meta.percent.toFixed(0)}%`;
+      });
+
+      // Ensure .zip extension
+      let name = compFilename.value.trim() || 'archive';
+      if (!name.toLowerCase().endsWith('.zip')) name += '.zip';
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = name; a.click();
+      URL.revokeObjectURL(url);
+
+      compStatus.textContent = `✅ Done — ${name} (${fmtSize(blob.size)})`;
+      compStatus.className = 'status-bar ok';
+    } catch (err) {
+      compStatus.textContent = '❌ Error: ' + err.message;
+      compStatus.className = 'status-bar err';
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  /* ═══════════════════════════════════════════════════════
+     EXTRACT
+  ═══════════════════════════════════════════════════════ */
+  const extDrop      = document.getElementById('extDrop');
+  const extFileInput = document.getElementById('extFileInput');
+  const extStatus    = document.getElementById('extStatus');
+  const extResults   = document.getElementById('extResults');
+  const extFileList  = document.getElementById('extFileList');
+  const extTitle     = document.getElementById('extTitle');
+  let extractedZip   = null;
+
+  async function loadZip(file) {
+    extStatus.textContent = `⏳ Reading ${file.name}…`;
+    extStatus.className = 'status-bar';
+    extResults.style.display = 'none';
+    extFileList.innerHTML = '';
+
+    try {
+      const data = await file.arrayBuffer();
+      const zip = await JSZip.loadAsync(data);
+      extractedZip = zip;
+
+      const entries = [];
+      zip.forEach((path, entry) => {
+        if (!entry.dir) entries.push({ path, entry });
+      });
+
+      if (!entries.length) {
+        extStatus.textContent = '⚠ Archive is empty or contains only folders.';
+        extStatus.className = 'status-bar err';
+        return;
+      }
+
+      // Sort folders first, then by path
+      entries.sort((a, b) => a.path.localeCompare(b.path));
+
+      extTitle.textContent = `${file.name} — ${entries.length} file${entries.length !== 1 ? 's' : ''}`;
+
+      entries.forEach(({ path, entry }) => {
+        const row = document.createElement('div');
+        row.className = 'ext-file-row';
+        const parts = path.split('/');
+        const fname = parts.pop();
+        const folder = parts.join('/');
+        row.innerHTML = `
+          <span class="ext-file-name" title="${path}">
+            ${folder ? `<span style="color:var(--text-muted);font-size:.75rem">${folder}/</span>` : ''}${fname}
+          </span>
+          <span class="ext-file-size" id="size-${CSS.escape(path)}">…</span>
+          <button class="fr-dl" data-path="${path}">⬇ Save</button>`;
+        extFileList.appendChild(row);
+
+        // Load size lazily
+        entry.async('arraybuffer').then(buf => {
+          const el = document.getElementById('size-' + CSS.escape(path));
+          if (el) el.textContent = fmtSize(buf.byteLength);
+        }).catch(() => {});
+      });
+
+      // Wire individual download buttons
+      extFileList.querySelectorAll('.fr-dl').forEach(btn => {
+        btn.addEventListener('click', () => dlEntry(btn.dataset.path));
+      });
+
+      extStatus.textContent = '';
+      extStatus.className = 'status-bar';
+      extResults.style.display = '';
+    } catch (err) {
+      extStatus.textContent = '❌ ' + (err.message.includes('password') ? 'Password-protected ZIPs are not supported.' : 'Could not read ZIP: ' + err.message);
+      extStatus.className = 'status-bar err';
+    }
+  }
+
+  async function dlEntry(path) {
+    try {
+      const buf = await extractedZip.file(path).async('arraybuffer');
+      const blob = new Blob([buf]);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = path.split('/').pop();
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Could not extract file: ' + err.message);
+    }
+  }
+
+  document.getElementById('extDownloadAll').addEventListener('click', async () => {
+    if (!extractedZip) return;
+    const btn = document.getElementById('extDownloadAll');
+    btn.disabled = true;
+    extStatus.textContent = '⏳ Preparing download…';
+    extStatus.className = 'status-bar';
+
+    try {
+      const blob = await extractedZip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = extTitle.textContent.split(' —')[0];
+      a.click();
+      URL.revokeObjectURL(url);
+      extStatus.textContent = '✅ Download started.';
+      extStatus.className = 'status-bar ok';
+    } catch (err) {
+      extStatus.textContent = '❌ ' + err.message;
+      extStatus.className = 'status-bar err';
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('extClear').addEventListener('click', () => {
+    extractedZip = null;
+    extFileInput.value = '';
+    extFileList.innerHTML = '';
+    extResults.style.display = 'none';
+    extStatus.textContent = '';
+    extStatus.className = 'status-bar';
+  });
+
+  // Drop zone
+  extDrop.addEventListener('click', () => extFileInput.click());
+  extFileInput.addEventListener('change', e => { if (e.target.files[0]) loadZip(e.target.files[0]); });
+  extDrop.addEventListener('dragover', e => { e.preventDefault(); extDrop.classList.add('drag-over'); });
+  extDrop.addEventListener('dragleave', () => extDrop.classList.remove('drag-over'));
+  extDrop.addEventListener('drop', e => {
+    e.preventDefault();
+    extDrop.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f) loadZip(f);
+  });
+</script>
+</body>
+</html>

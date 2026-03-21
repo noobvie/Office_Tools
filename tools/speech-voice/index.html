@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Speech to Text &amp; Text to Speech — Free, EN/FR/ES, No Upload | Office Tools</title>
+  <meta name="description" content="Transcribe your microphone or audio files to text, or convert text to speech in English, French, and Spanish — entirely in your browser. No upload, no server, 100% private.">
+  <meta name="keywords" content="speech to text online free, voice to text browser, text to speech English French Spanish, transcribe audio browser, no upload speech recognition, whisper ai browser, microphone transcription, TTS online free, audio transcription tool">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Speech to Text &amp; Text to Speech — Free, EN/FR/ES, No Upload">
+  <meta property="og:description" content="Transcribe mic or audio files to text, or convert text to speech in English, French, Spanish. 100% browser-based — your audio never leaves your device.">
+  <meta property="og:url" content="https://yourdomain.com/tools/speech-voice/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Speech to Text &amp; Text to Speech — Free, No Upload">
+  <meta name="twitter:description" content="Transcribe mic or audio files to text, or convert text to speech in EN/FR/ES. No upload, no server, 100% private.">
+  <link rel="canonical" href="https://yourdomain.com/tools/speech-voice/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Speech & Voice","description":"Transcribe microphone or audio files to text, or convert text to speech in English, French, and Spanish. Entirely browser-based — no upload, no server.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://yourdomain.com/tools/speech-voice/","featureList":["Microphone speech-to-text (Chrome/Edge)","Audio file transcription via Whisper AI (75 MB model, cached)","Text-to-speech in English, French, Spanish","Supports EN, FR, ES languages","No file upload — 100% client-side"]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Does this tool upload my audio to a server?","acceptedAnswer":{"@type":"Answer","text":"No. Microphone transcription uses the browser's built-in Web Speech API. File transcription uses Whisper AI running locally in your browser via WebAssembly. Your audio never leaves your device."}},{"@type":"Question","name":"Why does file transcription require a 75 MB download?","acceptedAnswer":{"@type":"Answer","text":"File-to-text uses the Whisper-tiny AI model which runs entirely in your browser. The model (~75 MB) is downloaded once and cached — subsequent uses are instant."}},{"@type":"Question","name":"Which browsers support microphone transcription?","acceptedAnswer":{"@type":"Answer","text":"Microphone transcription uses the Web Speech API, which is currently supported in Chrome and Edge. Firefox and Safari do not support this API. File upload transcription works in all modern browsers."}},{"@type":"Question","name":"Which languages are supported?","acceptedAnswer":{"@type":"Answer","text":"English, French (Français), and Spanish (Español) are supported for both speech-to-text and text-to-speech."}}]}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    /* ── Segmented mode selector ── */
+    .seg-ctrl {
+      display: inline-flex;
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      padding: 3px;
+      gap: 2px;
+      margin-bottom: 1.1rem;
+    }
+    .seg-btn {
+      padding: .38rem 1rem;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .seg-btn.active {
+      background: var(--bg-card);
+      color: var(--primary);
+      box-shadow: 0 1px 4px rgba(0,0,0,.1);
+    }
+
+    /* ── Tab bar ── */
+    .tab-bar {
+      display: flex;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 1.25rem;
+    }
+    .tab-btn {
+      padding: .6rem 1.5rem;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      font-size: .92rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 1.8rem 1.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all .15s;
+      font-size: .9rem;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--primary);
+      background: var(--primary-dim, color-mix(in srgb, var(--primary) 8%, transparent));
+      color: var(--primary);
+    }
+    .drop-zone .dz-icon { font-size: 2rem; margin-bottom: .4rem; }
+    .drop-zone .dz-hint { font-size: .76rem; margin-top: .3rem; color: var(--text-light); }
+
+    /* ── Browser support badge ── */
+    .browser-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      font-size: .75rem;
+      padding: .2rem .7rem;
+      border-radius: 50px;
+      font-weight: 600;
+    }
+    .browser-badge.warn {
+      background: var(--warning-dim, #fef3c7);
+      color: #92400e;
+      border: 1px solid #fde68a;
+    }
+    .browser-badge.ok {
+      background: var(--success-dim, #d1fae5);
+      color: #065f46;
+      border: 1px solid #6ee7b7;
+    }
+
+    /* ── Transcript box ── */
+    .transcript-box {
+      min-height: 120px;
+      max-height: 340px;
+      overflow-y: auto;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .85rem 1rem;
+      font-size: .9rem;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--text);
+    }
+    .transcript-box .interim { color: var(--text-muted); font-style: italic; }
+    .transcript-box.empty::before {
+      content: attr(data-placeholder);
+      color: var(--text-light);
+      font-style: italic;
+    }
+
+    /* ── Progress bar ── */
+    .prog-wrap { margin-top: .6rem; display: none; }
+    .prog-bar {
+      height: 6px;
+      border-radius: 3px;
+      background: var(--border);
+      overflow: hidden;
+    }
+    .prog-fill {
+      height: 100%;
+      background: var(--primary);
+      border-radius: 3px;
+      transition: width .3s;
+      width: 0%;
+    }
+    .prog-label { font-size: .78rem; color: var(--text-muted); margin-top: .3rem; }
+
+    /* ── Status bar ── */
+    .status-bar { font-size: .84rem; color: var(--text-muted); min-height: 1.3rem; margin-top: .5rem; }
+    .status-bar.ok  { color: var(--success, #10b981); }
+    .status-bar.err { color: var(--danger, #ef4444); }
+
+    /* ── Options row ── */
+    .opt-row {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      flex-wrap: wrap;
+      margin-bottom: .75rem;
+    }
+    .opt-row label { font-size: .84rem; color: var(--text-muted); white-space: nowrap; }
+    .opt-row select, .opt-row input[type=range] { flex: 1; min-width: 120px; }
+
+    /* ── Voice list ── */
+    #ttsVoiceSelect { max-width: 100%; }
+
+    /* ── Mic button ── */
+    .mic-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
+      width: 100%;
+      padding: .75rem;
+      font-size: 1rem;
+      font-weight: 700;
+      border-radius: var(--radius);
+      border: none;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .mic-btn.idle    { background: var(--primary); color: #fff; }
+    .mic-btn.active  { background: var(--danger, #ef4444); color: #fff; animation: pulse 1.2s infinite; }
+    .mic-btn:disabled { opacity: .5; cursor: not-allowed; animation: none; }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger,#ef4444) 40%, transparent); }
+      50%       { box-shadow: 0 0 0 8px color-mix(in srgb, var(--danger,#ef4444) 0%, transparent); }
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo">
+    <span class="logo-icon">🛠️</span> Office Tools
+  </a>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <div class="tool-header-icon">🎙️</div>
+    <div>
+      <h1 class="tool-title">Speech &amp; Voice</h1>
+      <p class="tool-desc">Transcribe speech to text or convert text to speech — English, French, Spanish.</p>
+    </div>
+  </div>
+
+  <!-- ── Tab bar ── -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="stt">🎤 Speech → Text</button>
+    <button class="tab-btn"        data-tab="tts">📢 Text → Speech</button>
+  </div>
+
+  <!-- ══════════════════════════ SPEECH → TEXT ══════════════════════════ -->
+  <div class="tab-panel active" id="tabStt">
+    <div class="card">
+      <!-- Mode selector -->
+      <div class="seg-ctrl">
+        <button class="seg-btn active" data-mode="mic">🎤 Microphone</button>
+        <button class="seg-btn"        data-mode="file">📁 Audio File</button>
+      </div>
+
+      <!-- ── Mic mode ── -->
+      <div id="modeMic">
+        <div class="opt-row">
+          <label for="micLang">Language:</label>
+          <select id="micLang">
+            <option value="en-US">🇺🇸 English (US)</option>
+            <option value="en-GB">🇬🇧 English (UK)</option>
+            <option value="fr-FR">🇫🇷 Français</option>
+            <option value="es-ES">🇪🇸 Español</option>
+          </select>
+          <span class="browser-badge warn" id="micSupportBadge">⚠ Chrome &amp; Edge only</span>
+        </div>
+
+        <button class="mic-btn idle" id="micBtn">🎤 Start Recording</button>
+
+        <div style="margin-top:.75rem">
+          <div class="transcript-box empty" id="micTranscript" data-placeholder="Your transcript will appear here…"></div>
+        </div>
+
+        <div class="flex-between mt-1" style="gap:.5rem">
+          <div class="status-bar" id="micStatus"></div>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-secondary btn-sm" id="micCopy" style="display:none">📋 Copy</button>
+            <button class="btn btn-secondary btn-sm" id="micClear" style="display:none">✕ Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── File mode ── -->
+      <div id="modeFile" style="display:none">
+        <div style="margin-bottom:.75rem;padding:.7rem;background:var(--bg-secondary);border-radius:var(--radius);font-size:.82rem;color:var(--text-muted);line-height:1.6">
+          Uses <strong>Whisper AI</strong> running locally in your browser. First use downloads a ~75 MB model (cached after that — subsequent uses are instant). Your audio never leaves your device.
+        </div>
+
+        <div class="opt-row">
+          <label for="fileLang">Language:</label>
+          <select id="fileLang">
+            <option value="auto">🌐 Auto-detect</option>
+            <option value="en">🇺🇸 English</option>
+            <option value="fr">🇫🇷 Français</option>
+            <option value="es">🇪🇸 Español</option>
+          </select>
+          <span class="browser-badge ok">✓ All modern browsers</span>
+        </div>
+
+        <!-- Model load -->
+        <div id="modelSection">
+          <button class="btn btn-primary" id="loadModelBtn" style="width:100%">🤖 Load Whisper AI Model (~75 MB)</button>
+          <div class="prog-wrap" id="modelProg">
+            <div class="prog-bar"><div class="prog-fill" id="modelProgFill"></div></div>
+            <div class="prog-label" id="modelProgLabel">Downloading model…</div>
+          </div>
+        </div>
+
+        <!-- File input (shown after model loaded) -->
+        <div id="fileSection" style="display:none;margin-top:.75rem">
+          <div class="drop-zone" id="audioDrop">
+            <div class="dz-icon">🎵</div>
+            <div>Drag &amp; drop an audio file, or <strong>click to browse</strong></div>
+            <div class="dz-hint">MP3 · WAV · M4A · OGG · WEBM · FLAC</div>
+          </div>
+          <input type="file" id="audioFileInput" style="display:none" accept=".mp3,.wav,.m4a,.ogg,.webm,.flac,audio/*">
+
+          <div id="audioFileInfo" style="display:none;margin-top:.5rem" class="opt-row">
+            <span id="audioFileName" style="font-size:.84rem;color:var(--text-muted)"></span>
+            <button class="btn btn-primary btn-sm" id="transcribeBtn">▶ Transcribe</button>
+          </div>
+
+          <div class="prog-wrap" id="transcribeProg">
+            <div class="prog-bar"><div class="prog-fill" id="transcribeProgFill"></div></div>
+            <div class="prog-label" id="transcribeProgLabel">Transcribing…</div>
+          </div>
+        </div>
+
+        <div style="margin-top:.75rem">
+          <div class="transcript-box empty" id="fileTranscript" data-placeholder="Transcript will appear here after processing…"></div>
+        </div>
+
+        <div class="flex-between mt-1" style="gap:.5rem">
+          <div class="status-bar" id="fileStatus"></div>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-secondary btn-sm" id="fileCopy" style="display:none">📋 Copy</button>
+            <button class="btn btn-secondary btn-sm" id="fileClear" style="display:none">✕ Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info card -->
+    <div class="card mt-2" style="font-size:.82rem;color:var(--text-muted);line-height:1.7">
+      <strong style="color:var(--text)">ℹ Privacy &amp; how it works</strong><br>
+      <strong>Microphone mode</strong> uses the browser's built-in Web Speech API — audio is processed by your OS/browser, not uploaded to any external server by this tool. Requires Chrome or Edge.<br><br>
+      <strong>File mode</strong> uses <a href="https://openai.com/research/whisper" target="_blank" rel="noopener" style="color:var(--primary)">OpenAI Whisper</a> compiled to WebAssembly, running 100% locally in your browser tab. The ~75 MB model is cached after the first download — no repeated downloads needed.
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ TEXT → SPEECH ══════════════════════════ -->
+  <div class="tab-panel" id="tabTts">
+    <div class="card">
+      <div class="opt-row">
+        <label for="ttsLangFilter">Language:</label>
+        <select id="ttsLangFilter">
+          <option value="en">🇺🇸/🇬🇧 English</option>
+          <option value="fr">🇫🇷 Français</option>
+          <option value="es">🇪🇸 Español</option>
+        </select>
+      </div>
+
+      <div class="opt-row">
+        <label for="ttsVoiceSelect">Voice:</label>
+        <select id="ttsVoiceSelect"><option>Loading voices…</option></select>
+      </div>
+
+      <div class="opt-row">
+        <label for="ttsRate">Speed: <span id="ttsRateVal">1.0×</span></label>
+        <input type="range" id="ttsRate" min="0.5" max="2" step="0.1" value="1">
+      </div>
+
+      <div class="opt-row">
+        <label for="ttsPitch">Pitch: <span id="ttsPitchVal">1.0</span></label>
+        <input type="range" id="ttsPitch" min="0.5" max="2" step="0.1" value="1">
+      </div>
+
+      <div class="form-group">
+        <label for="ttsInput">Text to speak</label>
+        <textarea id="ttsInput" rows="5" placeholder="Type or paste text here…" style="resize:vertical"></textarea>
+        <div style="font-size:.75rem;color:var(--text-muted);margin-top:.25rem;text-align:right">
+          <span id="ttsCharCount">0</span> characters
+        </div>
+      </div>
+
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+        <button class="btn btn-primary" id="ttsPlayBtn">▶ Play</button>
+        <button class="btn btn-secondary" id="ttsPauseBtn" disabled>⏸ Pause</button>
+        <button class="btn btn-secondary" id="ttsStopBtn" disabled>⏹ Stop</button>
+      </div>
+
+      <div class="status-bar mt-1" id="ttsStatus"></div>
+
+      <div style="margin-top:.85rem;padding:.65rem .85rem;background:var(--bg-secondary);border-radius:8px;font-size:.78rem;color:var(--text-muted);line-height:1.6">
+        💡 <strong>Audio download</strong> is not available with the browser's built-in speech engine (the audio goes directly to your speakers). To record it, use your OS audio recorder (e.g. Windows Voice Recorder, macOS QuickTime).
+      </div>
+    </div>
+
+    <div class="card mt-2" style="font-size:.82rem;color:var(--text-muted);line-height:1.7">
+      <strong style="color:var(--text)">ℹ About voices</strong><br>
+      Voices are provided by your operating system and browser. Windows and macOS include high-quality neural voices for English, French, and Spanish. The quality and number of voices available varies by platform.
+      If no voices appear for your selected language, your OS may not have that language pack installed.
+    </div>
+  </div>
+
+</main>
+
+<!-- Transformers.js (ESM — loaded dynamically on demand) -->
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+  initThemeToggle('themeToggle');
+
+  /* ══════════════════════════════════════════
+     TAB SWITCHING
+  ══════════════════════════════════════════ */
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab' + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add('active');
+    });
+  });
+
+  /* ══════════════════════════════════════════
+     STT — MODE SELECTOR
+  ══════════════════════════════════════════ */
+  document.querySelectorAll('.seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const isMic = btn.dataset.mode === 'mic';
+      document.getElementById('modeMic').style.display  = isMic ? '' : 'none';
+      document.getElementById('modeFile').style.display = isMic ? 'none' : '';
+    });
+  });
+
+  /* ══════════════════════════════════════════
+     STT — MICROPHONE (Web Speech API)
+  ══════════════════════════════════════════ */
+  const micBtn        = document.getElementById('micBtn');
+  const micTranscript = document.getElementById('micTranscript');
+  const micStatus     = document.getElementById('micStatus');
+  const micCopy       = document.getElementById('micCopy');
+  const micClear      = document.getElementById('micClear');
+
+  let recognition = null;
+  let micActive   = false;
+  let finalText   = '';
+
+  // Check support
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) {
+    micBtn.disabled = true;
+    micBtn.textContent = '🎤 Not supported in this browser';
+    document.getElementById('micSupportBadge').textContent = '✕ Requires Chrome or Edge';
+    document.getElementById('micSupportBadge').className = 'browser-badge warn';
+    micStatus.textContent = 'Web Speech API is not available in Firefox or Safari. Use the Audio File tab instead.';
+    micStatus.className = 'status-bar err';
+  } else {
+    document.getElementById('micSupportBadge').className = 'browser-badge ok';
+    document.getElementById('micSupportBadge').textContent = '✓ Supported';
+  }
+
+  micBtn.addEventListener('click', () => {
+    if (!SpeechRec) return;
+    if (micActive) {
+      recognition && recognition.stop();
+      return;
+    }
+    finalText = micTranscript.dataset.final || '';
+    recognition = new SpeechRec();
+    recognition.lang = document.getElementById('micLang').value;
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onstart = () => {
+      micActive = true;
+      micBtn.textContent = '⏹ Stop Recording';
+      micBtn.className = 'mic-btn active';
+      micStatus.textContent = 'Listening…';
+      micStatus.className = 'status-bar';
+    };
+
+    recognition.onresult = e => {
+      let interim = '';
+      let final = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) final += e.results[i][0].transcript;
+        else interim += e.results[i][0].transcript;
+      }
+      finalText += final;
+      micTranscript.dataset.final = finalText;
+      micTranscript.innerHTML = escHtml(finalText)
+        + (interim ? `<span class="interim"> ${escHtml(interim)}</span>` : '');
+      micTranscript.classList.remove('empty');
+      micCopy.style.display = micClear.style.display = '';
+    };
+
+    recognition.onerror = e => {
+      micStatus.textContent = 'Error: ' + (e.error === 'not-allowed' ? 'Microphone permission denied.' : e.error);
+      micStatus.className = 'status-bar err';
+      stopMic();
+    };
+
+    recognition.onend = () => {
+      stopMic();
+      if (finalText) micStatus.textContent = '✅ Recording stopped.';
+    };
+
+    recognition.start();
+  });
+
+  function stopMic() {
+    micActive = false;
+    micBtn.textContent = '🎤 Start Recording';
+    micBtn.className = 'mic-btn idle';
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  micCopy.addEventListener('click', () => {
+    const text = micTranscript.innerText;
+    navigator.clipboard.writeText(text).then(() => showToast('Copied!'));
+  });
+  micClear.addEventListener('click', () => {
+    finalText = '';
+    micTranscript.dataset.final = '';
+    micTranscript.innerHTML = '';
+    micTranscript.classList.add('empty');
+    micCopy.style.display = micClear.style.display = 'none';
+    micStatus.textContent = '';
+    micStatus.className = 'status-bar';
+  });
+
+  /* ══════════════════════════════════════════
+     STT — AUDIO FILE (transformers.js Whisper)
+  ══════════════════════════════════════════ */
+  const loadModelBtn      = document.getElementById('loadModelBtn');
+  const modelProg         = document.getElementById('modelProg');
+  const modelProgFill     = document.getElementById('modelProgFill');
+  const modelProgLabel    = document.getElementById('modelProgLabel');
+  const fileSection       = document.getElementById('fileSection');
+  const audioDrop         = document.getElementById('audioDrop');
+  const audioFileInput    = document.getElementById('audioFileInput');
+  const audioFileInfo     = document.getElementById('audioFileInfo');
+  const audioFileName     = document.getElementById('audioFileName');
+  const transcribeBtn     = document.getElementById('transcribeBtn');
+  const transcribeProg    = document.getElementById('transcribeProg');
+  const transcribeProgFill= document.getElementById('transcribeProgFill');
+  const transcribeProgLabel=document.getElementById('transcribeProgLabel');
+  const fileTranscript    = document.getElementById('fileTranscript');
+  const fileStatus        = document.getElementById('fileStatus');
+  const fileCopy          = document.getElementById('fileCopy');
+  const fileClear         = document.getElementById('fileClear');
+
+  let whisperPipeline = null;
+  let selectedAudioFile = null;
+
+  loadModelBtn.addEventListener('click', async () => {
+    loadModelBtn.disabled = true;
+    loadModelBtn.textContent = '⏳ Loading…';
+    modelProg.style.display = '';
+
+    try {
+      // Dynamically import transformers.js (ESM)
+      const { pipeline, env } = await import(
+        'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js'
+      );
+      // Use CDN for model files (HuggingFace)
+      env.allowLocalModels = false;
+
+      whisperPipeline = await pipeline(
+        'automatic-speech-recognition',
+        'Xenova/whisper-tiny',
+        {
+          progress_callback: info => {
+            if (info.status === 'downloading' || info.status === 'loading') {
+              const pct = info.progress != null ? Math.round(info.progress) : 0;
+              modelProgFill.style.width = pct + '%';
+              modelProgLabel.textContent = `${info.status === 'downloading' ? 'Downloading' : 'Loading'} model… ${pct}%`;
+            }
+          }
+        }
+      );
+
+      modelProgFill.style.width = '100%';
+      modelProgLabel.textContent = '✅ Model ready — cached for future use.';
+      loadModelBtn.style.display = 'none';
+      fileSection.style.display = '';
+      fileStatus.textContent = 'Model loaded. Drop or select an audio file.';
+      fileStatus.className = 'status-bar ok';
+    } catch (err) {
+      loadModelBtn.disabled = false;
+      loadModelBtn.textContent = '🤖 Retry Load Whisper AI Model';
+      modelProgLabel.textContent = 'Failed to load model: ' + err.message;
+      fileStatus.className = 'status-bar err';
+    }
+  });
+
+  // Drop zone
+  audioDrop.addEventListener('click', () => audioFileInput.click());
+  audioFileInput.addEventListener('change', e => { if (e.target.files[0]) setAudioFile(e.target.files[0]); });
+  audioDrop.addEventListener('dragover', e => { e.preventDefault(); audioDrop.classList.add('drag-over'); });
+  audioDrop.addEventListener('dragleave', () => audioDrop.classList.remove('drag-over'));
+  audioDrop.addEventListener('drop', e => {
+    e.preventDefault(); audioDrop.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) setAudioFile(e.dataTransfer.files[0]);
+  });
+
+  function setAudioFile(file) {
+    selectedAudioFile = file;
+    audioFileName.textContent = '🎵 ' + file.name + ' (' + (file.size / 1024 / 1024).toFixed(1) + ' MB)';
+    audioFileInfo.style.display = '';
+    fileTranscript.innerHTML = '';
+    fileTranscript.classList.add('empty');
+    fileCopy.style.display = fileClear.style.display = 'none';
+    fileStatus.textContent = '';
+    fileStatus.className = 'status-bar';
+  }
+
+  transcribeBtn.addEventListener('click', async () => {
+    if (!whisperPipeline || !selectedAudioFile) return;
+    transcribeBtn.disabled = true;
+    transcribeProg.style.display = '';
+    transcribeProgFill.style.width = '10%';
+    transcribeProgLabel.textContent = 'Reading audio…';
+    fileStatus.textContent = '';
+    fileStatus.className = 'status-bar';
+
+    try {
+      const lang = document.getElementById('fileLang').value;
+      const url  = URL.createObjectURL(selectedAudioFile);
+
+      transcribeProgFill.style.width = '30%';
+      transcribeProgLabel.textContent = 'Transcribing… (may take a moment)';
+
+      const opts = { return_timestamps: false };
+      if (lang !== 'auto') opts.language = lang;
+
+      const result = await whisperPipeline(url, opts);
+      URL.revokeObjectURL(url);
+
+      transcribeProgFill.style.width = '100%';
+      transcribeProgLabel.textContent = '✅ Done';
+
+      const text = result.text || '';
+      fileTranscript.textContent = text.trim();
+      fileTranscript.classList.remove('empty');
+      fileCopy.style.display = fileClear.style.display = '';
+      fileStatus.textContent = `✅ Transcribed ${text.trim().split(/\s+/).length} words.`;
+      fileStatus.className = 'status-bar ok';
+    } catch (err) {
+      transcribeProgLabel.textContent = 'Error: ' + err.message;
+      fileStatus.textContent = '❌ Transcription failed: ' + err.message;
+      fileStatus.className = 'status-bar err';
+    } finally {
+      transcribeBtn.disabled = false;
+    }
+  });
+
+  fileCopy.addEventListener('click', () => {
+    navigator.clipboard.writeText(fileTranscript.textContent).then(() => showToast('Copied!'));
+  });
+  fileClear.addEventListener('click', () => {
+    fileTranscript.textContent = '';
+    fileTranscript.classList.add('empty');
+    fileCopy.style.display = fileClear.style.display = 'none';
+    transcribeProg.style.display = 'none';
+    audioFileInfo.style.display = 'none';
+    selectedAudioFile = null;
+    audioFileInput.value = '';
+    fileStatus.textContent = '';
+    fileStatus.className = 'status-bar';
+  });
+
+  /* ══════════════════════════════════════════
+     TTS — TEXT TO SPEECH (Web SpeechSynthesis)
+  ══════════════════════════════════════════ */
+  const ttsLangFilter  = document.getElementById('ttsLangFilter');
+  const ttsVoiceSelect = document.getElementById('ttsVoiceSelect');
+  const ttsRate        = document.getElementById('ttsRate');
+  const ttsPitch       = document.getElementById('ttsPitch');
+  const ttsRateVal     = document.getElementById('ttsRateVal');
+  const ttsPitchVal    = document.getElementById('ttsPitchVal');
+  const ttsInput       = document.getElementById('ttsInput');
+  const ttsPlayBtn     = document.getElementById('ttsPlayBtn');
+  const ttsPauseBtn    = document.getElementById('ttsPauseBtn');
+  const ttsStopBtn     = document.getElementById('ttsStopBtn');
+  const ttsStatus      = document.getElementById('ttsStatus');
+
+  const LANG_PREFIXES = { en: ['en'], fr: ['fr'], es: ['es'] };
+
+  function populateVoices() {
+    const voices = speechSynthesis.getVoices();
+    const prefix = LANG_PREFIXES[ttsLangFilter.value];
+    const filtered = voices.filter(v => prefix.some(p => v.lang.startsWith(p)));
+    ttsVoiceSelect.innerHTML = '';
+    if (!filtered.length) {
+      ttsVoiceSelect.innerHTML = '<option>No voices found for this language</option>';
+      return;
+    }
+    filtered.forEach((v, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.dataset.name = v.name;
+      opt.textContent = v.name + (v.localService ? '' : ' (online)');
+      ttsVoiceSelect.appendChild(opt);
+    });
+  }
+
+  if (typeof speechSynthesis !== 'undefined') {
+    speechSynthesis.onvoiceschanged = populateVoices;
+    populateVoices();
+    ttsLangFilter.addEventListener('change', populateVoices);
+  } else {
+    ttsStatus.textContent = '⚠ Text-to-speech is not supported in this browser.';
+    ttsStatus.className = 'status-bar err';
+    ttsPlayBtn.disabled = true;
+  }
+
+  ttsRate.addEventListener('input', () => ttsRateVal.textContent = parseFloat(ttsRate.value).toFixed(1) + '×');
+  ttsPitch.addEventListener('input', () => ttsPitchVal.textContent = parseFloat(ttsPitch.value).toFixed(1));
+  ttsInput.addEventListener('input', () => {
+    document.getElementById('ttsCharCount').textContent = ttsInput.value.length;
+  });
+
+  ttsPlayBtn.addEventListener('click', () => {
+    const text = ttsInput.value.trim();
+    if (!text) { ttsStatus.textContent = 'Please enter some text.'; ttsStatus.className = 'status-bar err'; return; }
+
+    speechSynthesis.cancel();
+
+    const voices = speechSynthesis.getVoices();
+    const prefix = LANG_PREFIXES[ttsLangFilter.value];
+    const filtered = voices.filter(v => prefix.some(p => v.lang.startsWith(p)));
+
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.rate  = parseFloat(ttsRate.value);
+    utter.pitch = parseFloat(ttsPitch.value);
+    if (filtered.length) {
+      const sel = ttsVoiceSelect.selectedIndex;
+      utter.voice = filtered[Math.max(0, Math.min(sel, filtered.length - 1))];
+    }
+
+    utter.onstart = () => {
+      ttsStatus.textContent = '▶ Speaking…';
+      ttsStatus.className = 'status-bar ok';
+      ttsPlayBtn.disabled = true;
+      ttsPauseBtn.disabled = false;
+      ttsStopBtn.disabled = false;
+    };
+    utter.onend = utter.onerror = () => {
+      ttsStatus.textContent = utter.error ? ('❌ ' + utter.error) : '✅ Done.';
+      ttsStatus.className = utter.error ? 'status-bar err' : 'status-bar ok';
+      ttsPlayBtn.disabled = false;
+      ttsPauseBtn.disabled = ttsStopBtn.disabled = true;
+    };
+
+    speechSynthesis.speak(utter);
+  });
+
+  ttsPauseBtn.addEventListener('click', () => {
+    if (speechSynthesis.paused) {
+      speechSynthesis.resume();
+      ttsPauseBtn.textContent = '⏸ Pause';
+      ttsStatus.textContent = '▶ Resumed';
+    } else {
+      speechSynthesis.pause();
+      ttsPauseBtn.textContent = '▶ Resume';
+      ttsStatus.textContent = '⏸ Paused';
+    }
+  });
+  ttsStopBtn.addEventListener('click', () => {
+    speechSynthesis.cancel();
+    ttsStatus.textContent = '';
+    ttsPlayBtn.disabled = false;
+    ttsPauseBtn.disabled = ttsStopBtn.disabled = true;
+    ttsPauseBtn.textContent = '⏸ Pause';
+  });
+
+  function showToast(msg) {
+    if (typeof window.showToast === 'function') { window.showToast(msg); return; }
+    const t = document.createElement('div');
+    t.textContent = msg;
+    Object.assign(t.style, { position:'fixed', bottom:'1.5rem', left:'50%', transform:'translateX(-50%)',
+      background:'var(--primary)', color:'#fff', padding:'.45rem 1.1rem', borderRadius:'50px',
+      fontSize:'.84rem', zIndex:'9999', pointerEvents:'none' });
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 1800);
+  }
+</script>
+</body>
+</html>

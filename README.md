@@ -1,6 +1,6 @@
 # Office Tools
 
-52 free, browser-based utilities for everyday office and productivity work.
+56 free, browser-based utilities for everyday office and productivity work.
 No build step, no framework, no tracking — everything runs locally in your browser.
 
 **Live site:** [https://github.com/noobvie/Office_Tools](https://github.com/noobvie/Office_Tools)
@@ -26,10 +26,14 @@ No build step, no framework, no tracking — everything runs locally in your bro
 | UUID Generator | UUID v4 and v7 — single or bulk, one-click copy |
 | Random Number Generator | Random integers or decimals in any range — no-duplicates option |
 | Lorem Ipsum Generator | Placeholder text by paragraphs, sentences, words, or list items |
+| Fake Data Generator | Realistic test data — names, emails, phones, addresses. Download CSV/JSON |
+| Wheel of Names | Animated spinning wheel to randomly pick a winner from your list |
 
-### 📝 Text & Content
+### 📝 PDF & Text
 | Tool | Description |
 |------|-------------|
+| PDF Toolkit | Merge, split, extract pages, reorder with drag-and-drop thumbnails |
+| PDF to Text | Extract text per-page, copy or download as .txt / Word .docx |
 | Word Counter | Words, characters, sentences, reading time and keyword density |
 | Markdown Editor | Live split-pane editor with HTML preview, toolbar and export |
 | Text Diff | Side-by-side diff with color-highlighted additions/deletions |
@@ -66,24 +70,29 @@ No build step, no framework, no tracking — everything runs locally in your bro
 | Crontab Explainer | Parse cron expressions into plain English — next 10 run times |
 | Regex Tester | Live regex match highlighting with capture groups and flag toggles |
 | SQL Formatter | Beautify and minify SQL — uppercase keywords, configurable indent |
-
-### 🎨 Design & Visual
-| Tool | Description |
-|------|-------------|
-| Color Converter | HEX, RGB, HSL, HSV, CMYK — live preview, shades, named colors |
-| Character Map | Browse and copy symbols, arrows, math, currency, Greek and emoji |
-| Screenshot Beautifier | Gradient backgrounds, padding, shadows, rounded corners — download PNG |
-| Contrast Checker | WCAG AA/AAA contrast ratios for color pairs — live preview |
-| Palette Extractor | Upload an image to extract dominant colors as HEX swatches |
+| File Compressor | Create ZIP archives or extract ZIPs — 100% in your browser |
 
 ### 🌐 Network & Security
 | Tool | Description |
 |------|-------------|
-| Currency Converter | 40+ currencies with live exchange rates |
+| Currency & Crypto | 40+ currencies + BTC/ETH/XMR/GRIN with live rates |
 | What Is My IP? | Public IP, ISP, country, city, coordinates, IPv6 status |
 | IP Location Lookup | IPv4/IPv6/domain — country, city, ISP, ASN, VPN/proxy detection, map |
 | Campaign URL Builder | Build UTM-tagged URLs for Google Analytics with QR code |
 | CSR Decoder | Decode a CSR — subject, key size, SANs, fingerprints. Fully local |
+
+### 🖼️ Media
+| Tool | Description |
+|------|-------------|
+| Image Converter | Convert HEIC/HEIF → JPG/PNG/WebP, compress, resize with aspect-ratio lock |
+| Color Converter | HEX, RGB, HSL, HSV, CMYK — live preview, shades, named colors |
+| Contrast Checker | WCAG AA/AAA contrast ratios for color pairs — live preview |
+| Palette Extractor | Upload an image to extract dominant colors as HEX swatches |
+| Screenshot Beautifier | Gradient backgrounds, padding, shadows, rounded corners — download PNG |
+| Character Map | Browse and copy symbols, arrows, math, currency, Greek and emoji |
+| YouTube Downloader | Download YouTube videos as MP4 or audio as MP3, including playlists |
+| Speech & Voice | Transcribe mic or audio files to text (EN/FR/ES, Whisper AI) · Text to speech |
+| Photo Editor | Remove backgrounds (AI), resize for social media, color adjust, add text, replace colors |
 
 ### 📤 Share
 | Tool | Description |
@@ -92,13 +101,6 @@ No build step, no framework, no tracking — everything runs locally in your bro
 | Pastebin | Share text/code with syntax label, expiry, and burn-after-read |
 | File Share | Upload .zip/.tar/.rar (up to 1 GB) and share a download link |
 
-### 🖼️ Images & PDF
-| Tool | Description |
-|------|-------------|
-| Image Converter | Convert HEIC/HEIF → JPG/PNG/WebP, compress, resize with aspect-ratio lock |
-| PDF Toolkit | Merge, split, extract pages, reorder with drag-and-drop thumbnails |
-| PDF to Text | Extract text per-page, copy or download as .txt / Word .docx |
-
 ---
 
 ## Architecture
@@ -106,6 +108,7 @@ No build step, no framework, no tracking — everything runs locally in your bro
 ```
 Office_Tools/
 ├── index.html                  ← Hub page — tool grid, search, category filter
+├── sitemap.xml                 ← Auto-patched with real domain on deploy
 ├── css/style.css               ← Shared styles, dark/light/matrix themes
 ├── js/
 │   ├── config.js               ← PocketBase URL, Grin payment server URL
@@ -117,6 +120,7 @@ Office_Tools/
 │   ├── grin-payment-server.js  ← Node.js/Express — Grin payments + SQLite tools API
 │   ├── package.json
 │   └── .env.example
+├── yt-server/                  ← Node.js yt-dlp proxy (YouTube download backend)
 └── tools/<tool-name>/index.html
 ```
 
@@ -126,7 +130,9 @@ Office_Tools/
 
 - **Frontend:** HTML / CSS / Vanilla JS — no framework, no build step
 - **Backend (optional):** PocketBase (auth, admin UI) · Node.js + Express (Grin payments, URL shortener, Pastebin, File Share via SQLite)
+- **YouTube backend:** Node.js + yt-dlp + ffmpeg (systemd service, port 9000)
 - **Crypto payments:** Grin Wallet via Owner API v3
+- **AI (browser-only):** `@xenova/transformers` Whisper-tiny (Speech→Text) · `@imgly/background-removal` (Photo Editor)
 
 The frontend works fully without the backend. Auth and Pro features are opt-in.
 
@@ -143,21 +149,26 @@ Supports **Debian · Ubuntu · AlmaLinux · Rocky Linux · CentOS Stream**.
 
 | Option | What it does |
 |--------|-------------|
-| 1) Install / Update | OS packages · nginx · certbot · Node.js 20 · pull latest code |
-| 2) Add Domain | Domain + Let's Encrypt SSL · nginx HTTPS config · optional backend setup |
+| 1) Install / Update | UTC timezone · OS packages · nginx · certbot · Node.js 20 · yt-dlp · ffmpeg · pull latest code |
+| 2) Add Domain | Domain + Let's Encrypt SSL · nginx HTTPS config · sitemap.xml domain patching · optional backend |
 | 3) Remove / Switch | Remove nginx vhost + SSL cert, or switch to a new domain |
-| 4) Update from Repo | Pull any branch, sync frontend + backend, restart services |
+| 4) Set / Reset Admin | Create or update PocketBase superuser account |
+| 5) Update from Repo | Pull any branch, sync frontend + backend, restart services |
+| 6) Admin Tasks | Service status · restart all · list URLs/ports · backup/restore DB · clean logs · purge temp |
 | DEL) Delete | Remove all services, configs, certs, and directories |
 
-**Security:** HSTS · TLS 1.2/1.3 · security headers · gzip · `client_max_body_size 1100M`
+**Security:** HSTS · TLS 1.2/1.3 · security headers · `microphone=(self)` for Speech & Voice · gzip · `client_max_body_size 1100M`
 
 **Server layout:**
 ```
-/var/www/office-tools/        ← frontend
+/var/www/office-tools/        ← frontend (sitemap.xml patched with real domain)
 /opt/office-tools/repo/       ← git repo
 /opt/office-tools/backend/    ← Node.js server + .env
 /opt/office-tools/pocketbase/ ← PocketBase binary + data
+/opt/office-tools/yt-server/  ← yt-dlp Node.js server
 /opt/office-tools/data/       ← SQLite DB + file uploads
+/opt/office-tools/backups/    ← PocketBase database backups
+/var/log/office-tools/        ← deploy logs
 ```
 
 ---

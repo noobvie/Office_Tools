@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube to MP3 / MP4 Downloader — Free, Playlists, No Login</title>
+  <meta name="description" content="Free YouTube downloader — save videos as MP4 (up to 1080p) or audio as MP3. Supports full playlists with batch download and per-item progress. No login, no ads, runs in your browser.">
+  <meta name="keywords" content="youtube downloader, youtube to mp3, youtube to mp4, download youtube video, download youtube playlist, yt-dlp browser, cobalt, invidious, free youtube converter, save youtube video, batch download playlist, youtube mp3 converter online, youtube mp4 downloader free">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="YouTube to MP3 / MP4 Downloader — Free, Playlists, No Login">
+  <meta property="og:description" content="Download YouTube videos as MP4 or audio as MP3. Supports full playlists with batch download. No login, no ads — choose Cobalt or Invidious backend.">
+  <meta property="og:url" content="https://yourdomain.com/tools/yt-downloader/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="YouTube to MP3 / MP4 Downloader — Free, No Login">
+  <meta name="twitter:description" content="Download YouTube videos as MP4 or audio as MP3. Single videos and full playlists. No login required.">
+  <link rel="canonical" href="https://yourdomain.com/tools/yt-downloader/">
+
+  <!-- Structured data: SoftwareApplication + FAQ -->
+  <script type="application/ld+json">
+  [
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "YouTube to MP3/MP4 Downloader",
+      "description": "Download YouTube videos as MP4 (up to 1080p) or audio as MP3. Supports full playlists. No login, no tracking.",
+      "applicationCategory": "WebApplication",
+      "operatingSystem": "Any",
+      "offers": {"@type":"Offer","price":"0","priceCurrency":"USD"},
+      "url": "https://yourdomain.com/tools/yt-downloader/",
+      "featureList": ["MP4 video download up to 1080p","MP3 audio download","Full playlist batch download","No login required","Cobalt and Invidious backend support"]
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How do I download a YouTube video as MP3?",
+          "acceptedAnswer": {"@type":"Answer","text":"Select 'MP3 Audio', paste the YouTube URL, click Fetch, then Download. The audio file saves to your device."}
+        },
+        {
+          "@type": "Question",
+          "name": "Can I download a full YouTube playlist?",
+          "acceptedAnswer": {"@type":"Answer","text":"Yes. Paste the playlist URL (youtube.com/playlist?list=…). Enter a free YouTube Data API v3 key to load the track list, select which videos to download, then click Download Selected."}
+        },
+        {
+          "@type": "Question",
+          "name": "Does this work without installing anything?",
+          "acceptedAnswer": {"@type":"Answer","text":"Yes — it runs entirely in your browser. No software to install. Downloads are handled via Cobalt or Invidious, both of which are free and open-source."}
+        }
+      ]
+    }
+  ]
+  </script>
+
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    /* ── Mode toggle ── */
+    .mode-toggle {
+      display: inline-flex;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--bg-secondary);
+    }
+    .mode-btn {
+      padding: .45rem 1.1rem;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      border-right: 1px solid var(--border);
+    }
+    .mode-btn:last-child { border-right: none; }
+    .mode-btn.active { background: var(--primary); color: #fff; }
+    .mode-btn:not(.active):hover { background: var(--primary-dim); color: var(--primary); }
+
+    /* ── Backend selector ── */
+    .backend-toggle {
+      display: inline-flex;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--bg-secondary);
+    }
+    .backend-btn {
+      padding: .35rem .9rem;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: .8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      border-right: 1px solid var(--border);
+    }
+    .backend-btn:last-child { border-right: none; }
+    .backend-btn.active { background: var(--primary); color: #fff; }
+    .backend-btn:not(.active):hover { background: var(--primary-dim); color: var(--primary); }
+
+    /* ── URL input row ── */
+    .url-row { display: flex; gap: .5rem; }
+    .url-row input { flex: 1; }
+
+    /* ── Settings row ── */
+    .settings-row {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      margin-top: .75rem;
+    }
+    .settings-row .form-group { margin: 0; flex: 1; min-width: 120px; }
+
+    /* ── Prereqs info box ── */
+    .prereqs-box {
+      background: var(--bg-secondary);
+      border: 1.5px solid var(--border);
+      border-left: 4px solid var(--primary);
+      border-radius: var(--radius);
+      padding: .85rem 1.1rem;
+      font-size: .83rem;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+    .prereqs-box strong { color: var(--text); display: block; margin-bottom: .4rem; }
+    .prereqs-box ul { margin: .35rem 0 0; padding-left: 1.4rem; line-height: 1.7; }
+    .prereqs-box a { color: var(--primary); }
+
+    /* ── Backend info box ── */
+    .backend-info {
+      margin-top: .6rem;
+      padding: .55rem .8rem;
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      font-size: .8rem;
+      color: var(--text-muted);
+    }
+    .backend-info b { color: var(--text); }
+
+    /* ── Video info card ── */
+    .video-info {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      padding: .85rem 1rem;
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    .video-info img { width: 120px; min-width: 120px; border-radius: 6px; object-fit: cover; }
+    .video-info-text { flex: 1; min-width: 0; }
+    .video-info-title { font-weight: 700; font-size: .95rem; margin-bottom: .25rem; }
+    .video-info-meta  { font-size: .8rem; color: var(--text-muted); }
+
+    /* ── Playlist list ── */
+    .playlist-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: .65rem;
+    }
+    .playlist-count { font-size: .83rem; color: var(--text-muted); }
+
+    .pl-item {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .55rem .6rem;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background .12s;
+      border: 1px solid transparent;
+    }
+    .pl-item:hover { background: var(--bg-secondary); }
+    .pl-item.selected { background: var(--primary-dim); border-color: var(--primary); }
+    .pl-item input[type=checkbox] { flex-shrink: 0; width: 15px; height: 15px; cursor: pointer; accent-color: var(--primary); }
+    .pl-thumb { width: 72px; min-width: 72px; border-radius: 4px; aspect-ratio: 16/9; object-fit: cover; }
+    .pl-title { font-size: .85rem; font-weight: 600; flex: 1; min-width: 0; }
+    .pl-status { font-size: .78rem; white-space: nowrap; margin-left: auto; }
+    .pl-status.pending  { color: var(--text-muted); }
+    .pl-status.fetching { color: var(--warning); }
+    .pl-status.done     { color: var(--success); }
+    .pl-status.err      { color: var(--danger); }
+
+    /* ── Progress bar ── */
+    .progress-wrap { background: var(--bg-secondary); border-radius: 20px; height: 6px; overflow: hidden; margin-top: .5rem; }
+    .progress-bar  { height: 100%; background: var(--primary); border-radius: 20px; transition: width .3s; }
+
+    /* ── API key / config notes ── */
+    .api-key-note { font-size: .78rem; color: var(--text-muted); margin-top: .3rem; }
+    .api-key-note a { color: var(--primary); }
+
+    /* ── Status badge ── */
+    .status-badge {
+      display: inline-flex; align-items: center; gap: .35rem;
+      padding: .3rem .7rem; border-radius: 20px; font-size: .82rem; font-weight: 600;
+    }
+    .status-badge.info    { background: var(--primary-dim); color: var(--primary); }
+    .status-badge.success { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
+    .status-badge.warning { background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--warning); }
+    .status-badge.error   { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+
+    /* ── Config row ── */
+    .cfg-row { display: flex; gap: .5rem; align-items: flex-end; }
+    .cfg-row .form-group { margin: 0; flex: 1; }
+
+    @media (max-width: 560px) {
+      .video-info { flex-direction: column; }
+      .video-info img { width: 100%; }
+      .settings-row { gap: .6rem; }
+      .url-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">YouTube Downloader</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>📥 YouTube to MP3 / MP4</h1>
+    <p>Download videos as MP4 or audio as MP3 — single videos and full playlists with batch download.</p>
+  </div>
+
+  <!--
+  ┌─────────────────────────────────────────────────────┐
+  │  PREREQUISITES — read before deploying              │
+  │                                                     │
+  │  Single video download (both backends):             │
+  │    No setup needed. Works out of the box.           │
+  │                                                     │
+  │  Playlist download:                                 │
+  │    Requires a FREE YouTube Data API v3 key.         │
+  │    Steps:                                           │
+  │    1. Go to https://console.cloud.google.com/       │
+  │    2. Create a project (or pick existing)           │
+  │    3. Enable "YouTube Data API v3"                  │
+  │    4. Create credentials → API key                  │
+  │    5. Restrict to "HTTP referrers" + your domain    │
+  │    6. Paste the key into the playlist API key field │
+  │    The key is stored in localStorage only.          │
+  │                                                     │
+  │  Backend — Cobalt (default):                        │
+  │    Uses api.cobalt.tools (free, open-source).       │
+  │    Supports MP4 up to 1080p + true MP3 audio.       │
+  │    Self-host: https://github.com/imputnet/cobalt    │
+  │    Point the "Cobalt API URL" to your own instance. │
+  │                                                     │
+  │  Backend — Invidious (no cobalt needed):            │
+  │    Uses a public Invidious instance's API.          │
+  │    No extra setup — works without cobalt.           │
+  │    Limitations: video capped ~720p (muxed streams), │
+  │    audio is M4A/WEBM not MP3.                       │
+  │    Default instance: https://inv.tux.pizza          │
+  │    Self-host: https://github.com/iv-org/invidious   │
+  │    Change instance in Advanced → Invidious URL.     │
+  └─────────────────────────────────────────────────────┘
+  -->
+
+  <!-- Prerequisites box (visible to users) -->
+  <div class="prereqs-box">
+    <strong>📋 Quick Setup Notes</strong>
+    <ul>
+      <li><b>Single video</b> — works immediately, no setup needed.</li>
+      <li><b>Playlist</b> — requires a free <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">YouTube Data API v3</a> key (enter below when a playlist URL is detected).</li>
+      <li><b>Cobalt backend</b> (default) — MP4 up to 1080p + true MP3. Uses <a href="https://github.com/imputnet/cobalt" target="_blank" rel="noopener">api.cobalt.tools</a> or your own self-hosted instance.</li>
+      <li><b>Invidious backend</b> — no cobalt needed, works independently. Video up to ~720p, audio as M4A/WEBM.</li>
+    </ul>
+  </div>
+
+  <!-- ── Main card ── -->
+  <div class="card">
+
+    <!-- Format + backend row -->
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:.9rem">
+      <div class="form-group" style="margin:0">
+        <label>Format</label><br>
+        <div class="mode-toggle">
+          <button class="mode-btn active" data-mode="video">📹 MP4 Video</button>
+          <button class="mode-btn"        data-mode="audio">🎵 Audio</button>
+        </div>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Backend</label><br>
+        <div class="backend-toggle">
+          <button class="backend-btn active" data-backend="cobalt">Cobalt</button>
+          <button class="backend-btn"        data-backend="invidious">Invidious</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Backend info (updates with selection) -->
+    <div class="backend-info" id="backendInfo">
+      <b>Cobalt</b> — MP4 up to 1080p, true MP3 audio. Requires cobalt instance (public or self-hosted).
+    </div>
+
+    <!-- URL input -->
+    <div class="form-group" style="margin-top:.85rem;margin-bottom:.75rem">
+      <label for="ytUrl">YouTube URL</label>
+      <div class="url-row">
+        <input type="url" id="ytUrl" placeholder="https://youtube.com/watch?v=…  or  playlist?list=…" autocomplete="off" spellcheck="false">
+        <button class="btn btn-primary" id="fetchBtn">Fetch</button>
+      </div>
+    </div>
+
+    <!-- Quality / bitrate settings -->
+    <div class="settings-row" id="settingsRow">
+      <div class="form-group" id="videoQualityGroup">
+        <label for="videoQuality">Video quality</label>
+        <select id="videoQuality">
+          <option value="max">Best available</option>
+          <option value="1080" selected>1080p (Cobalt only)</option>
+          <option value="720">720p</option>
+          <option value="480">480p</option>
+          <option value="360">360p</option>
+          <option value="240">240p</option>
+          <option value="144">144p</option>
+        </select>
+      </div>
+      <div class="form-group" id="audioBitrateGroup" style="display:none">
+        <label for="audioBitrate">Audio bitrate (Cobalt)</label>
+        <select id="audioBitrate">
+          <option value="320">320 kbps</option>
+          <option value="256">256 kbps</option>
+          <option value="128" selected>128 kbps</option>
+          <option value="96">96 kbps</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Playlist API key (shown when playlist URL detected) ── -->
+  <!--
+    PLAYLIST PREREQUISITE:
+    This card auto-appears when a playlist URL is pasted.
+    The user must supply a YouTube Data API v3 key.
+    How to get one (free):
+      1. https://console.cloud.google.com/ → New Project
+      2. APIs & Services → Enable APIs → "YouTube Data API v3"
+      3. Credentials → Create Credentials → API Key
+      4. (Recommended) Restrict key to HTTP referrers: yourdomain.com/*
+    Quota: 10,000 units/day free. A playlist fetch uses ~1-2 units.
+  -->
+  <div class="card" id="apiKeyCard" style="display:none">
+    <div class="form-group" style="margin-bottom:.4rem">
+      <label for="ytApiKey">YouTube Data API v3 Key <span style="font-weight:400;color:var(--text-muted)">(required for playlists)</span></label>
+      <div class="cfg-row">
+        <div class="form-group">
+          <input type="password" id="ytApiKey" placeholder="AIzaSy…" autocomplete="off">
+        </div>
+        <button class="btn" id="saveKeyBtn" style="margin-bottom:1px">Save</button>
+      </div>
+      <p class="api-key-note">
+        Stored in your browser only. Get a free key at
+        <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console</a>
+        → enable "YouTube Data API v3" → Credentials → Create API Key.
+        Free quota: 10,000 units/day (a full playlist load uses ~1–2 units).
+      </p>
+    </div>
+  </div>
+
+  <!-- ── Advanced config (collapsed) ── -->
+  <details class="card" style="padding:.75rem 1rem">
+    <summary style="cursor:pointer;font-size:.85rem;font-weight:600;color:var(--text-muted);list-style:none">
+      ⚙️ Advanced — API endpoints
+    </summary>
+    <div style="margin-top:.85rem;display:flex;flex-direction:column;gap:.85rem">
+
+      <!-- Cobalt URL -->
+      <div>
+        <div class="form-group" style="margin-bottom:.3rem">
+          <label for="cobaltUrl">Cobalt API URL</label>
+          <div class="cfg-row">
+            <div class="form-group">
+              <input type="url" id="cobaltUrl" placeholder="https://api.cobalt.tools/" autocomplete="off">
+            </div>
+            <button class="btn" id="saveCobaltBtn" style="margin-bottom:1px">Save</button>
+            <button class="btn" id="resetCobaltBtn" style="margin-bottom:1px">Reset</button>
+          </div>
+        </div>
+        <p class="api-key-note">
+          Default: <code>https://api.cobalt.tools/</code> —
+          Self-host options: <a href="https://github.com/imputnet/cobalt" target="_blank" rel="noopener">cobalt</a>
+          or the included <code>yt-server/</code> (Node.js + yt-dlp, no third-party dependency).
+          Run <code>cd yt-server &amp;&amp; npm i &amp;&amp; node server.js</code>, then set URL to <code>http://localhost:9000/</code>.
+        </p>
+      </div>
+
+      <!-- Invidious URL -->
+      <div>
+        <div class="form-group" style="margin-bottom:.3rem">
+          <label for="invidiousUrl">Invidious Instance URL</label>
+          <div class="cfg-row">
+            <div class="form-group">
+              <input type="url" id="invidiousUrl" placeholder="https://inv.tux.pizza" autocomplete="off">
+            </div>
+            <button class="btn" id="saveInvBtn" style="margin-bottom:1px">Save</button>
+            <button class="btn" id="resetInvBtn" style="margin-bottom:1px">Reset</button>
+          </div>
+        </div>
+        <p class="api-key-note">
+          Default: <code>https://inv.tux.pizza</code> — Any public
+          <a href="https://api.invidious.io/" target="_blank" rel="noopener">Invidious instance</a>
+          works. Choose one close to you, or
+          <a href="https://github.com/iv-org/invidious" target="_blank" rel="noopener">self-host</a>.
+          <b>Invidious gives video up to ~720p, audio as M4A/WEBM (not MP3).</b>
+        </p>
+      </div>
+
+    </div>
+  </details>
+
+  <!-- ── Results area ── -->
+  <div id="resultsArea"></div>
+
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+  initThemeToggle('themeToggle');
+
+  /* ══════════════════════════════════════════
+     CONSTANTS & DEFAULTS
+  ══════════════════════════════════════════ */
+  // After deploy, _patch_domain replaces 'yourdomain.com' → your actual domain,
+  // so this automatically points to your self-hosted yt-server via nginx /yt-api/.
+  // Fallback: public cobalt is used only in local dev (localhost/127.0.0.1).
+  const DEFAULT_COBALT    = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? 'https://api.cobalt.tools/'
+    : (location.origin + '/yt-api/');
+  const DEFAULT_INVIDIOUS = 'https://inv.tux.pizza';
+
+  const LS_COBALT    = 'yt-cobalt-url';
+  const LS_INVIDIOUS = 'yt-invidious-url';
+  const LS_API_KEY   = 'yt-api-key';
+
+  const BACKEND_INFO = {
+    cobalt:    '<b>Cobalt</b> — MP4 up to 1080p, true MP3 audio. Requires cobalt instance (public or self-hosted).',
+    invidious: '<b>Invidious</b> — No cobalt needed. Video up to ~720p (muxed MP4), audio as M4A/WEBM. Works independently.',
+  };
+
+  /* ══════════════════════════════════════════
+     STATE
+  ══════════════════════════════════════════ */
+  let currentMode    = 'video';   // 'video' | 'audio'
+  let currentBackend = 'cobalt';  // 'cobalt' | 'invidious'
+  let playlistItems  = [];
+  let isDownloading  = false;
+
+  /* ══════════════════════════════════════════
+     ELEMENTS
+  ══════════════════════════════════════════ */
+  const ytUrlInput        = document.getElementById('ytUrl');
+  const fetchBtn          = document.getElementById('fetchBtn');
+  const resultsArea       = document.getElementById('resultsArea');
+  const apiKeyCard        = document.getElementById('apiKeyCard');
+  const ytApiKeyInput     = document.getElementById('ytApiKey');
+  const saveKeyBtn        = document.getElementById('saveKeyBtn');
+  const cobaltUrlInput    = document.getElementById('cobaltUrl');
+  const invidiousUrlInput = document.getElementById('invidiousUrl');
+  const backendInfoEl     = document.getElementById('backendInfo');
+  const videoQualityGroup = document.getElementById('videoQualityGroup');
+  const audioBitrateGroup = document.getElementById('audioBitrateGroup');
+
+  /* ══════════════════════════════════════════
+     INIT — restore saved settings
+  ══════════════════════════════════════════ */
+  (function init() {
+    cobaltUrlInput.value    = localStorage.getItem(LS_COBALT)    || DEFAULT_COBALT;
+    invidiousUrlInput.value = localStorage.getItem(LS_INVIDIOUS) || DEFAULT_INVIDIOUS;
+    const savedKey = localStorage.getItem(LS_API_KEY) || '';
+    if (savedKey) ytApiKeyInput.value = savedKey;
+  })();
+
+  /* ══════════════════════════════════════════
+     FORMAT MODE TOGGLE
+  ══════════════════════════════════════════ */
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentMode = btn.dataset.mode;
+      videoQualityGroup.style.display = currentMode === 'video' ? '' : 'none';
+      audioBitrateGroup.style.display = currentMode === 'audio' ? '' : 'none';
+    });
+  });
+
+  /* ══════════════════════════════════════════
+     BACKEND TOGGLE
+  ══════════════════════════════════════════ */
+  document.querySelectorAll('.backend-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.backend-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentBackend = btn.dataset.backend;
+      backendInfoEl.innerHTML = BACKEND_INFO[currentBackend];
+    });
+  });
+
+  /* ══════════════════════════════════════════
+     SAVE / RESET CONFIG
+  ══════════════════════════════════════════ */
+  document.getElementById('saveCobaltBtn').addEventListener('click', () => {
+    const v = cobaltUrlInput.value.trim();
+    if (v) { localStorage.setItem(LS_COBALT, v); showToast('Cobalt URL saved'); }
+  });
+  document.getElementById('resetCobaltBtn').addEventListener('click', () => {
+    cobaltUrlInput.value = DEFAULT_COBALT;
+    localStorage.removeItem(LS_COBALT);
+    showToast('Reset to default');
+  });
+  document.getElementById('saveInvBtn').addEventListener('click', () => {
+    const v = invidiousUrlInput.value.trim();
+    if (v) { localStorage.setItem(LS_INVIDIOUS, v); showToast('Invidious URL saved'); }
+  });
+  document.getElementById('resetInvBtn').addEventListener('click', () => {
+    invidiousUrlInput.value = DEFAULT_INVIDIOUS;
+    localStorage.removeItem(LS_INVIDIOUS);
+    showToast('Reset to default');
+  });
+  saveKeyBtn.addEventListener('click', () => {
+    const k = ytApiKeyInput.value.trim();
+    if (k) { localStorage.setItem(LS_API_KEY, k); showToast('API key saved'); }
+  });
+
+  /* ══════════════════════════════════════════
+     URL INPUT — detect playlist
+  ══════════════════════════════════════════ */
+  ytUrlInput.addEventListener('input', () => {
+    const parsed = parseYtUrl(ytUrlInput.value.trim());
+    apiKeyCard.style.display = (parsed && parsed.isPlaylist) ? '' : 'none';
+  });
+  ytUrlInput.addEventListener('keydown', e => { if (e.key === 'Enter') fetchBtn.click(); });
+
+  /* ══════════════════════════════════════════
+     FETCH BUTTON
+  ══════════════════════════════════════════ */
+  fetchBtn.addEventListener('click', async () => {
+    const raw = ytUrlInput.value.trim();
+    if (!raw) { showError('Please enter a YouTube URL.'); return; }
+
+    const parsed = parseYtUrl(raw);
+    if (!parsed) { showError('Invalid YouTube URL. Please enter a valid video or playlist link.'); return; }
+
+    resultsArea.innerHTML = renderSpinner('Fetching…');
+    fetchBtn.disabled = true;
+
+    try {
+      if (parsed.isPlaylist) {
+        await handlePlaylist(parsed.playlistId);
+      } else {
+        await handleSingle(raw, parsed.videoId);
+      }
+    } catch (e) {
+      resultsArea.innerHTML = renderAlert('error', '❌ ' + (e.message || 'Something went wrong.'));
+    } finally {
+      fetchBtn.disabled = false;
+    }
+  });
+
+  /* ══════════════════════════════════════════
+     URL PARSING
+  ══════════════════════════════════════════ */
+  function parseYtUrl(url) {
+    try {
+      const u = new URL(url);
+      let videoId = null, playlistId = null;
+
+      if (u.hostname === 'youtu.be') {
+        videoId = u.pathname.slice(1).split('?')[0];
+      } else if (u.hostname.includes('youtube.com') || u.hostname.includes('music.youtube.com')) {
+        videoId    = u.searchParams.get('v');
+        playlistId = u.searchParams.get('list');
+        if (!videoId && u.pathname.startsWith('/shorts/')) {
+          videoId = u.pathname.split('/shorts/')[1].split('/')[0];
+        }
+      } else {
+        return null;
+      }
+
+      // Pure playlist: has list= and either no video ID, or path is /playlist
+      const isPlaylist = !!playlistId && (!videoId || u.pathname === '/playlist');
+      if (!videoId && !playlistId) return null;
+      return { videoId, playlistId, isPlaylist };
+    } catch { return null; }
+  }
+
+  /* ══════════════════════════════════════════
+     SINGLE VIDEO — handle
+  ══════════════════════════════════════════ */
+  async function handleSingle(url, videoId) {
+    // Fetch video title + thumbnail via YouTube oEmbed (no API key, no CORS issues)
+    let title     = videoId;
+    let thumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+    try {
+      const oe = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+      if (oe.ok) {
+        const d = await oe.json();
+        title     = d.title     || title;
+        thumbnail = d.thumbnail_url || thumbnail;
+      }
+    } catch { /* use defaults */ }
+
+    resultsArea.innerHTML = `
+      <div class="card">
+        <div class="video-info" id="singleInfo">
+          <img src="${escHtml(thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'">
+          <div class="video-info-text">
+            <div class="video-info-title">${escHtml(title)}</div>
+            <div class="video-info-meta" id="singleMeta">Ready to download via <b>${escHtml(currentBackend)}</b></div>
+          </div>
+        </div>
+        <div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-primary" id="dlSingleBtn">⬇️ Download</button>
+          <span id="dlSingleStatus"></span>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('dlSingleBtn').addEventListener('click', async () => {
+      const btn    = document.getElementById('dlSingleBtn');
+      const status = document.getElementById('dlSingleStatus');
+      btn.disabled = true;
+      status.innerHTML = renderSpinnerInline('Requesting download link…');
+      try {
+        const result = await backendFetch(url, videoId);
+        status.innerHTML = '';
+        btn.disabled = false;
+        triggerDownload(result.url, result.filename);
+        document.getElementById('singleMeta').textContent = '✅ Download started!';
+      } catch (e) {
+        status.innerHTML = `<span class="status-badge error">❌ ${escHtml(e.message)}</span>`;
+        btn.disabled = false;
+      }
+    });
+  }
+
+  /* ══════════════════════════════════════════
+     PLAYLIST — handle
+  ══════════════════════════════════════════ */
+  async function handlePlaylist(playlistId) {
+    /*
+     * PLAYLIST PREREQUISITE:
+     * Requires a YouTube Data API v3 key.
+     * Free quota: 10,000 units/day. A playlistItems.list call costs 1 unit per page.
+     * Get key: console.cloud.google.com → Enable YouTube Data API v3 → Credentials → API Key
+     */
+    const apiKey = (ytApiKeyInput.value.trim() || localStorage.getItem(LS_API_KEY) || '').trim();
+    if (!apiKey) {
+      resultsArea.innerHTML = renderAlert('warning',
+        '⚠️ A YouTube Data API v3 key is required to load playlist items. Enter your key in the field above and try again.');
+      return;
+    }
+
+    resultsArea.innerHTML = renderSpinner('Loading playlist items…');
+    playlistItems = await fetchPlaylistItems(playlistId, apiKey);
+
+    if (!playlistItems.length) {
+      resultsArea.innerHTML = renderAlert('warning', '⚠️ No accessible videos found in this playlist.');
+      return;
+    }
+    renderPlaylistUI();
+  }
+
+  function renderPlaylistUI() {
+    const total = playlistItems.length;
+    const rows = playlistItems.map((item, i) => `
+      <div class="pl-item selected" id="plItem_${i}" onclick="toggleItem(${i})">
+        <input type="checkbox" class="pl-check" id="plCheck_${i}" checked onclick="event.stopPropagation();toggleItem(${i})">
+        <img class="pl-thumb" src="${escHtml(item.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'">
+        <span class="pl-title">${escHtml(item.title)}</span>
+        <span class="pl-status pending" id="plStatus_${i}">—</span>
+      </div>
+    `).join('');
+
+    resultsArea.innerHTML = `
+      <div class="card">
+        <div class="playlist-header">
+          <div>
+            <strong>${total} video${total !== 1 ? 's' : ''}</strong>
+            <span class="playlist-count" id="selectedCount"> · ${total} selected</span>
+          </div>
+          <div style="display:flex;gap:.4rem">
+            <button class="btn" onclick="selectAll(true)">Select all</button>
+            <button class="btn" onclick="selectAll(false)">Deselect all</button>
+          </div>
+        </div>
+        <div id="plList" style="max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:.2rem">
+          ${rows}
+        </div>
+        <div style="margin-top:1rem">
+          <div id="plProgress" style="display:none">
+            <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.3rem">
+              <span id="plProgressText">Downloading…</span>
+              <span id="plProgressCount"></span>
+            </div>
+            <div class="progress-wrap"><div class="progress-bar" id="plProgressBar" style="width:0%"></div></div>
+          </div>
+          <div style="margin-top:.75rem;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-primary" id="dlPlaylistBtn">⬇️ Download Selected</button>
+            <span style="font-size:.8rem;color:var(--text-muted)">Downloads one file at a time — allow each browser prompt</span>
+          </div>
+        </div>
+      </div>
+    `;
+    document.getElementById('dlPlaylistBtn').addEventListener('click', startPlaylistDownload);
+  }
+
+  window.toggleItem = function(i) {
+    const check = document.getElementById(`plCheck_${i}`);
+    check.checked = !check.checked;
+    document.getElementById(`plItem_${i}`).classList.toggle('selected', check.checked);
+    updateSelectedCount();
+  };
+  window.selectAll = function(val) {
+    playlistItems.forEach((_, i) => {
+      document.getElementById(`plCheck_${i}`).checked = val;
+      document.getElementById(`plItem_${i}`).classList.toggle('selected', val);
+    });
+    updateSelectedCount();
+  };
+  function updateSelectedCount() {
+    const n = [...document.querySelectorAll('.pl-check')].filter(c => c.checked).length;
+    const el = document.getElementById('selectedCount');
+    if (el) el.textContent = ` · ${n} selected`;
+  }
+
+  async function startPlaylistDownload() {
+    if (isDownloading) return;
+    const indices = [...document.querySelectorAll('.pl-check')]
+      .map((c, i) => c.checked ? i : -1).filter(i => i >= 0);
+    if (!indices.length) { showToast('No items selected'); return; }
+
+    isDownloading = true;
+    const dlBtn     = document.getElementById('dlPlaylistBtn');
+    const progWrap  = document.getElementById('plProgress');
+    const progBar   = document.getElementById('plProgressBar');
+    const progText  = document.getElementById('plProgressText');
+    const progCount = document.getElementById('plProgressCount');
+
+    dlBtn.disabled = true;
+    progWrap.style.display = '';
+
+    let done = 0, failed = 0;
+    for (const idx of indices) {
+      const item     = playlistItems[idx];
+      const statusEl = document.getElementById(`plStatus_${idx}`);
+      statusEl.className   = 'pl-status fetching';
+      statusEl.textContent = '⏳';
+
+      progText.textContent  = item.title.slice(0, 45) + (item.title.length > 45 ? '…' : '');
+      progCount.textContent = `${done + failed + 1} / ${indices.length}`;
+      progBar.style.width   = `${Math.round((done + failed) / indices.length * 100)}%`;
+
+      try {
+        const result = await backendFetch(item.url, item.id);
+        triggerDownload(result.url, result.filename);
+        statusEl.className   = 'pl-status done';
+        statusEl.textContent = '✅';
+        done++;
+      } catch (e) {
+        statusEl.className   = 'pl-status err';
+        statusEl.textContent = '❌';
+        failed++;
+      }
+
+      // Polite pause between requests
+      await sleep(900);
+    }
+
+    progBar.style.width   = '100%';
+    progText.textContent  = `Finished — ${done} downloaded, ${failed} failed`;
+    progCount.textContent = '';
+    dlBtn.disabled = false;
+    isDownloading  = false;
+  }
+
+  /* ══════════════════════════════════════════
+     BACKEND ROUTER
+  ══════════════════════════════════════════ */
+  function backendFetch(url, videoId) {
+    if (currentBackend === 'invidious') return invidFetch(url, videoId);
+    return cobaltFetch(url);
+  }
+
+  /* ══════════════════════════════════════════
+     COBALT BACKEND
+     Docs: https://github.com/imputnet/cobalt
+     API: POST {cobaltBase}/  → { status, url, filename }
+     Supports: MP4 up to max quality, true MP3 audio.
+     Requires: a running cobalt instance (public api.cobalt.tools or self-hosted).
+  ══════════════════════════════════════════ */
+  async function cobaltFetch(url) {
+    const cobaltBase = (localStorage.getItem(LS_COBALT) || DEFAULT_COBALT).replace(/\/$/, '') + '/';
+    const quality = document.getElementById('videoQuality').value;
+    const bitrate = document.getElementById('audioBitrate').value;
+
+    const body = { url };
+    if (currentMode === 'audio') {
+      body.downloadMode = 'audio';
+      body.audioFormat  = 'mp3';
+      body.audioBitrate = bitrate;
+    } else {
+      body.downloadMode  = 'auto';
+      body.videoQuality  = quality;
+      body.filenameStyle = 'pretty';
+    }
+
+    const res = await fetch(cobaltBase, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => res.statusText);
+      throw new Error(`Cobalt ${res.status}: ${txt.slice(0, 120)}`);
+    }
+
+    const data = await res.json();
+    if (data.status === 'error') throw new Error('Cobalt: ' + (data.error?.code || data.error || 'unknown'));
+
+    if (data.status === 'picker') {
+      const picked = data.picker?.find(p => p.type === 'video') || data.picker?.[0];
+      if (!picked) throw new Error('Cobalt: no stream in picker response');
+      return { url: picked.url, filename: data.filename || picked.filename || 'download' };
+    }
+
+    if (data.status === 'tunnel' || data.status === 'redirect') {
+      return { url: data.url, filename: data.filename || 'download' };
+    }
+
+    throw new Error('Cobalt: unexpected response — ' + JSON.stringify(data).slice(0, 100));
+  }
+
+  /* ══════════════════════════════════════════
+     INVIDIOUS BACKEND
+     Docs: https://github.com/iv-org/invidious/wiki/API
+     API: GET {invBase}/api/v1/videos/{videoId}
+          → { title, formatStreams[], adaptiveFormats[] }
+     Supports: MP4 muxed video up to ~720p, M4A/WEBM audio.
+     Requires: a public or self-hosted Invidious instance.
+     No cobalt, no API key, no extra setup — works independently.
+     Download URL: {invBase}/latest_version?id={videoId}&itag={itag}&local=true
+  ══════════════════════════════════════════ */
+  async function invidFetch(url, videoId) {
+    const invBase = (localStorage.getItem(LS_INVIDIOUS) || DEFAULT_INVIDIOUS).replace(/\/$/, '');
+
+    const res = await fetch(`${invBase}/api/v1/videos/${videoId}?fields=title,formatStreams,adaptiveFormats`, {
+      headers: { 'Accept': 'application/json' },
+    });
+    if (!res.ok) throw new Error(`Invidious ${res.status}: ${res.statusText}`);
+    const data = await res.json();
+    if (data.error) throw new Error('Invidious: ' + data.error);
+
+    const title     = data.title || videoId;
+    const safeTitle = title.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').slice(0, 120);
+
+    if (currentMode === 'audio') {
+      /*
+       * Audio-only adaptive formats.
+       * Prefer itag 140 (M4A 128kbps) — plays natively in all browsers.
+       * Fallback: itag 251 (WEBM OPUS 160kbps) or any audio format.
+       * NOTE: These are NOT MP3. If you need MP3, use the Cobalt backend.
+       */
+      const audioFmts = (data.adaptiveFormats || []).filter(f => String(f.type).startsWith('audio'));
+      const m4a  = audioFmts.find(f => String(f.itag) === '140');
+      const webm = audioFmts.find(f => ['251','250','249'].includes(String(f.itag)));
+      const chosen = m4a || webm || audioFmts[0];
+      if (!chosen) throw new Error('Invidious: no audio stream found for this video');
+      const ext = m4a ? 'm4a' : 'webm';
+      return {
+        url:      `${invBase}/latest_version?id=${videoId}&itag=${chosen.itag}&local=true`,
+        filename: `${safeTitle}.${ext}`,
+      };
+    } else {
+      /*
+       * Muxed (audio+video) streams — formatStreams.
+       * These are pre-merged MP4, so no post-processing needed.
+       * Maximum quality: usually 720p (1080p muxed streams no longer exist on YouTube).
+       * For 1080p+, use Cobalt backend which merges adaptive streams server-side.
+       */
+      const quality  = document.getElementById('videoQuality').value;
+      const formats  = (data.formatStreams || []);
+      if (!formats.length) throw new Error('Invidious: no video streams found for this video');
+
+      let chosen;
+      if (quality === 'max' || quality === '1080') {
+        // Best available muxed (first in list is usually highest)
+        chosen = formats[0];
+      } else {
+        const label = quality + 'p';
+        chosen = formats.find(f => f.qualityLabel === label) || formats[formats.length - 1];
+      }
+
+      return {
+        url:      `${invBase}/latest_version?id=${videoId}&itag=${chosen.itag}&local=true`,
+        filename: `${safeTitle}.mp4`,
+      };
+    }
+  }
+
+  /* ══════════════════════════════════════════
+     YOUTUBE DATA API — PLAYLIST ITEMS
+     Prerequisite: Free YouTube Data API v3 key.
+     Cost: 1 unit per page (50 items). Free quota: 10,000 units/day.
+     How to get: console.cloud.google.com → Enable YouTube Data API v3
+  ══════════════════════════════════════════ */
+  async function fetchPlaylistItems(playlistId, apiKey) {
+    const items = [];
+    let pageToken = '';
+    let page = 0;
+
+    do {
+      page++;
+      if (page > 20) break; // cap: 20 pages × 50 = 1000 videos max
+
+      const qs = new URLSearchParams({
+        part:       'snippet',
+        maxResults: '50',
+        playlistId: playlistId,
+        key:        apiKey,
+      });
+      if (pageToken) qs.set('pageToken', pageToken);
+
+      const res  = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?${qs}`);
+      const data = await res.json();
+
+      if (data.error) throw new Error('YouTube API: ' + (data.error.message || JSON.stringify(data.error)));
+
+      for (const item of (data.items || [])) {
+        const sn  = item.snippet;
+        if (!sn || sn.title === 'Deleted video' || sn.title === 'Private video') continue;
+        const vid = sn.resourceId?.videoId;
+        if (!vid) continue;
+        items.push({
+          id:        vid,
+          title:     sn.title,
+          thumbnail: sn.thumbnails?.medium?.url || sn.thumbnails?.default?.url || '',
+          url:       `https://www.youtube.com/watch?v=${vid}`,
+        });
+      }
+
+      pageToken = data.nextPageToken || '';
+    } while (pageToken);
+
+    return items;
+  }
+
+  /* ══════════════════════════════════════════
+     HELPERS
+  ══════════════════════════════════════════ */
+  function triggerDownload(url, filename) {
+    const a = document.createElement('a');
+    a.href = url; a.download = filename || 'download';
+    a.target = '_blank'; a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => a.remove(), 500);
+  }
+
+  function escHtml(str) {
+    return String(str ?? '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  function renderSpinner(msg = 'Loading…') {
+    return `<div class="card" style="text-align:center;padding:2rem;color:var(--text-muted)">
+      <div style="font-size:1.6rem;margin-bottom:.5rem">⏳</div>
+      <div>${escHtml(msg)}</div></div>`;
+  }
+  function renderSpinnerInline(msg) {
+    return `<span class="status-badge info">⏳ ${escHtml(msg)}</span>`;
+  }
+  function renderAlert(type, html) {
+    return `<div class="card"><div class="status-badge ${type}" style="font-size:.9rem;padding:.55rem .9rem">${html}</div></div>`;
+  }
+  function showError(msg) {
+    resultsArea.innerHTML = renderAlert('error', '❌ ' + escHtml(msg));
+  }
+  function showToast(msg) {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    Object.assign(t.style, {
+      position:'fixed', bottom:'1.5rem', right:'1.5rem',
+      background:'var(--primary)', color:'#fff',
+      padding:'.5rem 1rem', borderRadius:'8px',
+      fontSize:'.85rem', fontWeight:'600', zIndex:'9999', transition:'opacity .4s',
+    });
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 450); }, 1800);
+  }
+</script>
+</body>
+</html>

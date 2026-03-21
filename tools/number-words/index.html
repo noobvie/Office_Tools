@@ -120,7 +120,7 @@ function numToWords(n, useAnd, ordinal) {
       remaining = remaining % val;
       // ordinal only on final group
       const isLast = remaining === 0n;
-      parts.push(belowThousand(Number(count), useAnd, false) + ' ' + name + (isLast && ordinal ? (name.endsWith('n') ? 'th' : name.endsWith('d') ? 'th' : 'th') : ''));
+      parts.push(belowThousand(Number(count), useAnd, false) + ' ' + name + (isLast && ordinal ? 'th' : ''));
     }
   }
   if (remaining > 0n) {
