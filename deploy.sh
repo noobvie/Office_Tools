@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# Office Tools — Deploy Manager v2026.03.21
+# Office Tools — Deploy Manager
 # Interactive menu for installation, domain management, and removal.
 #
 # Supports:  Debian · Ubuntu · AlmaLinux · Rocky Linux · CentOS Stream
@@ -852,7 +852,7 @@ show_banner() {
     clear
     echo ""
     echo -e "${BOLD}${CYAN}╔═══════════════════════════════════════════════════════╗${RESET}"
-    echo -e "${BOLD}${CYAN}║       Office Tools — Deploy Manager                   ║${RESET}"
+    echo -e "${BOLD}${CYAN}║       Office Tools — Deploy Manager  v2026.03.21      ║${RESET}"
     echo -e "${BOLD}${CYAN}║       github.com/noobvie/Office_Tools                 ║${RESET}"
     echo -e "${BOLD}${CYAN}╚═══════════════════════════════════════════════════════╝${RESET}"
     echo ""
