@@ -370,7 +370,7 @@ setInterval(() => {
 ══════════════════════════════════════════════════════════════ */
 app.listen(PORT, HOST, async () => {
   console.log(`\n  yt-dlp server  →  http://localhost:${PORT}/`);
-  console.log(`  Set "Cobalt API URL" in the yt-downloader tool to this address.\n`);
+  console.log(`  In the yt-downloader tool, select "Local" backend (default when deployed via nginx /yt-api/).\n`);
 
   const [ver, ffmpegOk] = await Promise.all([getYtdlpVersion(), hasFfmpeg()]);
   console.log(`  yt-dlp  : ${ver  ? `✓ ${ver}` : '✗ NOT FOUND — install: pip install yt-dlp'}`);

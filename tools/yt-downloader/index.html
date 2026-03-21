@@ -847,7 +847,9 @@
      Requires: a running cobalt instance (public api.cobalt.tools or self-hosted).
   ══════════════════════════════════════════ */
   async function cobaltFetch(url, cobaltBase) {
-    cobaltBase = (cobaltBase || DEFAULT_LOCAL).replace(/\/$/, '') + '/';
+    const label   = currentBackend === 'local' ? 'Local yt-server' : 'Cobalt';
+    cobaltBase    = (cobaltBase || DEFAULT_LOCAL).replace(/\/$/, '');  // no trailing slash
+
     const quality = document.getElementById('videoQuality').value;
     const bitrate = document.getElementById('audioBitrate').value;
 
@@ -862,7 +864,7 @@
       body.filenameStyle = 'pretty';
     }
 
-    const res = await fetch(cobaltBase, {
+    const res = await fetch(cobaltBase + '/', {
       method: 'POST',
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -870,23 +872,44 @@
 
     if (!res.ok) {
       const txt = await res.text().catch(() => res.statusText);
-      throw new Error(`Cobalt ${res.status}: ${txt.slice(0, 120)}`);
+      if (currentBackend === 'local' && (res.status === 404 || res.status === 502 || res.status === 503)) {
+        throw new Error(
+          `Local yt-server not reachable (HTTP ${res.status}). ` +
+          `Check: systemctl status office-tools-yt — or switch to Cobalt backend.`
+        );
+      }
+      throw new Error(`${label} ${res.status}: ${txt.slice(0, 120)}`);
     }
 
     const data = await res.json();
-    if (data.status === 'error') throw new Error('Cobalt: ' + (data.error?.code || data.error || 'unknown'));
+    if (data.status === 'error') throw new Error(`${label}: ` + (data.error?.code || data.error || 'unknown'));
 
     if (data.status === 'picker') {
       const picked = data.picker?.find(p => p.type === 'video') || data.picker?.[0];
-      if (!picked) throw new Error('Cobalt: no stream in picker response');
-      return { url: picked.url, filename: data.filename || picked.filename || 'download' };
+      if (!picked) throw new Error(`${label}: no stream in picker response`);
+      // Resolve relative URLs (yt-server returns /stream/:id, cobalt.tools returns absolute)
+      const pickedUrl = resolveStreamUrl(picked.url, cobaltBase);
+      return { url: pickedUrl, filename: data.filename || picked.filename || 'download' };
     }
 
     if (data.status === 'tunnel' || data.status === 'redirect') {
-      return { url: data.url, filename: data.filename || 'download' };
+      // yt-server returns a relative path: /stream/:id
+      // cobalt.tools returns an absolute URL: https://...
+      // Make sure we always return an absolute URL the browser can fetch.
+      return { url: resolveStreamUrl(data.url, cobaltBase), filename: data.filename || 'download' };
     }
 
-    throw new Error('Cobalt: unexpected response — ' + JSON.stringify(data).slice(0, 100));
+    throw new Error(`${label}: unexpected response — ` + JSON.stringify(data).slice(0, 100));
+  }
+
+  // Resolve a stream URL that may be relative (/stream/:id from yt-server)
+  // or already absolute (https://... from cobalt.tools).
+  function resolveStreamUrl(streamUrl, base) {
+    if (!streamUrl) return streamUrl;
+    if (streamUrl.startsWith('http://') || streamUrl.startsWith('https://')) return streamUrl;
+    // Relative path — prefix with the backend base so nginx can proxy it correctly.
+    // e.g. /stream/abc → https://domain.com/yt-api/stream/abc
+    return base + streamUrl;
   }
 
   /* ══════════════════════════════════════════
