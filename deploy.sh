@@ -919,11 +919,9 @@ opt_1_install_update() {
         pull_repo
         load_conf
         sync_frontend "${DOMAIN:-}"
-        if [[ -d "$COBALT_DIR/.git" ]]; then
-            sync_cobalt
-        else
-            setup_cobalt "${DOMAIN:-}"
-        fi
+        # Always call setup_cobalt — it handles both fresh install and updates,
+        # and always (re-)writes the systemd service file.
+        setup_cobalt "${DOMAIN:-}"
         if [[ -n "$DOMAIN" ]]; then
             [[ -d "$BACKEND_DIR" ]] && sync_backend || true
             systemctl reload nginx 2>/dev/null || true
