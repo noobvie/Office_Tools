@@ -10,7 +10,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Office Tools">
   <meta property="og:title" content="YouTube to MP3 / MP4 Downloader — Free, Playlists, No Login">
-  <meta property="og:description" content="Download YouTube videos as MP4 or audio as MP3. Supports full playlists with batch download. No login, no ads — choose Cobalt or Invidious backend.">
+  <meta property="og:description" content="Download YouTube videos as MP4 or audio as MP3. Supports full playlists with batch download. No login, no ads — Local (self-hosted), Cobalt, or Invidious backend.">
   <meta property="og:url" content="https://yourdomain.com/tools/yt-downloader/">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="YouTube to MP3 / MP4 Downloader — Free, No Login">
@@ -29,7 +29,7 @@
       "operatingSystem": "Any",
       "offers": {"@type":"Offer","price":"0","priceCurrency":"USD"},
       "url": "https://yourdomain.com/tools/yt-downloader/",
-      "featureList": ["MP4 video download up to 1080p","MP3 audio download","Full playlist batch download","No login required","Cobalt and Invidious backend support"]
+      "featureList": ["MP4 video download up to 1080p","MP3 audio download","Full playlist batch download","No login required","Local (self-hosted yt-dlp), Cobalt, and Invidious backend support"]
     },
     {
       "@context": "https://schema.org",
@@ -48,7 +48,7 @@
         {
           "@type": "Question",
           "name": "Does this work without installing anything?",
-          "acceptedAnswer": {"@type":"Answer","text":"Yes — it runs entirely in your browser. No software to install. Downloads are handled via Cobalt or Invidious, both of which are free and open-source."}
+          "acceptedAnswer": {"@type":"Answer","text":"Yes — it runs entirely in your browser. No software to install. The Local backend uses yt-dlp on your own server; Cobalt and Invidious are free, open-source alternatives."}
         }
       ]
     }
@@ -330,7 +330,7 @@
         <label for="videoQuality">Video quality</label>
         <select id="videoQuality">
           <option value="max">Best available</option>
-          <option value="1080" selected>1080p (Local/Cobalt)</option>
+          <option value="1080" selected>1080p</option>
           <option value="720">720p</option>
           <option value="480">480p</option>
           <option value="360">360p</option>
@@ -339,7 +339,7 @@
         </select>
       </div>
       <div class="form-group" id="audioBitrateGroup" style="display:none">
-        <label for="audioBitrate">Audio bitrate (Local/Cobalt)</label>
+        <label for="audioBitrate">Audio bitrate</label>
         <select id="audioBitrate">
           <option value="320">320 kbps</option>
           <option value="256">256 kbps</option>
@@ -512,6 +512,10 @@
     invidiousUrlInput.value = localStorage.getItem(LS_INVIDIOUS) || DEFAULT_INVIDIOUS;
     const savedKey = localStorage.getItem(LS_API_KEY) || '';
     if (savedKey) ytApiKeyInput.value = savedKey;
+    // Apply quality/bitrate caps for the active backend (defaults to local)
+    applyBackendCapabilities();
+    // Ping local health on page load — Local is the default backend
+    pingLocalHealth();
   })();
 
   /* ══════════════════════════════════════════
@@ -530,14 +534,57 @@
   /* ══════════════════════════════════════════
      BACKEND TOGGLE
   ══════════════════════════════════════════ */
+  function applyBackendCapabilities() {
+    const isInv  = currentBackend === 'invidious';
+    const qSel   = document.getElementById('videoQuality');
+
+    // Invidious: muxed streams top out at 720p — cap the selector
+    Array.from(qSel.options).forEach(opt => {
+      const q = parseInt(opt.value) || 0;
+      const tooHigh = q > 720;
+      opt.disabled = isInv && tooHigh;
+      opt.text = opt.value === 'max'
+        ? (isInv ? 'Best available (~720p)' : 'Best available')
+        : opt.value === '1080' && isInv
+          ? '1080p (not available)'
+          : (opt.text.replace(' (not available)', ''));  // clean if switching back
+    });
+    // If currently selected option is disabled, drop to 720p
+    if (qSel.options[qSel.selectedIndex]?.disabled) qSel.value = '720';
+
+    // Invidious doesn't support MP3 bitrate control — dim the bitrate group
+    audioBitrateGroup.style.opacity = isInv ? '0.4' : '1';
+    audioBitrateGroup.title = isInv ? 'Invidious audio is M4A/WEBM — bitrate not configurable' : '';
+
+    backendInfoEl.innerHTML = BACKEND_INFO[currentBackend];
+  }
+
   document.querySelectorAll('.backend-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.backend-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       currentBackend = btn.dataset.backend;
-      backendInfoEl.innerHTML = BACKEND_INFO[currentBackend];
+      applyBackendCapabilities();
+
+      // Ping Local health endpoint so problems surface immediately
+      if (currentBackend === 'local') pingLocalHealth();
     });
   });
+
+  function pingLocalHealth() {
+    const base = (localStorage.getItem(LS_LOCAL) || DEFAULT_LOCAL).replace(/\/$/, '');
+    fetch(base + '/health', { signal: AbortSignal.timeout(4000) })
+      .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+      .then(d => {
+        const ffWarn = d.ffmpeg ? '' : ' · <span style="color:var(--warning)">⚠ ffmpeg missing — MP3 and 1080p disabled</span>';
+        backendInfoEl.innerHTML = BACKEND_INFO.local +
+          ` <span style="color:var(--success)">✓ running (yt-dlp ${d.ytdlp})</span>${ffWarn}`;
+      })
+      .catch(() => {
+        backendInfoEl.innerHTML = BACKEND_INFO.local +
+          ` <span style="color:var(--danger)">✗ not reachable — check <code>systemctl status office-tools-yt</code> or run deploy.sh → Option 5</span>`;
+      });
+  }
 
   /* ══════════════════════════════════════════
      SAVE / RESET CONFIG
@@ -1036,11 +1083,6 @@
     document.body.appendChild(a);
     a.click();
     setTimeout(() => a.remove(), 500);
-  }
-
-  function escHtml(str) {
-    return String(str ?? '')
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
   function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }

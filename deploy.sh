@@ -1270,8 +1270,20 @@ opt_5_update_repo() {
         # Sync backend if installed
         [[ -d "$BACKEND_DIR" ]] && sync_backend || true
 
-        # Always reload nginx if it's running
-        if systemctl is-active --quiet nginx 2>/dev/null; then
+        # Refresh nginx config so new location blocks (e.g. /yt-api/) are always picked up.
+        # Re-write the full config from the current deploy.sh template — safe because the
+        # config is generated from a template with no manual customisations.
+        if systemctl is-active --quiet nginx 2>/dev/null && [[ -n "${DOMAIN:-}" ]]; then
+            local ssl_cert="/etc/letsencrypt/live/${DOMAIN}/fullchain.pem"
+            if [[ -f "$ssl_cert" ]]; then
+                info "Refreshing nginx HTTPS config for ${DOMAIN}…"
+                write_nginx_https "$DOMAIN"
+            elif [[ -f "$NGINX_CONF_PATH" ]]; then
+                info "Refreshing nginx HTTP config for ${DOMAIN}…"
+                write_nginx_http "$DOMAIN"
+            fi
+            success "nginx config refreshed and reloaded"
+        elif systemctl is-active --quiet nginx 2>/dev/null; then
             systemctl reload nginx
             success "nginx reloaded"
         fi

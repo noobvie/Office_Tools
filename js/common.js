@@ -2,6 +2,9 @@
    Office Tools — Shared JS
    ============================================================ */
 
+/* Capture script URL before any async code (document.currentScript is only live here) */
+const _OT_SCRIPT_SRC = document.currentScript?.src || '';
+
 /* ---------- Theme ---------- */
 const OT_THEMES  = ['light', 'dark', 'matrix', 'anime'];
 const OT_LABELS  = { light: '🌙 Dark', dark: '💻 Matrix', matrix: '🌸 Anime', anime: '☀️ Light' };
@@ -72,7 +75,7 @@ function fmt(n) { return Number(n).toLocaleString(); }
 
 /* ---------- Escape HTML ---------- */
 function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 /* ---------- Tool Sidebar ---------- */
@@ -117,6 +120,11 @@ const OT_TOOLS = [
   { name: 'Crontab Explainer',       path: 'crontab',               cat: '💻 Development',          icon: '⏲️' },
   { name: 'Regex Tester',            path: 'regex-tester',          cat: '💻 Development',          icon: '🔍' },
   { name: 'SQL Formatter',           path: 'sql-formatter',         cat: '💻 Development',          icon: '🗄️' },
+  { name: 'File Compressor',         path: 'file-compressor',       cat: '💻 Development',          icon: '🗜️' },
+  // 🎬 Media
+  { name: 'YouTube Downloader',      path: 'yt-downloader',         cat: '🎬 Media',                icon: '📥' },
+  { name: 'Speech & Voice',          path: 'speech-voice',          cat: '🎬 Media',                icon: '🎙️' },
+  { name: 'Photo Editor',            path: 'photo-editor',          cat: '🎬 Media',                icon: '🖼️' },
   // 🎨 Design
   { name: 'Color Converter',         path: 'color-converter',       cat: '🎨 Design',               icon: '🎨' },
   { name: 'Character Map',           path: 'char-map',              cat: '🎨 Design',               icon: '🔣' },
@@ -238,6 +246,16 @@ function initToolSidebar() {
 
 /* ---------- Auto-init on DOMContentLoaded ---------- */
 document.addEventListener('DOMContentLoaded', () => {
+  // Inject favicon once — path derived from common.js script URL so it works at any depth
+  if (!document.querySelector('link[rel~="icon"]')) {
+    const href = _OT_SCRIPT_SRC
+      ? _OT_SCRIPT_SRC.replace(/\/js\/common\.js([?#].*)?$/, '/favicon.svg')
+      : '/favicon.svg';
+    const link = document.createElement('link');
+    link.rel = 'icon'; link.type = 'image/svg+xml'; link.href = href;
+    document.head.appendChild(link);
+  }
+
   initThemeToggle();
   initTabs();
   initToolSidebar();
