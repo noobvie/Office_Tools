@@ -92,12 +92,12 @@
     <!-- Content type tabs -->
     <div class="card" id="qrContentCard">
       <div class="tabs" id="qrTabs">
-        <button class="tab-btn active" data-qtab="qtUrl">URL / Text</button>
-        <button class="tab-btn" data-qtab="qtWifi">WiFi</button>
-        <button class="tab-btn" data-qtab="qtVcard">vCard</button>
-        <button class="tab-btn" data-qtab="qtEmail">Email</button>
-        <button class="tab-btn" data-qtab="qtPhone">Phone / SMS</button>
-        <button class="tab-btn" data-qtab="qtLocation">Location</button>
+        <button class="tab-btn active" data-tab="qtUrl">URL / Text</button>
+        <button class="tab-btn" data-tab="qtWifi">WiFi</button>
+        <button class="tab-btn" data-tab="qtVcard">vCard</button>
+        <button class="tab-btn" data-tab="qtEmail">Email</button>
+        <button class="tab-btn" data-tab="qtPhone">Phone / SMS</button>
+        <button class="tab-btn" data-tab="qtLocation">Location</button>
       </div>
 
       <!-- URL / Text -->
@@ -109,7 +109,7 @@
       </div>
 
       <!-- WiFi -->
-      <div class="tab-pane" id="qtWifi" style="display:none">
+      <div class="tab-pane" id="qtWifi">
         <div class="form-row">
           <div class="form-group">
             <label>Network Name (SSID)</label>
@@ -136,7 +136,7 @@
       </div>
 
       <!-- vCard -->
-      <div class="tab-pane" id="qtVcard" style="display:none">
+      <div class="tab-pane" id="qtVcard">
         <div class="form-row">
           <div class="form-group"><label>First Name</label><input type="text" id="vcFirst" placeholder="John"></div>
           <div class="form-group"><label>Last Name</label><input type="text" id="vcLast" placeholder="Doe"></div>
@@ -153,14 +153,14 @@
       </div>
 
       <!-- Email -->
-      <div class="tab-pane" id="qtEmail" style="display:none">
+      <div class="tab-pane" id="qtEmail">
         <div class="form-group"><label>To (email address)</label><input type="text" id="emlTo" placeholder="recipient@example.com"></div>
         <div class="form-group"><label>Subject</label><input type="text" id="emlSubj" placeholder="Hello!"></div>
         <div class="form-group"><label>Body (optional)</label><textarea id="emlBody" placeholder="Message body…" style="min-height:70px"></textarea></div>
       </div>
 
       <!-- Phone / SMS -->
-      <div class="tab-pane" id="qtPhone" style="display:none">
+      <div class="tab-pane" id="qtPhone">
         <div class="form-group">
           <label>Type</label>
           <select id="phoneType">
@@ -177,7 +177,7 @@
       </div>
 
       <!-- Location -->
-      <div class="tab-pane" id="qtLocation" style="display:none">
+      <div class="tab-pane" id="qtLocation">
         <div class="form-row">
           <div class="form-group"><label>Latitude</label><input type="number" id="geoLat" placeholder="48.8584" step="any"></div>
           <div class="form-group"><label>Longitude</label><input type="number" id="geoLng" placeholder="2.2945" step="any"></div>
@@ -429,16 +429,6 @@ document.querySelectorAll('.section-tab').forEach(btn => {
   });
 });
 
-// ── QR content type tabs ──
-document.querySelectorAll('#qrTabs .tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('#qrTabs .tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('#qrContentCard .tab-pane').forEach(p => p.style.display = 'none');
-    btn.classList.add('active');
-    document.getElementById(btn.dataset.qtab).style.display = '';
-  });
-});
-
 // ── Phone type: show SMS body row ──
 document.getElementById('phoneType').addEventListener('change', e => {
   document.getElementById('smsBodyRow').style.display =
@@ -497,7 +487,7 @@ document.getElementById('removeLogoBtn').addEventListener('click', () => {
 
 // ── Build QR content string ──
 function getQrContent() {
-  const activeTab = document.querySelector('#qrTabs .tab-btn.active').dataset.qtab;
+  const activeTab = document.querySelector('#qrTabs .tab-btn.active').dataset.tab;
   if (activeTab === 'qtUrl') {
     return document.getElementById('urlInput').value.trim();
   }
