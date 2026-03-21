@@ -135,7 +135,7 @@ app.post('/', async (req, res) => {
   try {
     title = await getTitle(url);
   } catch (e) {
-    return res.json({ status: 'error', error: { code: 'fetch_failed: ' + e.message.slice(0, 80) } });
+    return res.json({ status: 'error', error: { code: e.message.slice(0, 200) } });
   }
 
   /* ── Determine output format + path ── */
@@ -211,23 +211,22 @@ app.get('/health', async (req, res) => {
  */
 function getTitle(url) {
   return new Promise((resolve, reject) => {
-    let out = '';
+    let out = '', err = '';
     const proc = spawn(YTDLP, ['--no-playlist', '-j', '--no-warnings', url]);
     proc.stdout.on('data', d => out += d);
-    proc.stderr.on('data', () => {}); // suppress
+    proc.stderr.on('data', d => err += d);
     proc.on('close', code => {
       if (code !== 0) {
-        const msg = code === 1
-          ? 'yt-dlp exit 1: update yt-dlp (deploy.sh → Option 1) or video is unavailable/private'
-          : `yt-dlp metadata failed (exit ${code})`;
-        return reject(new Error(msg));
+        // Surface the actual yt-dlp error line (last non-empty stderr line)
+        const detail = err.trim().split('\n').filter(Boolean).pop()?.trim() || `exit ${code}`;
+        return reject(new Error(detail));
       }
       try {
         const info = JSON.parse(out);
         resolve(info.title || 'download');
-      } catch { reject(new Error('Could not parse yt-dlp JSON')); }
+      } catch { reject(new Error('Could not parse yt-dlp JSON output')); }
     });
-    proc.on('error', e => reject(new Error('yt-dlp not found: ' + e.message)));
+    proc.on('error', e => reject(new Error('yt-dlp not found — install: pip3 install yt-dlp  (' + e.message + ')')));
   });
 }
 
