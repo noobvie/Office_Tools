@@ -43,7 +43,7 @@ REPO_URL="https://github.com/noobvie/Office_Tools.git"
 REPO_DIR="/opt/office-tools/repo"
 WEB_ROOT="/var/www/office-tools"
 BACKEND_DIR="/opt/office-tools/backend"
-YT_SERVER_DIR="/opt/office-tools/yt-server"
+COBALT_DIR="/opt/office-tools/cobalt"
 PB_DIR="/opt/office-tools/pocketbase"
 DEPLOY_CONF="/opt/office-tools/deploy.conf"
 LOG_DIR="/var/log/office-tools"
@@ -108,7 +108,7 @@ CONFEOF
 }
 
 # ─── System timezone ──────────────────────────────────────────────────────────
-# Forces the server to UTC so logs, PocketBase records, and yt-server timestamps
+# Forces the server to UTC so logs, PocketBase records, and service timestamps
 # are all consistent.  Browser-based tools are unaffected by server timezone —
 # they already use UTC JS methods internally.
 enforce_utc_timezone() {
@@ -216,103 +216,87 @@ install_nodejs() {
     success "Node.js $(node -v) installed"
 }
 
-# ─── pip3 yt-dlp helper ───────────────────────────────────────────────────────
-# PEP 668 (Debian 12+, Ubuntu 23.04+) blocks plain "pip3 install" on the system
-# Python unless --break-system-packages is passed.  yt-dlp is a standalone CLI
-# tool — not a dependency of any OS package — so the flag is safe to use here.
-# We try without it first (older systems), then fall back to it (newer systems).
-_pip_install_ytdlp() {
-    pip3 install --upgrade --quiet yt-dlp 2>/dev/null \
-        || pip3 install --upgrade --quiet --break-system-packages yt-dlp
-}
+# ─── ffmpeg ───────────────────────────────────────────────────────────────────
+# Required by cobalt for video processing.
+install_ffmpeg() {
+    section "Installing ffmpeg"
 
-# ─── yt-dlp + ffmpeg ──────────────────────────────────────────────────────────
-# Required by the yt-server (YouTube downloader backend).
-# yt-dlp: installed via pip3 (works on all architectures; easy auto-update).
-# ffmpeg: installed via OS package manager (needed for MP3 + 1080p merging).
-install_ytdlp_ffmpeg() {
-    section "Installing yt-dlp + ffmpeg (YouTube downloader dependencies)"
-
-    # ── ffmpeg ──────────────────────────────────────────────────────────────
     if command -v ffmpeg &>/dev/null; then
         info "ffmpeg already installed: $(ffmpeg -version 2>&1 | head -1 | awk '{print $3}')"
-    else
-        info "Installing ffmpeg…"
-        if [[ "$OS_FAMILY" == "debian" ]]; then
-            pkg_install ffmpeg
-        else
-            # RHEL-family: ffmpeg lives in RPM Fusion (not in default repos).
-            # EPEL is already installed by install_base_packages.
-            local rhel_ver
-            rhel_ver=$(rpm -E %rhel 2>/dev/null || echo 9)
-            local rpm_fusion="https://download1.rpmfusion.org/free/el/rpmfusion-free-release-${rhel_ver}.noarch.rpm"
-            dnf install -y "$rpm_fusion" 2>/dev/null \
-                || warn "RPM Fusion install failed — trying dnf without it"
-            dnf install -y ffmpeg 2>/dev/null \
-                || warn "ffmpeg unavailable — MP3 conversion and 1080p merging will be disabled"
-        fi
-        command -v ffmpeg &>/dev/null \
-            && success "ffmpeg installed: $(ffmpeg -version 2>&1 | head -1)" \
-            || warn "ffmpeg not found — install manually if you need MP3 or 1080p"
+        return 0
     fi
 
-    # ── yt-dlp (via pip3 — works on all architectures, easy to update) ──────
-    # YouTube changes its internal API frequently; yt-dlp must be kept current.
-    # Using pip3 means we can auto-update via cron without downloading a
-    # platform-specific binary from a fixed URL.
-    info "Installing / upgrading yt-dlp via pip3…"
-    _pip_install_ytdlp \
-        && success "yt-dlp $(yt-dlp --version 2>/dev/null) installed via pip3" \
-        || die "yt-dlp install failed — check: pip3 install --break-system-packages yt-dlp"
-
-    # ── Weekly auto-update cron job ──────────────────────────────────────────
-    # Installs to /etc/cron.d/ so it survives reboots and is easy to inspect.
-    cat > /etc/cron.d/office-tools-ytdlp << 'CRONEOF'
-# Auto-update yt-dlp weekly — YouTube API changes break it regularly
-# Runs every Sunday at 03:15 UTC; restarts the yt-server to pick up the update.
-15 3 * * 0 root { pip3 install --upgrade --quiet yt-dlp 2>/dev/null || pip3 install --upgrade --quiet --break-system-packages yt-dlp; } && systemctl restart office-tools-yt 2>/dev/null || true
-CRONEOF
-    chmod 0644 /etc/cron.d/office-tools-ytdlp
-    success "Weekly auto-update cron job installed → /etc/cron.d/office-tools-ytdlp"
+    info "Installing ffmpeg…"
+    if [[ "$OS_FAMILY" == "debian" ]]; then
+        pkg_install ffmpeg
+    else
+        # RHEL-family: ffmpeg lives in RPM Fusion (not in default repos).
+        # EPEL is already installed by install_base_packages.
+        local rhel_ver
+        rhel_ver=$(rpm -E %rhel 2>/dev/null || echo 9)
+        local rpm_fusion="https://download1.rpmfusion.org/free/el/rpmfusion-free-release-${rhel_ver}.noarch.rpm"
+        dnf install -y "$rpm_fusion" 2>/dev/null \
+            || warn "RPM Fusion install failed — trying dnf without it"
+        dnf install -y ffmpeg 2>/dev/null \
+            || warn "ffmpeg unavailable — video processing may be limited"
+    fi
+    command -v ffmpeg &>/dev/null \
+        && success "ffmpeg installed: $(ffmpeg -version 2>&1 | head -1)" \
+        || warn "ffmpeg not found — install manually if needed"
 }
 
-# ─── yt-server (YouTube download backend) ─────────────────────────────────────
-setup_yt_server() {
+# ─── cobalt (YouTube download backend) ────────────────────────────────────────
+setup_cobalt() {
     local domain="${1:-}"
-    section "Setting up yt-dlp server (YouTube download backend)"
+    section "Setting up cobalt (YouTube download backend)"
 
-    # Copy files from repo
-    mkdir -p "$YT_SERVER_DIR"
-    rsync -a "$REPO_DIR/yt-server/" "$YT_SERVER_DIR/"
-    chown -R www-data:www-data "$YT_SERVER_DIR"
+    # Clone or update cobalt from GitHub
+    if [[ ! -d "$COBALT_DIR/.git" ]]; then
+        info "Cloning cobalt from GitHub…"
+        mkdir -p "$(dirname "$COBALT_DIR")"
+        git clone --depth=1 https://github.com/imputnet/cobalt.git "$COBALT_DIR" \
+            || die "Failed to clone cobalt — check network and try again"
+    else
+        info "Updating cobalt…"
+        git -C "$COBALT_DIR" pull --ff-only 2>/dev/null \
+            || warn "cobalt git pull failed — continuing with existing version"
+    fi
+
+    # Detect API package directory (monorepo: packages/api; older layout: api)
+    local api_dir="$COBALT_DIR/packages/api"
+    [[ ! -d "$api_dir" ]] && api_dir="$COBALT_DIR/api"
+    [[ ! -d "$api_dir" ]] && die "cobalt API directory not found in $COBALT_DIR — unexpected repo structure"
 
     # Install Node.js dependencies
-    (cd "$YT_SERVER_DIR" && npm install --omit=dev) \
-        || die "npm install failed in $YT_SERVER_DIR"
+    (cd "$api_dir" && npm install --omit=dev) \
+        || die "npm install failed in $api_dir"
 
-    # Set CORS origin to actual domain when known
-    local cors_origin="*"
-    [[ -n "$domain" ]] && cors_origin="https://${domain}"
+    # Write .env
+    local api_url="http://127.0.0.1:9000/"
+    [[ -n "$domain" ]] && api_url="https://${domain}/yt-api/"
+
+    cat > "$api_dir/.env" << ENVEOF
+PORT=9000
+API_URL=${api_url}
+CORS_WILDCARD=1
+ENVEOF
+    chmod 600 "$api_dir/.env"
+    chown -R www-data:www-data "$COBALT_DIR"
 
     # Create systemd service
-    cat > /etc/systemd/system/office-tools-yt.service << YTEOF
+    cat > /etc/systemd/system/office-tools-cobalt.service << COBEOF
 [Unit]
-Description=Office Tools — yt-dlp Download Server
+Description=Office Tools — cobalt YouTube Download Server
 After=network.target
 
 [Service]
 Type=simple
 User=www-data
 Group=www-data
-WorkingDirectory=${YT_SERVER_DIR}
-ExecStart=/usr/bin/node server.js
+WorkingDirectory=${api_dir}
+ExecStart=/usr/bin/npm start
 Environment=TZ=UTC
-Environment=PORT=9000
-Environment=HOST=127.0.0.1
-Environment=YTDLP=/usr/local/bin/yt-dlp
-Environment=CORS_ORIGIN=${cors_origin}
-# Bot-detection workaround: uncomment after uploading cookies.txt (Option 6 → i)
-#Environment=YTDLP_COOKIES=${YT_SERVER_DIR}/cookies.txt
+EnvironmentFile=${api_dir}/.env
 Restart=on-failure
 RestartSec=5s
 StandardOutput=journal
@@ -320,28 +304,44 @@ StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
-YTEOF
+COBEOF
 
     systemctl daemon-reload
-    systemctl enable office-tools-yt
-    systemctl restart office-tools-yt
+    systemctl enable office-tools-cobalt
+    systemctl restart office-tools-cobalt
 
-    sleep 2
-    if systemctl is-active --quiet office-tools-yt; then
-        success "yt-dlp server running on http://127.0.0.1:9000/"
+    sleep 3
+    if systemctl is-active --quiet office-tools-cobalt; then
+        success "cobalt running on http://127.0.0.1:9000/"
     else
-        warn "yt-dlp server failed to start — check: journalctl -u office-tools-yt -n 30"
+        warn "cobalt failed to start — check: journalctl -u office-tools-cobalt -n 30"
     fi
 }
 
-sync_yt_server() {
-    [[ -d "$REPO_DIR/yt-server" ]] || return 0
-    section "Syncing yt-dlp server"
-    rsync -a "$REPO_DIR/yt-server/" "$YT_SERVER_DIR/"
-    chown -R www-data:www-data "$YT_SERVER_DIR"
-    (cd "$YT_SERVER_DIR" && npm install --omit=dev) || true
-    systemctl restart office-tools-yt 2>/dev/null || true
-    success "yt-dlp server synced and restarted"
+sync_cobalt() {
+    [[ -d "$COBALT_DIR/.git" ]] || return 0
+    section "Syncing cobalt (YouTube download backend)"
+    git -C "$COBALT_DIR" pull --ff-only 2>/dev/null \
+        || warn "cobalt git pull skipped (detached HEAD or network issue)"
+    local api_dir="$COBALT_DIR/packages/api"
+    [[ ! -d "$api_dir" ]] && api_dir="$COBALT_DIR/api"
+    if [[ -d "$api_dir" ]]; then
+        (cd "$api_dir" && npm install --omit=dev) || true
+        chown -R www-data:www-data "$COBALT_DIR"
+    fi
+    systemctl restart office-tools-cobalt 2>/dev/null || true
+    success "cobalt synced and restarted"
+}
+
+# Update cobalt API_URL in .env when a domain is set or changed
+_cobalt_update_api_url() {
+    local domain="$1"
+    local api_dir="$COBALT_DIR/packages/api"
+    [[ ! -d "$api_dir" ]] && api_dir="$COBALT_DIR/api"
+    [[ ! -f "$api_dir/.env" ]] && return 0
+    sed -i "s|^API_URL=.*|API_URL=https://${domain}/yt-api/|" "$api_dir/.env"
+    systemctl restart office-tools-cobalt 2>/dev/null || true
+    success "cobalt API_URL updated to https://${domain}/yt-api/"
 }
 
 # ─── Repo & frontend ──────────────────────────────────────────────────────────
@@ -369,7 +369,6 @@ sync_frontend() {
         --exclude='.git' \
         --exclude='.gitignore' \
         --exclude='backend' \
-        --exclude='yt-server' \
         --exclude='deploy.sh' \
         --exclude='undeploy.sh' \
         --exclude='*.md' \
@@ -462,7 +461,6 @@ server {
     }
     location ~ /\.                           { deny all; return 404; }
     location /backend/                       { deny all; return 404; }
-    location /yt-server/                     { deny all; return 404; }
     location ~ \.(env|sh|json|md|toml|log)$ { deny all; return 404; }
 }
 NGINXEOF
@@ -577,7 +575,6 @@ server {
 
     location ~ /\.                           { deny all; return 404; }
     location /backend/                       { deny all; return 404; }
-    location /yt-server/                     { deny all; return 404; }
     location ~ \.(env|sh|json|md|toml|log)$ { deny all; return 404; }
 }
 NGINXEOF
@@ -841,7 +838,7 @@ print_summary() {
     echo -e "  ${BOLD}PocketBase UI:${RESET}  https://${domain}/_/"
     echo -e "  ${BOLD}PB API:${RESET}         https://${domain}/pb-api/"
     echo -e "  ${BOLD}YT Downloader:${RESET}  https://${domain}/tools/yt-downloader/"
-    echo -e "  ${BOLD}YT API:${RESET}         https://${domain}/yt-api/   ${DIM}(yt-dlp server, port 9000)${RESET}"
+    echo -e "  ${BOLD}YT API:${RESET}         https://${domain}/yt-api/   ${DIM}(cobalt server, port 9000)${RESET}"
     echo -e "  ${BOLD}Web root:${RESET}       ${WEB_ROOT}"
     echo -e "  ${BOLD}nginx config:${RESET}   ${NGINX_CONF_PATH}"
     echo -e "  ${BOLD}Repo:${RESET}           ${REPO_DIR}"
@@ -879,7 +876,7 @@ show_status() {
         echo -e "  ${DIM}○ Repo       : not cloned${RESET}"
     fi
 
-    local svcs=("nginx" "office-tools-pb" "office-tools-pay" "office-tools-yt")
+    local svcs=("nginx" "office-tools-pb" "office-tools-pay" "office-tools-cobalt")
     for svc in "${svcs[@]}"; do
         if systemctl is-active --quiet "$svc" 2>/dev/null; then
             echo -e "  ${GREEN}●${RESET} ${svc}  ${DIM}running${RESET}"
@@ -900,7 +897,7 @@ opt_1_install_update() {
     echo -e "    ${CYAN}·${RESET} Set system timezone  ${DIM}→ UTC (required for consistent timestamps)${RESET}"
     echo -e "    ${CYAN}·${RESET} Update OS packages   ${DIM}(${OS_FAMILY})${RESET}"
     echo -e "    ${CYAN}·${RESET} Install / update:    nginx · certbot · Node.js · git · curl"
-    echo -e "    ${CYAN}·${RESET} Install / update:    yt-dlp · ffmpeg · yt-server ${DIM}(YouTube downloader)${RESET}"
+    echo -e "    ${CYAN}·${RESET} Install / update:    ffmpeg · cobalt ${DIM}(YouTube downloader)${RESET}"
     echo -e "    ${CYAN}·${RESET} Pull latest code     ${DIM}(Office Tools GitHub)${RESET}"
     echo -e "    ${CYAN}·${RESET} Sync frontend files  ${DIM}→ $WEB_ROOT${RESET}"
     echo -e "    ${CYAN}·${RESET} Restart services     ${DIM}(if already configured)${RESET}"
@@ -918,14 +915,14 @@ opt_1_install_update() {
         pkg_update_os
         install_base_packages
         install_nodejs
-        install_ytdlp_ffmpeg
+        install_ffmpeg
         pull_repo
         load_conf
         sync_frontend "${DOMAIN:-}"
-        if [[ -d "$YT_SERVER_DIR/.git" ]] || [[ -f "$YT_SERVER_DIR/package.json" ]]; then
-            sync_yt_server
+        if [[ -d "$COBALT_DIR/.git" ]]; then
+            sync_cobalt
         else
-            setup_yt_server
+            setup_cobalt "${DOMAIN:-}"
         fi
         if [[ -n "$DOMAIN" ]]; then
             [[ -d "$BACKEND_DIR" ]] && sync_backend || true
@@ -1024,6 +1021,7 @@ opt_2_add_domain() {
         write_nginx_http "$DOMAIN"
         get_ssl "$DOMAIN" "$EMAIL"
         write_nginx_https "$DOMAIN"
+        _cobalt_update_api_url "$DOMAIN"
 
         if [[ "$_do_backend" == true ]]; then
             setup_backend_first "$DOMAIN"
@@ -1133,6 +1131,7 @@ opt_3_remove_switch() {
             write_nginx_http "$DOMAIN"
             get_ssl "$DOMAIN" "$EMAIL"
             write_nginx_https "$DOMAIN"
+            _cobalt_update_api_url "$DOMAIN"
             [[ -d "$BACKEND_DIR" ]] && sync_backend || true
         ) || { warn "Errors during switch — check $logf"; press_enter; return 0; }
 
@@ -1319,16 +1318,8 @@ opt_5_update_repo() {
         # Sync backend if installed
         [[ -d "$BACKEND_DIR" ]] && sync_backend || true
 
-        # Sync yt-server if installed
-        [[ -f "$YT_SERVER_DIR/package.json" ]] && sync_yt_server || true
-
-        # Update yt-dlp via pip3 — YouTube API changes frequently; keep it current
-        if command -v pip3 &>/dev/null; then
-            info "Updating yt-dlp via pip3…"
-            _pip_install_ytdlp \
-            && success "yt-dlp $(yt-dlp --version 2>/dev/null) — updated" \
-            || warn "yt-dlp update failed (network issue?) — skipping"
-        fi
+        # Sync cobalt if installed
+        [[ -d "$COBALT_DIR/.git" ]] && sync_cobalt || true
 
         # Refresh nginx config so new location blocks (e.g. /yt-api/) are always picked up.
         # Re-write the full config from the current deploy.sh template — safe because the
@@ -1366,18 +1357,17 @@ opt_6_admin_tasks() {
         section "Option 6 — Admin Tasks"
 
         echo -e "    ${BOLD}a)${RESET}  Service Status       ${DIM}detailed status for all services${RESET}"
-        echo -e "    ${BOLD}b)${RESET}  Restart All Services ${DIM}nginx · PocketBase · payment · yt-server${RESET}"
+        echo -e "    ${BOLD}b)${RESET}  Restart All Services ${DIM}nginx · PocketBase · payment · cobalt${RESET}"
         echo -e "    ${BOLD}c)${RESET}  URLs & Ports         ${DIM}list all tool URLs, APIs, and listening ports${RESET}"
         echo -e "    ${BOLD}d)${RESET}  Backup Database      ${DIM}tar PocketBase data → /opt/office-tools/backups/${RESET}"
         echo -e "    ${BOLD}e)${RESET}  Restore Database     ${DIM}restore from a previous backup${RESET}"
         echo -e "    ${BOLD}f)${RESET}  Clean Old Logs       ${DIM}delete deploy logs older than 30 days${RESET}"
-        echo -e "    ${BOLD}g)${RESET}  Purge Temp Files     ${DIM}yt-dlp temp downloads + file-share uploads${RESET}"
-        echo -e "    ${BOLD}h)${RESET}  Update yt-dlp        ${DIM}download latest yt-dlp binary (fixes download errors)${RESET}"
-        echo -e "    ${BOLD}i)${RESET}  Configure Cookies    ${DIM}fix YouTube bot-detection · weekly keep-alive health check${RESET}"
+        echo -e "    ${BOLD}g)${RESET}  Purge Temp Files     ${DIM}file-share uploads${RESET}"
+        echo -e "    ${BOLD}h)${RESET}  Update cobalt        ${DIM}pull latest cobalt from GitHub + restart${RESET}"
         echo -e "  ${DIM}  ──────────────────────────────────────────────${RESET}"
         echo -e "    ${BOLD}0)${RESET}  Back"
         echo ""
-        echo -ne "  Choose [a-i / 0]: "; read -r _sub
+        echo -ne "  Choose [a-h / 0]: "; read -r _sub
         echo ""
 
         case "${_sub,,}" in
@@ -1388,8 +1378,7 @@ opt_6_admin_tasks() {
             e)  _admin_restore_db       ;;
             f)  _admin_clean_logs       ;;
             g)  _admin_purge_temp       ;;
-            h)  _admin_update_ytdlp     ;;
-            i)  _admin_configure_cookies ;;
+            h)  _admin_update_cobalt    ;;
             0)  return 0                ;;
             *)  warn "Invalid: $_sub"   ;;
         esac
@@ -1398,7 +1387,7 @@ opt_6_admin_tasks() {
 
 _admin_service_status() {
     section "Service Status"
-    local svcs=("nginx" "office-tools-pb" "office-tools-pay" "office-tools-yt")
+    local svcs=("nginx" "office-tools-pb" "office-tools-pay" "office-tools-cobalt")
     for svc in "${svcs[@]}"; do
         if ! systemctl list-unit-files "${svc}.service" &>/dev/null 2>&1 \
            || ! systemctl list-unit-files "${svc}.service" 2>/dev/null | grep -q "^${svc}"; then
@@ -1432,7 +1421,7 @@ _admin_service_status() {
     # Port listener table
     echo -e "  ${BOLD}Listening ports:${RESET}"
     echo -e "  ────────────────────────────────────────"
-    for port_svc in "80:nginx (HTTP)" "443:nginx (HTTPS)" "8090:PocketBase" "9000:yt-server" "8091:payment-server"; do
+    for port_svc in "80:nginx (HTTP)" "443:nginx (HTTPS)" "8090:PocketBase" "9000:cobalt" "8091:payment-server"; do
         local port="${port_svc%%:*}" label="${port_svc#*:}"
         if ss -tlnp 2>/dev/null | grep -q ":${port}\b"; then
             echo -e "  ${GREEN}●${RESET} :${port}  ${label}"
@@ -1446,7 +1435,7 @@ _admin_service_status() {
 
 _admin_restart_all() {
     section "Restarting All Services"
-    local svcs=("nginx" "office-tools-pb" "office-tools-pay" "office-tools-yt")
+    local svcs=("nginx" "office-tools-pb" "office-tools-pay" "office-tools-cobalt")
     local any=false
     for svc in "${svcs[@]}"; do
         if systemctl list-unit-files "${svc}.service" 2>/dev/null | grep -q "^${svc}"; then
@@ -1482,7 +1471,7 @@ _admin_list_urls() {
     echo ""
 
     echo -e "  ${BOLD}Reverse-proxy routes (nginx)${RESET}"
-    echo -e "  ${CYAN}·${RESET} YT Download API: ${base}/yt-api/             → 127.0.0.1:9000"
+    echo -e "  ${CYAN}·${RESET} YT Download API : ${base}/yt-api/             → 127.0.0.1:9000"
     echo -e "  ${CYAN}·${RESET} PocketBase API  : ${base}/api/               → 127.0.0.1:8090"
     echo -e "  ${CYAN}·${RESET} PocketBase UI   : ${base}/_/                 → 127.0.0.1:8090"
     echo -e "  ${CYAN}·${RESET} Payment API     : ${base}/pay/               → 127.0.0.1:8091"
@@ -1492,7 +1481,7 @@ _admin_list_urls() {
     echo -e "  ${DIM}·${RESET} nginx           : :80 (HTTP) / :443 (HTTPS)"
     echo -e "  ${DIM}·${RESET} PocketBase      : 127.0.0.1:8090"
     echo -e "  ${DIM}·${RESET} Payment server  : 127.0.0.1:8091"
-    echo -e "  ${DIM}·${RESET} yt-dlp server   : 127.0.0.1:9000"
+    echo -e "  ${DIM}·${RESET} cobalt server   : 127.0.0.1:9000"
     echo ""
 
     echo -e "  ${BOLD}Tool direct URLs${RESET}"
@@ -1505,7 +1494,7 @@ _admin_list_urls() {
     echo ""
 
     echo -e "  ${BOLD}Useful API endpoints${RESET}"
-    echo -e "  ${DIM}·${RESET} YT health check : ${base}/yt-api/health"
+    echo -e "  ${DIM}·${RESET} cobalt health   : ${base}/yt-api/  ${DIM}(GET with Accept: application/json)${RESET}"
     echo -e "  ${DIM}·${RESET} PocketBase health: http://127.0.0.1:8090/api/health"
     echo ""
 
@@ -1645,26 +1634,6 @@ _admin_purge_temp() {
     section "Purge Temp Files"
     local purged=false
 
-    # ── yt-dlp temp downloads ──────────────────────────────────────────────
-    local yt_tmp_dir="${YTDL_TEMP_DIR:-/tmp}"
-    local yt_count yt_size
-    yt_count=$(find "$yt_tmp_dir" -maxdepth 1 -name "ytdl-*" 2>/dev/null | wc -l)
-    yt_size=$(find "$yt_tmp_dir" -maxdepth 1 -name "ytdl-*" 2>/dev/null \
-              -exec du -ch {} + 2>/dev/null | tail -1 | cut -f1 || echo "0")
-
-    echo -e "  ${BOLD}yt-dlp temp downloads${RESET}  (${yt_tmp_dir}/ytdl-*)"
-    echo -e "  Files : ${yt_count}   Size : ${yt_size}"
-
-    if [[ "$yt_count" -gt 0 ]]; then
-        echo -ne "  Delete these? [Y/n]: "; read -r _r; _r="${_r:-Y}"
-        if [[ "${_r,,}" == "y" ]]; then
-            find "$yt_tmp_dir" -maxdepth 1 -name "ytdl-*" -delete 2>/dev/null
-            success "Deleted ${yt_count} yt-dlp temp file(s)."
-            purged=true
-        fi
-    fi
-    echo ""
-
     # ── File-share uploads ─────────────────────────────────────────────────
     local uploads_dir="/opt/office-tools/data/uploads"
     if [[ -d "$uploads_dir" ]]; then
@@ -1694,189 +1663,33 @@ _admin_purge_temp() {
     press_enter
 }
 
-_admin_update_ytdlp() {
-    section "Update yt-dlp"
-    local current=""
-    current=$(yt-dlp --version 2>/dev/null || echo "not found")
-    echo -e "  Current version: ${BOLD}${current}${RESET}"
-    echo -e "  Install method:  pip3"
-    echo ""
-    ask_proceed "Upgrade yt-dlp via pip3" || return 0
-    info "Running pip3 install --upgrade yt-dlp…"
-    if _pip_install_ytdlp; then
-        local new_ver
-        new_ver=$(yt-dlp --version 2>/dev/null || echo "unknown")
-        success "yt-dlp updated: ${current} → ${new_ver}"
-        if systemctl is-active --quiet office-tools-yt 2>/dev/null; then
-            systemctl restart office-tools-yt
-            success "office-tools-yt restarted with new yt-dlp."
-        fi
-    else
-        warn "pip3 upgrade failed — check network or run manually: pip3 install --upgrade --break-system-packages yt-dlp"
+_admin_update_cobalt() {
+    section "Update cobalt"
+    if [[ ! -d "$COBALT_DIR/.git" ]]; then
+        warn "cobalt not installed — run Option 1 first."
+        press_enter; return 0
     fi
-    press_enter
-}
 
-# Writes the keep-alive script + weekly cron for cookie health checks.
-# Called when enabling cookies. The cron tests cookies.txt weekly and
-# writes ok/expired to cookies.status so /health can report the result.
-_install_cookie_keepalive() {
-    local ka_dir="/opt/office-tools/scripts"
-    local ka_script="${ka_dir}/ytcookie-keepalive.sh"
-    local cron_file="/etc/cron.d/office-tools-yt-cookies"
-    mkdir -p "$ka_dir"
+    local cur_hash; cur_hash=$(git -C "$COBALT_DIR" log -1 --format='%h %s' 2>/dev/null || echo "unknown")
+    echo -e "  Current commit: ${BOLD}${cur_hash}${RESET}"
+    echo ""
+    ask_proceed "Pull latest cobalt from GitHub and restart service" || return 0
 
-    cat > "$ka_script" << 'KEEPALIVE'
-#!/bin/bash
-# YouTube cookies keep-alive health check
-# Tests whether cookies.txt still authenticates with yt-dlp.
-# Writes 'ok <ISO-timestamp>' or 'expired <ISO-timestamp>' to cookies.status.
-# Run weekly by /etc/cron.d/office-tools-yt-cookies (Sunday 02:30 UTC).
-# Managed by deploy.sh → Option 6 → i.
+    info "Pulling cobalt…"
+    git -C "$COBALT_DIR" pull --ff-only \
+        || { warn "git pull failed — check network or run: git -C $COBALT_DIR pull"; press_enter; return 0; }
 
-COOKIES_FILE="/opt/office-tools/yt-server/cookies.txt"
-STATUS_FILE="/opt/office-tools/yt-server/cookies.status"
-# Stable, short public video used only to probe cookie auth (no download)
-TEST_URL="https://www.youtube.com/watch?v=jNQXAC9IVRw"
-TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-
-if [[ ! -f "$COOKIES_FILE" ]]; then
-    echo "expired $TIMESTAMP" > "$STATUS_FILE"
-    logger -t ytcookie-keepalive "WARN: cookies.txt not found at $COOKIES_FILE"
-    exit 1
-fi
-
-if yt-dlp --no-playlist --cookies "$COOKIES_FILE" --skip-download \
-          --no-warnings "$TEST_URL" >/dev/null 2>&1; then
-    echo "ok $TIMESTAMP" > "$STATUS_FILE"
-    logger -t ytcookie-keepalive "OK: YouTube cookies valid ($TIMESTAMP)"
-else
-    echo "expired $TIMESTAMP" > "$STATUS_FILE"
-    logger -t ytcookie-keepalive \
-        "WARN: YouTube cookies expired/invalid — re-export from browser and re-upload to $COOKIES_FILE"
-fi
-KEEPALIVE
-    chmod 755 "$ka_script"
-
-    # Weekly cron: Sunday 02:30 UTC
-    cat > "$cron_file" << 'CRON'
-# Office Tools — YouTube cookies keep-alive health check
-# Tests cookies.txt validity weekly; writes ok/expired to cookies.status.
-# The yt-server /health endpoint reads this file and reports cookie status.
-# Managed by deploy.sh → Option 6 → i.
-30 2 * * 0 root /opt/office-tools/scripts/ytcookie-keepalive.sh
-CRON
-    chmod 0644 "$cron_file"
-    success "Keep-alive cron installed → ${cron_file} (runs every Sunday 02:30 UTC)"
-}
-
-_admin_configure_cookies() {
-    section "Configure YouTube Cookies (bot-detection workaround)"
-
-    local svc_file="/etc/systemd/system/office-tools-yt.service"
-    local cookies_path="${YT_SERVER_DIR}/cookies.txt"
-    local status_file="${YT_SERVER_DIR}/cookies.status"
-
-    # Show current state
-    local current_setting=""
-    current_setting=$(grep -oP '(?<=YTDLP_COOKIES=).*' "$svc_file" 2>/dev/null | head -1 || true)
-    if [[ -f "$cookies_path" ]]; then
-        local age; age=$(stat -c '%y' "$cookies_path" 2>/dev/null | cut -d' ' -f1 || echo "unknown")
-        echo -e "  cookies.txt : ${GREEN}found${RESET} at ${cookies_path}  (modified: ${age})"
-    else
-        echo -e "  cookies.txt : ${YELLOW}not found${RESET} at ${cookies_path}"
+    local api_dir="$COBALT_DIR/packages/api"
+    [[ ! -d "$api_dir" ]] && api_dir="$COBALT_DIR/api"
+    if [[ -d "$api_dir" ]]; then
+        info "Installing updated npm dependencies…"
+        (cd "$api_dir" && npm install --omit=dev) || warn "npm install failed"
+        chown -R www-data:www-data "$COBALT_DIR"
     fi
-    if [[ -n "$current_setting" ]]; then
-        echo -e "  Service env : ${GREEN}YTDLP_COOKIES=${current_setting}${RESET}"
-    else
-        echo -e "  Service env : ${YELLOW}YTDLP_COOKIES not set${RESET} (service uses no cookies)"
-    fi
-    if [[ -f "$status_file" ]]; then
-        local last_check; last_check=$(head -1 "$status_file" 2>/dev/null || echo "unknown")
-        if [[ "$last_check" == expired* ]]; then
-            echo -e "  Keep-alive  : ${RED}${last_check}${RESET}  ← cookies need re-export!"
-        else
-            echo -e "  Keep-alive  : ${GREEN}${last_check}${RESET}"
-        fi
-    else
-        echo -e "  Keep-alive  : ${DIM}no status yet (cron runs Sunday 02:30 UTC)${RESET}"
-    fi
-    echo ""
-    echo -e "  ${BOLD}How to get a cookies.txt file:${RESET}"
-    echo -e "  1. In Chrome/Edge/Firefox, install ${CYAN}\"Get cookies.txt LOCALLY\"${RESET} extension"
-    echo -e "     Chrome: https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc"
-    echo -e "  2. Go to ${CYAN}https://www.youtube.com${RESET} and make sure you are signed in"
-    echo -e "  3. Click the extension → Export  (saves ${BOLD}youtube.com_cookies.txt${RESET})"
-    echo -e "  4. Upload to server:  ${DIM}scp youtube.com_cookies.txt user@server:${cookies_path}${RESET}"
-    echo ""
-    echo -e "  ${BOLD}Note:${RESET} The keep-alive cron ${DIM}(weekly)${RESET} tests cookie validity and updates the"
-    echo -e "  health badge. Cookies cannot be auto-renewed — re-export from your browser"
-    echo -e "  when the health badge turns red."
-    echo ""
-    echo -e "  ${BOLD}Actions:${RESET}"
-    echo -e "    ${BOLD}1)${RESET}  Enable cookies  — set YTDLP_COOKIES in service + install keep-alive cron + restart"
-    echo -e "    ${BOLD}2)${RESET}  Disable cookies — remove YTDLP_COOKIES from service + remove keep-alive cron + restart"
-    echo -e "    ${BOLD}3)${RESET}  Test now        — run keep-alive check immediately (updates cookies.status)"
-    echo -e "    ${BOLD}0)${RESET}  Back"
-    echo ""
-    echo -ne "  Choose [1 / 2 / 3 / 0]: "; read -r _c
-    case "$_c" in
-        1)
-            if [[ ! -f "$cookies_path" ]]; then
-                warn "cookies.txt not found at ${cookies_path}."
-                echo -e "  Upload it first:  ${DIM}scp cookies.txt user@server:${cookies_path}${RESET}"
-                press_enter; return 0
-            fi
-            chmod 600 "$cookies_path"
-            chown www-data:www-data "$cookies_path" 2>/dev/null || true
-            # Uncomment or add the YTDLP_COOKIES line in the service file
-            if grep -q '#Environment=YTDLP_COOKIES=' "$svc_file" 2>/dev/null; then
-                sed -i "s|#Environment=YTDLP_COOKIES=.*|Environment=YTDLP_COOKIES=${cookies_path}|" "$svc_file"
-            elif grep -q 'Environment=YTDLP_COOKIES=' "$svc_file" 2>/dev/null; then
-                sed -i "s|Environment=YTDLP_COOKIES=.*|Environment=YTDLP_COOKIES=${cookies_path}|" "$svc_file"
-            else
-                sed -i "/Environment=CORS_ORIGIN/a Environment=YTDLP_COOKIES=${cookies_path}" "$svc_file"
-            fi
-            systemctl daemon-reload
-            systemctl restart office-tools-yt
-            _install_cookie_keepalive
-            # Run immediately to populate cookies.status
-            info "Running initial cookie health check…"
-            bash /opt/office-tools/scripts/ytcookie-keepalive.sh
-            local init_status; init_status=$(head -1 "$status_file" 2>/dev/null || echo "unknown")
-            if [[ "$init_status" == expired* ]]; then
-                warn "Initial check: cookies appear expired — re-export from browser."
-            else
-                success "Initial check: ${init_status}"
-            fi
-            success "Cookies enabled: ${cookies_path} — service restarted."
-            ;;
-        2)
-            # Comment out the YTDLP_COOKIES line
-            sed -i "s|^Environment=YTDLP_COOKIES=|#Environment=YTDLP_COOKIES=|" "$svc_file" 2>/dev/null || true
-            systemctl daemon-reload
-            systemctl restart office-tools-yt
-            rm -f /etc/cron.d/office-tools-yt-cookies
-            rm -f /opt/office-tools/scripts/ytcookie-keepalive.sh
-            rm -f "$status_file"
-            success "Cookies disabled — keep-alive cron removed — service restarted."
-            ;;
-        3)
-            if [[ ! -f /opt/office-tools/scripts/ytcookie-keepalive.sh ]]; then
-                warn "Keep-alive script not installed. Enable cookies first (option 1)."
-            else
-                info "Running cookie health check…"
-                bash /opt/office-tools/scripts/ytcookie-keepalive.sh
-                local cur_status; cur_status=$(head -1 "$status_file" 2>/dev/null || echo "unknown")
-                if [[ "$cur_status" == expired* ]]; then
-                    warn "Cookies appear expired: ${cur_status}"
-                    echo -e "  Re-export from your browser and re-upload to ${cookies_path}"
-                else
-                    success "Cookies OK: ${cur_status}"
-                fi
-            fi
-            ;;
-    esac
+
+    systemctl restart office-tools-cobalt \
+        && success "cobalt updated and restarted — $(git -C "$COBALT_DIR" log -1 --format='%h %s')" \
+        || warn "cobalt restart failed — check: journalctl -u office-tools-cobalt -n 20"
     press_enter
 }
 

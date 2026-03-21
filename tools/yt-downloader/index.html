@@ -4,13 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>YouTube to MP3 / MP4 Downloader — Free, Playlists, No Login</title>
-  <meta name="description" content="Free YouTube downloader — save videos as MP4 (up to 1080p) or audio as MP3. Supports full playlists with batch download and per-item progress. No login, no ads, runs in your browser.">
-  <meta name="keywords" content="youtube downloader, youtube to mp3, youtube to mp4, download youtube video, download youtube playlist, yt-dlp browser, cobalt, invidious, free youtube converter, save youtube video, batch download playlist, youtube mp3 converter online, youtube mp4 downloader free">
+  <meta name="description" content="Free YouTube downloader — save videos as MP4 (up to 1080p) or audio as MP3. Supports full playlists with batch download and per-item progress. No login, no ads, self-hosted.">
+  <meta name="keywords" content="youtube downloader, youtube to mp3, youtube to mp4, download youtube video, download youtube playlist, cobalt self-hosted, free youtube converter, save youtube video, batch download playlist, youtube mp3 converter online, youtube mp4 downloader free">
   <meta name="robots" content="index, follow">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Office Tools">
   <meta property="og:title" content="YouTube to MP3 / MP4 Downloader — Free, Playlists, No Login">
-  <meta property="og:description" content="Download YouTube videos as MP4 or audio as MP3. Supports full playlists with batch download. No login, no ads — Local (self-hosted), Cobalt, or Invidious backend.">
+  <meta property="og:description" content="Download YouTube videos as MP4 or audio as MP3. Supports full playlists with batch download. No login, no ads — powered by self-hosted cobalt.">
   <meta property="og:url" content="https://yourdomain.com/tools/yt-downloader/">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="YouTube to MP3 / MP4 Downloader — Free, No Login">
@@ -24,12 +24,12 @@
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "YouTube to MP3/MP4 Downloader",
-      "description": "Download YouTube videos as MP4 (up to 1080p) or audio as MP3. Supports full playlists. No login, no tracking.",
+      "description": "Download YouTube videos as MP4 (up to 1080p) or audio as MP3. Supports full playlists. No login, no tracking. Powered by self-hosted cobalt.",
       "applicationCategory": "WebApplication",
       "operatingSystem": "Any",
       "offers": {"@type":"Offer","price":"0","priceCurrency":"USD"},
       "url": "https://yourdomain.com/tools/yt-downloader/",
-      "featureList": ["MP4 video download up to 1080p","MP3 audio download","Full playlist batch download","No login required","Local (self-hosted yt-dlp), Cobalt, and Invidious backend support"]
+      "featureList": ["MP4 video download up to 1080p","MP3 audio download","Full playlist batch download","No login required","Self-hosted cobalt backend — no external dependency"]
     },
     {
       "@context": "https://schema.org",
@@ -48,7 +48,7 @@
         {
           "@type": "Question",
           "name": "Does this work without installing anything?",
-          "acceptedAnswer": {"@type":"Answer","text":"Yes — it runs entirely in your browser. No software to install. The Local backend uses yt-dlp on your own server (recommended). Invidious is a free independent fallback. Cobalt requires an API key for the public instance."}
+          "acceptedAnswer": {"@type":"Answer","text":"Yes — it runs entirely in your browser. The backend is a self-hosted cobalt instance deployed on your own server via deploy.sh. No third-party services are used."}
         }
       ]
     }
@@ -79,29 +79,6 @@
     .mode-btn:last-child { border-right: none; }
     .mode-btn.active { background: var(--primary); color: #fff; }
     .mode-btn:not(.active):hover { background: var(--primary-dim); color: var(--primary); }
-
-    /* ── Backend selector ── */
-    .backend-toggle {
-      display: inline-flex;
-      border: 1.5px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
-      background: var(--bg-secondary);
-    }
-    .backend-btn {
-      padding: .35rem .9rem;
-      border: none;
-      background: transparent;
-      color: var(--text-muted);
-      font-size: .8rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all .15s;
-      border-right: 1px solid var(--border);
-    }
-    .backend-btn:last-child { border-right: none; }
-    .backend-btn.active { background: var(--primary); color: #fff; }
-    .backend-btn:not(.active):hover { background: var(--primary-dim); color: var(--primary); }
 
     /* ── URL input row ── */
     .url-row { display: flex; gap: .5rem; }
@@ -238,6 +215,14 @@
   ┌─────────────────────────────────────────────────────┐
   │  PREREQUISITES — read before deploying              │
   │                                                     │
+  │  Backend — Local (self-hosted cobalt):              │
+  │    Deployed automatically by deploy.sh step 1.     │
+  │    Runs as office-tools-cobalt systemd service.     │
+  │    Proxied via nginx /yt-api/ → 127.0.0.1:9000.    │
+  │    cobalt handles YouTube auth internally —         │
+  │    no cookies, no API keys, no manual maintenance.  │
+  │    To update cobalt: deploy.sh → Option 6 → h.     │
+  │                                                     │
   │  Playlist download:                                 │
   │    Requires a FREE YouTube Data API v3 key.         │
   │    Steps:                                           │
@@ -248,34 +233,6 @@
   │    5. Restrict to "HTTP referrers" + your domain    │
   │    6. Paste the key into the playlist API key field │
   │    The key is stored in localStorage only.          │
-  │                                                     │
-  │  Backend — Local (DEFAULT, recommended):            │
-  │    Uses the office-tools-yt systemd service on this │
-  │    server (Node.js + yt-dlp via pip3 + ffmpeg).     │
-  │    Installed automatically by deploy.sh step 1.     │
-  │    yt-dlp auto-updates weekly via cron.             │
-  │    Proxied via nginx /yt-api/ → 127.0.0.1:9000.     │
-  │    Supports MP4 up to 1080p + true MP3 audio.       │
-  │    Uses Android/TV player clients to bypass         │
-  │    bot-detection — no cookies required in most      │
-  │    cases. Cookies are an optional fallback only.    │
-  │                                                     │
-  │  Backend — Cobalt (external, requires auth):        │
-  │    api.cobalt.tools now requires an API key.        │
-  │    Get a key at https://cobalt.tools/ (free).       │
-  │    OR self-host cobalt without auth:                │
-  │      https://github.com/imputnet/cobalt             │
-  │    Set key in Advanced → Cobalt API Key.            │
-  │    Supports MP4 up to 1080p + true MP3 audio.       │
-  │                                                     │
-  │  Backend — Invidious (independent fallback):        │
-  │    Uses a public Invidious instance's API.          │
-  │    No yt-dlp needed — works without Local/Cobalt.   │
-  │    Limitations: video capped ~720p (muxed streams), │
-  │    audio is M4A/WEBM not MP3.                       │
-  │    Default instance: https://inv.tux.pizza          │
-  │    Self-host: https://github.com/iv-org/invidious   │
-  │    Change instance in Advanced → Invidious URL.     │
   └─────────────────────────────────────────────────────┘
   -->
 
@@ -283,9 +240,7 @@
   <div class="prereqs-box">
     <strong>📋 Quick Setup Notes</strong>
     <ul>
-      <li><b>⚡ Local (default)</b> — uses the <strong>office-tools-yt</strong> service on this server (yt-dlp + ffmpeg, installed via <code>deploy.sh</code> step 1, auto-updated weekly). Uses Android/TV player clients to bypass bot-detection — no cookies needed in most cases. MP4 up to 1080p + true MP3.</li>
-      <li><b>Cobalt</b> — <a href="https://github.com/imputnet/cobalt" target="_blank" rel="noopener">cobalt</a> API. <strong>api.cobalt.tools now requires an API key</strong> — get one free at <a href="https://cobalt.tools/" target="_blank" rel="noopener">cobalt.tools</a> and set it in Advanced, or self-host cobalt without auth.</li>
-      <li><b>Invidious</b> — independent fallback, no yt-dlp needed. Video up to ~720p, audio as M4A/WEBM (not MP3).</li>
+      <li><b>⚡ Backend</b> — powered by <a href="https://github.com/imputnet/cobalt" target="_blank" rel="noopener">cobalt</a> running on your server. Deployed automatically by <code>deploy.sh</code> step 1. No cookies, no API keys — cobalt handles YouTube auth internally.</li>
       <li><b>Playlist</b> — requires a free <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">YouTube Data API v3</a> key (shown automatically when a playlist URL is pasted).</li>
     </ul>
   </div>
@@ -293,8 +248,8 @@
   <!-- ── Main card ── -->
   <div class="card">
 
-    <!-- Format + backend row -->
-    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:.9rem">
+    <!-- Format row -->
+    <div style="margin-bottom:.9rem">
       <div class="form-group" style="margin:0">
         <label>Format</label><br>
         <div class="mode-toggle">
@@ -302,19 +257,11 @@
           <button class="mode-btn"        data-mode="audio">🎵 Audio</button>
         </div>
       </div>
-      <div class="form-group" style="margin:0">
-        <label>Backend</label><br>
-        <div class="backend-toggle">
-          <button class="backend-btn active" data-backend="local">⚡ Local</button>
-          <button class="backend-btn"        data-backend="cobalt">Cobalt</button>
-          <button class="backend-btn"        data-backend="invidious">Invidious</button>
-        </div>
-      </div>
     </div>
 
-    <!-- Backend info (updates with selection) -->
+    <!-- Backend status -->
     <div class="backend-info" id="backendInfo">
-      <b>Local (yt-dlp)</b> — your self-hosted yt-dlp server. MP4 up to 1080p + true MP3. Fastest — no external dependency.
+      <b>⚡ cobalt</b> — self-hosted cobalt server. MP4 up to 1080p + MP3.
     </div>
 
     <!-- URL input -->
@@ -353,17 +300,6 @@
   </div>
 
   <!-- ── Playlist API key (shown when playlist URL detected) ── -->
-  <!--
-    PLAYLIST PREREQUISITE:
-    This card auto-appears when a playlist URL is pasted.
-    The user must supply a YouTube Data API v3 key.
-    How to get one (free):
-      1. https://console.cloud.google.com/ → New Project
-      2. APIs & Services → Enable APIs → "YouTube Data API v3"
-      3. Credentials → Create Credentials → API Key
-      4. (Recommended) Restrict key to HTTP referrers: yourdomain.com/*
-    Quota: 10,000 units/day free. A playlist fetch uses ~1-2 units.
-  -->
   <div class="card" id="apiKeyCard" style="display:none">
     <div class="form-group" style="margin-bottom:.4rem">
       <label for="ytApiKey">YouTube Data API v3 Key <span style="font-weight:400;color:var(--text-muted)">(required for playlists)</span></label>
@@ -385,14 +321,14 @@
   <!-- ── Advanced config (collapsed) ── -->
   <details class="card" style="padding:.75rem 1rem">
     <summary style="cursor:pointer;font-size:.85rem;font-weight:600;color:var(--text-muted);list-style:none">
-      ⚙️ Advanced — API endpoints
+      ⚙️ Advanced — server URL
     </summary>
-    <div style="margin-top:.85rem;display:flex;flex-direction:column;gap:.85rem">
+    <div style="margin-top:.85rem">
 
-      <!-- Local yt-server URL -->
+      <!-- Local cobalt URL -->
       <div>
         <div class="form-group" style="margin-bottom:.3rem">
-          <label for="localUrl">⚡ Local yt-server URL <span style="font-weight:400;color:var(--success);font-size:.78rem">(default — recommended)</span></label>
+          <label for="localUrl">⚡ cobalt server URL</label>
           <div class="cfg-row">
             <div class="form-group">
               <input type="url" id="localUrl" placeholder="/yt-api/" autocomplete="off">
@@ -402,59 +338,8 @@
           </div>
         </div>
         <p class="api-key-note">
-          Default: <code>/yt-api/</code> — your self-hosted <strong>office-tools-yt</strong> service (Node.js + yt-dlp + ffmpeg).
-          Deployed automatically by <code>deploy.sh</code> step 1. Supports MP4 up to 1080p and true MP3 audio.
-          No external API, no rate limit, no third-party dependency.
-        </p>
-      </div>
-
-      <!-- Cobalt URL -->
-      <div>
-        <div class="form-group" style="margin-bottom:.3rem">
-          <label for="cobaltUrl">Cobalt API URL</label>
-          <div class="cfg-row">
-            <div class="form-group">
-              <input type="url" id="cobaltUrl" placeholder="https://api.cobalt.tools/" autocomplete="off">
-            </div>
-            <button class="btn" id="saveCobaltBtn" style="margin-bottom:1px">Save</button>
-            <button class="btn" id="resetCobaltBtn" style="margin-bottom:1px">Reset</button>
-          </div>
-        </div>
-        <div class="form-group" style="margin-bottom:.3rem;margin-top:.5rem">
-          <label for="cobaltApiKey">Cobalt API Key <span style="font-weight:400;color:var(--text-muted);font-size:.78rem">(required for api.cobalt.tools)</span></label>
-          <div class="cfg-row">
-            <div class="form-group">
-              <input type="password" id="cobaltApiKey" placeholder="Leave blank for self-hosted instances without auth" autocomplete="off">
-            </div>
-            <button class="btn" id="saveCobaltKeyBtn" style="margin-bottom:1px">Save</button>
-            <button class="btn" id="resetCobaltKeyBtn" style="margin-bottom:1px">Clear</button>
-          </div>
-        </div>
-        <p class="api-key-note">
-          <b>api.cobalt.tools now requires auth.</b> Either:
-          (a) get an API key from <a href="https://cobalt.tools/" target="_blank" rel="noopener">cobalt.tools</a> (free) and paste it above, or
-          (b) <a href="https://github.com/imputnet/cobalt" target="_blank" rel="noopener">self-host cobalt</a> without auth and set your instance URL above, or
-          (c) use <b>Local</b> backend (recommended — no external dependency).
-        </p>
-      </div>
-
-      <!-- Invidious URL -->
-      <div>
-        <div class="form-group" style="margin-bottom:.3rem">
-          <label for="invidiousUrl">Invidious Instance URL</label>
-          <div class="cfg-row">
-            <div class="form-group">
-              <input type="url" id="invidiousUrl" placeholder="https://inv.tux.pizza" autocomplete="off">
-            </div>
-            <button class="btn" id="saveInvBtn" style="margin-bottom:1px">Save</button>
-            <button class="btn" id="resetInvBtn" style="margin-bottom:1px">Reset</button>
-          </div>
-        </div>
-        <p class="api-key-note">
-          Default: <code>https://inv.tux.pizza</code> — any public
-          <a href="https://api.invidious.io/" target="_blank" rel="noopener">Invidious instance</a> works.
-          <a href="https://github.com/iv-org/invidious" target="_blank" rel="noopener">Self-host</a> for reliability.
-          <b>Video up to ~720p, audio as M4A/WEBM (not MP3).</b> Useful as independent fallback when Local is unavailable.
+          Default: <code>/yt-api/</code> — your self-hosted <strong>cobalt</strong> instance (deployed by <code>deploy.sh</code> step 1, proxied via nginx).
+          Change only if running cobalt on a custom port or path.
         </p>
       </div>
 
@@ -474,32 +359,21 @@
   /* ══════════════════════════════════════════
      CONSTANTS & DEFAULTS
   ══════════════════════════════════════════ */
-  // Local default: after deploy, nginx proxies /yt-api/ → office-tools-yt (port 9000).
-  // In local dev (localhost/127.0.0.1) point to localhost:9000 (run: cd yt-server && node server.js).
-  const IS_LOCAL_DEV   = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-  const DEFAULT_LOCAL    = IS_LOCAL_DEV ? 'http://localhost:9000/' : (location.origin + '/yt-api/');
-  const DEFAULT_COBALT   = 'https://api.cobalt.tools/';
-  const DEFAULT_INVIDIOUS = 'https://inv.tux.pizza';
+  // After deploy, nginx proxies /yt-api/ → cobalt (port 9000).
+  // In local dev (localhost/127.0.0.1) point directly to port 9000.
+  const IS_LOCAL_DEV  = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const DEFAULT_LOCAL = IS_LOCAL_DEV ? 'http://localhost:9000/' : (location.origin + '/yt-api/');
+  const LS_LOCAL      = 'yt-local-url';
+  const LS_API_KEY    = 'yt-api-key';
 
-  const LS_LOCAL       = 'yt-local-url';
-  const LS_COBALT      = 'yt-cobalt-url';
-  const LS_COBALT_KEY  = 'yt-cobalt-key';
-  const LS_INVIDIOUS   = 'yt-invidious-url';
-  const LS_API_KEY     = 'yt-api-key';
-
-  const BACKEND_INFO = {
-    local:     '<b>⚡ Local (yt-dlp)</b> — your self-hosted yt-dlp server. MP4 up to 1080p + true MP3. Fastest — no external dependency.',
-    cobalt:    '<b>Cobalt</b> — self-hosted cobalt instance or public API with key. MP4 up to 1080p + true MP3. <span style="color:var(--warning)">⚠ api.cobalt.tools now requires auth — set an API Key below or self-host.</span>',
-    invidious: '<b>Invidious</b> — no yt-dlp needed. Video up to ~720p (muxed MP4), audio as M4A/WEBM. Independent fallback.',
-  };
+  const LOCAL_INFO = '<b>⚡ cobalt</b> — self-hosted cobalt server. MP4 up to 1080p + MP3.';
 
   /* ══════════════════════════════════════════
      STATE
   ══════════════════════════════════════════ */
-  let currentMode    = 'video';              // 'video' | 'audio'
-  let currentBackend = 'local';              // 'local' | 'cobalt' | 'invidious'
-  let playlistItems  = [];
-  let isDownloading  = false;
+  let currentMode   = 'video';   // 'video' | 'audio'
+  let playlistItems = [];
+  let isDownloading = false;
 
   /* ══════════════════════════════════════════
      ELEMENTS
@@ -511,9 +385,6 @@
   const ytApiKeyInput     = document.getElementById('ytApiKey');
   const saveKeyBtn        = document.getElementById('saveKeyBtn');
   const localUrlInput     = document.getElementById('localUrl');
-  const cobaltUrlInput    = document.getElementById('cobaltUrl');
-  const cobaltApiKeyInput = document.getElementById('cobaltApiKey');
-  const invidiousUrlInput = document.getElementById('invidiousUrl');
   const backendInfoEl     = document.getElementById('backendInfo');
   const videoQualityGroup = document.getElementById('videoQualityGroup');
   const audioBitrateGroup = document.getElementById('audioBitrateGroup');
@@ -522,17 +393,10 @@
      INIT — restore saved settings
   ══════════════════════════════════════════ */
   (function init() {
-    localUrlInput.value     = localStorage.getItem(LS_LOCAL)      || DEFAULT_LOCAL;
-    cobaltUrlInput.value    = localStorage.getItem(LS_COBALT)     || DEFAULT_COBALT;
-    invidiousUrlInput.value = localStorage.getItem(LS_INVIDIOUS)  || DEFAULT_INVIDIOUS;
-    const savedCobaltKey = localStorage.getItem(LS_COBALT_KEY) || '';
-    if (savedCobaltKey) cobaltApiKeyInput.value = savedCobaltKey;
+    localUrlInput.value = localStorage.getItem(LS_LOCAL) || DEFAULT_LOCAL;
     const savedKey = localStorage.getItem(LS_API_KEY) || '';
     if (savedKey) ytApiKeyInput.value = savedKey;
-    // Apply quality/bitrate caps for the active backend (defaults to local)
-    applyBackendCapabilities();
-    // Ping local health on page load — Local is the default backend
-    pingLocalHealth();
+    pingCobaltHealth();
   })();
 
   /* ══════════════════════════════════════════
@@ -549,71 +413,26 @@
   });
 
   /* ══════════════════════════════════════════
-     BACKEND TOGGLE
+     COBALT HEALTH CHECK
+     cobalt GET / returns { cobalt: { version, ... }, git: { ... } }
   ══════════════════════════════════════════ */
-  function applyBackendCapabilities() {
-    const isInv  = currentBackend === 'invidious';
-    const qSel   = document.getElementById('videoQuality');
-
-    // Invidious: muxed streams top out at 720p — cap the selector
-    Array.from(qSel.options).forEach(opt => {
-      const q = parseInt(opt.value) || 0;
-      const tooHigh = q > 720;
-      opt.disabled = isInv && tooHigh;
-      opt.text = opt.value === 'max'
-        ? (isInv ? 'Best available (~720p)' : 'Best available')
-        : opt.value === '1080' && isInv
-          ? '1080p (not available)'
-          : (opt.text.replace(' (not available)', ''));  // clean if switching back
-    });
-    // If currently selected option is disabled, drop to 720p
-    if (qSel.options[qSel.selectedIndex]?.disabled) qSel.value = '720';
-
-    // Invidious doesn't support MP3 bitrate control — dim the bitrate group
-    audioBitrateGroup.style.opacity = isInv ? '0.4' : '1';
-    audioBitrateGroup.title = isInv ? 'Invidious audio is M4A/WEBM — bitrate not configurable' : '';
-
-    backendInfoEl.innerHTML = BACKEND_INFO[currentBackend];
-  }
-
-  document.querySelectorAll('.backend-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.backend-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentBackend = btn.dataset.backend;
-      applyBackendCapabilities();
-
-      // Ping Local health endpoint so problems surface immediately
-      if (currentBackend === 'local') pingLocalHealth();
-    });
-  });
-
-  function pingLocalHealth() {
+  function pingCobaltHealth() {
     const base = (localStorage.getItem(LS_LOCAL) || DEFAULT_LOCAL).replace(/\/$/, '');
-    fetch(base + '/health', { signal: AbortSignal.timeout(4000) })
+    fetch(base + '/', {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(4000),
+    })
       .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
       .then(d => {
-        const ffWarn = d.ffmpeg ? '' : ' · <span style="color:var(--warning)">⚠ ffmpeg missing — MP3 and 1080p disabled</span>';
-        let cookieWarn;
-        if (!d.cookies || d.cookies === 'none') {
-          cookieWarn = ''; // normal — player client bypass active, no cookies needed
-        } else if (d.cookies === 'file:expired') {
-          cookieWarn = ' · <span style="color:var(--warning)">🍪 cookies expired — re-export from browser (deploy.sh → Option 6 → i)</span>';
-        } else if (d.cookies === 'file:missing') {
-          cookieWarn = ' · <span style="color:var(--warning)">🍪 cookies.txt configured but missing — upload file or disable (deploy.sh → Option 6 → i)</span>';
-        } else if (d.cookies === 'file:unchecked') {
-          cookieWarn = ' · <span style="color:var(--text-muted)">🍪 cookies configured (not yet tested — runs weekly)</span>';
-        } else {
-          cookieWarn = ` · <span style="color:var(--success)">🍪 cookies: ${escHtml(d.cookies)}</span>`;
-        }
-        backendInfoEl.innerHTML = BACKEND_INFO.local +
-          ` <span style="color:var(--success)">✓ running (yt-dlp ${escHtml(d.ytdlp)})</span>${ffWarn}${cookieWarn}`;
+        const version = d.cobalt?.version || 'unknown';
+        backendInfoEl.innerHTML = LOCAL_INFO +
+          ` <span style="color:var(--success)">✓ running (v${escHtml(version)})</span>`;
       })
       .catch(() => {
         const hint = IS_LOCAL_DEV
-          ? 'Start locally: <code>cd yt-server &amp;&amp; npm install &amp;&amp; node server.js</code> — or switch to <b>Invidious</b> backend for testing.'
-          : 'Check: <code>systemctl status office-tools-yt</code> · or run <code>deploy.sh → Option 5</code> to redeploy.';
-        backendInfoEl.innerHTML = BACKEND_INFO.local +
+          ? 'Start cobalt on port 9000 — see deploy docs.'
+          : 'Check: <code>systemctl status office-tools-cobalt</code> · or run <code>deploy.sh → Option 5</code>.';
+        backendInfoEl.innerHTML = LOCAL_INFO +
           ` <span style="color:var(--danger)">✗ not reachable — ${hint}</span>`;
       });
   }
@@ -623,39 +442,13 @@
   ══════════════════════════════════════════ */
   document.getElementById('saveLocalBtn').addEventListener('click', () => {
     const v = localUrlInput.value.trim();
-    if (v) { localStorage.setItem(LS_LOCAL, v); showToast('Local URL saved'); }
+    if (v) { localStorage.setItem(LS_LOCAL, v); showToast('Server URL saved'); pingCobaltHealth(); }
   });
   document.getElementById('resetLocalBtn').addEventListener('click', () => {
     localUrlInput.value = DEFAULT_LOCAL;
     localStorage.removeItem(LS_LOCAL);
     showToast('Reset to default');
-  });
-  document.getElementById('saveCobaltBtn').addEventListener('click', () => {
-    const v = cobaltUrlInput.value.trim();
-    if (v) { localStorage.setItem(LS_COBALT, v); showToast('Cobalt URL saved'); }
-  });
-  document.getElementById('resetCobaltBtn').addEventListener('click', () => {
-    cobaltUrlInput.value = DEFAULT_COBALT;
-    localStorage.removeItem(LS_COBALT);
-    showToast('Reset to default');
-  });
-  document.getElementById('saveCobaltKeyBtn').addEventListener('click', () => {
-    const k = cobaltApiKeyInput.value.trim();
-    if (k) { localStorage.setItem(LS_COBALT_KEY, k); showToast('Cobalt API key saved'); }
-  });
-  document.getElementById('resetCobaltKeyBtn').addEventListener('click', () => {
-    cobaltApiKeyInput.value = '';
-    localStorage.removeItem(LS_COBALT_KEY);
-    showToast('Cobalt API key cleared');
-  });
-  document.getElementById('saveInvBtn').addEventListener('click', () => {
-    const v = invidiousUrlInput.value.trim();
-    if (v) { localStorage.setItem(LS_INVIDIOUS, v); showToast('Invidious URL saved'); }
-  });
-  document.getElementById('resetInvBtn').addEventListener('click', () => {
-    invidiousUrlInput.value = DEFAULT_INVIDIOUS;
-    localStorage.removeItem(LS_INVIDIOUS);
-    showToast('Reset to default');
+    pingCobaltHealth();
   });
   saveKeyBtn.addEventListener('click', () => {
     const k = ytApiKeyInput.value.trim();
@@ -728,7 +521,7 @@
      SINGLE VIDEO — handle
   ══════════════════════════════════════════ */
   async function handleSingle(url, videoId) {
-    // Fetch video title + thumbnail via YouTube oEmbed (no API key, no CORS issues)
+    // Fetch video title + thumbnail via YouTube oEmbed (no API key needed)
     let title     = videoId;
     let thumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
     try {
@@ -746,7 +539,7 @@
           <img src="${escHtml(thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'">
           <div class="video-info-text">
             <div class="video-info-title">${escHtml(title)}</div>
-            <div class="video-info-meta" id="singleMeta">Ready to download via <b>${escHtml(currentBackend)}</b></div>
+            <div class="video-info-meta" id="singleMeta">Ready to download</div>
           </div>
         </div>
         <div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
@@ -760,9 +553,9 @@
       const btn    = document.getElementById('dlSingleBtn');
       const status = document.getElementById('dlSingleStatus');
       btn.disabled = true;
-      status.innerHTML = renderSpinnerInline('Requesting download link…');
+      status.innerHTML = renderSpinnerInline('Requesting download…');
       try {
-        const result = await backendFetch(url, videoId);
+        const result = await localFetch(url);
         status.innerHTML = '';
         btn.disabled = false;
         triggerDownload(result.url, result.filename);
@@ -779,7 +572,6 @@
   ══════════════════════════════════════════ */
   async function handlePlaylist(playlistId) {
     /*
-     * PLAYLIST PREREQUISITE:
      * Requires a YouTube Data API v3 key.
      * Free quota: 10,000 units/day. A playlistItems.list call costs 1 unit per page.
      * Get key: console.cloud.google.com → Enable YouTube Data API v3 → Credentials → API Key
@@ -892,7 +684,7 @@
       progBar.style.width   = `${Math.round((done + failed) / indices.length * 100)}%`;
 
       try {
-        const result = await backendFetch(item.url, item.id);
+        const result = await localFetch(item.url);
         triggerDownload(result.url, result.filename);
         statusEl.className   = 'pl-status done';
         statusEl.textContent = '✅';
@@ -915,29 +707,12 @@
   }
 
   /* ══════════════════════════════════════════
-     BACKEND ROUTER
-     local + cobalt both use the cobalt API protocol;
-     only the base URL differs.
-  ══════════════════════════════════════════ */
-  function backendFetch(url, videoId) {
-    if (currentBackend === 'invidious') return invidFetch(url, videoId);
-    const base = currentBackend === 'local'
-      ? (localStorage.getItem(LS_LOCAL)  || DEFAULT_LOCAL)
-      : (localStorage.getItem(LS_COBALT) || DEFAULT_COBALT);
-    return cobaltFetch(url, base);
-  }
-
-  /* ══════════════════════════════════════════
-     COBALT BACKEND
+     LOCAL FETCH (cobalt protocol)
      Docs: https://github.com/imputnet/cobalt
-     API: POST {cobaltBase}/  → { status, url, filename }
-     Supports: MP4 up to max quality, true MP3 audio.
-     Requires: a running cobalt instance (public api.cobalt.tools or self-hosted).
+     API: POST {base}/  → { status, url, filename }
   ══════════════════════════════════════════ */
-  async function cobaltFetch(url, cobaltBase) {
-    const label   = currentBackend === 'local' ? 'Local yt-server' : 'Cobalt';
-    cobaltBase    = (cobaltBase || DEFAULT_LOCAL).replace(/\/$/, '');  // no trailing slash
-
+  async function localFetch(url) {
+    const base    = (localStorage.getItem(LS_LOCAL) || DEFAULT_LOCAL).replace(/\/$/, '');
     const quality = document.getElementById('videoQuality').value;
     const bitrate = document.getElementById('audioBitrate').value;
 
@@ -952,148 +727,54 @@
       body.filenameStyle = 'pretty';
     }
 
-    const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
-    if (currentBackend === 'cobalt') {
-      const cobaltKey = localStorage.getItem(LS_COBALT_KEY) || '';
-      if (cobaltKey) headers['Authorization'] = 'Api-Key ' + cobaltKey;
-    }
-
-    const res = await fetch(cobaltBase + '/', {
+    const res = await fetch(base + '/', {
       method: 'POST',
-      headers,
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
 
     if (!res.ok) {
       const txt = await res.text().catch(() => res.statusText);
-      if (currentBackend === 'local' && (res.status === 404 || res.status === 502 || res.status === 503)) {
+      if (res.status === 404 || res.status === 502 || res.status === 503) {
         throw new Error(
-          `Local yt-server not reachable (HTTP ${res.status}). ` +
-          `Check: systemctl status office-tools-yt — or switch to Invidious backend.`
+          `cobalt not reachable (HTTP ${res.status}). ` +
+          `Check: systemctl status office-tools-cobalt`
         );
       }
-      throw new Error(`${label} ${res.status}: ${txt.slice(0, 120)}`);
+      throw new Error(`Server error ${res.status}: ${txt.slice(0, 120)}`);
     }
 
     const data = await res.json();
     if (data.status === 'error') {
       const code = data.error?.code || data.error || 'unknown';
-      if (currentBackend === 'cobalt' && (code.includes('auth') || code.includes('jwt'))) {
-        throw new Error(
-          `Cobalt: authentication required. Set an API Key in Advanced settings, ` +
-          `or self-host cobalt, or switch to Local / Invidious backend.`
-        );
-      }
-      if (currentBackend === 'local' && /sign.in|not.a.bot|cookies|confirm.*age/i.test(code)) {
-        throw new Error(
-          `YouTube bot-detection triggered despite player client bypass. ` +
-          `Try: update yt-dlp (deploy.sh → Option 6 → h), switch to Invidious backend, ` +
-          `or upload fresh cookies.txt (deploy.sh → Option 6 → i).`
-        );
-      }
-      throw new Error(`${label}: ` + code);
+      throw new Error(code);
     }
 
     if (data.status === 'picker') {
       const picked = data.picker?.find(p => p.type === 'video') || data.picker?.[0];
-      if (!picked) throw new Error(`${label}: no stream in picker response`);
-      // Resolve relative URLs (yt-server returns /stream/:id, cobalt.tools returns absolute)
-      const pickedUrl = resolveStreamUrl(picked.url, cobaltBase);
-      return { url: pickedUrl, filename: data.filename || picked.filename || 'download' };
+      if (!picked) throw new Error('No downloadable stream found');
+      return { url: resolveStreamUrl(picked.url, base), filename: data.filename || picked.filename || 'download' };
     }
 
     if (data.status === 'tunnel' || data.status === 'redirect') {
-      // yt-server returns a relative path: /stream/:id
-      // cobalt.tools returns an absolute URL: https://...
-      // Make sure we always return an absolute URL the browser can fetch.
-      return { url: resolveStreamUrl(data.url, cobaltBase), filename: data.filename || 'download' };
+      return { url: resolveStreamUrl(data.url, base), filename: data.filename || 'download' };
     }
 
-    throw new Error(`${label}: unexpected response — ` + JSON.stringify(data).slice(0, 100));
+    throw new Error('Unexpected response: ' + JSON.stringify(data).slice(0, 100));
   }
 
-  // Resolve a stream URL that may be relative (/stream/:id from yt-server)
-  // or already absolute (https://... from cobalt.tools).
+  // Resolve a stream URL that may be relative (/tunnel?... from cobalt via nginx)
+  // or absolute (https://... from cobalt with API_URL configured).
   function resolveStreamUrl(streamUrl, base) {
     if (!streamUrl) return streamUrl;
     if (streamUrl.startsWith('http://') || streamUrl.startsWith('https://')) return streamUrl;
-    // Relative path — prefix with the backend base so nginx can proxy it correctly.
-    // e.g. /stream/abc → https://domain.com/yt-api/stream/abc
     return base + streamUrl;
-  }
-
-  /* ══════════════════════════════════════════
-     INVIDIOUS BACKEND
-     Docs: https://github.com/iv-org/invidious/wiki/API
-     API: GET {invBase}/api/v1/videos/{videoId}
-          → { title, formatStreams[], adaptiveFormats[] }
-     Supports: MP4 muxed video up to ~720p, M4A/WEBM audio.
-     Requires: a public or self-hosted Invidious instance.
-     No cobalt, no API key, no extra setup — works independently.
-     Download URL: {invBase}/latest_version?id={videoId}&itag={itag}&local=true
-  ══════════════════════════════════════════ */
-  async function invidFetch(url, videoId) {
-    const invBase = (localStorage.getItem(LS_INVIDIOUS) || DEFAULT_INVIDIOUS).replace(/\/$/, '');
-
-    const res = await fetch(`${invBase}/api/v1/videos/${videoId}?fields=title,formatStreams,adaptiveFormats`, {
-      headers: { 'Accept': 'application/json' },
-    });
-    if (!res.ok) throw new Error(`Invidious ${res.status}: ${res.statusText}`);
-    const data = await res.json();
-    if (data.error) throw new Error('Invidious: ' + data.error);
-
-    const title     = data.title || videoId;
-    const safeTitle = title.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').slice(0, 120);
-
-    if (currentMode === 'audio') {
-      /*
-       * Audio-only adaptive formats.
-       * Prefer itag 140 (M4A 128kbps) — plays natively in all browsers.
-       * Fallback: itag 251 (WEBM OPUS 160kbps) or any audio format.
-       * NOTE: These are NOT MP3. If you need MP3, use the Local backend.
-       */
-      const audioFmts = (data.adaptiveFormats || []).filter(f => String(f.type).startsWith('audio'));
-      const m4a  = audioFmts.find(f => String(f.itag) === '140');
-      const webm = audioFmts.find(f => ['251','250','249'].includes(String(f.itag)));
-      const chosen = m4a || webm || audioFmts[0];
-      if (!chosen) throw new Error('Invidious: no audio stream found for this video');
-      const ext = m4a ? 'm4a' : 'webm';
-      return {
-        url:      `${invBase}/latest_version?id=${videoId}&itag=${chosen.itag}&local=true`,
-        filename: `${safeTitle}.${ext}`,
-      };
-    } else {
-      /*
-       * Muxed (audio+video) streams — formatStreams.
-       * These are pre-merged MP4, so no post-processing needed.
-       * Maximum quality: usually 720p (1080p muxed streams no longer exist on YouTube).
-       * For 1080p+, use Local backend which merges adaptive streams server-side.
-       */
-      const quality  = document.getElementById('videoQuality').value;
-      const formats  = (data.formatStreams || []);
-      if (!formats.length) throw new Error('Invidious: no video streams found for this video');
-
-      let chosen;
-      if (quality === 'max' || quality === '1080') {
-        // Best available muxed (first in list is usually highest)
-        chosen = formats[0];
-      } else {
-        const label = quality + 'p';
-        chosen = formats.find(f => f.qualityLabel === label) || formats[formats.length - 1];
-      }
-
-      return {
-        url:      `${invBase}/latest_version?id=${videoId}&itag=${chosen.itag}&local=true`,
-        filename: `${safeTitle}.mp4`,
-      };
-    }
   }
 
   /* ══════════════════════════════════════════
      YOUTUBE DATA API — PLAYLIST ITEMS
      Prerequisite: Free YouTube Data API v3 key.
      Cost: 1 unit per page (50 items). Free quota: 10,000 units/day.
-     How to get: console.cloud.google.com → Enable YouTube Data API v3
   ══════════════════════════════════════════ */
   async function fetchPlaylistItems(playlistId, apiKey) {
     const items = [];
