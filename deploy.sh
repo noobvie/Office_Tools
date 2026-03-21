@@ -555,13 +555,16 @@ function req(method, path, body, token) {
   });
 }
 
+// Public access rules: anyone can list/view/create; only admin can update/delete
+const PUBLIC_RULES = { listRule: '', viewRule: '', createRule: '', updateRule: null, deleteRule: null };
+
 const COLLECTIONS = [
-  { name: 'short_urls', type: 'base', fields: [
+  { name: 'short_urls', type: 'base', ...PUBLIC_RULES, fields: [
       { name: 'code',     type: 'text', required: true  },
       { name: 'long_url', type: 'text', required: true  },
       { name: 'expires',  type: 'date', required: false }
   ]},
-  { name: 'pastes', type: 'base', fields: [
+  { name: 'pastes', type: 'base', ...PUBLIC_RULES, fields: [
       { name: 'code',            type: 'text', required: true  },
       { name: 'title',           type: 'text', required: false },
       { name: 'content',         type: 'text', required: true  },
@@ -569,7 +572,7 @@ const COLLECTIONS = [
       { name: 'expires',         type: 'date', required: false },
       { name: 'burn_after_read', type: 'bool', required: false }
   ]},
-  { name: 'file_shares', type: 'base', fields: [
+  { name: 'file_shares', type: 'base', ...PUBLIC_RULES, fields: [
       { name: 'code',          type: 'text', required: true  },
       { name: 'original_name', type: 'text', required: false },
       { name: 'file_size',     type: 'number', required: false },
@@ -592,9 +595,15 @@ async function main() {
   console.log('  Authenticated with PocketBase');
 
   for (const col of COLLECTIONS) {
+    const { fields, ...meta } = col;
     const check = await req('GET', '/api/collections/' + col.name, null, token);
-    if (check.status === 200) { console.log('  EXISTS:   ' + col.name); continue; }
-    const r = await req('POST', '/api/collections', col, token);
+    if (check.status === 200) {
+      // Patch rules on existing collection to ensure public access
+      await req('PATCH', '/api/collections/' + col.name, PUBLIC_RULES, token);
+      console.log('  EXISTS:   ' + col.name + ' (rules synced)');
+      continue;
+    }
+    const r = await req('POST', '/api/collections', { ...meta, fields }, token);
     if (r.body && r.body.name) console.log('  CREATED:  ' + col.name);
     else console.error('  FAILED:   ' + col.name + ' — ' + (r.body && r.body.message || JSON.stringify(r.body)));
   }

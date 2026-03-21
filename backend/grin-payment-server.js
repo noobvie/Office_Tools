@@ -105,61 +105,6 @@ async function pbGet(path) {
   return data;
 }
 
-// ── PocketBase collection auto-init ──────────────────────────
-const REQUIRED_COLLECTIONS = [
-  { name: 'short_urls', fields: [
-      { name: 'code',     type: 'text',   required: true  },
-      { name: 'long_url', type: 'text',   required: true  },
-      { name: 'expires',  type: 'date',   required: false },
-  ]},
-  { name: 'pastes', fields: [
-      { name: 'code',            type: 'text',   required: true  },
-      { name: 'title',           type: 'text',   required: false },
-      { name: 'content',         type: 'text',   required: true  },
-      { name: 'syntax',          type: 'text',   required: false },
-      { name: 'expires',         type: 'date',   required: false },
-      { name: 'burn_after_read', type: 'bool',   required: false },
-  ]},
-  { name: 'file_shares', fields: [
-      { name: 'code',          type: 'text',   required: true  },
-      { name: 'original_name', type: 'text',   required: false },
-      { name: 'file_size',     type: 'number', required: false },
-      { name: 'file',          type: 'file',   required: true,
-        options: { maxSize: 1073741824, maxSelect: 1 } },
-      { name: 'expires',       type: 'date',   required: false },
-  ]},
-];
-
-async function initCollections() {
-  try {
-    const token = await getPbAdminToken();
-    for (const col of REQUIRED_COLLECTIONS) {
-      // Check if exists
-      const check = await fetch(`${PB_URL}/api/collections/${col.name}`, {
-        headers: { 'Authorization': token },
-      });
-      if (check.status === 200) {
-        console.log(`[collections] ${col.name}: already exists`);
-        continue;
-      }
-      // Create
-      const res  = await fetch(`${PB_URL}/api/collections`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': token },
-        body:    JSON.stringify({ name: col.name, type: 'base', fields: col.fields }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        console.log(`[collections] ${col.name}: created`);
-      } else {
-        console.warn(`[collections] ${col.name}: failed — ${data.message || JSON.stringify(data)}`);
-      }
-    }
-  } catch (err) {
-    console.warn('[collections] init skipped:', err.message);
-  }
-}
-
 // ── Grin wallet CLI helpers ───────────────────────────────────
 async function grinWallet(args) {
   const baseArgs = GRIN_WALLET_PASS ? ['-p', GRIN_WALLET_PASS, ...args] : args;
@@ -348,6 +293,4 @@ app.listen(PORT, () => {
   console.log(`PocketBase:      ${PB_URL}`);
   console.log(`Grin wallet:     ${GRIN_WALLET_BIN}`);
   console.log(`Receiving addr:  ${GRIN_RECEIVING_ADDR || '(not set — configure GRIN_RECEIVING_ADDRESS in .env)'}`);
-  // Auto-create required PocketBase collections
-  initCollections();
 });
