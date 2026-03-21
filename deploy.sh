@@ -529,7 +529,7 @@ setup_pb_collections() {
 
     # ── Step 1: authenticate ──────────────────────────────────
     local token=""
-    for auth_path in "/api/superusers/auth-with-password" "/api/admins/auth-with-password"; do
+    for auth_path in "/api/collections/_superusers/auth-with-password" "/api/superusers/auth-with-password" "/api/admins/auth-with-password"; do
         local resp
         resp=$(curl -sf -X POST "${pb_base}${auth_path}" \
             -H "Content-Type: application/json" \

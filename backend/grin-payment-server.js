@@ -55,14 +55,16 @@ let pbAdminExpiry = 0;
 async function getPbAdminToken() {
   if (pbAdminToken && Date.now() < pbAdminExpiry) return pbAdminToken;
   const creds = JSON.stringify({ identity: process.env.PB_ADMIN_EMAIL, password: process.env.PB_ADMIN_PASSWORD });
-  // Try PocketBase v0.23+ endpoint first, fall back to legacy
-  let res = await fetch(`${PB_URL}/api/superusers/auth-with-password`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: creds,
-  });
-  if (res.status === 404) {
-    res = await fetch(`${PB_URL}/api/admins/auth-with-password`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: creds,
-    });
+  // Try endpoints in order: v0.36+ → v0.23+ → legacy
+  const authEndpoints = [
+    `${PB_URL}/api/collections/_superusers/auth-with-password`,
+    `${PB_URL}/api/superusers/auth-with-password`,
+    `${PB_URL}/api/admins/auth-with-password`,
+  ];
+  let res;
+  for (const url of authEndpoints) {
+    res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: creds });
+    if (res.status !== 404) break;
   }
   const data = await res.json();
   if (!res.ok) throw new Error('PocketBase admin auth failed: ' + data.message);
