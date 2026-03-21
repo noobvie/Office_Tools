@@ -193,15 +193,16 @@ async function fetchText(url, ms = 5000) {
 }
 
 async function detectIpv4() {
-  try {
-    const d = await fetchJson('https://api4.ipify.org?format=json');
-    if (d.ip && /^\d+\.\d+\.\d+\.\d+$/.test(d.ip)) return d.ip;
-  } catch {}
-  try {
-    const t = await fetchText('https://ipv4.icanhazip.com');
-    if (/^\d+\.\d+\.\d+\.\d+$/.test(t.trim())) return t.trim();
-  } catch {}
-  return null;
+  const re = /^\d+\.\d+\.\d+\.\d+$/;
+  const t4 = async fn => { try { const v = await fn(); const s = String(v || '').trim(); if (re.test(s)) return s; } catch {} return null; };
+  // Fire all IPv4-only endpoints in parallel — pick first success
+  const results = await Promise.all([
+    t4(() => fetchJson('https://api4.ipify.org?format=json').then(d => d.ip)),
+    t4(() => fetchText('https://ipv4.icanhazip.com')),
+    t4(() => fetchText('https://checkip.amazonaws.com')),
+    t4(() => fetchText('https://v4.ident.me')),
+  ]);
+  return results.find(Boolean) || null;
 }
 
 async function detectIpv6() {

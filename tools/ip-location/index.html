@@ -268,7 +268,7 @@ async function lookup(query) {
       <span style="font-size:.85rem;color:var(--text-muted)">Looking up ${escHtml(query)}…</span>
     </div>`;
 
-  const fields = 'status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query,mobile,proxy,hosting';
+  const fields = 'status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query';
   let data;
   try {
     const res = await fetch(`https://ip-api.com/json/${encodeURIComponent(query)}?fields=${fields}`);
@@ -293,11 +293,7 @@ async function lookup(query) {
   const isV6 = ip.includes(':');
 
   // Detect connection type
-  const types = [];
-  if (data.proxy)   types.push({ cls: 'tbadge-vpn',     label: 'VPN / Proxy' });
-  if (data.hosting) types.push({ cls: 'tbadge-hosting',  label: 'Datacenter / Hosting' });
-  if (data.mobile)  types.push({ cls: 'tbadge-mobile',   label: 'Mobile Network' });
-  if (!types.length) types.push({ cls: 'tbadge-regular', label: isV6 ? 'IPv6' : 'IPv4' });
+  const types = [{ cls: 'tbadge-regular', label: isV6 ? 'IPv6' : 'IPv4' }];
 
   const typeBadges = types.map(t => `<span class="tbadge ${t.cls}">${t.label}</span>`).join('');
 
@@ -391,9 +387,6 @@ async function lookup(query) {
       `Organization: ${org}`,
       `ASN:          ${asn}`,
       `Coordinates:  ${coords}`,
-      `VPN/Proxy:    ${data.proxy ? 'Yes' : 'No'}`,
-      `Hosting:      ${data.hosting ? 'Yes' : 'No'}`,
-      `Mobile:       ${data.mobile ? 'Yes' : 'No'}`,
     ].join('\n');
     copyText(text, this);
   });
