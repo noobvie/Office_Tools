@@ -429,6 +429,15 @@ document.querySelectorAll('.section-tab').forEach(btn => {
   });
 });
 
+// ── Clear QR preview when switching content type ──
+document.querySelectorAll('#qrTabs .tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('qrPreview').innerHTML = '<div class="preview-placeholder">▌▌▌ QR code will appear here</div>';
+    document.getElementById('qrDownloadBtns').style.display = 'none';
+    lastQrCanvas = null;
+  });
+});
+
 // ── Phone type: show SMS body row ──
 document.getElementById('phoneType').addEventListener('change', e => {
   document.getElementById('smsBodyRow').style.display =
