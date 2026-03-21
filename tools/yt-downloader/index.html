@@ -252,15 +252,23 @@
   │    6. Paste the key into the playlist API key field │
   │    The key is stored in localStorage only.          │
   │                                                     │
-  │  Backend — Cobalt (default):                        │
+  │  Backend — Local (DEFAULT):                         │
+  │    Uses the office-tools-yt systemd service on this │
+  │    server (Node.js + yt-dlp + ffmpeg, port 9000).   │
+  │    Installed automatically by deploy.sh step 1.     │
+  │    Proxied via nginx /yt-api/ → 127.0.0.1:9000.     │
+  │    Supports MP4 up to 1080p + true MP3 audio.       │
+  │    No external API — fastest, most reliable.        │
+  │                                                     │
+  │  Backend — Cobalt (external):                       │
   │    Uses api.cobalt.tools (free, open-source).       │
   │    Supports MP4 up to 1080p + true MP3 audio.       │
   │    Self-host: https://github.com/imputnet/cobalt    │
-  │    Point the "Cobalt API URL" to your own instance. │
+  │    Uses same API protocol as Local backend.         │
   │                                                     │
-  │  Backend — Invidious (no cobalt needed):            │
+  │  Backend — Invidious (independent fallback):        │
   │    Uses a public Invidious instance's API.          │
-  │    No extra setup — works without cobalt.           │
+  │    No yt-dlp needed — works without Local/Cobalt.   │
   │    Limitations: video capped ~720p (muxed streams), │
   │    audio is M4A/WEBM not MP3.                       │
   │    Default instance: https://inv.tux.pizza          │
@@ -534,6 +542,15 @@
   /* ══════════════════════════════════════════
      SAVE / RESET CONFIG
   ══════════════════════════════════════════ */
+  document.getElementById('saveLocalBtn').addEventListener('click', () => {
+    const v = localUrlInput.value.trim();
+    if (v) { localStorage.setItem(LS_LOCAL, v); showToast('Local URL saved'); }
+  });
+  document.getElementById('resetLocalBtn').addEventListener('click', () => {
+    localUrlInput.value = DEFAULT_LOCAL;
+    localStorage.removeItem(LS_LOCAL);
+    showToast('Reset to default');
+  });
   document.getElementById('saveCobaltBtn').addEventListener('click', () => {
     const v = cobaltUrlInput.value.trim();
     if (v) { localStorage.setItem(LS_COBALT, v); showToast('Cobalt URL saved'); }
@@ -811,10 +828,15 @@
 
   /* ══════════════════════════════════════════
      BACKEND ROUTER
+     local + cobalt both use the cobalt API protocol;
+     only the base URL differs.
   ══════════════════════════════════════════ */
   function backendFetch(url, videoId) {
     if (currentBackend === 'invidious') return invidFetch(url, videoId);
-    return cobaltFetch(url);
+    const base = currentBackend === 'local'
+      ? (localStorage.getItem(LS_LOCAL)  || DEFAULT_LOCAL)
+      : (localStorage.getItem(LS_COBALT) || DEFAULT_COBALT);
+    return cobaltFetch(url, base);
   }
 
   /* ══════════════════════════════════════════
@@ -824,8 +846,8 @@
      Supports: MP4 up to max quality, true MP3 audio.
      Requires: a running cobalt instance (public api.cobalt.tools or self-hosted).
   ══════════════════════════════════════════ */
-  async function cobaltFetch(url) {
-    const cobaltBase = (localStorage.getItem(LS_COBALT) || DEFAULT_COBALT).replace(/\/$/, '') + '/';
+  async function cobaltFetch(url, cobaltBase) {
+    cobaltBase = (cobaltBase || DEFAULT_LOCAL).replace(/\/$/, '') + '/';
     const quality = document.getElementById('videoQuality').value;
     const bitrate = document.getElementById('audioBitrate').value;
 
