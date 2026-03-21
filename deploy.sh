@@ -267,6 +267,11 @@ setup_cobalt() {
     [[ ! -d "$api_dir" ]] && api_dir="$COBALT_DIR/api"
     [[ ! -d "$api_dir" ]] && die "cobalt API directory not found in $COBALT_DIR — unexpected repo structure"
 
+    # Upgrade npm to v11+ — npm v10's workspace hoisting has bugs that prevent
+    # cobalt's dependencies (e.g. dotenv) from being found at runtime.
+    info "Upgrading npm to latest…"
+    npm install -g npm@latest --quiet 2>/dev/null || true
+
     # Install Node.js dependencies from workspace root (resolves workspace: links).
     # Do NOT use --omit=dev — cobalt's workspace setup resolves some runtime deps
     # through the dev dependency tree (e.g. dotenv).
