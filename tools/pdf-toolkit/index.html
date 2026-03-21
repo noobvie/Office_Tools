@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PDF Toolkit — Office Tools</title>
-  <meta name="description" content="Merge multiple PDFs into one file, extract specific page ranges, split a PDF into individual pages, or reorder pages with drag-and-drop thumbnails. Free, runs in your browser.">
-  <meta name="keywords" content="PDF merger, merge PDF online, split PDF, extract PDF pages, reorder PDF pages, combine PDF, PDF tools free, PDF page organizer">
+  <meta name="description" content="Merge multiple PDFs, split or extract pages, reorder with drag-and-drop, and compress PDF file size. Free, runs entirely in your browser.">
+  <meta name="keywords" content="PDF merger, merge PDF online, split PDF, extract PDF pages, reorder PDF pages, compress PDF, reduce PDF size, combine PDF, PDF tools free">
   <meta name="robots" content="index, follow">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Office Tools">
@@ -98,6 +98,34 @@
       font-size: .78rem; font-weight: 600;
     }
     .range-badge span { cursor: pointer; margin-left: .35rem; color: var(--danger); }
+
+    /* Compress level cards */
+    .compress-level-card {
+      cursor: pointer;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      transition: border-color .12s;
+      display: block;
+    }
+    .compress-level-card:hover { border-color: var(--primary); }
+    .compress-level-card.active { border-color: var(--primary); background: var(--primary-dim); }
+    .compress-level-inner { padding: .65rem .5rem; text-align: center; }
+    .compress-level-icon { font-size: 1.4rem; }
+    .compress-level-name { font-weight: 700; font-size: .85rem; margin: .2rem 0 .1rem; color: var(--text); }
+    .compress-level-desc { font-size: .72rem; color: var(--text-muted); line-height: 1.4; }
+
+    /* Compress result box */
+    .compress-result-box {
+      background: var(--bg-secondary);
+      border: 1.5px solid var(--primary);
+      border-radius: var(--radius);
+      padding: .85rem 1.1rem;
+      display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center;
+      font-size: .85rem;
+    }
+    .compress-stat-label { color: var(--text-muted); margin-bottom: .1rem; font-size: .78rem; }
+    .compress-stat-val   { font-weight: 800; font-size: 1.05rem; }
+    .compress-savings    { margin-left: auto; font-size: 1.2rem; font-weight: 900; color: var(--primary); }
   </style>
 </head>
 <body>
@@ -113,36 +141,94 @@
 <main class="tool-main">
   <div class="tool-header">
     <h1>📑 PDF Toolkit</h1>
-    <p>Merge multiple PDFs, split or extract pages, and reorder pages with drag-and-drop. Everything runs locally in your browser.</p>
+    <p>Build PDFs from files and images, split or extract pages, and compress — everything runs locally in your browser.</p>
   </div>
 
   <div class="card" data-tabs>
     <div class="tabs">
-      <button class="tab-btn active" data-tab="mergeTab">Merge</button>
+      <button class="tab-btn active" data-tab="buildTab">Build PDF</button>
       <button class="tab-btn" data-tab="splitTab">Split / Extract</button>
-      <button class="tab-btn" data-tab="reorderTab">Reorder Pages</button>
+      <button class="tab-btn" data-tab="compressTab">Compress</button>
     </div>
 
-    <!-- ═══════════════════ MERGE TAB ═══════════════════════════ -->
-    <div class="tab-pane active" id="mergeTab">
-      <p style="font-size:.84rem;color:var(--text-muted);margin-bottom:.6rem">Upload multiple PDFs. Drag rows to set order. Click Merge to download a combined PDF.</p>
-      <div class="drop-zone" id="mergeDrop">
-        Drop PDF files here or <strong>click to browse</strong>
-        <p style="font-size:.77rem;margin:.25rem 0 0">Multiple files supported</p>
-        <input type="file" id="mergeFiles" accept=".pdf,application/pdf" multiple>
+    <!-- ═══════════════════ BUILD PDF TAB ════════════════════════ -->
+    <div class="tab-pane active" id="buildTab">
+      <p style="font-size:.84rem;color:var(--text-muted);margin-bottom:.6rem">
+        Combine PDFs and images into one PDF, reorder pages freely, then download.
+        Supports <strong>PDF · JPG · PNG · WebP</strong>.
+      </p>
+
+      <div class="drop-zone" id="buildDrop">
+        Drop PDFs or images here or <strong>click to browse</strong>
+        <p style="font-size:.77rem;margin:.25rem 0 0">Multiple files — mix PDFs and images freely</p>
+        <input type="file" id="buildFiles" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" multiple>
       </div>
 
-      <div id="mergeList" class="merge-list" style="display:none"></div>
+      <div id="buildSourceList" class="merge-list" style="display:none"></div>
 
-      <div class="form-row mt-2" style="gap:.5rem;align-items:center">
-        <div id="mergeCount" style="font-size:.84rem;color:var(--text-muted);flex:1"></div>
-        <button class="btn btn-secondary btn-sm" id="mergeClearBtn" style="display:none">Clear All</button>
-        <button class="btn btn-primary" id="mergeBtn" disabled>Merge PDFs</button>
+      <div id="buildLoadProgress" style="display:none;margin-top:.5rem">
+        <div class="progress-bar"><div class="progress-fill" id="buildLoadPFill"></div></div>
+        <p id="buildLoadStatus" style="font-size:.81rem;color:var(--text-muted);margin-top:.35rem"></p>
       </div>
 
-      <div id="mergeProgress" style="display:none">
-        <div class="progress-bar"><div class="progress-fill" id="mergePFill"></div></div>
-        <p id="mergeStatus" style="font-size:.81rem;color:var(--text-muted);margin-top:.35rem"></p>
+      <div id="buildPageArea" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.75rem">
+          <div id="buildPageCount" style="font-size:.84rem;color:var(--text-muted)"></div>
+          <button class="btn btn-secondary btn-sm" id="buildClearBtn">Clear All</button>
+        </div>
+        <div class="thumb-grid" id="buildThumbGrid"></div>
+      </div>
+
+      <div id="buildOutputArea" style="display:none;margin-top:.75rem">
+        <label class="form-label">Output quality</label>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-top:.35rem" id="buildQualityCards">
+          <label class="compress-level-card active" data-level="original">
+            <input type="radio" name="buildQuality" value="original" checked style="display:none">
+            <div class="compress-level-inner">
+              <div class="compress-level-icon">📄</div>
+              <div class="compress-level-name">Original</div>
+              <div class="compress-level-desc">Preserve text &amp; vectors</div>
+            </div>
+          </label>
+          <label class="compress-level-card" data-level="balanced">
+            <input type="radio" name="buildQuality" value="balanced" style="display:none">
+            <div class="compress-level-inner">
+              <div class="compress-level-icon">⚖️</div>
+              <div class="compress-level-name">Balanced</div>
+              <div class="compress-level-desc">Good quality, reduced size</div>
+            </div>
+          </label>
+          <label class="compress-level-card" data-level="max">
+            <input type="radio" name="buildQuality" value="max" style="display:none">
+            <div class="compress-level-inner">
+              <div class="compress-level-icon">🗜️</div>
+              <div class="compress-level-name">Max</div>
+              <div class="compress-level-desc">Smallest file, lower quality</div>
+            </div>
+          </label>
+        </div>
+
+        <div class="btn-group mt-3">
+          <button class="btn btn-primary" id="buildBtn">Build &amp; Download PDF</button>
+        </div>
+
+        <div id="buildProgress" style="display:none;margin-top:.75rem">
+          <div class="progress-bar"><div class="progress-fill" id="buildPFill"></div></div>
+          <p id="buildStatus" style="font-size:.81rem;color:var(--text-muted);margin-top:.35rem"></p>
+        </div>
+
+        <div id="buildResult" class="mt-2" style="display:none">
+          <div class="compress-result-box">
+            <div>
+              <div class="compress-stat-label">Pages</div>
+              <div class="compress-stat-val" id="buildResultPages"></div>
+            </div>
+            <div>
+              <div class="compress-stat-label">File size</div>
+              <div class="compress-stat-val" style="color:var(--primary)" id="buildResultSize"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -194,30 +280,76 @@
       </div>
     </div>
 
-    <!-- ═══════════════════ REORDER TAB ══════════════════════════ -->
-    <div class="tab-pane" id="reorderTab">
+    <!-- ═══════════════════ COMPRESS TAB ════════════════════════ -->
+    <div class="tab-pane" id="compressTab">
       <p style="font-size:.84rem;color:var(--text-muted);margin-bottom:.6rem">
-        Upload a PDF. Drag page thumbnails to reorder. Remove pages by hovering and clicking ✕. Then download.
+        Reduce file size by re-rendering each page as a compressed image.
+        Best for scanned PDFs and image-heavy files. <strong style="color:var(--text)">Note:</strong> text layers become images in the output.
       </p>
-      <div class="drop-zone" id="reorderDrop">
+      <div class="drop-zone" id="compressDrop">
         Drop a PDF here or <strong>click to browse</strong>
-        <input type="file" id="reorderFile" accept=".pdf,application/pdf">
+        <input type="file" id="compressFile" accept=".pdf,application/pdf">
       </div>
 
-      <div id="reorderProgress" style="display:none;margin-top:.5rem">
-        <div class="progress-bar"><div class="progress-fill" id="reorderPFill"></div></div>
-        <p id="reorderStatus" style="font-size:.81rem;color:var(--text-muted);margin-top:.35rem"></p>
-      </div>
+      <div id="compressControls" style="display:none">
+        <div class="alert alert-info mt-2" id="compressInfo" style="font-size:.84rem;padding:.45rem .85rem"></div>
 
-      <div id="reorderControls" style="display:none">
-        <div class="form-row mt-2" style="gap:.5rem;align-items:center">
-          <div id="reorderCount" style="font-size:.84rem;color:var(--text-muted);flex:1"></div>
-          <button class="btn btn-secondary btn-sm" id="reorderResetBtn">Reset Order</button>
-          <button class="btn btn-primary" id="reorderSaveBtn">Save PDF</button>
+        <div class="mt-2">
+          <label class="form-label">Compression level</label>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-top:.35rem" id="compressLevels">
+            <label class="compress-level-card" data-level="low">
+              <input type="radio" name="compressLevel" value="low" style="display:none">
+              <div class="compress-level-inner">
+                <div class="compress-level-icon">🗜️</div>
+                <div class="compress-level-name">Max</div>
+                <div class="compress-level-desc">Smallest file, reduced quality</div>
+              </div>
+            </label>
+            <label class="compress-level-card active" data-level="medium">
+              <input type="radio" name="compressLevel" value="medium" checked style="display:none">
+              <div class="compress-level-inner">
+                <div class="compress-level-icon">⚖️</div>
+                <div class="compress-level-name">Balanced</div>
+                <div class="compress-level-desc">Good quality, solid reduction</div>
+              </div>
+            </label>
+            <label class="compress-level-card" data-level="high">
+              <input type="radio" name="compressLevel" value="high" style="display:none">
+              <div class="compress-level-inner">
+                <div class="compress-level-icon">🔍</div>
+                <div class="compress-level-name">Light</div>
+                <div class="compress-level-desc">Near-original quality, light savings</div>
+              </div>
+            </label>
+          </div>
         </div>
-        <div class="thumb-grid" id="thumbGrid"></div>
+
+        <div class="btn-group mt-3">
+          <button class="btn btn-primary" id="compressBtn">Compress PDF</button>
+        </div>
+
+        <div id="compressProgress" style="display:none;margin-top:.75rem">
+          <div class="progress-bar"><div class="progress-fill" id="compressPFill"></div></div>
+          <p id="compressStatus" style="font-size:.81rem;color:var(--text-muted);margin-top:.35rem"></p>
+        </div>
+
+        <div id="compressResult" class="mt-2" style="display:none">
+          <div class="compress-result-box">
+            <div>
+              <div class="compress-stat-label">Original</div>
+              <div class="compress-stat-val" id="compressOrigSize"></div>
+            </div>
+            <div style="color:var(--text-muted);font-size:1.4rem">→</div>
+            <div>
+              <div class="compress-stat-label">Compressed</div>
+              <div class="compress-stat-val" style="color:var(--primary)" id="compressNewSize"></div>
+            </div>
+            <div class="compress-savings" id="compressSavings"></div>
+          </div>
+        </div>
       </div>
     </div>
+
   </div>
 </main>
 
@@ -254,16 +386,297 @@ function setProgress(fillId, pct, statusId, msg) {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// MERGE TAB
+// BUILD PDF TAB  (combine PDFs + images → reorder → output)
 // ══════════════════════════════════════════════════════════════════
-let mergeFiles = [];
+// buildSources[i] = { file, type:'pdf'|'image', pageCount }
+let buildSources   = [];
+// buildPdfjsDocs[i] = pdf.js document (PDFs only, null for images)
+let buildPdfjsDocs = [];
+// buildPages[i]   = { srcIdx, pageIdx, thumbSrc }
+let buildPages     = [];
 
-const mergeDrop    = document.getElementById('mergeDrop');
-const mergeFilesEl = document.getElementById('mergeFiles');
-const mergeListEl  = document.getElementById('mergeList');
-const mergeCountEl = document.getElementById('mergeCount');
-const mergeClearBtn= document.getElementById('mergeClearBtn');
-const mergeBtn     = document.getElementById('mergeBtn');
+const BUILD_QUALITY = {
+  original: null,
+  balanced: { scale: 1.0,  quality: 0.65 },
+  max:      { scale: 0.75, quality: 0.42 },
+};
+const ACCEPTED_IMG = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+bindDrop(
+  document.getElementById('buildDrop'),
+  document.getElementById('buildFiles'),
+  handleBuildFiles
+);
+
+async function handleBuildFiles(fileList) {
+  const files = Array.from(fileList).filter(f =>
+    f.type === 'application/pdf' || ACCEPTED_IMG.has(f.type) ||
+    /\.(pdf|jpe?g|png|webp)$/i.test(f.name)
+  );
+  if (!files.length) return;
+  const startIdx = buildSources.length;
+  for (const file of files) {
+    const isImg = file.type.startsWith('image/') || /\.(jpe?g|png|webp)$/i.test(file.name);
+    buildSources.push({ file, type: isImg ? 'image' : 'pdf', pageCount: isImg ? 1 : 0 });
+    buildPdfjsDocs.push(null);
+  }
+  renderBuildSourceList();
+  await loadBuildThumbnails(startIdx);
+}
+
+function renderBuildSourceList() {
+  const listEl = document.getElementById('buildSourceList');
+  if (!buildSources.length) { listEl.style.display = 'none'; return; }
+  listEl.style.display = 'flex';
+  listEl.innerHTML = buildSources.map((s, i) => `
+    <div class="merge-row" data-si="${i}">
+      <span class="merge-name">${escHtml(s.file.name)}</span>
+      <span class="merge-size">${s.type === 'pdf' ? (s.pageCount || '…') + ' p · ' : '1 img · '}${fmtSz(s.file.size)}</span>
+      <button class="merge-del" data-si="${i}" title="Remove">&#10005;</button>
+    </div>`).join('');
+  listEl.querySelectorAll('.merge-del').forEach(btn =>
+    btn.addEventListener('click', () => removeBuildSource(+btn.dataset.si))
+  );
+}
+
+function removeBuildSource(si) {
+  buildSources.splice(si, 1);
+  buildPdfjsDocs.splice(si, 1);
+  buildPages = buildPages
+    .filter(p => p.srcIdx !== si)
+    .map(p => ({ ...p, srcIdx: p.srcIdx > si ? p.srcIdx - 1 : p.srcIdx }));
+  renderBuildSourceList();
+  renderBuildThumbGrid();
+}
+
+async function loadBuildThumbnails(startFrom) {
+  const loadProg = document.getElementById('buildLoadProgress');
+  loadProg.style.display = '';
+  for (let si = startFrom; si < buildSources.length; si++) {
+    const src = buildSources[si];
+    if (src.type === 'pdf') {
+      if (!buildPdfjsDocs[si]) {
+        const buf = await src.file.arrayBuffer();
+        buildPdfjsDocs[si] = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+      }
+      const pdfDoc = buildPdfjsDocs[si];
+      src.pageCount = pdfDoc.numPages;
+      const limit = Math.min(pdfDoc.numPages, 100);
+      for (let pi = 0; pi < pdfDoc.numPages; pi++) {
+        setProgress('buildLoadPFill',
+          Math.round(5 + 90 * pi / pdfDoc.numPages), 'buildLoadStatus',
+          `Loading "${src.file.name}" — page ${pi + 1} of ${pdfDoc.numPages}…`);
+        let thumbSrc = null;
+        if (pi < limit) {
+          const page   = await pdfDoc.getPage(pi + 1);
+          const vp     = page.getViewport({ scale: 0.25 });
+          const canvas = document.createElement('canvas');
+          canvas.width = vp.width; canvas.height = vp.height;
+          await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+          thumbSrc = canvas.toDataURL('image/jpeg', 0.7);
+        }
+        buildPages.push({ srcIdx: si, pageIdx: pi, thumbSrc });
+      }
+    } else {
+      setProgress('buildLoadPFill', 50, 'buildLoadStatus', `Loading "${src.file.name}"…`);
+      const thumbSrc = await new Promise(res => {
+        const img = new Image();
+        const url = URL.createObjectURL(src.file);
+        img.onload = () => {
+          const MAX = 200, sc = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
+          const c = document.createElement('canvas');
+          c.width  = Math.round(img.naturalWidth  * sc);
+          c.height = Math.round(img.naturalHeight * sc);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(url);
+          res(c.toDataURL('image/jpeg', 0.75));
+        };
+        img.src = url;
+      });
+      buildPages.push({ srcIdx: si, pageIdx: 0, thumbSrc });
+    }
+  }
+  setProgress('buildLoadPFill', 100, 'buildLoadStatus', 'Ready');
+  setTimeout(() => { loadProg.style.display = 'none'; }, 300);
+  renderBuildSourceList();
+  renderBuildThumbGrid();
+}
+
+function renderBuildThumbGrid() {
+  const pageArea   = document.getElementById('buildPageArea');
+  const outputArea = document.getElementById('buildOutputArea');
+  const grid       = document.getElementById('buildThumbGrid');
+  if (!buildPages.length) {
+    pageArea.style.display = 'none'; outputArea.style.display = 'none';
+    document.getElementById('buildResult').style.display = 'none';
+    return;
+  }
+  pageArea.style.display = ''; outputArea.style.display = '';
+  document.getElementById('buildPageCount').textContent =
+    `${buildPages.length} page${buildPages.length !== 1 ? 's' : ''} — drag to reorder`;
+
+  grid.innerHTML = buildPages.map((pg, di) => {
+    const src   = buildSources[pg.srcIdx];
+    const label = src.type === 'pdf' ? `p${pg.pageIdx + 1}` : src.file.name.slice(0, 8);
+    const inner = pg.thumbSrc
+      ? `<img src="${pg.thumbSrc}" alt="${label}" draggable="false">`
+      : `<div style="aspect-ratio:0.77;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:.75rem;color:var(--text-muted)">${label}</div>`;
+    return `
+      <div class="thumb-item" draggable="true" data-di="${di}">
+        ${inner}
+        <span class="thumb-num">${di + 1}</span>
+        <button class="thumb-del" data-di="${di}" title="Remove">&#10005;</button>
+      </div>`;
+  }).join('');
+
+  grid.querySelectorAll('.thumb-del').forEach(btn =>
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      buildPages.splice(+btn.dataset.di, 1);
+      renderBuildThumbGrid();
+    })
+  );
+
+  let srcDi = null;
+  grid.querySelectorAll('.thumb-item').forEach(item => {
+    item.addEventListener('dragstart', () => { srcDi = +item.dataset.di; item.classList.add('dragging'); });
+    item.addEventListener('dragend',   () => item.classList.remove('dragging'));
+    item.addEventListener('dragover',  e => { e.preventDefault(); item.classList.add('drag-over'); });
+    item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+    item.addEventListener('drop', e => {
+      e.preventDefault(); item.classList.remove('drag-over');
+      const dstDi = +item.dataset.di;
+      if (srcDi !== null && srcDi !== dstDi) {
+        const [moved] = buildPages.splice(srcDi, 1);
+        buildPages.splice(srcDi < dstDi ? dstDi - 1 : dstDi, 0, moved);
+        renderBuildThumbGrid();
+      }
+      srcDi = null;
+    });
+  });
+}
+
+document.getElementById('buildClearBtn').addEventListener('click', () => {
+  buildSources = []; buildPdfjsDocs = []; buildPages = [];
+  renderBuildSourceList();
+  renderBuildThumbGrid();
+  document.getElementById('buildLoadProgress').style.display = 'none';
+});
+
+document.getElementById('buildQualityCards').querySelectorAll('.compress-level-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('#buildQualityCards .compress-level-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    card.querySelector('input[type=radio]').checked = true;
+  });
+});
+
+document.getElementById('buildBtn').addEventListener('click', async () => {
+  if (!buildPages.length) return;
+  const quality  = document.querySelector('input[name="buildQuality"]:checked')?.value || 'original';
+  const settings = BUILD_QUALITY[quality];
+  const prog = document.getElementById('buildProgress');
+  const result = document.getElementById('buildResult');
+  const btn = document.getElementById('buildBtn');
+  const status = document.getElementById('buildStatus');
+  prog.style.display = ''; result.style.display = 'none';
+  status.style.color = ''; btn.disabled = true;
+  try {
+    const { PDFDocument } = PDFLib;
+    const outDoc = await PDFDocument.create();
+    if (!settings) {
+      // Original: pdf-lib direct copy for PDFs, native embed for images
+      const pdflibCache = new Map();
+      for (let di = 0; di < buildPages.length; di++) {
+        setProgress('buildPFill', Math.round(5 + 90 * di / buildPages.length),
+          'buildStatus', `Building page ${di + 1} of ${buildPages.length}…`);
+        const { srcIdx, pageIdx } = buildPages[di];
+        const src = buildSources[srcIdx];
+        if (src.type === 'pdf') {
+          if (!pdflibCache.has(srcIdx)) {
+            const bytes = await src.file.arrayBuffer();
+            pdflibCache.set(srcIdx, await PDFDocument.load(bytes));
+          }
+          const [copied] = await outDoc.copyPages(pdflibCache.get(srcIdx), [pageIdx]);
+          outDoc.addPage(copied);
+        } else {
+          await embedImagePage(outDoc, src.file);
+        }
+      }
+    } else {
+      // Compressed: re-render all pages via canvas
+      const { scale, quality: q } = settings;
+      for (let di = 0; di < buildPages.length; di++) {
+        setProgress('buildPFill', Math.round(5 + 90 * di / buildPages.length),
+          'buildStatus', `Rendering page ${di + 1} of ${buildPages.length}…`);
+        const { srcIdx, pageIdx } = buildPages[di];
+        const src = buildSources[srcIdx];
+        let canvas;
+        if (src.type === 'pdf') {
+          const page = await buildPdfjsDocs[srcIdx].getPage(pageIdx + 1);
+          const vp   = page.getViewport({ scale });
+          canvas     = document.createElement('canvas');
+          canvas.width  = Math.round(vp.width);
+          canvas.height = Math.round(vp.height);
+          await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+        } else {
+          canvas = await imgToCanvas(src.file, scale);
+        }
+        const dataUrl  = canvas.toDataURL('image/jpeg', q);
+        const imgBytes = Uint8Array.from(atob(dataUrl.split(',')[1]), c => c.charCodeAt(0));
+        const jpg      = await outDoc.embedJpg(imgBytes);
+        outDoc.addPage([canvas.width, canvas.height])
+              .drawImage(jpg, { x: 0, y: 0, width: canvas.width, height: canvas.height });
+      }
+    }
+    setProgress('buildPFill', 96, 'buildStatus', 'Saving…');
+    const outBytes = await outDoc.save();
+    const blob = new Blob([outBytes], { type: 'application/pdf' });
+    dlBlob(blob, (buildSources[0] ? noExt(buildSources[0].file.name) : 'document') + '_built.pdf');
+    document.getElementById('buildResultPages').textContent = buildPages.length;
+    document.getElementById('buildResultSize').textContent  = fmtSz(blob.size);
+    setProgress('buildPFill', 100, 'buildStatus', 'Done — file downloaded.');
+    result.style.display = '';
+  } catch (e) {
+    status.textContent = 'Error: ' + e.message;
+    status.style.color = 'var(--danger)';
+  }
+  btn.disabled = false;
+});
+
+// ── Image helpers ─────────────────────────────────────────────────
+function imgToCanvas(file, scale) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width  = Math.round(img.naturalWidth  * scale);
+      c.height = Math.round(img.naturalHeight * scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error(`Cannot load ${file.name}`)); };
+    img.src = url;
+  });
+}
+
+async function embedImagePage(outDoc, file) {
+  const canvas = await imgToCanvas(file, 1.0);
+  const w = canvas.width, h = canvas.height;
+  let embedded;
+  const t = file.type || '';
+  if (t === 'image/jpeg' || /\.jpe?g$/i.test(file.name)) {
+    embedded = await outDoc.embedJpg(await file.arrayBuffer());
+  } else if (t === 'image/png' || /\.png$/i.test(file.name)) {
+    embedded = await outDoc.embedPng(await file.arrayBuffer());
+  } else {
+    const b64 = canvas.toDataURL('image/png').split(',')[1];
+    embedded  = await outDoc.embedPng(Uint8Array.from(atob(b64), c => c.charCodeAt(0)));
+  }
+  outDoc.addPage([w, h]).drawImage(embedded, { x: 0, y: 0, width: w, height: h });
+}
 
 bindDrop(mergeDrop, mergeFilesEl, files => {
   mergeFiles = mergeFiles.concat(Array.from(files));
@@ -452,140 +865,102 @@ document.getElementById('splitAllBtn').addEventListener('click', async () => {
   }
 });
 
+
 // ══════════════════════════════════════════════════════════════════
-// REORDER TAB
+// COMPRESS TAB
 // ══════════════════════════════════════════════════════════════════
-let reorderOrigFile = null;
-let thumbnailDataUrls = [];  // indexed by original page (0-based)
-let pageOrder = [];          // display order: array of original page indices
+let compressPdfFile = null;
 
-const reorderDrop   = document.getElementById('reorderDrop');
-const reorderFileEl = document.getElementById('reorderFile');
-const reorderCtrl   = document.getElementById('reorderControls');
-const thumbGrid     = document.getElementById('thumbGrid');
+const COMPRESS_SETTINGS = {
+  low:    { scale: 0.75, quality: 0.42 },
+  medium: { scale: 1.0,  quality: 0.65 },
+  high:   { scale: 1.5,  quality: 0.82 },
+};
 
-bindDrop(reorderDrop, reorderFileEl, loadReorderPdf);
-
-async function loadReorderPdf(files) {
-  const f = files[0]; if (!f) return;
-  reorderOrigFile = f;
-  thumbnailDataUrls = [];
-  pageOrder = [];
-
-  const prog = document.getElementById('reorderProgress');
-  prog.style.display = '';
-  reorderCtrl.style.display = 'none';
-
-  const buf = await f.arrayBuffer();
-  let pdf;
-  try {
-    pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-  } catch (e) {
-    alert('Could not open PDF: ' + e.message);
-    prog.style.display = 'none';
-    return;
+bindDrop(
+  document.getElementById('compressDrop'),
+  document.getElementById('compressFile'),
+  files => {
+    const f = files[0]; if (!f) return;
+    compressPdfFile = f;
+    document.getElementById('compressInfo').textContent =
+      `"${f.name}" — ${fmtSz(f.size)}`;
+    document.getElementById('compressControls').style.display = '';
+    document.getElementById('compressProgress').style.display = 'none';
+    document.getElementById('compressResult').style.display = 'none';
   }
+);
 
-  const limit = Math.min(pdf.numPages, 100);
-  if (pdf.numPages > 100) {
-    alert(`This PDF has ${pdf.numPages} pages. Thumbnails will be generated for the first 100 pages only, but all pages are included in the output.`);
-  }
-
-  for (let i = 1; i <= pdf.numPages; i++) {
-    if (i <= limit) {
-      setProgress('reorderPFill', Math.round(10 + 85 * i / limit), 'reorderStatus',
-        `Rendering thumbnail ${i} of ${limit}…`);
-      const page = await pdf.getPage(i);
-      const viewport = page.getViewport({ scale: 0.25 });
-      const canvas = document.createElement('canvas');
-      canvas.width  = viewport.width;
-      canvas.height = viewport.height;
-      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-      thumbnailDataUrls.push(canvas.toDataURL('image/jpeg', 0.7));
-    } else {
-      thumbnailDataUrls.push(null); // no thumbnail for pages beyond limit
-    }
-    pageOrder.push(i - 1);
-  }
-
-  setProgress('reorderPFill', 100, 'reorderStatus', 'Done');
-  setTimeout(() => { prog.style.display = 'none'; }, 400);
-
-  reorderCtrl.style.display = '';
-  renderThumbGrid();
-}
-
-function renderThumbGrid() {
-  document.getElementById('reorderCount').textContent =
-    `${pageOrder.length} page${pageOrder.length !== 1 ? 's' : ''} — drag to reorder`;
-
-  thumbGrid.innerHTML = pageOrder.map((origIdx, dispIdx) => {
-    const thumb = thumbnailDataUrls[origIdx];
-    const inner = thumb
-      ? `<img src="${thumb}" alt="page ${origIdx + 1}" draggable="false">`
-      : `<div style="aspect-ratio:0.77;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:.75rem;color:var(--text-muted)">p${origIdx+1}</div>`;
-    return `
-      <div class="thumb-item" draggable="true" data-disp="${dispIdx}">
-        ${inner}
-        <span class="thumb-num">${origIdx + 1}</span>
-        <button class="thumb-del" data-disp="${dispIdx}" title="Remove page">&#10005;</button>
-      </div>`;
-  }).join('');
-
-  // Delete buttons
-  thumbGrid.querySelectorAll('.thumb-del').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
-      pageOrder.splice(+btn.dataset.disp, 1);
-      renderThumbGrid();
-    });
+// Level card selection
+document.getElementById('compressLevels').querySelectorAll('.compress-level-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.compress-level-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    card.querySelector('input[type=radio]').checked = true;
   });
-
-  // Drag-to-reorder
-  let srcDisp = null;
-  thumbGrid.querySelectorAll('.thumb-item').forEach(item => {
-    item.addEventListener('dragstart', () => { srcDisp = +item.dataset.disp; item.classList.add('dragging'); });
-    item.addEventListener('dragend',   () => item.classList.remove('dragging'));
-    item.addEventListener('dragover',  e => { e.preventDefault(); item.classList.add('drag-over'); });
-    item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
-    item.addEventListener('drop', e => {
-      e.preventDefault(); item.classList.remove('drag-over');
-      const dstDisp = +item.dataset.disp;
-      if (srcDisp !== null && srcDisp !== dstDisp) {
-        const [moved] = pageOrder.splice(srcDisp, 1);
-        const adjustedDst = srcDisp < dstDisp ? dstDisp - 1 : dstDisp;
-        pageOrder.splice(adjustedDst, 0, moved);
-        renderThumbGrid();
-      }
-      srcDisp = null;
-    });
-  });
-}
-
-document.getElementById('reorderResetBtn').addEventListener('click', () => {
-  if (!reorderOrigFile) return;
-  pageOrder = thumbnailDataUrls.map((_, i) => i);
-  renderThumbGrid();
 });
 
-document.getElementById('reorderSaveBtn').addEventListener('click', async () => {
-  if (!reorderOrigFile) return;
-  const btn = document.getElementById('reorderSaveBtn');
-  btn.disabled = true; btn.textContent = 'Saving…';
+document.getElementById('compressBtn').addEventListener('click', async () => {
+  if (!compressPdfFile) return;
+  const level = document.querySelector('input[name="compressLevel"]:checked')?.value || 'medium';
+  const { scale, quality } = COMPRESS_SETTINGS[level];
+
+  const prog   = document.getElementById('compressProgress');
+  const result = document.getElementById('compressResult');
+  const btn    = document.getElementById('compressBtn');
+  const status = document.getElementById('compressStatus');
+
+  prog.style.display = ''; result.style.display = 'none';
+  status.style.color = ''; btn.disabled = true;
+
   try {
     const { PDFDocument } = PDFLib;
-    const bytes = await reorderOrigFile.arrayBuffer();
-    const src = await PDFDocument.load(bytes);
-    const dest = await PDFDocument.create();
-    const copied = await dest.copyPages(src, pageOrder);
-    copied.forEach(p => dest.addPage(p));
-    const out = await dest.save();
-    const blob = new Blob([out], { type: 'application/pdf' });
-    dlBlob(blob, noExt(reorderOrigFile.name) + '_reordered.pdf');
+    const buf = await compressPdfFile.arrayBuffer();
+    const pdfjs = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+    const numPages = pdfjs.numPages;
+    const outDoc = await PDFDocument.create();
+
+    for (let i = 1; i <= numPages; i++) {
+      setProgress('compressPFill',
+        Math.round(5 + 88 * (i - 1) / numPages), 'compressStatus',
+        `Compressing page ${i} of ${numPages}…`);
+
+      const page     = await pdfjs.getPage(i);
+      const viewport = page.getViewport({ scale });
+      const canvas   = document.createElement('canvas');
+      canvas.width   = Math.round(viewport.width);
+      canvas.height  = Math.round(viewport.height);
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+      const dataUrl  = canvas.toDataURL('image/jpeg', quality);
+      const b64      = dataUrl.split(',')[1];
+      const imgBytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+      const jpgImage = await outDoc.embedJpg(imgBytes);
+
+      const outPage  = outDoc.addPage([canvas.width, canvas.height]);
+      outPage.drawImage(jpgImage, { x: 0, y: 0, width: canvas.width, height: canvas.height });
+    }
+
+    setProgress('compressPFill', 96, 'compressStatus', 'Saving…');
+    const outBytes = await outDoc.save();
+    const blob     = new Blob([outBytes], { type: 'application/pdf' });
+    const origSize = compressPdfFile.size;
+    const newSize  = blob.size;
+    const pct      = Math.round((1 - newSize / origSize) * 100);
+
+    document.getElementById('compressOrigSize').textContent = fmtSz(origSize);
+    document.getElementById('compressNewSize').textContent  = fmtSz(newSize);
+    document.getElementById('compressSavings').textContent  =
+      pct > 0 ? `−${pct}%` : `+${Math.abs(pct)}%`;
+
+    dlBlob(blob, noExt(compressPdfFile.name) + '_compressed.pdf');
+    setProgress('compressPFill', 100, 'compressStatus', 'Done — file downloaded.');
+    result.style.display = '';
   } catch (e) {
-    alert('Error: ' + e.message);
+    status.textContent  = 'Error: ' + e.message;
+    status.style.color  = 'var(--danger)';
   }
-  btn.disabled = false; btn.textContent = 'Save PDF';
+  btn.disabled = false;
 });
 </script>
 </body>
