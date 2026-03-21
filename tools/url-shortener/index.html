@@ -133,7 +133,7 @@
 <script src="../../js/config.js"></script>
 <script src="../../js/common.js"></script>
 <script>
-const PB       = window.OT_CONFIG?.PB_URL || 'http://localhost:8090';
+const API      = window.OT_CONFIG?.GRIN_SERVER_URL || 'http://localhost:3001';
 const HIST_KEY = 'ot-urlshort-history';
 
 /* ── Helpers ─────────────────────────────────────────────── */
@@ -166,23 +166,21 @@ function showError(msg) {
 }
 function clearError() { document.getElementById('errorBox').classList.add('hidden'); }
 
-/* ── PocketBase ──────────────────────────────────────────── */
-async function pbCreate(body) {
-  const r = await fetch(`${PB}/api/collections/short_urls/records`, {
+/* ── API ─────────────────────────────────────────────────── */
+async function apiCreate(body) {
+  const r = await fetch(`${API}/api/tools/s`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
   const d = await r.json();
-  if (!r.ok) throw new Error(d.message || 'Server error');
+  if (!r.ok) throw new Error(d.error || 'Server error');
   return d;
 }
 
 async function codeExists(code) {
-  const r = await fetch(`${PB}/api/collections/short_urls/records?filter=${encodeURIComponent(`code="${code}"`)}&perPage=1`);
-  if (!r.ok) return false;
-  const d = await r.json();
-  return (d.items?.length || 0) > 0;
+  const r = await fetch(`${API}/api/tools/s/${encodeURIComponent(code)}`);
+  return r.status !== 404; // 200 = exists, 410 = expired but still taken, 404 = free
 }
 
 /* ── History ─────────────────────────────────────────────── */
@@ -231,7 +229,7 @@ document.getElementById('shortenBtn').addEventListener('click', async () => {
     }
 
     const expires = calcExpiry(expDays);
-    await pbCreate({ code, long_url: longUrl, expires });
+    await apiCreate({ code, long_url: longUrl, expires });
 
     const sUrl = shortUrl(code);
     document.getElementById('shortUrlText').textContent = sUrl;
@@ -249,11 +247,7 @@ document.getElementById('shortenBtn').addEventListener('click', async () => {
     renderHistory();
 
   } catch (err) {
-    let msg = err.message || '';
-    if (msg.includes('Missing') || msg.includes('collection') || msg.includes('Failed to fetch') || msg.includes('Load failed') || msg.includes('NetworkError')) {
-      msg = '⚙️ Backend not configured. This tool requires a PocketBase server with a "short_urls" collection. Update PB_URL in js/config.js and create the collection in your PocketBase admin.';
-    }
-    showError(msg);
+    showError(err.message || 'Something went wrong. Please try again.');
   } finally {
     btn.textContent = 'Shorten URL'; btn.disabled = false;
   }

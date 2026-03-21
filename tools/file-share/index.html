@@ -205,7 +205,7 @@
 <script src="../../js/config.js"></script>
 <script src="../../js/common.js"></script>
 <script>
-const PB = window.OT_CONFIG?.PB_URL || 'http://localhost:8090';
+const API = window.OT_CONFIG?.GRIN_SERVER_URL || 'http://localhost:3001';
 
 const ALLOWED_EXT   = ['.zip', '.tar', '.gz', '.bz2', '.rar'];
 const ALLOWED_MIME  = ['application/zip','application/x-zip-compressed',
@@ -330,7 +330,7 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
   try {
     await new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', `${PB}/api/collections/file_shares/records`);
+      xhr.open('POST', `${API}/api/tools/f`);
 
       xhr.upload.addEventListener('progress', e => {
         if (e.lengthComputable) {
@@ -346,7 +346,7 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           resolve(JSON.parse(xhr.responseText));
         } else {
-          try { reject(new Error(JSON.parse(xhr.responseText).message || 'Upload failed')); }
+          try { reject(new Error(JSON.parse(xhr.responseText).error || 'Upload failed')); }
           catch { reject(new Error(`Upload failed (HTTP ${xhr.status})`)); }
         }
       });
@@ -364,11 +364,7 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
     document.getElementById('shareResult').classList.remove('hidden');
 
   } catch (err) {
-    let msg = err.message || '';
-    if (msg.includes('Missing') || msg.includes('collection') || msg.includes('Failed to fetch') || msg.includes('Load failed') || msg.includes('NetworkError')) {
-      msg = '⚙️ Backend not configured. This tool requires a PocketBase server with a "file_shares" collection. Update PB_URL in js/config.js and create the collection in your PocketBase admin.';
-    }
-    showUploadError(msg);
+    showUploadError(err.message || 'Upload failed. Please try again.');
   } finally {
     btn.disabled = false;
     document.getElementById('progressBox').classList.add('hidden');
@@ -382,22 +378,18 @@ async function loadShare(id) {
   document.getElementById('downloadMode').classList.remove('hidden');
 
   try {
-    const now    = new Date().toISOString().replace('T', ' ').split('.')[0];
-    const filter = `code="${id.replace(/"/g, '')}" && expires>"${now}"`;
-    const r      = await fetch(`${PB}/api/collections/file_shares/records?filter=${encodeURIComponent(filter)}&perPage=1`);
-    if (!r.ok) throw new Error('Service unavailable');
-    const data   = await r.json();
-    const rec    = data.items?.[0];
-
-    if (!rec) {
+    const r = await fetch(`${API}/api/tools/f/${encodeURIComponent(id)}`);
+    if (r.status === 404 || r.status === 410) {
       document.getElementById('dlLoading').classList.add('hidden');
       document.getElementById('dlErrorMsg').textContent = 'File not found or expired.';
       document.getElementById('dlError').classList.remove('hidden');
       return;
     }
+    if (!r.ok) throw new Error('Service unavailable');
+    const rec = await r.json();
 
-    const dlUrl = `${PB}/api/files/file_shares/${rec.id}/${rec.file}?download=1`;
-    const name  = rec.original_name || rec.file;
+    const dlUrl = `${API}/api/tools/f/${encodeURIComponent(id)}/download`;
+    const name  = rec.original_name || id;
 
     document.getElementById('dlIcon').textContent = fileIcon(name);
     document.getElementById('dlName').textContent = name;

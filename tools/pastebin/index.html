@@ -203,7 +203,7 @@
 <script src="../../js/config.js"></script>
 <script src="../../js/common.js"></script>
 <script>
-const PB = window.OT_CONFIG?.PB_URL || 'http://localhost:8090';
+const API = window.OT_CONFIG?.GRIN_SERVER_URL || 'http://localhost:3001';
 
 /* ── Helpers ─────────────────────────────────────────────── */
 function genCode(len = 10) {
@@ -262,13 +262,13 @@ document.getElementById('createBtn').addEventListener('click', async () => {
     const code    = genCode(10);
     const expires = calcExpiry(expDays);
 
-    const r = await fetch(`${PB}/api/collections/pastes/records`, {
+    const r = await fetch(`${API}/api/tools/p`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code, title, content, syntax, expires, burn_after_read: burn }),
     });
     const d = await r.json();
-    if (!r.ok) throw new Error(d.message || 'Server error');
+    if (!r.ok) throw new Error(d.error || 'Server error');
 
     const shareUrl = `${location.origin}/tools/pastebin/?id=${code}`;
     document.getElementById('pasteShareUrl').textContent = shareUrl;
@@ -281,11 +281,7 @@ document.getElementById('createBtn').addEventListener('click', async () => {
     document.getElementById('createResult').classList.remove('hidden');
 
   } catch (err) {
-    let msg = err.message || '';
-    if (msg.includes('Missing') || msg.includes('collection') || msg.includes('Failed to fetch') || msg.includes('Load failed') || msg.includes('NetworkError')) {
-      msg = '⚙️ Backend not configured. This tool requires a PocketBase server with a "pastes" collection. Update PB_URL in js/config.js and create the collection in your PocketBase admin.';
-    }
-    errBox.textContent = msg;
+    errBox.textContent = err.message || 'Something went wrong. Please try again.';
     errBox.classList.remove('hidden');
   } finally {
     btn.textContent = 'Create Paste'; btn.disabled = false;
@@ -301,20 +297,16 @@ async function loadPaste(id) {
   const errMsg  = document.getElementById('viewErrorMsg');
 
   try {
-    const now    = new Date().toISOString().replace('T', ' ').split('.')[0];
-    const filter = `code="${id.replace(/"/g, '')}" && (expires="" || expires>"${now}")`;
-    const r      = await fetch(`${PB}/api/collections/pastes/records?filter=${encodeURIComponent(filter)}&perPage=1`);
-    if (!r.ok) throw new Error('Service unavailable');
-    const data   = await r.json();
-    const rec    = data.items?.[0];
-
-    if (!rec) {
+    const r   = await fetch(`${API}/api/tools/p/${encodeURIComponent(id)}`);
+    if (r.status === 404 || r.status === 410) {
       errMsg.textContent = 'Paste not found or has expired.';
       errBox.classList.remove('hidden');
       document.getElementById('pasteContent').closest('.card').style.display = 'none';
       document.querySelector('.btn-group').style.display = 'none';
       return;
     }
+    if (!r.ok) throw new Error('Service unavailable');
+    const rec = await r.json();
 
     document.title = `${rec.title || 'Untitled'} — Pastebin — Office Tools`;
     document.getElementById('viewTitle').textContent = `📋 ${rec.title || 'Untitled'}`;
@@ -328,8 +320,7 @@ async function loadPaste(id) {
 
     if (rec.burn_after_read) {
       document.getElementById('burnWarning').classList.remove('hidden');
-      // Delete the record — allowed because deleteRule="" on this collection
-      fetch(`${PB}/api/collections/pastes/records/${rec.id}`, { method: 'DELETE' }).catch(() => {});
+      // Server already deleted the paste on GET when burn_after_read=true
     }
 
     document.getElementById('copyContentBtn').onclick = () =>

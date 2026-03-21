@@ -19,6 +19,8 @@ const { promisify } = require('util');
 const fs           = require('fs');
 const os           = require('os');
 const path         = require('path');
+const Database     = require('better-sqlite3');
+const multer       = require('multer');
 
 const execFileAsync = promisify(execFile);
 const app  = express();
@@ -44,8 +46,55 @@ const PLAN_EXPIRES = {
   lifetime:    () => null,
 };
 
+// ── SQLite tools DB ───────────────────────────────────────────
+const TOOLS_DB_PATH  = process.env.TOOLS_DB     || '/opt/office-tools/data/tools.db';
+const UPLOADS_DIR    = process.env.UPLOADS_DIR  || '/opt/office-tools/data/uploads';
+fs.mkdirSync(path.dirname(TOOLS_DB_PATH), { recursive: true });
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+const db = new Database(TOOLS_DB_PATH);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS short_urls (
+    code     TEXT PRIMARY KEY,
+    long_url TEXT NOT NULL,
+    expires  TEXT DEFAULT '',
+    created  TEXT DEFAULT (datetime('now'))
+  );
+  CREATE TABLE IF NOT EXISTS pastes (
+    id              TEXT PRIMARY KEY,
+    code            TEXT UNIQUE NOT NULL,
+    title           TEXT DEFAULT '',
+    content         TEXT NOT NULL,
+    syntax          TEXT DEFAULT 'plain',
+    expires         TEXT DEFAULT '',
+    burn_after_read INTEGER DEFAULT 0,
+    created         TEXT DEFAULT (datetime('now'))
+  );
+  CREATE TABLE IF NOT EXISTS file_shares (
+    id            TEXT PRIMARY KEY,
+    code          TEXT UNIQUE NOT NULL,
+    original_name TEXT DEFAULT '',
+    file_size     INTEGER DEFAULT 0,
+    file_path     TEXT NOT NULL,
+    expires       TEXT DEFAULT '',
+    created       TEXT DEFAULT (datetime('now'))
+  );
+`);
+
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: UPLOADS_DIR,
+    filename: (req, file, cb) => cb(null, genId()),
+  }),
+  limits: { fileSize: 1024 * 1024 * 1024 }, // 1 GB
+});
+
 // ── Middleware ────────────────────────────────────────────────
-app.use(cors({ origin: CORS_ORIGINS, methods: ['GET','POST'], allowedHeaders: ['Content-Type','Authorization'] }));
+app.use(cors({ origin: CORS_ORIGINS, methods: ['GET','POST','DELETE'], allowedHeaders: ['Content-Type','Authorization'] }));
 app.use(express.json());
 
 // ── PocketBase admin token (cached) ──────────────────────────
@@ -282,6 +331,92 @@ app.get('/api/payment/status/:id', async (req, res) => {
   } catch (err) {
     res.status(404).json({ error: err.message });
   }
+});
+
+// ── Tools API: URL Shortener ──────────────────────────────────
+
+app.post('/api/tools/s', (req, res) => {
+  const { code, long_url, expires } = req.body;
+  if (!code || !long_url) return res.status(400).json({ error: 'code and long_url required' });
+  // Reject non-http(s) URLs to prevent javascript: XSS on the redirect page
+  try { const u = new URL(long_url); if (!['http:', 'https:'].includes(u.protocol)) throw new Error(); }
+  catch { return res.status(400).json({ error: 'long_url must start with http:// or https://' }); }
+  try {
+    db.prepare('INSERT INTO short_urls (code, long_url, expires) VALUES (?, ?, ?)').run(code, long_url, expires || '');
+    res.json({ code });
+  } catch (err) {
+    if (err.message.includes('UNIQUE')) return res.status(409).json({ error: 'Code already taken' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/tools/s/:code', (req, res) => {
+  const row = db.prepare('SELECT * FROM short_urls WHERE code = ?').get(req.params.code);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  if (row.expires && new Date(row.expires) < new Date()) return res.status(410).json({ error: 'Expired' });
+  res.json(row);
+});
+
+// ── Tools API: Pastebin ───────────────────────────────────────
+
+app.post('/api/tools/p', (req, res) => {
+  const { code, title, content, syntax, expires, burn_after_read } = req.body;
+  if (!code || !content) return res.status(400).json({ error: 'code and content required' });
+  const id = genId();
+  try {
+    db.prepare('INSERT INTO pastes (id, code, title, content, syntax, expires, burn_after_read) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+      id, code, title || '', content, syntax || 'plain', expires || '', burn_after_read ? 1 : 0
+    );
+    res.json({ code, id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/tools/p/:code', (req, res) => {
+  const row = db.prepare('SELECT * FROM pastes WHERE code = ?').get(req.params.code);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  if (row.expires && new Date(row.expires) < new Date()) return res.status(410).json({ error: 'Expired' });
+  if (row.burn_after_read) db.prepare('DELETE FROM pastes WHERE code = ?').run(req.params.code);
+  res.json({ ...row, burn_after_read: !!row.burn_after_read });
+});
+
+// ── Tools API: File Share ─────────────────────────────────────
+
+app.post('/api/tools/f', upload.single('file'), (req, res) => {
+  const { code, original_name, file_size, expires } = req.body;
+  if (!code || !req.file) return res.status(400).json({ error: 'code and file required' });
+  const id = genId();
+  try {
+    db.prepare('INSERT INTO file_shares (id, code, original_name, file_size, file_path, expires) VALUES (?, ?, ?, ?, ?, ?)').run(
+      id, code, original_name || req.file.originalname || '', parseInt(file_size) || req.file.size, req.file.path, expires || ''
+    );
+    res.json({ code, id, original_name: original_name || req.file.originalname, file_size: req.file.size });
+  } catch (err) {
+    if (req.file?.path) fs.unlink(req.file.path, () => {});
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/tools/f/:code', (req, res) => {
+  const row = db.prepare('SELECT id, code, original_name, file_size, expires, created FROM file_shares WHERE code = ?').get(req.params.code);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  if (row.expires && new Date(row.expires) < new Date()) return res.status(410).json({ error: 'Expired' });
+  res.json(row);
+});
+
+app.get('/api/tools/f/:code/download', (req, res) => {
+  const row = db.prepare('SELECT * FROM file_shares WHERE code = ?').get(req.params.code);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  if (row.expires && new Date(row.expires) < new Date()) return res.status(410).json({ error: 'Expired' });
+  res.download(row.file_path, row.original_name);
+});
+
+// ── Multer error handler (file too large, etc.) ───────────────
+app.use((err, _req, res, next) => {
+  if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'File too large (max 1 GB)' });
+  if (err.code === 'LIMIT_UNEXPECTED_FILE') return res.status(400).json({ error: 'Unexpected file field' });
+  next(err);
 });
 
 /**
