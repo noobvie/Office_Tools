@@ -149,7 +149,7 @@ Supports **Debian · Ubuntu · AlmaLinux · Rocky Linux · CentOS Stream**.
 
 | Option | What it does |
 |--------|-------------|
-| 1) Install / Update | UTC timezone · OS packages · nginx · certbot · Node.js 20 · yt-dlp · ffmpeg · pull latest code |
+| 1) Install / Update | UTC timezone · OS packages · nginx · certbot · Node.js 20 · yt-dlp (pip3) · ffmpeg · pull latest code · weekly auto-update cron |
 | 2) Add Domain | Domain + Let's Encrypt SSL · nginx HTTPS config · sitemap.xml domain patching · optional backend |
 | 3) Remove / Switch | Remove nginx vhost + SSL cert, or switch to a new domain |
 | 4) Set / Reset Admin | Create or update PocketBase superuser account |

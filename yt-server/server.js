@@ -1,6 +1,6 @@
 /**
  * yt-dlp Server — Self-hosted YouTube download backend
- * Cobalt-compatible API: drop this in place of api.cobalt.tools in the yt-downloader tool.
+ * Default "Local" backend for the yt-downloader tool. deploy.sh installs and manages this.
  *
  * ═══════════════════════════════════════════════════════════════════
  *  PREREQUISITES
@@ -10,11 +10,9 @@
  *     https://nodejs.org/
  *
  *  2. yt-dlp  (the actual downloader engine)
- *     Windows:  winget install yt-dlp
- *               OR: pip install yt-dlp
- *     Linux:    sudo pip3 install yt-dlp
- *               OR: sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
- *                   -o /usr/local/bin/yt-dlp && sudo chmod +x /usr/local/bin/yt-dlp
+ *     Linux:    sudo pip3 install yt-dlp          ← deploy.sh handles this automatically
+ *               (also sets up a weekly cron job to keep yt-dlp current)
+ *     Windows:  winget install yt-dlp  OR  pip install yt-dlp
  *     macOS:    brew install yt-dlp
  *
  *  3. FFmpeg  (required for: MP3 audio conversion, 1080p+ video muxing)
@@ -33,12 +31,12 @@
  *   npm install
  *   node server.js
  *
- *   Then in the yt-downloader tool → Advanced → Cobalt API URL:
- *     http://localhost:9000/
+ *   Then in the yt-downloader tool, select the "Local" backend (default).
+ *   For local dev the URL defaults to http://localhost:9000/ automatically.
  *
- *   To expose on your network (e.g. from a VPS):
+ *   To expose on a VPS without nginx (not recommended — use deploy.sh instead):
  *     PORT=9000 node server.js
- *     → set Cobalt API URL to http://YOUR-SERVER-IP:9000/
+ *     → in Advanced → Local yt-server URL, set http://YOUR-SERVER-IP:9000/
  *
  * ═══════════════════════════════════════════════════════════════════
  *  ENVIRONMENT VARIABLES  (all optional)

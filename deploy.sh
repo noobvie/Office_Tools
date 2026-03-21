@@ -164,12 +164,12 @@ install_base_packages() {
     if [[ "$OS_FAMILY" == "debian" ]]; then
         apt-get update -qq
         pkg_install nginx certbot python3-certbot-nginx \
-            git curl unzip rsync ca-certificates gnupg
+            git curl unzip rsync ca-certificates gnupg python3-pip
     else
         # EPEL provides certbot on RHEL-family
         dnf install -y epel-release
         dnf install -y nginx certbot python3-certbot-nginx \
-            git curl unzip rsync ca-certificates
+            git curl unzip rsync ca-certificates python3-pip
         # Allow nginx to proxy to localhost (SELinux)
         setsebool -P httpd_can_network_connect 1 2>/dev/null || \
             warn "SELinux: could not set httpd_can_network_connect — set manually if proxying fails"
@@ -218,7 +218,7 @@ install_nodejs() {
 
 # ─── yt-dlp + ffmpeg ──────────────────────────────────────────────────────────
 # Required by the yt-server (YouTube downloader backend).
-# yt-dlp: downloaded as a static binary from GitHub (no pip needed).
+# yt-dlp: installed via pip3 (works on all architectures; easy auto-update).
 # ffmpeg: installed via OS package manager (needed for MP3 + 1080p merging).
 install_ytdlp_ffmpeg() {
     section "Installing yt-dlp + ffmpeg (YouTube downloader dependencies)"
@@ -246,13 +246,24 @@ install_ytdlp_ffmpeg() {
             || warn "ffmpeg not found — install manually if you need MP3 or 1080p"
     fi
 
-    # ── yt-dlp (static binary, no pip required) ─────────────────────────────
-    info "Installing / updating yt-dlp from GitHub…"
-    curl -sSL \
-        "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp" \
-        -o /usr/local/bin/yt-dlp
-    chmod +x /usr/local/bin/yt-dlp
-    success "yt-dlp $(/usr/local/bin/yt-dlp --version 2>/dev/null) → /usr/local/bin/yt-dlp"
+    # ── yt-dlp (via pip3 — works on all architectures, easy to update) ──────
+    # YouTube changes its internal API frequently; yt-dlp must be kept current.
+    # Using pip3 means we can auto-update via cron without downloading a
+    # platform-specific binary from a fixed URL.
+    info "Installing / upgrading yt-dlp via pip3…"
+    pip3 install --upgrade --quiet yt-dlp \
+        && success "yt-dlp $(yt-dlp --version 2>/dev/null) installed via pip3" \
+        || die "pip3 install yt-dlp failed — ensure python3-pip is installed"
+
+    # ── Weekly auto-update cron job ──────────────────────────────────────────
+    # Installs to /etc/cron.d/ so it survives reboots and is easy to inspect.
+    cat > /etc/cron.d/office-tools-ytdlp << 'CRONEOF'
+# Auto-update yt-dlp weekly — YouTube API changes break it regularly
+# Runs every Sunday at 03:15 UTC; restarts the yt-server to pick up the update.
+15 3 * * 0 root pip3 install --upgrade --quiet yt-dlp && systemctl restart office-tools-yt 2>/dev/null || true
+CRONEOF
+    chmod 0644 /etc/cron.d/office-tools-ytdlp
+    success "Weekly auto-update cron job installed → /etc/cron.d/office-tools-ytdlp"
 }
 
 # ─── yt-server (YouTube download backend) ─────────────────────────────────────
@@ -1299,13 +1310,11 @@ opt_5_update_repo() {
         # Sync yt-server if installed
         [[ -f "$YT_SERVER_DIR/package.json" ]] && sync_yt_server || true
 
-        # Update yt-dlp binary — YouTube changes its API frequently; keep it current
-        if command -v yt-dlp &>/dev/null || [[ -x /usr/local/bin/yt-dlp ]]; then
-            info "Updating yt-dlp binary…"
-            curl -sSL "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp" \
-                -o /usr/local/bin/yt-dlp \
-            && chmod +x /usr/local/bin/yt-dlp \
-            && success "yt-dlp $(/usr/local/bin/yt-dlp --version 2>/dev/null) — updated" \
+        # Update yt-dlp via pip3 — YouTube API changes frequently; keep it current
+        if command -v pip3 &>/dev/null; then
+            info "Updating yt-dlp via pip3…"
+            pip3 install --upgrade --quiet yt-dlp \
+            && success "yt-dlp $(yt-dlp --version 2>/dev/null) — updated" \
             || warn "yt-dlp update failed (network issue?) — skipping"
         fi
 
@@ -1674,23 +1683,22 @@ _admin_purge_temp() {
 _admin_update_ytdlp() {
     section "Update yt-dlp"
     local current=""
-    current=$(/usr/local/bin/yt-dlp --version 2>/dev/null || echo "not found")
+    current=$(yt-dlp --version 2>/dev/null || echo "not found")
     echo -e "  Current version: ${BOLD}${current}${RESET}"
+    echo -e "  Install method:  pip3"
     echo ""
-    ask_proceed "Download latest yt-dlp binary from GitHub" || return 0
-    info "Downloading latest yt-dlp…"
-    if curl -sSL "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp" \
-            -o /usr/local/bin/yt-dlp \
-        && chmod +x /usr/local/bin/yt-dlp; then
+    ask_proceed "Upgrade yt-dlp via pip3" || return 0
+    info "Running pip3 install --upgrade yt-dlp…"
+    if pip3 install --upgrade yt-dlp; then
         local new_ver
-        new_ver=$(/usr/local/bin/yt-dlp --version 2>/dev/null || echo "unknown")
+        new_ver=$(yt-dlp --version 2>/dev/null || echo "unknown")
         success "yt-dlp updated: ${current} → ${new_ver}"
         if systemctl is-active --quiet office-tools-yt 2>/dev/null; then
             systemctl restart office-tools-yt
             success "office-tools-yt restarted with new yt-dlp."
         fi
     else
-        warn "Download failed — check network connectivity."
+        warn "pip3 upgrade failed — check network or run: pip3 install --upgrade yt-dlp manually."
     fi
     press_enter
 }
