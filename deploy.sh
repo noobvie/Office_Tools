@@ -267,9 +267,9 @@ setup_cobalt() {
     [[ ! -d "$api_dir" ]] && api_dir="$COBALT_DIR/api"
     [[ ! -d "$api_dir" ]] && die "cobalt API directory not found in $COBALT_DIR — unexpected repo structure"
 
-    # Install Node.js dependencies
-    (cd "$api_dir" && npm install --omit=dev) \
-        || die "npm install failed in $api_dir"
+    # Install Node.js dependencies from workspace root (resolves workspace: links)
+    (cd "$COBALT_DIR" && npm install --omit=dev) \
+        || die "npm install failed in $COBALT_DIR"
 
     # Write .env
     local api_url="http://127.0.0.1:9000/"
@@ -325,8 +325,8 @@ sync_cobalt() {
         || warn "cobalt git pull skipped (detached HEAD or network issue)"
     local api_dir="$COBALT_DIR/packages/api"
     [[ ! -d "$api_dir" ]] && api_dir="$COBALT_DIR/api"
-    if [[ -d "$api_dir" ]]; then
-        (cd "$api_dir" && npm install --omit=dev) || true
+    if [[ -d "$COBALT_DIR" ]]; then
+        (cd "$COBALT_DIR" && npm install --omit=dev) || true
         chown -R www-data:www-data "$COBALT_DIR"
     fi
     systemctl restart office-tools-cobalt 2>/dev/null || true
@@ -1681,9 +1681,9 @@ _admin_update_cobalt() {
 
     local api_dir="$COBALT_DIR/packages/api"
     [[ ! -d "$api_dir" ]] && api_dir="$COBALT_DIR/api"
-    if [[ -d "$api_dir" ]]; then
+    if [[ -d "$COBALT_DIR" ]]; then
         info "Installing updated npm dependencies…"
-        (cd "$api_dir" && npm install --omit=dev) || warn "npm install failed"
+        (cd "$COBALT_DIR" && npm install --omit=dev) || warn "npm install failed"
         chown -R www-data:www-data "$COBALT_DIR"
     fi
 
