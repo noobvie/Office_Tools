@@ -288,7 +288,10 @@ API_URL=${api_url}
 CORS_WILDCARD=1
 ENVEOF
     chmod 600 "$api_dir/.env"
-    chown -R www-data:www-data "$COBALT_DIR"
+    # pnpm needs a writable home dir — www-data's default (/var/www) is not writable
+    local pnpm_home="/opt/office-tools/pnpm-home"
+    mkdir -p "$pnpm_home"
+    chown -R www-data:www-data "$COBALT_DIR" "$pnpm_home"
 
     # Create systemd service
     cat > /etc/systemd/system/office-tools-cobalt.service << COBEOF
@@ -303,6 +306,7 @@ Group=www-data
 WorkingDirectory=${api_dir}
 ExecStart=${pnpm_bin} start
 Environment=TZ=UTC
+Environment=PNPM_HOME=${pnpm_home}
 EnvironmentFile=-${api_dir}/.env
 Restart=on-failure
 RestartSec=5s
