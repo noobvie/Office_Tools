@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# Office Tools — Deploy Manager
+# Office Tools — Deploy Manager v2026.03.21
 # Interactive menu for installation, domain management, and removal.
 #
 # Supports:  Debian · Ubuntu · AlmaLinux · Rocky Linux · CentOS Stream
@@ -216,6 +216,16 @@ install_nodejs() {
     success "Node.js $(node -v) installed"
 }
 
+# ─── pip3 yt-dlp helper ───────────────────────────────────────────────────────
+# PEP 668 (Debian 12+, Ubuntu 23.04+) blocks plain "pip3 install" on the system
+# Python unless --break-system-packages is passed.  yt-dlp is a standalone CLI
+# tool — not a dependency of any OS package — so the flag is safe to use here.
+# We try without it first (older systems), then fall back to it (newer systems).
+_pip_install_ytdlp() {
+    pip3 install --upgrade --quiet yt-dlp 2>/dev/null \
+        || pip3 install --upgrade --quiet --break-system-packages yt-dlp
+}
+
 # ─── yt-dlp + ffmpeg ──────────────────────────────────────────────────────────
 # Required by the yt-server (YouTube downloader backend).
 # yt-dlp: installed via pip3 (works on all architectures; easy auto-update).
@@ -251,16 +261,16 @@ install_ytdlp_ffmpeg() {
     # Using pip3 means we can auto-update via cron without downloading a
     # platform-specific binary from a fixed URL.
     info "Installing / upgrading yt-dlp via pip3…"
-    pip3 install --upgrade --quiet yt-dlp \
+    _pip_install_ytdlp \
         && success "yt-dlp $(yt-dlp --version 2>/dev/null) installed via pip3" \
-        || die "pip3 install yt-dlp failed — ensure python3-pip is installed"
+        || die "yt-dlp install failed — check: pip3 install --break-system-packages yt-dlp"
 
     # ── Weekly auto-update cron job ──────────────────────────────────────────
     # Installs to /etc/cron.d/ so it survives reboots and is easy to inspect.
     cat > /etc/cron.d/office-tools-ytdlp << 'CRONEOF'
 # Auto-update yt-dlp weekly — YouTube API changes break it regularly
 # Runs every Sunday at 03:15 UTC; restarts the yt-server to pick up the update.
-15 3 * * 0 root pip3 install --upgrade --quiet yt-dlp && systemctl restart office-tools-yt 2>/dev/null || true
+15 3 * * 0 root { pip3 install --upgrade --quiet yt-dlp 2>/dev/null || pip3 install --upgrade --quiet --break-system-packages yt-dlp; } && systemctl restart office-tools-yt 2>/dev/null || true
 CRONEOF
     chmod 0644 /etc/cron.d/office-tools-ytdlp
     success "Weekly auto-update cron job installed → /etc/cron.d/office-tools-ytdlp"
@@ -1313,7 +1323,7 @@ opt_5_update_repo() {
         # Update yt-dlp via pip3 — YouTube API changes frequently; keep it current
         if command -v pip3 &>/dev/null; then
             info "Updating yt-dlp via pip3…"
-            pip3 install --upgrade --quiet yt-dlp \
+            _pip_install_ytdlp \
             && success "yt-dlp $(yt-dlp --version 2>/dev/null) — updated" \
             || warn "yt-dlp update failed (network issue?) — skipping"
         fi
@@ -1689,7 +1699,7 @@ _admin_update_ytdlp() {
     echo ""
     ask_proceed "Upgrade yt-dlp via pip3" || return 0
     info "Running pip3 install --upgrade yt-dlp…"
-    if pip3 install --upgrade yt-dlp; then
+    if _pip_install_ytdlp; then
         local new_ver
         new_ver=$(yt-dlp --version 2>/dev/null || echo "unknown")
         success "yt-dlp updated: ${current} → ${new_ver}"
@@ -1698,7 +1708,7 @@ _admin_update_ytdlp() {
             success "office-tools-yt restarted with new yt-dlp."
         fi
     else
-        warn "pip3 upgrade failed — check network or run: pip3 install --upgrade yt-dlp manually."
+        warn "pip3 upgrade failed — check network or run manually: pip3 install --upgrade --break-system-packages yt-dlp"
     fi
     press_enter
 }
