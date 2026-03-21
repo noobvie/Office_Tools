@@ -42,14 +42,19 @@
  *  ENVIRONMENT VARIABLES  (all optional)
  * ═══════════════════════════════════════════════════════════════════
  *
- *   PORT          HTTP port to listen on          (default: 9000)
- *   HOST          Interface to bind to            (default: 0.0.0.0)
- *   YTDLP         Path to yt-dlp binary           (default: "yt-dlp")
- *   FFMPEG        Path to ffmpeg binary           (default: "ffmpeg")
- *   CORS_ORIGIN   Allowed CORS origin             (default: "*")
- *   MAX_QUALITY   Max video quality override      (default: "1080")
- *   TEMP_DIR      Directory for temp files        (default: OS temp dir)
- *   JOB_TTL_MS    Job expiry in ms                (default: 600000 = 10 min)
+ *   PORT                HTTP port to listen on          (default: 9000)
+ *   HOST                Interface to bind to            (default: 0.0.0.0)
+ *   YTDLP               Path to yt-dlp binary           (default: "yt-dlp")
+ *   FFMPEG              Path to ffmpeg binary           (default: "ffmpeg")
+ *   CORS_ORIGIN         Allowed CORS origin             (default: "*")
+ *   MAX_QUALITY         Max video quality override      (default: "1080")
+ *   TEMP_DIR            Directory for temp files        (default: OS temp dir)
+ *   JOB_TTL_MS          Job expiry in ms                (default: 600000 = 10 min)
+ *   YTDLP_COOKIES       Path to Netscape cookies.txt    (YouTube bot-detection fix)
+ *                       Export from browser with "Get cookies.txt LOCALLY" extension.
+ *                       Set via deploy.sh → Option 6 → i) Configure Cookies.
+ *   YTDLP_COOKIES_BROWSER  Browser name for live cookie extraction (e.g. "chrome").
+ *                          Only works if the browser is installed on the same machine.
  *
  * ═══════════════════════════════════════════════════════════════════
  *  API (cobalt-compatible)
@@ -65,7 +70,8 @@
  *    Deletes temp file after sending.
  *
  *  GET /health
- *    Returns: { ok: true, ytdlp: "version string", ffmpeg: boolean }
+ *    Returns: { ok: true, ytdlp: "version string", ffmpeg: boolean,
+ *               cookies: "none" | "file:ok" | "file:expired" | "file:missing" | "browser:<name>" }
  */
 
 'use strict';
@@ -87,6 +93,17 @@ const CORS_ORIG  = process.env.CORS_ORIGIN      || '*';
 const MAX_QUAL   = process.env.MAX_QUALITY      || '1080';
 const TEMP_DIR   = process.env.TEMP_DIR         || os.tmpdir();
 const JOB_TTL    = parseInt(process.env.JOB_TTL_MS || '600000', 10);
+// YouTube bot-detection workaround: supply a cookies.txt (Netscape format) exported
+// from a logged-in browser session.  See deploy.sh → Option 6 → i) Configure Cookies.
+const YTDLP_COOKIES         = process.env.YTDLP_COOKIES         || '';  // path to cookies.txt
+const YTDLP_COOKIES_BROWSER = process.env.YTDLP_COOKIES_BROWSER || '';  // e.g. "chrome"
+
+/* Returns extra yt-dlp auth args based on configured env vars */
+function authArgs() {
+  if (YTDLP_COOKIES_BROWSER) return ['--cookies-from-browser', YTDLP_COOKIES_BROWSER];
+  if (YTDLP_COOKIES && fs.existsSync(YTDLP_COOKIES)) return ['--cookies', YTDLP_COOKIES];
+  return [];
+}
 
 /* ── App ─────────────────────────────────────────────────────── */
 const app = express();
@@ -198,7 +215,24 @@ app.get('/stream/:id', (req, res) => {
 ══════════════════════════════════════════════════════════════ */
 app.get('/health', async (req, res) => {
   const [ytdlpVer, ffmpegOk] = await Promise.all([getYtdlpVersion(), hasFfmpeg()]);
-  res.json({ ok: !!ytdlpVer, ytdlp: ytdlpVer || 'not found', ffmpeg: ffmpegOk });
+  let cookiesOk;
+  if (YTDLP_COOKIES_BROWSER) {
+    cookiesOk = 'browser:' + YTDLP_COOKIES_BROWSER;
+  } else if (!YTDLP_COOKIES) {
+    cookiesOk = 'none';
+  } else if (!fs.existsSync(YTDLP_COOKIES)) {
+    cookiesOk = 'file:missing';
+  } else {
+    // Check keep-alive status file written by ytcookie-keepalive.sh cron
+    const statusFile = path.join(path.dirname(YTDLP_COOKIES), 'cookies.status');
+    if (fs.existsSync(statusFile)) {
+      const line = fs.readFileSync(statusFile, 'utf8').trim().split('\n')[0] || '';
+      cookiesOk = line.startsWith('expired') ? 'file:expired' : 'file:ok';
+    } else {
+      cookiesOk = 'file:ok'; // file exists, keep-alive cron not yet run
+    }
+  }
+  res.json({ ok: !!ytdlpVer, ytdlp: ytdlpVer || 'not found', ffmpeg: ffmpegOk, cookies: cookiesOk });
 });
 
 /* ══════════════════════════════════════════════════════════════
@@ -212,7 +246,7 @@ app.get('/health', async (req, res) => {
 function getTitle(url) {
   return new Promise((resolve, reject) => {
     let out = '', err = '';
-    const proc = spawn(YTDLP, ['--no-playlist', '-j', '--no-warnings', url]);
+    const proc = spawn(YTDLP, ['--no-playlist', '-j', '--no-warnings', ...authArgs(), url]);
     proc.stdout.on('data', d => out += d);
     proc.stderr.on('data', d => err += d);
     proc.on('close', code => {
@@ -252,6 +286,7 @@ function startDownload({ jobId, url, tmpPath, isAudio, wantMp3, videoQuality, au
        */
       args = [
         '--no-playlist', '--no-warnings',
+        ...authArgs(),
         '-x',
         '--audio-format', 'mp3',
         '--audio-quality', `${audioBitrate}K`,
@@ -263,6 +298,7 @@ function startDownload({ jobId, url, tmpPath, isAudio, wantMp3, videoQuality, au
       /* M4A — no conversion needed if source is already m4a */
       args = [
         '--no-playlist', '--no-warnings',
+        ...authArgs(),
         '-f', 'bestaudio[ext=m4a]/bestaudio/best',
         '-o', tmpPath,
         url,
@@ -278,6 +314,7 @@ function startDownload({ jobId, url, tmpPath, isAudio, wantMp3, videoQuality, au
     const format  = `bestvideo${q}[ext=mp4]+bestaudio[ext=m4a]/bestvideo${q}+bestaudio/best${q}/best`;
     args = [
       '--no-playlist', '--no-warnings',
+      ...authArgs(),
       '-f', format,
       '--merge-output-format', 'mp4',
       '--ffmpeg-location', FFMPEG,

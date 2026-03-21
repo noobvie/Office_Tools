@@ -311,6 +311,8 @@ Environment=PORT=9000
 Environment=HOST=127.0.0.1
 Environment=YTDLP=/usr/local/bin/yt-dlp
 Environment=CORS_ORIGIN=${cors_origin}
+# Bot-detection workaround: uncomment after uploading cookies.txt (Option 6 → i)
+#Environment=YTDLP_COOKIES=${YT_SERVER_DIR}/cookies.txt
 Restart=on-failure
 RestartSec=5s
 StandardOutput=journal
@@ -1371,23 +1373,25 @@ opt_6_admin_tasks() {
         echo -e "    ${BOLD}f)${RESET}  Clean Old Logs       ${DIM}delete deploy logs older than 30 days${RESET}"
         echo -e "    ${BOLD}g)${RESET}  Purge Temp Files     ${DIM}yt-dlp temp downloads + file-share uploads${RESET}"
         echo -e "    ${BOLD}h)${RESET}  Update yt-dlp        ${DIM}download latest yt-dlp binary (fixes download errors)${RESET}"
+        echo -e "    ${BOLD}i)${RESET}  Configure Cookies    ${DIM}fix YouTube bot-detection · weekly keep-alive health check${RESET}"
         echo -e "  ${DIM}  ──────────────────────────────────────────────${RESET}"
         echo -e "    ${BOLD}0)${RESET}  Back"
         echo ""
-        echo -ne "  Choose [a-h / 0]: "; read -r _sub
+        echo -ne "  Choose [a-i / 0]: "; read -r _sub
         echo ""
 
         case "${_sub,,}" in
-            a)  _admin_service_status  ;;
-            b)  _admin_restart_all     ;;
-            c)  _admin_list_urls       ;;
-            d)  _admin_backup_db       ;;
-            e)  _admin_restore_db      ;;
-            f)  _admin_clean_logs      ;;
-            g)  _admin_purge_temp      ;;
-            h)  _admin_update_ytdlp    ;;
-            0)  return 0               ;;
-            *)  warn "Invalid: $_sub"  ;;
+            a)  _admin_service_status   ;;
+            b)  _admin_restart_all      ;;
+            c)  _admin_list_urls        ;;
+            d)  _admin_backup_db        ;;
+            e)  _admin_restore_db       ;;
+            f)  _admin_clean_logs       ;;
+            g)  _admin_purge_temp       ;;
+            h)  _admin_update_ytdlp     ;;
+            i)  _admin_configure_cookies ;;
+            0)  return 0                ;;
+            *)  warn "Invalid: $_sub"   ;;
         esac
     done
 }
@@ -1710,6 +1714,169 @@ _admin_update_ytdlp() {
     else
         warn "pip3 upgrade failed — check network or run manually: pip3 install --upgrade --break-system-packages yt-dlp"
     fi
+    press_enter
+}
+
+# Writes the keep-alive script + weekly cron for cookie health checks.
+# Called when enabling cookies. The cron tests cookies.txt weekly and
+# writes ok/expired to cookies.status so /health can report the result.
+_install_cookie_keepalive() {
+    local ka_dir="/opt/office-tools/scripts"
+    local ka_script="${ka_dir}/ytcookie-keepalive.sh"
+    local cron_file="/etc/cron.d/office-tools-yt-cookies"
+    mkdir -p "$ka_dir"
+
+    cat > "$ka_script" << 'KEEPALIVE'
+#!/bin/bash
+# YouTube cookies keep-alive health check
+# Tests whether cookies.txt still authenticates with yt-dlp.
+# Writes 'ok <ISO-timestamp>' or 'expired <ISO-timestamp>' to cookies.status.
+# Run weekly by /etc/cron.d/office-tools-yt-cookies (Sunday 02:30 UTC).
+# Managed by deploy.sh → Option 6 → i.
+
+COOKIES_FILE="/opt/office-tools/yt-server/cookies.txt"
+STATUS_FILE="/opt/office-tools/yt-server/cookies.status"
+# Stable, short public video used only to probe cookie auth (no download)
+TEST_URL="https://www.youtube.com/watch?v=jNQXAC9IVRw"
+TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+if [[ ! -f "$COOKIES_FILE" ]]; then
+    echo "expired $TIMESTAMP" > "$STATUS_FILE"
+    logger -t ytcookie-keepalive "WARN: cookies.txt not found at $COOKIES_FILE"
+    exit 1
+fi
+
+if yt-dlp --no-playlist --cookies "$COOKIES_FILE" --skip-download \
+          --no-warnings "$TEST_URL" >/dev/null 2>&1; then
+    echo "ok $TIMESTAMP" > "$STATUS_FILE"
+    logger -t ytcookie-keepalive "OK: YouTube cookies valid ($TIMESTAMP)"
+else
+    echo "expired $TIMESTAMP" > "$STATUS_FILE"
+    logger -t ytcookie-keepalive \
+        "WARN: YouTube cookies expired/invalid — re-export from browser and re-upload to $COOKIES_FILE"
+fi
+KEEPALIVE
+    chmod 755 "$ka_script"
+
+    # Weekly cron: Sunday 02:30 UTC
+    cat > "$cron_file" << 'CRON'
+# Office Tools — YouTube cookies keep-alive health check
+# Tests cookies.txt validity weekly; writes ok/expired to cookies.status.
+# The yt-server /health endpoint reads this file and reports cookie status.
+# Managed by deploy.sh → Option 6 → i.
+30 2 * * 0 root /opt/office-tools/scripts/ytcookie-keepalive.sh
+CRON
+    chmod 0644 "$cron_file"
+    success "Keep-alive cron installed → ${cron_file} (runs every Sunday 02:30 UTC)"
+}
+
+_admin_configure_cookies() {
+    section "Configure YouTube Cookies (bot-detection workaround)"
+
+    local svc_file="/etc/systemd/system/office-tools-yt.service"
+    local cookies_path="${YT_SERVER_DIR}/cookies.txt"
+    local status_file="${YT_SERVER_DIR}/cookies.status"
+
+    # Show current state
+    local current_setting=""
+    current_setting=$(grep -oP '(?<=YTDLP_COOKIES=).*' "$svc_file" 2>/dev/null | head -1 || true)
+    if [[ -f "$cookies_path" ]]; then
+        local age; age=$(stat -c '%y' "$cookies_path" 2>/dev/null | cut -d' ' -f1 || echo "unknown")
+        echo -e "  cookies.txt : ${GREEN}found${RESET} at ${cookies_path}  (modified: ${age})"
+    else
+        echo -e "  cookies.txt : ${YELLOW}not found${RESET} at ${cookies_path}"
+    fi
+    if [[ -n "$current_setting" ]]; then
+        echo -e "  Service env : ${GREEN}YTDLP_COOKIES=${current_setting}${RESET}"
+    else
+        echo -e "  Service env : ${YELLOW}YTDLP_COOKIES not set${RESET} (service uses no cookies)"
+    fi
+    if [[ -f "$status_file" ]]; then
+        local last_check; last_check=$(head -1 "$status_file" 2>/dev/null || echo "unknown")
+        if [[ "$last_check" == expired* ]]; then
+            echo -e "  Keep-alive  : ${RED}${last_check}${RESET}  ← cookies need re-export!"
+        else
+            echo -e "  Keep-alive  : ${GREEN}${last_check}${RESET}"
+        fi
+    else
+        echo -e "  Keep-alive  : ${DIM}no status yet (cron runs Sunday 02:30 UTC)${RESET}"
+    fi
+    echo ""
+    echo -e "  ${BOLD}How to get a cookies.txt file:${RESET}"
+    echo -e "  1. In Chrome/Edge/Firefox, install ${CYAN}\"Get cookies.txt LOCALLY\"${RESET} extension"
+    echo -e "     Chrome: https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc"
+    echo -e "  2. Go to ${CYAN}https://www.youtube.com${RESET} and make sure you are signed in"
+    echo -e "  3. Click the extension → Export  (saves ${BOLD}youtube.com_cookies.txt${RESET})"
+    echo -e "  4. Upload to server:  ${DIM}scp youtube.com_cookies.txt user@server:${cookies_path}${RESET}"
+    echo ""
+    echo -e "  ${BOLD}Note:${RESET} The keep-alive cron ${DIM}(weekly)${RESET} tests cookie validity and updates the"
+    echo -e "  health badge. Cookies cannot be auto-renewed — re-export from your browser"
+    echo -e "  when the health badge turns red."
+    echo ""
+    echo -e "  ${BOLD}Actions:${RESET}"
+    echo -e "    ${BOLD}1)${RESET}  Enable cookies  — set YTDLP_COOKIES in service + install keep-alive cron + restart"
+    echo -e "    ${BOLD}2)${RESET}  Disable cookies — remove YTDLP_COOKIES from service + remove keep-alive cron + restart"
+    echo -e "    ${BOLD}3)${RESET}  Test now        — run keep-alive check immediately (updates cookies.status)"
+    echo -e "    ${BOLD}0)${RESET}  Back"
+    echo ""
+    echo -ne "  Choose [1 / 2 / 3 / 0]: "; read -r _c
+    case "$_c" in
+        1)
+            if [[ ! -f "$cookies_path" ]]; then
+                warn "cookies.txt not found at ${cookies_path}."
+                echo -e "  Upload it first:  ${DIM}scp cookies.txt user@server:${cookies_path}${RESET}"
+                press_enter; return 0
+            fi
+            chmod 600 "$cookies_path"
+            chown www-data:www-data "$cookies_path" 2>/dev/null || true
+            # Uncomment or add the YTDLP_COOKIES line in the service file
+            if grep -q '#Environment=YTDLP_COOKIES=' "$svc_file" 2>/dev/null; then
+                sed -i "s|#Environment=YTDLP_COOKIES=.*|Environment=YTDLP_COOKIES=${cookies_path}|" "$svc_file"
+            elif grep -q 'Environment=YTDLP_COOKIES=' "$svc_file" 2>/dev/null; then
+                sed -i "s|Environment=YTDLP_COOKIES=.*|Environment=YTDLP_COOKIES=${cookies_path}|" "$svc_file"
+            else
+                sed -i "/Environment=CORS_ORIGIN/a Environment=YTDLP_COOKIES=${cookies_path}" "$svc_file"
+            fi
+            systemctl daemon-reload
+            systemctl restart office-tools-yt
+            _install_cookie_keepalive
+            # Run immediately to populate cookies.status
+            info "Running initial cookie health check…"
+            bash /opt/office-tools/scripts/ytcookie-keepalive.sh
+            local init_status; init_status=$(head -1 "$status_file" 2>/dev/null || echo "unknown")
+            if [[ "$init_status" == expired* ]]; then
+                warn "Initial check: cookies appear expired — re-export from browser."
+            else
+                success "Initial check: ${init_status}"
+            fi
+            success "Cookies enabled: ${cookies_path} — service restarted."
+            ;;
+        2)
+            # Comment out the YTDLP_COOKIES line
+            sed -i "s|^Environment=YTDLP_COOKIES=|#Environment=YTDLP_COOKIES=|" "$svc_file" 2>/dev/null || true
+            systemctl daemon-reload
+            systemctl restart office-tools-yt
+            rm -f /etc/cron.d/office-tools-yt-cookies
+            rm -f /opt/office-tools/scripts/ytcookie-keepalive.sh
+            rm -f "$status_file"
+            success "Cookies disabled — keep-alive cron removed — service restarted."
+            ;;
+        3)
+            if [[ ! -f /opt/office-tools/scripts/ytcookie-keepalive.sh ]]; then
+                warn "Keep-alive script not installed. Enable cookies first (option 1)."
+            else
+                info "Running cookie health check…"
+                bash /opt/office-tools/scripts/ytcookie-keepalive.sh
+                local cur_status; cur_status=$(head -1 "$status_file" 2>/dev/null || echo "unknown")
+                if [[ "$cur_status" == expired* ]]; then
+                    warn "Cookies appear expired: ${cur_status}"
+                    echo -e "  Re-export from your browser and re-upload to ${cookies_path}"
+                else
+                    success "Cookies OK: ${cur_status}"
+                fi
+            fi
+            ;;
+    esac
     press_enter
 }
 

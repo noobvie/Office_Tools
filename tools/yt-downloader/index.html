@@ -592,8 +592,18 @@
       .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
       .then(d => {
         const ffWarn = d.ffmpeg ? '' : ' · <span style="color:var(--warning)">⚠ ffmpeg missing — MP3 and 1080p disabled</span>';
+        let cookieWarn;
+        if (!d.cookies || d.cookies === 'none') {
+          cookieWarn = ' · <span style="color:var(--warning)">⚠ no cookies — bot-detection may block downloads (deploy.sh → Option 6 → i)</span>';
+        } else if (d.cookies === 'file:expired') {
+          cookieWarn = ' · <span style="color:var(--danger)">🍪 cookies expired — re-export from browser &amp; re-upload (deploy.sh → Option 6 → i)</span>';
+        } else if (d.cookies === 'file:missing') {
+          cookieWarn = ' · <span style="color:var(--warning)">🍪 cookies.txt missing — upload file to server (deploy.sh → Option 6 → i)</span>';
+        } else {
+          cookieWarn = ` · <span style="color:var(--success)">🍪 cookies: ${escHtml(d.cookies)}</span>`;
+        }
         backendInfoEl.innerHTML = BACKEND_INFO.local +
-          ` <span style="color:var(--success)">✓ running (yt-dlp ${escHtml(d.ytdlp)})</span>${ffWarn}`;
+          ` <span style="color:var(--success)">✓ running (yt-dlp ${escHtml(d.ytdlp)})</span>${ffWarn}${cookieWarn}`;
       })
       .catch(() => {
         const hint = IS_LOCAL_DEV
@@ -968,6 +978,12 @@
         throw new Error(
           `Cobalt: authentication required. Set an API Key in Advanced settings, ` +
           `or self-host cobalt, or switch to Local / Invidious backend.`
+        );
+      }
+      if (currentBackend === 'local' && /sign.in|not.a.bot|cookies|confirm.*age/i.test(code)) {
+        throw new Error(
+          `YouTube bot-detection triggered. Fix: upload a cookies.txt to the server ` +
+          `(deploy.sh → Option 6 → i) or switch to Invidious backend as a quick workaround.`
         );
       }
       throw new Error(`${label}: ` + code);
