@@ -63,7 +63,6 @@
     <input type="text" id="headerSearch" placeholder="Search tools…" autocomplete="off">
   </div>
   <div class="header-actions">
-    <div id="authNav" style="display:flex;gap:.5rem;align-items:center"></div>
     <button class="theme-toggle" id="themeToggle"></button>
   </div>
 </header>
@@ -427,21 +426,27 @@
 
 </main>
 
-<footer style="border-top:1px solid var(--border);margin-top:3rem;padding:1.25rem 1.5rem;text-align:center;font-size:.8rem;color:var(--text-muted)">
+<footer style="border-top:1px solid var(--border);margin-top:3rem;padding:2rem 1.5rem;text-align:center;font-size:.8rem;color:var(--text-muted)">
   <div style="max-width:780px;margin:0 auto">
-    <p>
-      <strong style="color:var(--text)">Self-host in minutes</strong> &nbsp;·&nbsp;
-      Open source on GitHub:&nbsp;
+    <p style="margin-bottom:.4rem">
+      52 tools &nbsp;·&nbsp; No login &nbsp;·&nbsp; No tracking &nbsp;·&nbsp; 100% browser-based
+    </p>
+    <p style="margin-bottom:.4rem">
       <a href="https://github.com/noobvie/Office_Tools" style="color:var(--primary);text-decoration:none" target="_blank" rel="noopener">Office Tools</a>
       &nbsp;·&nbsp;
       <a href="https://github.com/noobvie/grin-node-toolkit" style="color:var(--primary);text-decoration:none" target="_blank" rel="noopener">Grin Node Toolkit</a>
+    </p>
+    <p>
+      Support Grin —
+      <a href="https://yourdomain.com/auth/login.html" style="color:var(--primary);text-decoration:none">Login</a>
+      &nbsp;/&nbsp;
+      <a href="https://yourdomain.com/auth/register.html" style="color:var(--primary);text-decoration:none">Register</a>
     </p>
   </div>
 </footer>
 
 <script src="js/config.js"></script>
 <script src="js/common.js"></script>
-<script src="js/auth.js"></script>
 <script>
   const searchInput  = document.getElementById('searchInput');
   const headerSearch = document.getElementById('headerSearch');
