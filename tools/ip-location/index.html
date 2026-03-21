@@ -268,23 +268,40 @@ async function lookup(query) {
       <span style="font-size:.85rem;color:var(--text-muted)">Looking up ${escHtml(query)}…</span>
     </div>`;
 
-  const fields = 'status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query';
   let data;
   try {
-    const res = await fetch(`https://ip-api.com/json/${encodeURIComponent(query)}?fields=${fields}`);
-    data = await res.json();
+    // Primary: ipwho.is — free, HTTPS, no key required
+    const res = await fetch(`https://ipwho.is/${encodeURIComponent(query)}`);
+    const raw = await res.json();
+    if (!raw.success) {
+      const msgs = {
+        'invalid ip address': 'Invalid IP address or domain name.',
+        'private range':      'This is a private/reserved IP address (not publicly routable).',
+        'reserved range':     'This is a reserved IP address range.',
+      };
+      const msg = msgs[(raw.message || '').toLowerCase()] || raw.message || 'Lookup failed.';
+      resultArea.innerHTML = `<div class="lookup-error mt-2">&#10007; ${escHtml(msg)}</div>`;
+      return;
+    }
+    // Normalize to the field names used in the display code below
+    data = {
+      query:      raw.ip,
+      country:    raw.country,
+      countryCode: raw.country_code,
+      regionName: raw.region,
+      city:       raw.city,
+      zip:        raw.postal,
+      lat:        raw.latitude,
+      lon:        raw.longitude,
+      timezone:   raw.timezone?.id,
+      isp:        raw.connection?.isp,
+      org:        raw.connection?.org,
+      as:         raw.connection?.asn
+                    ? `AS${raw.connection.asn} ${raw.connection.org || ''}`.trim()
+                    : null,
+    };
   } catch (e) {
     resultArea.innerHTML = `<div class="lookup-error mt-2">&#10007; Network error: ${escHtml(e.message)}</div>`;
-    return;
-  }
-
-  if (data.status === 'fail') {
-    const msgs = {
-      'private range':    'This is a private/reserved IP address (not publicly routable).',
-      'reserved range':   'This is a reserved IP address range.',
-      'invalid query':    'Invalid IP address or domain name.',
-    };
-    resultArea.innerHTML = `<div class="lookup-error mt-2">&#10007; ${escHtml(msgs[data.message] || data.message)}</div>`;
     return;
   }
 
@@ -370,7 +387,7 @@ async function lookup(query) {
 
       <p class="text-muted mt-2" style="font-size:.76rem">
         &#9888;&#65039; IP geolocation is approximate — accuracy varies by ISP. Coordinates typically indicate the ISP's regional hub, not your exact location.
-        Data provided by <a href="https://ip-api.com" target="_blank" rel="noopener" style="color:var(--primary)">ip-api.com</a>.
+        Data provided by <a href="https://ipwho.is" target="_blank" rel="noopener" style="color:var(--primary)">ipwho.is</a>.
       </p>
     </div>`;
 
@@ -421,23 +438,24 @@ document.getElementById('myIpBtn').addEventListener('click', async () => {
   const btn = document.getElementById('myIpBtn');
   btn.disabled = true; btn.textContent = 'Detecting…';
 
+  // Run all sources in parallel — works on both IPv4-only and IPv6-only networks
   const tryFetch = async (url, extract) => {
-    const ctrl = new AbortController();
-    setTimeout(() => ctrl.abort(), 5000);
-    const r = await fetch(url, { signal: ctrl.signal });
-    return extract(await r.json());
+    try {
+      const ctrl = new AbortController();
+      setTimeout(() => ctrl.abort(), 5000);
+      const r = await fetch(url, { signal: ctrl.signal });
+      const v = extract(await r.json());
+      return (v && v.length > 3) ? String(v).trim() : null;
+    } catch { return null; }
   };
-  const sources = [
-    () => tryFetch('https://api4.ipify.org?format=json', d => d.ip),
-    () => tryFetch('https://api.ipify.org?format=json',  d => d.ip),
-    () => tryFetch('https://jsonip.com',                 d => d.ip),
-    () => tryFetch('https://api.my-ip.io/ip.json',       d => d.ip),
-  ];
-
-  let ip = null;
-  for (const fn of sources) {
-    try { const v = await fn(); if (v && v.length > 3) { ip = v; break; } } catch {}
-  }
+  const results = await Promise.all([
+    tryFetch('https://api.ipify.org?format=json',  d => d.ip),   // IPv4 or IPv6
+    tryFetch('https://api6.ipify.org?format=json', d => d.ip),   // IPv6-only endpoint
+    tryFetch('https://ipinfo.io/json',             d => d.ip),   // dual-stack
+    tryFetch('https://api4.ipify.org?format=json', d => d.ip),   // IPv4-only endpoint
+    tryFetch('https://jsonip.com',                 d => d.ip),
+  ]);
+  const ip = results.find(Boolean) || null;
 
   if (ip) {
     document.getElementById('ipInput').value = ip;
