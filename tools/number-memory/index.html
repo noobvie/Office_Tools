@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Number Memory — Free Brain Training Game | Play at Work | Office Tools</title>
+  <meta name="description" content="Test your number memory! Memorize longer and longer numbers each round. Free browser-based brain training game — no download needed. Perfect office break.">
+  <meta name="keywords" content="number memory game online, digit span test, brain training game, memory test free, number recall game, office break game, cognitive test browser, play at work">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Number Memory — Free Brain Training Game | Office Tools">
+  <meta property="og:description" content="Memorize growing number sequences. Test your digit span. Free browser game.">
+  <meta property="og:url" content="https://tools.grin.money/tools/number-memory/">
+  <link rel="canonical" href="https://tools.grin.money/tools/number-memory/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Number Memory","description":"Memorize growing number sequences. Test your digit span. Free browser brain training game.","applicationCategory":"Game","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/number-memory/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .game-wrap { display:flex; flex-direction:column; align-items:center; gap:1.25rem; }
+    .num-card {
+      width:min(340px, 90vw); min-height:140px; background:var(--primary);
+      border-radius:var(--radius-lg); display:flex; align-items:center; justify-content:center;
+      padding:1.5rem; box-sizing:border-box;
+    }
+    .num-display { color:#fff; font-size:clamp(1.6rem,8vw,3rem); font-weight:700; letter-spacing:.12em; text-align:center; }
+    .num-input-wrap { display:flex; flex-direction:column; align-items:center; gap:.6rem; width:min(340px,90vw); }
+    .num-input-wrap input {
+      width:100%; font-size:1.6rem; font-weight:700; letter-spacing:.12em; text-align:center;
+      padding:.6rem; border:2px solid var(--border); border-radius:var(--radius); background:var(--bg-card); color:var(--text);
+    }
+    .progress-bar { width:min(340px,90vw); height:8px; background:var(--border); border-radius:99px; overflow:hidden; }
+    .progress-fill { height:100%; background:var(--primary); transition:width .1s linear; border-radius:99px; }
+    .hud { display:flex; gap:.75rem; flex-wrap:wrap; justify-content:center; }
+    .hud-box { background:var(--bg); border:1.5px solid var(--border); border-radius:var(--radius); padding:.35rem .9rem; text-align:center; min-width:80px; }
+    .hud-box small { display:block; font-size:.7rem; color:var(--text-muted); text-transform:uppercase; }
+    .hud-box span { display:block; font-size:1.2rem; font-weight:700; }
+    #feedback { font-size:1rem; font-weight:600; min-height:1.4rem; text-align:center; }
+    #feedback.ok  { color:var(--success); }
+    #feedback.bad { color:var(--danger); }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Number Memory</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔢 Number Memory</h1>
+    <p>Memorize the number, then type it from memory. Can you beat your best?</p>
+  </div>
+
+  <div class="game-wrap">
+    <div class="hud">
+      <div class="hud-box"><small>Level</small><span id="level">—</span></div>
+      <div class="hud-box"><small>Best</small><span id="best">0</span></div>
+    </div>
+
+    <div class="num-card" id="numCard">
+      <div class="num-display" id="numDisplay">Press Start</div>
+    </div>
+
+    <div class="progress-bar" id="progressBar" style="display:none">
+      <div class="progress-fill" id="progressFill" style="width:100%"></div>
+    </div>
+
+    <div class="num-input-wrap" id="inputWrap" style="display:none">
+      <input type="text" inputmode="numeric" id="numInput" placeholder="Type the number…" autocomplete="off">
+      <button class="btn btn-primary" id="submitBtn">Submit</button>
+    </div>
+
+    <div id="feedback"></div>
+    <button class="btn btn-primary" id="startBtn">▶ Start</button>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+initThemeToggle('themeToggle');
+
+const BEST_KEY = 'ot-numemory-best';
+let level=0, current='', phase='idle', timer=null, elapsed=0, displayMs=0;
+
+function updateBest(n) {
+  const b = parseInt(localStorage.getItem(BEST_KEY)||0);
+  const nb = Math.max(n,b);
+  localStorage.setItem(BEST_KEY, nb);
+  document.getElementById('best').textContent = nb;
+}
+
+function randNum(digits) {
+  let s = '';
+  s += (Math.floor(Math.random()*9)+1); // no leading zero
+  for (let i=1;i<digits;i++) s += Math.floor(Math.random()*10);
+  return s;
+}
+
+function setFeedback(msg, cls='') {
+  const el=document.getElementById('feedback');
+  el.textContent=msg; el.className=cls;
+}
+
+function startRound() {
+  level++;
+  current = randNum(level + 2); // starts at 3 digits
+  document.getElementById('level').textContent = level;
+  document.getElementById('numDisplay').textContent = current;
+  document.getElementById('numCard').style.background='var(--primary)';
+  document.getElementById('progressBar').style.display='';
+  document.getElementById('inputWrap').style.display='none';
+  document.getElementById('startBtn').style.display='none';
+  setFeedback('');
+
+  displayMs = Math.round((3 + (level-1) * 0.3) * 1000);
+  elapsed = 0;
+  phase = 'show';
+
+  clearInterval(timer);
+  timer = setInterval(() => {
+    elapsed += 100;
+    const pct = Math.max(0, 100 - (elapsed/displayMs*100));
+    document.getElementById('progressFill').style.width = pct + '%';
+    if (elapsed >= displayMs) {
+      clearInterval(timer);
+      showInput();
+    }
+  }, 100);
+}
+
+function showInput() {
+  phase = 'input';
+  document.getElementById('numDisplay').textContent = '?????'.slice(0, current.length).replace(/./g,'?');
+  document.getElementById('numCard').style.background = 'var(--bg)';
+  document.getElementById('progressBar').style.display='none';
+  document.getElementById('inputWrap').style.display='flex';
+  document.getElementById('numInput').value='';
+  document.getElementById('numInput').focus();
+}
+
+function checkAnswer() {
+  const ans = document.getElementById('numInput').value.trim();
+  if (!ans) return;
+  if (ans === current) {
+    setFeedback('✅ Correct!', 'ok');
+    updateBest(level);
+    setTimeout(startRound, 800);
+  } else {
+    setFeedback(`❌ It was ${current} — Game over! Level ${level}`, 'bad');
+    updateBest(level - 1);
+    phase = 'idle';
+    level = 0;
+    document.getElementById('level').textContent = '—';
+    document.getElementById('inputWrap').style.display='none';
+    document.getElementById('startBtn').style.display='';
+    document.getElementById('startBtn').textContent='▶ Try Again';
+    document.getElementById('numDisplay').textContent = 'Press Start';
+    document.getElementById('numCard').style.background='var(--primary)';
+  }
+}
+
+document.getElementById('startBtn').addEventListener('click', () => {
+  level = 0;
+  startRound();
+});
+document.getElementById('submitBtn').addEventListener('click', checkAnswer);
+document.getElementById('numInput').addEventListener('keydown', e => { if(e.key==='Enter') checkAnswer(); });
+
+document.getElementById('best').textContent = localStorage.getItem(BEST_KEY)||0;
+</script>
+</body>
+</html>

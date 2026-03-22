@@ -106,6 +106,7 @@
           <select id="jsonFormat">
             <option value="array">Array of objects</option>
             <option value="flat">Array of arrays</option>
+            <option value="jsonl">JSONL (one object per line)</option>
           </select>
         </div>
         <div style="display:flex;align-items:flex-end;gap:.4rem">
@@ -228,23 +229,45 @@ document.getElementById('csvToJsonBtn').addEventListener('click', () => {
   const delimiter = document.getElementById('delimiter').value;
   const hasHeader = document.getElementById('hasHeader').checked;
   const format = document.getElementById('jsonFormat').value;
+  const isJsonl = format === 'jsonl';
 
-  const result = Papa.parse(csv, { delimiter, header: hasHeader && format === 'array', skipEmptyLines: true, dynamicTyping: true });
+  // JSONL always needs keyed objects; synthesize col0, col1... if no header
+  const useHeader = hasHeader || isJsonl;
+  let result;
+  if (isJsonl && !hasHeader) {
+    // Parse without header first to get column count, then re-parse with synthetic keys
+    const flat = Papa.parse(csv, { delimiter, header: false, skipEmptyLines: true, dynamicTyping: true });
+    const colCount = flat.data[0] ? flat.data[0].length : 0;
+    const syntheticHeader = Array.from({ length: colCount }, (_, i) => `col${i}`).join(delimiter);
+    result = Papa.parse(syntheticHeader + '\n' + csv, { delimiter, header: true, skipEmptyLines: true, dynamicTyping: true });
+  } else {
+    result = Papa.parse(csv, { delimiter, header: useHeader && format !== 'flat', skipEmptyLines: true, dynamicTyping: true });
+  }
   const data = result.data;
 
-  const jsonStr = JSON.stringify(data, null, 2);
+  let jsonStr, downloadName, mime;
+  if (isJsonl) {
+    jsonStr = data.map(row => JSON.stringify(row)).join('\n');
+    downloadName = 'data.jsonl';
+    mime = 'application/x-ndjson';
+  } else {
+    jsonStr = JSON.stringify(data, null, 2);
+    downloadName = 'data.json';
+    mime = 'application/json';
+  }
   document.getElementById('jsonOut').childNodes[0].textContent = jsonStr;
 
   // Download
   const dlBtn = document.getElementById('downloadJsonBtn');
   dlBtn.style.display = '';
+  dlBtn.textContent = isJsonl ? 'Download JSONL' : 'Download JSON';
   dlBtn.onclick = () => {
-    const a = document.createElement('a'); a.download = 'data.json';
-    a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonStr); a.click();
+    const a = document.createElement('a'); a.download = downloadName;
+    a.href = `data:${mime};charset=utf-8,` + encodeURIComponent(jsonStr); a.click();
   };
 
   // Table preview
-  renderTable(data, hasHeader, 'csvTableWrap', 'csvStats', 'csvPreviewWrap');
+  renderTable(data, useHeader && format !== 'flat', 'csvTableWrap', 'csvStats', 'csvPreviewWrap');
 });
 
 document.getElementById('copyCsvJsonBtn').addEventListener('click', function() {

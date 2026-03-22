@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memory Match — Free Card Matching Game | Play at Work | Office Tools</title>
+  <meta name="description" content="Flip and match emoji pairs in this free browser-based memory card game. 3 grid sizes, timer and move counter. Great office break game — no download needed.">
+  <meta name="keywords" content="memory card game online free, matching pairs game, flip card game browser, office break game, concentration game, memory game no download, free online memory game, play at work">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Memory Match — Free Card Matching Game | Office Tools">
+  <meta property="og:description" content="Flip emoji cards to find matching pairs. Free browser game, no download.">
+  <meta property="og:url" content="https://tools.grin.money/tools/memory/">
+  <link rel="canonical" href="https://tools.grin.money/tools/memory/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Memory Match","description":"Flip emoji cards to find matching pairs. 3 grid sizes. Free browser game, no download.","applicationCategory":"Game","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/memory/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .game-wrap { display:flex; flex-direction:column; align-items:center; gap:1rem; }
+    .hud { display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; justify-content:center; }
+    .hud-box { background:var(--bg); border:1.5px solid var(--border); border-radius:var(--radius); padding:.35rem .8rem; text-align:center; min-width:80px; }
+    .hud-box small { display:block; font-size:.7rem; color:var(--text-muted); text-transform:uppercase; }
+    .hud-box span { display:block; font-size:1.1rem; font-weight:700; }
+    .grid-select { display:flex; gap:.4rem; flex-wrap:wrap; justify-content:center; }
+    .grid-btn { padding:.35rem .85rem; border:1.5px solid var(--border); border-radius:var(--radius); background:var(--bg-card); cursor:pointer; font-size:.85rem; }
+    .grid-btn.active { border-color:var(--primary); color:var(--primary); font-weight:600; }
+    .mem-grid { display:grid; gap:10px; justify-content:center; }
+    .card-wrap { perspective:600px; cursor:pointer; }
+    .card-inner { width:70px; height:70px; position:relative; transform-style:preserve-3d; transition:transform .4s ease; border-radius:10px; }
+    .card-wrap.flipped .card-inner, .card-wrap.matched .card-inner { transform:rotateY(180deg); }
+    .card-face, .card-back {
+      position:absolute; inset:0; backface-visibility:hidden; border-radius:10px;
+      display:flex; align-items:center; justify-content:center; font-size:2rem;
+    }
+    .card-back  { background:var(--primary); color:#fff; font-size:1.4rem; font-weight:700; }
+    .card-face  { background:var(--bg-card); border:1.5px solid var(--border); transform:rotateY(180deg); }
+    .card-wrap.matched .card-face { border-color:var(--success); background:color-mix(in srgb,var(--success) 10%,var(--bg-card)); }
+    @media(max-width:420px){ .card-inner{width:58px;height:58px;} .card-face,.card-back{font-size:1.6rem;} }
+    .overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex;
+      align-items:center; justify-content:center; z-index:100; opacity:0; pointer-events:none; transition:opacity .3s;
+    }
+    .overlay.show { opacity:1; pointer-events:all; }
+    .overlay-box { background:var(--bg-card); border-radius:var(--radius-lg); padding:2rem; text-align:center; max-width:300px; }
+    .overlay-box h2 { margin:0 0 .5rem; font-size:1.6rem; }
+    .stars { font-size:1.8rem; margin:.3rem 0; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Memory Match</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🎴 Memory Match</h1>
+    <p>Flip cards to find matching emoji pairs. Test your memory!</p>
+  </div>
+
+  <div class="game-wrap">
+    <div class="grid-select">
+      <button class="grid-btn active" data-size="4x4">4 × 4 <small>(8 pairs)</small></button>
+      <button class="grid-btn" data-size="4x6">4 × 6 <small>(12 pairs)</small></button>
+      <button class="grid-btn" data-size="6x6">6 × 6 <small>(18 pairs)</small></button>
+    </div>
+    <div class="hud">
+      <div class="hud-box"><small>Pairs</small><span id="pairs">0 / 0</span></div>
+      <div class="hud-box"><small>Moves</small><span id="moves">0</span></div>
+      <div class="hud-box"><small>Time</small><span id="timer">0:00</span></div>
+      <button class="btn btn-primary" id="newBtn">New Game</button>
+    </div>
+    <div class="mem-grid" id="grid"></div>
+  </div>
+</main>
+
+<div class="overlay" id="overlay">
+  <div class="overlay-box">
+    <h2>🎉 You Win!</h2>
+    <div class="stars" id="stars"></div>
+    <p id="winMsg"></p>
+    <button class="btn btn-primary" id="overlayNewBtn">Play Again</button>
+  </div>
+</div>
+
+<script src="../../js/common.js"></script>
+<script>
+initThemeToggle('themeToggle');
+
+const EMOJIS = ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🦄','🐔','🐧','🦋','🌸','🌺','🌻','🌹','🌷','🍎','🍊','🍋','🍇','🍓','🍒'];
+
+let cards=[], flipped=[], matched=0, moves=0, total=0, timerInterval=null, seconds=0, minMoves=0, locked=false;
+let currentSize = '4x4';
+
+function getGrid(size) {
+  if (size==='4x4') return {cols:4, pairs:8};
+  if (size==='4x6') return {cols:4, pairs:12};
+  return {cols:6, pairs:18};
+}
+
+function newGame() {
+  clearInterval(timerInterval);
+  const {cols, pairs} = getGrid(currentSize);
+  total = pairs;
+  minMoves = pairs;
+  matched = moves = seconds = 0;
+  locked = false;
+  flipped = [];
+
+  // shuffle emojis
+  const pool = EMOJIS.slice(0, pairs);
+  const deck = [...pool, ...pool].sort(() => Math.random()-.5);
+
+  const grid = document.getElementById('grid');
+  const totalCards = pairs * 2;
+  const rows = totalCards / cols;
+  grid.style.gridTemplateColumns = `repeat(${cols}, 70px)`;
+  grid.innerHTML = '';
+
+  cards = deck.map((emoji, i) => {
+    const wrap  = document.createElement('div');
+    wrap.className = 'card-wrap';
+    wrap.dataset.idx = i;
+    wrap.innerHTML = `<div class="card-inner"><div class="card-back">?</div><div class="card-face">${emoji}</div></div>`;
+    wrap.addEventListener('click', () => flipCard(i, emoji, wrap));
+    grid.appendChild(wrap);
+    return { emoji, el: wrap, face: false, matched: false };
+  });
+
+  updateHUD();
+  timerInterval = setInterval(() => {
+    seconds++;
+    const m = Math.floor(seconds/60), s = seconds%60;
+    document.getElementById('timer').textContent = m+':'+(s<10?'0':'')+s;
+  }, 1000);
+
+  document.getElementById('overlay').classList.remove('show');
+}
+
+function flipCard(i, emoji, wrap) {
+  if (locked || cards[i].face || cards[i].matched) return;
+  cards[i].face = true;
+  wrap.classList.add('flipped');
+  flipped.push(i);
+
+  if (flipped.length === 2) {
+    locked = true;
+    moves++;
+    const [a, b] = flipped;
+    if (cards[a].emoji === cards[b].emoji) {
+      cards[a].matched = cards[b].matched = true;
+      cards[a].el.classList.add('matched');
+      cards[b].el.classList.add('matched');
+      matched++;
+      flipped = [];
+      locked = false;
+      updateHUD();
+      if (matched === total) { clearInterval(timerInterval); setTimeout(showWin, 400); }
+    } else {
+      setTimeout(() => {
+        cards[a].face = cards[b].face = false;
+        cards[a].el.classList.remove('flipped');
+        cards[b].el.classList.remove('flipped');
+        flipped = [];
+        locked = false;
+      }, 900);
+    }
+  }
+  updateHUD();
+}
+
+function updateHUD() {
+  document.getElementById('pairs').textContent = matched + ' / ' + total;
+  document.getElementById('moves').textContent = moves;
+}
+
+function showWin() {
+  const ratio = moves / minMoves;
+  const stars = ratio <= 1.5 ? '⭐⭐⭐' : ratio <= 2.2 ? '⭐⭐' : '⭐';
+  const m = Math.floor(seconds/60), s = seconds%60;
+  document.getElementById('stars').textContent = stars;
+  document.getElementById('winMsg').textContent = `${moves} moves · ${m}:${s<10?'0':''}${s} seconds`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+document.querySelectorAll('.grid-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.grid-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentSize = btn.dataset.size;
+    newGame();
+  });
+});
+document.getElementById('newBtn').addEventListener('click', newGame);
+document.getElementById('overlayNewBtn').addEventListener('click', newGame);
+
+newGame();
+</script>
+</body>
+</html>

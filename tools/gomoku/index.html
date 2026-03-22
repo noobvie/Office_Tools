@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gomoku — Free 5-in-a-Row Strategy Game | Play at Work | Office Tools</title>
+  <meta name="description" content="Play Gomoku (Five in a Row) against an AI or a friend. 15×15 board, place stones to get 5 in a row to win. Free browser strategy game — no download needed.">
+  <meta name="keywords" content="gomoku online free, five in a row game, gobang game browser, office strategy game, gomoku vs AI, play gomoku online, 15x15 board game, office break game, play at work">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Gomoku — Free 5-in-a-Row Strategy Game | Office Tools">
+  <meta property="og:description" content="Play Gomoku on a 15×15 board. Get 5 in a row to win. Vs AI or vs Friend. Free browser game.">
+  <meta property="og:url" content="https://tools.grin.money/tools/gomoku/">
+  <link rel="canonical" href="https://tools.grin.money/tools/gomoku/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Gomoku","description":"Play Gomoku (5-in-a-row) on a 15×15 board against AI or a friend. Free browser strategy game.","applicationCategory":"Game","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/gomoku/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .game-wrap { display:flex; flex-direction:column; align-items:center; gap:1rem; }
+    #goCanvas { border-radius:8px; touch-action:none; cursor:crosshair; max-width:100%; }
+    .hud { display:flex; gap:.75rem; flex-wrap:wrap; justify-content:center; align-items:center; }
+    .turn-badge { padding:.3rem .8rem; border-radius:99px; font-weight:700; font-size:.9rem; }
+    .turn-badge.black { background:#1a1a1a; color:#fff; }
+    .turn-badge.white { background:#f0f0f0; color:#1a1a1a; border:1.5px solid #ccc; }
+    .mode-select { display:flex; gap:.4rem; }
+    .mode-btn { padding:.3rem .75rem; border:1.5px solid var(--border); border-radius:var(--radius); cursor:pointer; font-size:.85rem; background:var(--bg-card); }
+    .mode-btn.active { border-color:var(--primary); color:var(--primary); font-weight:600; }
+    .overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; z-index:100; opacity:0; pointer-events:none; transition:opacity .3s; }
+    .overlay.show { opacity:1; pointer-events:all; }
+    .overlay-box { background:var(--bg-card); border-radius:var(--radius-lg); padding:2rem; text-align:center; max-width:280px; }
+    .overlay-box h2 { margin:0 0 .5rem; font-size:1.5rem; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Gomoku</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>⭕ Gomoku — Five in a Row</h1>
+    <p>Place stones to get 5 in a row — horizontally, vertically, or diagonally.</p>
+  </div>
+
+  <div class="game-wrap">
+    <div class="hud">
+      <div class="mode-select">
+        <button class="mode-btn active" id="modeAI">vs AI</button>
+        <button class="mode-btn" id="modeFriend">vs Friend</button>
+      </div>
+      <div id="turnBadge" class="turn-badge black">⚫ Black's turn</div>
+      <button class="btn btn-primary" id="newBtn">New Game</button>
+    </div>
+    <canvas id="goCanvas"></canvas>
+  </div>
+</main>
+
+<div class="overlay" id="overlay">
+  <div class="overlay-box">
+    <h2 id="overlayTitle">⚫ Black wins!</h2>
+    <p id="overlayMsg">5 in a row!</p>
+    <button class="btn btn-primary" id="overlayNewBtn">Play Again</button>
+  </div>
+</div>
+
+<script src="../../js/common.js"></script>
+<script>
+initThemeToggle('themeToggle');
+
+const SIZE = 15;
+const canvas = document.getElementById('goCanvas');
+const ctx = canvas.getContext('2d');
+let board, turn, gameOver, vsAI, lastMove, winCells;
+vsAI = true;
+
+function cellSize() { return Math.min(34, Math.floor((Math.min(window.innerWidth - 32, 520)) / SIZE)); }
+function resize() {
+  const cs = cellSize();
+  canvas.width = canvas.height = cs * (SIZE - 1) + cs * 2;
+  draw();
+}
+
+function newGame() {
+  board = Array.from({length:SIZE},()=>Array(SIZE).fill(0));
+  turn = 1; gameOver = false; lastMove = null; winCells = null;
+  updateTurnBadge();
+  draw();
+  document.getElementById('overlay').classList.remove('show');
+}
+
+function draw() {
+  const cs = cellSize();
+  const pad = cs;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // Board background
+  ctx.fillStyle = '#dcb86c';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // Grid lines
+  ctx.strokeStyle = '#8b6914';
+  ctx.lineWidth = 1;
+  for (let i=0;i<SIZE;i++) {
+    ctx.beginPath(); ctx.moveTo(pad+i*cs,pad); ctx.lineTo(pad+i*cs,pad+(SIZE-1)*cs); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pad,pad+i*cs); ctx.lineTo(pad+(SIZE-1)*cs,pad+i*cs); ctx.stroke();
+  }
+
+  // Star points (standard 15×15: 3,7,11)
+  [3,7,11].forEach(r=>[3,7,11].forEach(c=>{
+    ctx.fillStyle='#8b6914';
+    ctx.beginPath(); ctx.arc(pad+c*cs,pad+r*cs,3,0,Math.PI*2); ctx.fill();
+  }));
+
+  // Win highlight
+  if (winCells) {
+    ctx.strokeStyle = '#ff4444';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    const [r0,c0]=winCells[0], [r4,c4]=winCells[4];
+    ctx.moveTo(pad+c0*cs,pad+r0*cs); ctx.lineTo(pad+c4*cs,pad+r4*cs);
+    ctx.stroke();
+    ctx.lineWidth=1;
+  }
+
+  // Stones
+  for (let r=0;r<SIZE;r++) for (let c=0;c<SIZE;c++) {
+    if (!board[r][c]) continue;
+    const x=pad+c*cs, y=pad+r*cs, radius=cs*0.44;
+    const grad=ctx.createRadialGradient(x-radius*.3,y-radius*.3,radius*.1,x,y,radius);
+    if (board[r][c]===1) { grad.addColorStop(0,'#555'); grad.addColorStop(1,'#111'); }
+    else                  { grad.addColorStop(0,'#fff'); grad.addColorStop(1,'#ddd'); }
+    ctx.fillStyle=grad;
+    ctx.beginPath(); ctx.arc(x,y,radius,0,Math.PI*2); ctx.fill();
+    // border
+    ctx.strokeStyle=board[r][c]===1?'#000':'#aaa'; ctx.lineWidth=.5; ctx.stroke();
+    // last move dot
+    if (lastMove && lastMove[0]===r && lastMove[1]===c) {
+      ctx.fillStyle=board[r][c]===1?'#aaa':'#666';
+      ctx.beginPath(); ctx.arc(x,y,radius*.22,0,Math.PI*2); ctx.fill();
+    }
+  }
+}
+
+function xyToCell(x,y) {
+  const cs=cellSize(), pad=cs;
+  const c=Math.round((x-pad)/cs), r=Math.round((y-pad)/cs);
+  if (r<0||r>=SIZE||c<0||c>=SIZE) return null;
+  return [r,c];
+}
+
+function checkWin(r,c,player) {
+  const dirs=[[0,1],[1,0],[1,1],[1,-1]];
+  for (const [dr,dc] of dirs) {
+    const cells=[[r,c]];
+    for (let d=1;d<5;d++){const nr=r+dr*d,nc=c+dc*d; if(nr<0||nr>=SIZE||nc<0||nc>=SIZE||board[nr][nc]!==player) break; cells.push([nr,nc]);}
+    for (let d=1;d<5;d++){const nr=r-dr*d,nc=c-dc*d; if(nr<0||nr>=SIZE||nc<0||nc>=SIZE||board[nr][nc]!==player) break; cells.unshift([nr,nc]);}
+    if (cells.length>=5) { winCells=cells.slice(0,5); return true; }
+  }
+  return false;
+}
+
+function place(r,c) {
+  if (gameOver||board[r][c]) return false;
+  board[r][c]=turn;
+  lastMove=[r,c];
+  if (checkWin(r,c,turn)) {
+    draw();
+    gameOver=true;
+    const name=turn===1?'⚫ Black':'⚪ White';
+    setTimeout(()=>showOverlay(name+' wins!','5 in a row!'),300);
+    return true;
+  }
+  turn=turn===1?2:1;
+  updateTurnBadge();
+  draw();
+  return true;
+}
+
+function updateTurnBadge() {
+  const el=document.getElementById('turnBadge');
+  if (gameOver) return;
+  el.className='turn-badge '+(turn===1?'black':'white');
+  if (vsAI && turn===2) el.textContent='⚪ AI is thinking…';
+  else el.textContent=turn===1?'⚫ Black\'s turn':'⚪ White\'s turn';
+}
+
+function showOverlay(title,msg) {
+  document.getElementById('overlayTitle').textContent=title;
+  document.getElementById('overlayMsg').textContent=msg;
+  document.getElementById('overlay').classList.add('show');
+}
+
+// ── AI: heuristic scoring ──
+function scorePattern(count, open) {
+  if (count>=5) return 1e9;
+  if (count===4) return open===2?1e5:1e4;
+  if (count===3) return open===2?5000:500;
+  if (count===2) return open===2?100:10;
+  return open===2?2:1;
+}
+
+function evalCell(r,c,player) {
+  const dirs=[[0,1],[1,0],[1,1],[1,-1]];
+  let score=0;
+  for (const [dr,dc] of dirs) {
+    let count=1, open=0;
+    for (let d=1;d<5;d++){const nr=r+dr*d,nc=c+dc*d; if(nr<0||nr>=SIZE||nc<0||nc>=SIZE) break; if(board[nr][nc]===player) count++; else{if(!board[nr][nc]) open++; break;}}
+    for (let d=1;d<5;d++){const nr=r-dr*d,nc=c-dc*d; if(nr<0||nr>=SIZE||nc<0||nc>=SIZE) break; if(board[nr][nc]===player) count++; else{if(!board[nr][nc]) open++; break;}}
+    score+=scorePattern(count,open);
+  }
+  return score;
+}
+
+function aiMove() {
+  let best=-1, br=7, bc=7;
+  for (let r=0;r<SIZE;r++) for (let c=0;c<SIZE;c++) {
+    if (board[r][c]) continue;
+    const atk=evalCell(r,c,2);
+    const def=evalCell(r,c,1)*0.9;
+    const s=atk+def;
+    if (s>best){best=s;br=r;bc=c;}
+  }
+  // small random perturbation to avoid monotony
+  const candidates=[];
+  for (let r=0;r<SIZE;r++) for (let c=0;c<SIZE;c++) {
+    if (board[r][c]) continue;
+    const atk=evalCell(r,c,2), def=evalCell(r,c,1)*0.9, s=atk+def;
+    if (s>=best*0.98) candidates.push([r,c]);
+  }
+  const pick=candidates[Math.floor(Math.random()*candidates.length)]||[br,bc];
+  place(pick[0],pick[1]);
+}
+
+// Input handling
+function handleClick(x,y) {
+  if (gameOver) return;
+  if (vsAI && turn===2) return;
+  const cell=xyToCell(x,y); if(!cell) return;
+  const [r,c]=cell;
+  if (place(r,c) && !gameOver && vsAI && turn===2) {
+    updateTurnBadge();
+    setTimeout(aiMove,200);
+  }
+}
+
+canvas.addEventListener('click', e=>{
+  const rect=canvas.getBoundingClientRect();
+  const scaleX=canvas.width/rect.width, scaleY=canvas.height/rect.height;
+  handleClick((e.clientX-rect.left)*scaleX,(e.clientY-rect.top)*scaleY);
+});
+canvas.addEventListener('touchend', e=>{
+  e.preventDefault();
+  const rect=canvas.getBoundingClientRect();
+  const scaleX=canvas.width/rect.width, scaleY=canvas.height/rect.height;
+  handleClick((e.changedTouches[0].clientX-rect.left)*scaleX,(e.changedTouches[0].clientY-rect.top)*scaleY);
+},{passive:false});
+
+document.getElementById('modeAI').addEventListener('click',()=>{
+  vsAI=true;
+  document.getElementById('modeAI').classList.add('active');
+  document.getElementById('modeFriend').classList.remove('active');
+  newGame();
+});
+document.getElementById('modeFriend').addEventListener('click',()=>{
+  vsAI=false;
+  document.getElementById('modeFriend').classList.add('active');
+  document.getElementById('modeAI').classList.remove('active');
+  newGame();
+});
+document.getElementById('newBtn').addEventListener('click', newGame);
+document.getElementById('overlayNewBtn').addEventListener('click', newGame);
+
+window.addEventListener('resize', ()=>{ resize(); });
+resize();
+newGame();
+</script>
+</body>
+</html>

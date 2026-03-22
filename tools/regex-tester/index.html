@@ -58,6 +58,14 @@
     .tab-bar button.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; }
     .tab-pane { display: none; } .tab-pane.active { display: block; }
     .stats-row { font-size: .78rem; color: var(--text-muted); margin-top: .4rem; }
+    .named-group-panel { margin-top: .75rem; padding: .75rem 1rem; background: var(--primary-dim); border: 1px solid var(--primary); border-radius: var(--radius); }
+    .named-group-panel .ng-title { font-size: .8rem; font-weight: 700; color: var(--primary); margin-bottom: .5rem; }
+    .named-group-table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+    .named-group-table th { text-align: left; padding: .35rem .6rem; color: var(--text-muted); font-weight: 600; border-bottom: 1.5px solid var(--border); }
+    .named-group-table td { padding: .35rem .6rem; border-bottom: 1px solid var(--border); font-family: 'Courier New', monospace; vertical-align: top; }
+    .named-group-table tr:last-child td { border-bottom: none; }
+    .named-group-table .ng-name { color: var(--primary); font-weight: 700; }
+    .named-group-table .ng-empty { color: var(--text-muted); font-style: italic; }
   </style>
 </head>
 <body>
@@ -103,6 +111,10 @@
       <div class="form-label mt-2">Match Preview</div>
       <div class="match-preview" id="matchPreview"></div>
       <div id="matchList" style="overflow-x:auto;margin-top:.75rem"></div>
+      <div id="namedGroupPanel" class="named-group-panel hidden">
+        <div class="ng-title">🏷️ Named Capture Groups <span id="ngNote" style="font-weight:400;font-size:.75rem;opacity:.7"></span></div>
+        <div id="ngTableWrap"></div>
+      </div>
     </div>
 
     <div class="tab-pane" id="replacePane">
@@ -200,6 +212,37 @@ function run() {
     document.getElementById('matchList').innerHTML = `<table class="match-table"><thead><tr><th>#</th><th>Index</th><th>Length</th><th>Match</th><th>Groups</th></tr></thead><tbody>${matchRows}</tbody></table>`;
   } else {
     document.getElementById('matchList').innerHTML = matchCount === 0 ? '<div style="color:var(--text-muted);font-size:.85rem;margin-top:.5rem">No matches found.</div>' : '';
+  }
+
+  // Named capture groups panel
+  const patStr = document.getElementById('rxPattern').value;
+  const namedGroupNames = [];
+  const ngRe = /\(\?<(\w+)>/g;
+  let ngM;
+  while ((ngM = ngRe.exec(patStr)) !== null) namedGroupNames.push(ngM[1]);
+
+  const ngPanel = document.getElementById('namedGroupPanel');
+  if (namedGroupNames.length === 0) {
+    ngPanel.classList.add('hidden');
+  } else {
+    ngPanel.classList.remove('hidden');
+    // Get groups from first match
+    let firstGroups = null;
+    try {
+      const rxNG = buildRegex();
+      rxNG.lastIndex = 0;
+      const firstM = rxNG.exec(text);
+      firstGroups = firstM ? (firstM.groups || {}) : {};
+    } catch(e) { firstGroups = {}; }
+    const totalMatches = matchCount;
+    document.getElementById('ngNote').textContent = totalMatches > 1 ? `(showing groups from match #1 of ${totalMatches})` : '';
+    let ngHtml = '<table class="named-group-table"><thead><tr><th>Group Name</th><th>Value</th></tr></thead><tbody>';
+    namedGroupNames.forEach(name => {
+      const val = firstGroups[name];
+      ngHtml += `<tr><td class="ng-name">(?&lt;${escHtml(name)}&gt;)</td><td>${val !== undefined && val !== null ? escHtml(String(val)) : '<span class="ng-empty">— no match</span>'}</td></tr>`;
+    });
+    ngHtml += '</tbody></table>';
+    document.getElementById('ngTableWrap').innerHTML = ngHtml;
   }
 
   // Replace tab

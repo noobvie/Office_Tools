@@ -130,7 +130,7 @@
   </div>
 
   <!-- Preview Table -->
-  <div class="card mt-2 hidden" id="previewCard">
+  <div class="card mt-2 hidden" id="previewCard" style="padding-bottom:.5rem">
     <div class="flex-between">
       <strong>Preview <span id="previewCount" style="color:var(--text-muted);font-weight:400"></span></strong>
       <div class="btn-group" style="gap:.4rem">
@@ -144,6 +144,42 @@
         <thead id="tableHead"></thead>
         <tbody id="tableBody"></tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- AI Training Data -->
+  <div class="card mt-2 hidden" id="aiCard" data-tabs>
+    <div class="flex-between" style="margin-bottom:.5rem">
+      <strong>🤖 AI Training Data <span id="aiCount" style="color:var(--text-muted);font-weight:400"></span></strong>
+    </div>
+    <div id="aiNoFields" class="alert" style="display:none;background:var(--primary-dim);color:var(--primary);border:1px solid var(--primary);border-radius:var(--radius);padding:.6rem .9rem;font-size:.85rem;margin-bottom:.75rem">
+      Select fields like <strong>Full Name</strong>, <strong>Job Title</strong>, <strong>City</strong>, or <strong>Company</strong> to generate contextual AI training data.
+    </div>
+    <div class="tabs" id="aiTabs">
+      <button class="tab-btn active" data-tab="aiQA">Q&amp;A Pairs</button>
+      <button class="tab-btn" data-tab="aiAlpaca">Alpaca Format</button>
+      <button class="tab-btn" data-tab="aiChat">Chat Format</button>
+    </div>
+    <div class="tab-pane active" id="aiQA">
+      <div class="output-box" id="aiQAOut" style="max-height:260px"></div>
+      <div class="btn-group mt-2">
+        <button class="btn btn-primary btn-sm" id="dlQABtn">⬇ Download JSONL</button>
+        <button class="btn btn-ghost btn-sm copy-btn" id="copyQABtn">Copy</button>
+      </div>
+    </div>
+    <div class="tab-pane" id="aiAlpaca">
+      <div class="output-box" id="aiAlpacaOut" style="max-height:260px"></div>
+      <div class="btn-group mt-2">
+        <button class="btn btn-primary btn-sm" id="dlAlpacaBtn">⬇ Download JSONL</button>
+        <button class="btn btn-ghost btn-sm copy-btn" id="copyAlpacaBtn">Copy</button>
+      </div>
+    </div>
+    <div class="tab-pane" id="aiChat">
+      <div class="output-box" id="aiChatOut" style="max-height:260px"></div>
+      <div class="btn-group mt-2">
+        <button class="btn btn-primary btn-sm" id="dlChatBtn">⬇ Download JSONL</button>
+        <button class="btn btn-ghost btn-sm copy-btn" id="copyChatBtn">Copy</button>
+      </div>
     </div>
   </div>
 </main>
@@ -296,6 +332,8 @@ function renderTable() {
   body.innerHTML = generatedData.map(row =>
     '<tr>' + activeFields.map(f => `<td>${escHtml(row[f])}</td>`).join('') + '</tr>'
   ).join('');
+
+  renderAICard();
 }
 
 function toCSV() {
@@ -322,6 +360,121 @@ document.getElementById('copyCsvBtn').addEventListener('click', () => {
 
 buildChips();
 generate();
+
+// ── AI Training Data ───────────────────────────────────────────
+// Template functions — each returns null if required fields are missing
+const QA_TEMPLATES = [
+  r => r['Full Name'] && r['Job Title'] && r['Company']
+    ? { question: `What does ${r['Full Name']} do for work?`, answer: `${r['Full Name']} works as a ${r['Job Title']} at ${r['Company']}.` }
+    : null,
+  r => r['Full Name'] && r['City']
+    ? { question: `What city is ${r['Full Name']} from?`, answer: `${r['Full Name']} is from ${r['City']}.` }
+    : null,
+  r => r['Full Name'] && r['Country']
+    ? { question: `What country is ${r['Full Name']} from?`, answer: `${r['Full Name']} is from ${r['Country']}.` }
+    : null,
+  r => r['Full Name'] && r['Email']
+    ? { question: `What is ${r['Full Name']}'s email address?`, answer: `${r['Full Name']}'s email is ${r['Email']}.` }
+    : null,
+  r => r['Full Name'] && r['Age']
+    ? { question: `How old is ${r['Full Name']}?`, answer: `${r['Full Name']} is ${r['Age']} years old.` }
+    : null,
+  r => r['Full Name'] && r['Company']
+    ? { question: `Where does ${r['Full Name']} work?`, answer: `${r['Full Name']} works at ${r['Company']}.` }
+    : null,
+  r => r['Full Name'] && r['Phone']
+    ? { question: `How can I contact ${r['Full Name']}?`, answer: `You can reach ${r['Full Name']} at ${r['Phone']}.` }
+    : null,
+  r => r['Company'] && r['City']
+    ? { question: `In which city is ${r['Company']} located?`, answer: `${r['Company']} is located in ${r['City']}.` }
+    : null,
+  r => r['Full Name'] && r['Job Title']
+    ? { question: `What is ${r['Full Name']}'s job title?`, answer: `${r['Full Name']}'s job title is ${r['Job Title']}.` }
+    : null,
+  r => r['Full Name'] && r['Country'] && r['Job Title']
+    ? { question: `Who is ${r['Full Name']}?`, answer: `${r['Full Name']} is a ${r['Job Title']} based in ${r['Country']}.` }
+    : null,
+];
+
+const ALPACA_TEMPLATES = [
+  r => {
+    const fields = ['Full Name','Email','Company','Job Title'].filter(f => r[f]);
+    if (fields.length < 2) return null;
+    const inputParts = fields.map(f => `${f}: ${r[f]}`).join(', ');
+    const name = r['Full Name'] || 'This person';
+    const title = r['Job Title'] ? ` a ${r['Job Title']}` : '';
+    const company = r['Company'] ? ` at ${r['Company']}` : '';
+    const email = r['Email'] ? ` They can be contacted at ${r['Email']}.` : '';
+    return { instruction: 'Summarize the contact record for this person.', input: inputParts, response: `${name} is${title}${company}.${email}` };
+  },
+  r => {
+    const fields = ['Full Name','Job Title','Company','Country'].filter(f => r[f]);
+    if (fields.length < 2) return null;
+    const name = r['Full Name'] || 'This person';
+    const title = r['Job Title'] || 'a professional';
+    const location = r['Country'] ? ` based in ${r['Country']}` : '';
+    const company = r['Company'] ? `, currently working at ${r['Company']}` : '';
+    return { instruction: 'Write a brief professional bio for this person.', input: fields.map(f => `${f}: ${r[f]}`).join(', '), response: `${name} is a ${title}${location}${company}.` };
+  },
+];
+
+function buildQALines() {
+  return generatedData.map(row => {
+    const applicable = QA_TEMPLATES.map(fn => fn(row)).filter(Boolean);
+    if (!applicable.length) return null;
+    return JSON.stringify(applicable[Math.floor(Math.random() * applicable.length)]);
+  }).filter(Boolean);
+}
+
+function buildAlpacaLines() {
+  return generatedData.map(row => {
+    const applicable = ALPACA_TEMPLATES.map(fn => fn(row)).filter(Boolean);
+    if (!applicable.length) return null;
+    return JSON.stringify(applicable[Math.floor(Math.random() * applicable.length)]);
+  }).filter(Boolean);
+}
+
+function buildChatLines() {
+  return generatedData.map(row => {
+    const applicable = QA_TEMPLATES.map(fn => fn(row)).filter(Boolean);
+    if (!applicable.length) return null;
+    const qa = applicable[Math.floor(Math.random() * applicable.length)];
+    return JSON.stringify({ messages: [{ role: 'user', content: qa.question }, { role: 'assistant', content: qa.answer }] });
+  }).filter(Boolean);
+}
+
+function renderAICard() {
+  const aiCard = document.getElementById('aiCard');
+  aiCard.classList.remove('hidden');
+
+  const qaLines = buildQALines();
+  const alpacaLines = buildAlpacaLines();
+  const chatLines = buildChatLines();
+  const hasContent = qaLines.length > 0 || alpacaLines.length > 0;
+
+  document.getElementById('aiNoFields').style.display = hasContent ? 'none' : '';
+  document.getElementById('aiCount').textContent = hasContent ? `— ${qaLines.length} pairs` : '';
+
+  document.getElementById('aiQAOut').textContent      = qaLines.join('\n')     || '(no matching fields)';
+  document.getElementById('aiAlpacaOut').textContent  = alpacaLines.join('\n') || '(no matching fields)';
+  document.getElementById('aiChatOut').textContent    = chatLines.join('\n')   || '(no matching fields)';
+
+  function dlJsonl(lines, filename) {
+    const blob = new Blob([lines.join('\n')], { type: 'application/x-ndjson' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = filename; a.click();
+  }
+  document.getElementById('dlQABtn').onclick     = () => dlJsonl(qaLines, 'training-qa.jsonl');
+  document.getElementById('dlAlpacaBtn').onclick  = () => dlJsonl(alpacaLines, 'training-alpaca.jsonl');
+  document.getElementById('dlChatBtn').onclick    = () => dlJsonl(chatLines, 'training-chat.jsonl');
+
+  document.getElementById('copyQABtn').onclick    = function() { copyText(qaLines.join('\n'), this); };
+  document.getElementById('copyAlpacaBtn').onclick = function() { copyText(alpacaLines.join('\n'), this); };
+  document.getElementById('copyChatBtn').onclick  = function() { copyText(chatLines.join('\n'), this); };
+
+  // Init tabs for the AI card (called after DOM update)
+  initTabs('#aiCard');
+}
 </script>
 </body>
 </html>

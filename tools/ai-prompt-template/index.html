@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Prompt Template Builder — Office Tools</title>
+  <meta name="description" content="Build reusable AI prompt templates with {{variable}} placeholders. Fill in variables, preview the final prompt, and save templates to your browser.">
+  <meta name="keywords" content="prompt template, AI prompt builder, prompt engineering, LLM prompt, prompt variables, prompt reuse, ChatGPT prompt template">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="AI Prompt Template Builder — Office Tools">
+  <meta property="og:description" content="Build reusable AI prompt templates with {{variable}} placeholders. Fill in variables and preview the final prompt.">
+  <meta property="og:url" content="https://tools.grin.money/tools/ai-prompt-template/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="AI Prompt Template Builder — Office Tools">
+  <meta name="twitter:description" content="Build reusable AI prompt templates with {{variable}} placeholders.">
+  <link rel="canonical" href="https://tools.grin.money/tools/ai-prompt-template/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Prompt Template Builder","description":"Build reusable AI prompt templates with variable placeholders.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/ai-prompt-template/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .var-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .6rem; margin-top: .5rem; }
+    .var-item label { font-size: .78rem; font-weight: 700; color: var(--primary); margin-bottom: .2rem; display: block; }
+    .preview-box {
+      min-height: 100px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .75rem 1rem;
+      font-family: 'Courier New', monospace;
+      font-size: .86rem;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .preview-box .unfilled {
+      background: var(--warning-dim, #fef3c7);
+      color: var(--warning, #d97706);
+      border-radius: 3px;
+      padding: 0 2px;
+    }
+    .saved-list { display: flex; flex-direction: column; gap: .4rem; margin-top: .5rem; max-height: 260px; overflow-y: auto; }
+    .saved-item { display: flex; align-items: center; gap: .5rem; padding: .5rem .75rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); font-size: .85rem; }
+    .saved-item .saved-name { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .saved-item .saved-date { font-size: .72rem; color: var(--text-muted); }
+    .save-input-row { display: flex; gap: .5rem; margin-top: .5rem; }
+    .token-hint { font-size: .75rem; color: var(--text-muted); margin-top: .35rem; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Prompt Template Builder</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>📝 Prompt Template Builder</h1>
+    <p>Write prompts with <code style="background:var(--primary-dim);color:var(--primary);border-radius:3px;padding:1px 5px">{{variable}}</code> placeholders, fill them in, and reuse templates across projects.</p>
+  </div>
+
+  <!-- Template Editor -->
+  <div class="card">
+    <div class="flex-between">
+      <label class="form-label" style="margin:0">Template</label>
+      <button class="btn btn-ghost btn-sm" id="loadSampleBtn">Load Sample</button>
+    </div>
+    <textarea id="templateInput" class="form-input" style="min-height:140px;font-family:'Courier New',monospace;font-size:.86rem;resize:vertical;margin-top:.4rem" placeholder="Write your prompt here. Use {{variable_name}} for placeholders.&#10;&#10;Example:&#10;You are a {{role}}. Answer the following question about {{topic}} in {{language}}."></textarea>
+  </div>
+
+  <!-- Variable Fill Form -->
+  <div class="card mt-2 hidden" id="varCard">
+    <label class="form-label">Fill in Variables</label>
+    <div class="var-form" id="varForm"></div>
+  </div>
+
+  <!-- Live Preview -->
+  <div class="card mt-2">
+    <div class="flex-between">
+      <label class="form-label" style="margin:0">Preview</label>
+      <button class="btn btn-primary btn-sm copy-btn" id="copyPreviewBtn">Copy</button>
+    </div>
+    <div class="preview-box" id="previewBox" style="margin-top:.4rem">Start typing your template above...</div>
+    <div class="token-hint" id="tokenHint"></div>
+  </div>
+
+  <!-- Save / Load Templates -->
+  <div class="card mt-2" data-tabs>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="saveTab">Save Template</button>
+      <button class="tab-btn" data-tab="loadTab">Saved Templates</button>
+    </div>
+    <div class="tab-pane active" id="saveTab">
+      <div id="saveArea">
+        <p class="text-muted" style="font-size:.85rem;margin-bottom:.5rem">Save this template to your browser for future use.</p>
+        <div class="save-input-row" id="saveInputRow">
+          <input type="text" id="saveNameInput" class="form-input" placeholder="Template name..." style="flex:1">
+          <button class="btn btn-primary" id="saveConfirmBtn">Save</button>
+          <button class="btn btn-ghost btn-sm" id="saveCancelBtn" style="display:none">Cancel</button>
+        </div>
+        <div id="saveError" class="alert alert-danger mt-2 hidden"></div>
+      </div>
+    </div>
+    <div class="tab-pane" id="loadTab">
+      <div id="savedList" class="saved-list"></div>
+      <div id="noSaved" class="text-muted" style="font-size:.85rem;margin-top:.5rem;display:none">No saved templates yet.</div>
+    </div>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+const STORAGE_KEY = 'ot-ptb-templates';
+const VAR_RE = /\{\{([\w][\w\s]*?)\}\}/g;
+
+let varValues = new Map(); // name → current fill value
+let debounceTimer = null;
+
+// ── Helpers ────────────────────────────────────────────────────
+function getTemplate() { return document.getElementById('templateInput').value; }
+
+function extractVars(tmpl) {
+  const names = new Set();
+  let m;
+  VAR_RE.lastIndex = 0;
+  while ((m = VAR_RE.exec(tmpl)) !== null) names.add(m[1].trim());
+  return [...names];
+}
+
+function buildPreview(tmpl, values) {
+  // Replace filled vars normally, highlight unfilled ones
+  let result = '';
+  let last = 0;
+  VAR_RE.lastIndex = 0;
+  let m;
+  while ((m = VAR_RE.exec(tmpl)) !== null) {
+    result += escHtml(tmpl.slice(last, m.index));
+    const name = m[1].trim();
+    const val = values.get(name);
+    if (val) {
+      result += escHtml(val);
+    } else {
+      result += `<span class="unfilled">{{${escHtml(name)}}}</span>`;
+    }
+    last = m.index + m[0].length;
+  }
+  result += escHtml(tmpl.slice(last));
+  return result;
+}
+
+function buildFinalText(tmpl, values) {
+  VAR_RE.lastIndex = 0;
+  return tmpl.replace(VAR_RE, (_, name) => values.get(name.trim()) || `{{${name.trim()}}}`);
+}
+
+// ── Main update ────────────────────────────────────────────────
+function update() {
+  const tmpl = getTemplate();
+  const vars = extractVars(tmpl);
+
+  // Remove stale values
+  for (const key of varValues.keys()) {
+    if (!vars.includes(key)) varValues.delete(key);
+  }
+
+  // Build variable form
+  const varCard = document.getElementById('varCard');
+  const varForm = document.getElementById('varForm');
+  if (vars.length > 0) {
+    varCard.classList.remove('hidden');
+    const existing = {};
+    varForm.querySelectorAll('input[data-var]').forEach(el => { existing[el.dataset.var] = el.value; });
+    varForm.innerHTML = '';
+    vars.forEach(name => {
+      // Preserve existing fill value
+      const current = varValues.get(name) || existing[name] || '';
+      if (current) varValues.set(name, current);
+      const div = document.createElement('div');
+      div.className = 'var-item';
+      div.innerHTML = `<label>{{${escHtml(name)}}}</label><input type="text" class="form-input" data-var="${escHtml(name)}" placeholder="Enter value..." value="${escHtml(current)}">`;
+      div.querySelector('input').addEventListener('input', e => {
+        varValues.set(name, e.target.value);
+        renderPreview();
+      });
+      varForm.appendChild(div);
+    });
+  } else {
+    varCard.classList.add('hidden');
+    varForm.innerHTML = '';
+  }
+
+  renderPreview();
+}
+
+function renderPreview() {
+  const tmpl = getTemplate();
+  const preview = document.getElementById('previewBox');
+  if (!tmpl.trim()) {
+    preview.innerHTML = '<span style="color:var(--text-muted)">Start typing your template above...</span>';
+    document.getElementById('tokenHint').textContent = '';
+    return;
+  }
+  preview.innerHTML = buildPreview(tmpl, varValues);
+  const finalText = buildFinalText(tmpl, varValues);
+  const chars = finalText.length;
+  const tokens = Math.ceil(chars / 4);
+  document.getElementById('tokenHint').textContent = `${chars} characters · ~${tokens} tokens (estimated)`;
+}
+
+// Debounced template input
+document.getElementById('templateInput').addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(update, 150);
+});
+
+// ── Copy preview ───────────────────────────────────────────────
+document.getElementById('copyPreviewBtn').addEventListener('click', function() {
+  copyText(buildFinalText(getTemplate(), varValues), this);
+});
+
+// ── Sample template ────────────────────────────────────────────
+document.getElementById('loadSampleBtn').addEventListener('click', () => {
+  document.getElementById('templateInput').value =
+`You are a {{role}} with expertise in {{topic}}.
+
+Your task is to write a {{output_format}} that explains {{concept}} to a {{audience}} audience.
+
+Requirements:
+- Language: {{language}}
+- Tone: {{tone}}
+- Length: approximately {{word_count}} words
+
+Begin your response directly without preamble.`;
+  varValues.clear();
+  update();
+});
+
+// ── Save / Load ────────────────────────────────────────────────
+function loadSaved() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+
+function persistSaved(list) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  } catch(e) {
+    showSaveError('Storage full — delete some saved templates to free space.');
+  }
+}
+
+function showSaveError(msg) {
+  const el = document.getElementById('saveError');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
+document.getElementById('saveConfirmBtn').addEventListener('click', () => {
+  const name = document.getElementById('saveNameInput').value.trim();
+  const tmpl = getTemplate();
+  if (!name) { showSaveError('Please enter a template name.'); return; }
+  if (!tmpl.trim()) { showSaveError('Template is empty.'); return; }
+  document.getElementById('saveError').classList.add('hidden');
+  const list = loadSaved();
+  list.unshift({ name, template: tmpl, savedAt: Date.now() });
+  persistSaved(list);
+  document.getElementById('saveNameInput').value = '';
+  renderSavedList();
+});
+
+function renderSavedList() {
+  const list = loadSaved();
+  const container = document.getElementById('savedList');
+  const noSaved = document.getElementById('noSaved');
+  if (!list.length) { container.innerHTML = ''; noSaved.style.display = ''; return; }
+  noSaved.style.display = 'none';
+  container.innerHTML = list.map((item, i) => {
+    const date = new Date(item.savedAt).toLocaleDateString();
+    return `<div class="saved-item" data-idx="${i}">
+      <span class="saved-name" title="${escHtml(item.name)}">${escHtml(item.name)}</span>
+      <span class="saved-date">${date}</span>
+      <button class="btn btn-secondary btn-sm" onclick="loadTemplate(${i})">Load</button>
+      <button class="btn btn-ghost btn-sm" onclick="deleteTemplate(${i})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+window.loadTemplate = function(i) {
+  const list = loadSaved();
+  if (!list[i]) return;
+  document.getElementById('templateInput').value = list[i].template;
+  varValues.clear();
+  update();
+};
+
+window.deleteTemplate = function(i) {
+  const list = loadSaved();
+  list.splice(i, 1);
+  persistSaved(list);
+  renderSavedList();
+};
+
+// Init
+renderSavedList();
+update();
+</script>
+</body>
+</html>

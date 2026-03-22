@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visual Memory — Free Grid Pattern Brain Game | Play at Work | Office Tools</title>
+  <meta name="description" content="Memorize which squares light up, then reproduce the pattern from memory. Free visual memory brain training game in your browser — no download needed.">
+  <meta name="keywords" content="visual memory game online free, grid pattern memory test, spatial memory game, brain training game browser, office break game, cognitive test free, pattern recall game, play at work">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Visual Memory — Grid Pattern Brain Game | Office Tools">
+  <meta property="og:description" content="Memorize highlighted grid squares and reproduce the pattern. Free browser brain game.">
+  <meta property="og:url" content="https://tools.grin.money/tools/visual-memory/">
+  <link rel="canonical" href="https://tools.grin.money/tools/visual-memory/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Visual Memory","description":"Memorize highlighted grid squares and reproduce the pattern. Free browser brain training game.","applicationCategory":"Game","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/visual-memory/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .game-wrap { display:flex; flex-direction:column; align-items:center; gap:1.1rem; }
+    .vis-grid { display:grid; gap:8px; }
+    .vis-cell {
+      width:64px; height:64px; border-radius:10px;
+      background:var(--bg); border:2px solid var(--border);
+      cursor:pointer; transition:background .15s, border-color .15s;
+    }
+    @media(max-width:380px){ .vis-cell{width:52px;height:52px;} }
+    .vis-cell.highlight { background:var(--primary); border-color:var(--primary); }
+    .vis-cell.selected  { background:color-mix(in srgb,var(--primary) 40%,var(--bg)); border-color:var(--primary); }
+    .vis-cell.correct   { background:var(--success); border-color:var(--success); }
+    .vis-cell.wrong     { background:var(--danger);  border-color:var(--danger);  }
+    .hud { display:flex; gap:.75rem; flex-wrap:wrap; justify-content:center; }
+    .hud-box { background:var(--bg); border:1.5px solid var(--border); border-radius:var(--radius); padding:.35rem .9rem; text-align:center; min-width:80px; }
+    .hud-box small { display:block; font-size:.7rem; color:var(--text-muted); text-transform:uppercase; }
+    .hud-box span { display:block; font-size:1.2rem; font-weight:700; }
+    #status { font-size:.95rem; font-weight:600; text-align:center; min-height:1.4rem; color:var(--text-muted); }
+    #status.ok  { color:var(--success); }
+    #status.bad { color:var(--danger); }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Visual Memory</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🧠 Visual Memory</h1>
+    <p>Remember which squares light up, then tap them from memory!</p>
+  </div>
+
+  <div class="game-wrap">
+    <div class="hud">
+      <div class="hud-box"><small>Round</small><span id="round">—</span></div>
+      <div class="hud-box"><small>Best</small><span id="best">0</span></div>
+    </div>
+    <div id="status">Press Start to begin</div>
+    <div class="vis-grid" id="grid"></div>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;justify-content:center">
+      <button class="btn btn-primary" id="submitBtn" style="display:none">✔ Submit</button>
+      <button class="btn btn-primary" id="startBtn">▶ Start</button>
+    </div>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+initThemeToggle('themeToggle');
+
+const BEST_KEY = 'ot-vismem-best';
+let round=0, cols=3, rows=3, highlighted=[], selected=[], phase='idle';
+
+function updateBest(n) {
+  const b = parseInt(localStorage.getItem(BEST_KEY)||0);
+  const nb = Math.max(n,b);
+  localStorage.setItem(BEST_KEY, nb);
+  document.getElementById('best').textContent = nb;
+}
+
+function setStatus(msg, cls='') {
+  const el=document.getElementById('status');
+  el.textContent=msg; el.className=cls;
+}
+
+// Grid grows every 4 rounds: 3×3, 4×4, 5×5, 6×6
+function getGrid(r) {
+  const size = Math.min(6, 3 + Math.floor((r-1)/4));
+  return { cols:size, rows:size };
+}
+
+// Number of highlighted cells = round + 2 (capped at cols*rows - 2)
+function getHighlightCount(r, total) {
+  return Math.min(r + 1, total - 2);
+}
+
+function buildGrid() {
+  const el = document.getElementById('grid');
+  el.innerHTML='';
+  el.style.gridTemplateColumns = `repeat(${cols}, 64px)`;
+  const total = cols * rows;
+  for (let i=0;i<total;i++) {
+    const cell = document.createElement('div');
+    cell.className = 'vis-cell';
+    cell.dataset.i = i;
+    cell.addEventListener('click', () => {
+      if (phase !== 'input') return;
+      if (cell.classList.contains('selected')) {
+        cell.classList.remove('selected');
+        selected = selected.filter(x=>x!==i);
+      } else {
+        cell.classList.add('selected');
+        selected.push(i);
+      }
+    });
+    el.appendChild(cell);
+  }
+}
+
+function startRound() {
+  round++;
+  const g = getGrid(round);
+  cols = g.cols; rows = g.rows;
+  const total = cols * rows;
+  const count = getHighlightCount(round, total);
+
+  document.getElementById('round').textContent = round;
+  selected = [];
+  highlighted = [];
+
+  // Pick random cells to highlight
+  const indices = Array.from({length:total},(_,i)=>i).sort(()=>Math.random()-.5).slice(0,count);
+  highlighted = indices;
+
+  buildGrid();
+  phase = 'show';
+  setStatus('Memorize the highlighted squares…');
+  document.getElementById('submitBtn').style.display='none';
+  document.getElementById('startBtn').style.display='none';
+
+  // Show highlighted cells
+  const cells = document.querySelectorAll('.vis-cell');
+  highlighted.forEach(i => cells[i].classList.add('highlight'));
+
+  setTimeout(() => {
+    // Hide
+    highlighted.forEach(i => cells[i].classList.remove('highlight'));
+    phase = 'input';
+    setStatus(`Tap the ${count} squares that were highlighted`);
+    document.getElementById('submitBtn').style.display='';
+  }, 2000);
+}
+
+function checkAnswer() {
+  phase = 'result';
+  document.getElementById('submitBtn').style.display='none';
+  const cells = document.querySelectorAll('.vis-cell');
+  const selSet = new Set(selected);
+  const hlSet  = new Set(highlighted);
+
+  let correct = 0;
+  highlighted.forEach(i => {
+    if (selSet.has(i)) { cells[i].classList.add('correct'); correct++; }
+    else                cells[i].classList.add('highlight');
+  });
+  selected.forEach(i => {
+    if (!hlSet.has(i)) cells[i].classList.add('wrong');
+  });
+
+  if (correct === highlighted.length && selected.length === highlighted.length) {
+    setStatus('✅ Perfect! Get ready…', 'ok');
+    updateBest(round);
+    setTimeout(startRound, 1200);
+  } else {
+    setStatus(`❌ Game over! You reached round ${round}`, 'bad');
+    updateBest(round - 1);
+    round = 0;
+    phase = 'idle';
+    document.getElementById('round').textContent='—';
+    setTimeout(() => {
+      document.getElementById('startBtn').style.display='';
+      document.getElementById('startBtn').textContent='▶ Try Again';
+    }, 1500);
+  }
+}
+
+document.getElementById('startBtn').addEventListener('click', () => {
+  round = 0; startRound();
+});
+document.getElementById('submitBtn').addEventListener('click', checkAnswer);
+document.getElementById('best').textContent = localStorage.getItem(BEST_KEY)||0;
+</script>
+</body>
+</html>

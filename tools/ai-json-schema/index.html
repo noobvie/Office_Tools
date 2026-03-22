@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI JSON Schema Builder — Office Tools</title>
+  <meta name="description" content="Generate JSON Schema from any JSON input, or build schemas visually. Export in OpenAI and Anthropic function calling formats for AI tool definitions.">
+  <meta name="keywords" content="JSON schema builder, JSON schema generator, OpenAI function calling, Anthropic tool use, AI tool definition, JSON schema draft-07, JSON schema validator">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="AI JSON Schema Builder — Office Tools">
+  <meta property="og:description" content="Generate JSON Schema from any JSON input, or build schemas visually. Export for OpenAI and Anthropic tool use.">
+  <meta property="og:url" content="https://tools.grin.money/tools/ai-json-schema/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="AI JSON Schema Builder — Office Tools">
+  <meta name="twitter:description" content="Build JSON schemas and export them as OpenAI/Anthropic AI function calling definitions.">
+  <link rel="canonical" href="https://tools.grin.money/tools/ai-json-schema/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"JSON Schema Builder","description":"Generate and build JSON Schemas with AI function calling export.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/ai-json-schema/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .schema-out {
+      font-family: 'Courier New', monospace;
+      font-size: .8rem;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .75rem 1rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      min-height: 200px;
+      max-height: 420px;
+      overflow-y: auto;
+      margin-top: .5rem;
+    }
+    /* Visual builder */
+    .field-list { display: flex; flex-direction: column; gap: .4rem; margin-top: .5rem; }
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 110px 1fr auto auto auto;
+      gap: .4rem;
+      align-items: center;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .4rem .6rem;
+      font-size: .83rem;
+    }
+    @media (max-width: 680px) { .field-row { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto auto; } }
+    .field-row input, .field-row select { font-size: .82rem; padding: .3rem .5rem; }
+    .add-field-row { display: grid; grid-template-columns: 1fr 110px 1fr 1fr auto; gap: .4rem; margin-top: .5rem; align-items: end; }
+    @media (max-width: 680px) { .add-field-row { grid-template-columns: 1fr 1fr; } }
+    /* AI wrapper modal */
+    .ai-wrap-panel { margin-top: .75rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: .75rem 1rem; display: none; }
+    .ai-wrap-panel.open { display: block; }
+    .ai-tabs { display: flex; gap: .4rem; margin-bottom: .5rem; }
+    .ai-tabs button { font-size: .8rem; padding: .25rem .7rem; }
+    .ai-out { font-family: 'Courier New', monospace; font-size: .78rem; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: .6rem .9rem; white-space: pre-wrap; min-height: 120px; max-height: 300px; overflow-y: auto; margin-top: .4rem; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">JSON Schema Builder</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main" style="max-width:980px">
+  <div class="tool-header">
+    <h1>🏗️ JSON Schema Builder</h1>
+    <p>Auto-generate JSON Schema draft-07 from any JSON, or build visually. Export for OpenAI &amp; Anthropic tool calling.</p>
+  </div>
+
+  <div class="card" data-tabs>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="autoTab">Auto-generate</button>
+      <button class="tab-btn" data-tab="visualTab">Visual Builder</button>
+    </div>
+
+    <!-- Auto-generate tab -->
+    <div class="tab-pane active" id="autoTab">
+      <label class="form-label">Paste JSON</label>
+      <textarea id="jsonInput" class="form-input" style="min-height:140px;font-family:'Courier New',monospace;font-size:.84rem;resize:vertical" placeholder='{"name":"Alice","age":30,"email":"alice@example.com","active":true}'></textarea>
+      <div id="autoError" class="alert alert-danger mt-2 hidden"></div>
+      <div class="btn-group mt-2">
+        <button class="btn btn-primary" id="generateBtn">Generate Schema</button>
+        <button class="btn btn-secondary btn-sm" id="sampleObjBtn">Sample Object</button>
+        <button class="btn btn-secondary btn-sm" id="sampleArrBtn">Sample Array</button>
+      </div>
+      <div id="autoOutputWrap" class="hidden">
+        <label class="form-label mt-2">JSON Schema (draft-07)</label>
+        <div class="schema-out" id="autoOut"></div>
+        <div class="btn-group mt-2">
+          <button class="btn btn-ghost btn-sm copy-btn" id="copyAutoBtn">Copy Schema</button>
+          <button class="btn btn-secondary btn-sm" id="dlAutoBtn">⬇ Download .json</button>
+          <button class="btn btn-primary btn-sm" id="aiWrapAutoBtn">🤖 AI Function Calling</button>
+        </div>
+        <div class="ai-wrap-panel" id="aiAutoPanel">
+          <div class="flex-between" style="margin-bottom:.4rem">
+            <strong style="font-size:.85rem">AI Function Calling Wrapper</strong>
+            <button class="btn btn-ghost btn-sm" id="closeAutoAI">✕ Close</button>
+          </div>
+          <div class="form-row" style="gap:.5rem;margin-bottom:.5rem">
+            <div class="form-group" style="flex:1"><label style="font-size:.78rem">Function name</label><input type="text" id="autoFnName" class="form-input" value="my_function" placeholder="my_function"></div>
+            <div class="form-group" style="flex:2"><label style="font-size:.78rem">Description</label><input type="text" id="autoFnDesc" class="form-input" value="Perform an action." placeholder="Describe what the function does..."></div>
+          </div>
+          <div class="ai-tabs">
+            <button class="btn btn-primary btn-sm" id="showOpenAIAutoBtn">OpenAI format</button>
+            <button class="btn btn-secondary btn-sm" id="showAnthropicAutoBtn">Anthropic format</button>
+          </div>
+          <div class="ai-out" id="aiAutoOut"></div>
+          <button class="btn btn-ghost btn-sm copy-btn mt-2" id="copyAIAutoBtn" style="margin-top:.4rem">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Visual Builder tab -->
+    <div class="tab-pane" id="visualTab">
+      <p class="text-muted" style="font-size:.84rem;margin-bottom:.5rem">Add fields to build your schema interactively.</p>
+      <div class="add-field-row">
+        <div><label style="font-size:.78rem;font-weight:700">Field Name</label><input type="text" id="newFieldName" class="form-input" placeholder="field_name"></div>
+        <div><label style="font-size:.78rem;font-weight:700">Type</label>
+          <select id="newFieldType" class="form-input">
+            <option>string</option><option>number</option><option>integer</option>
+            <option>boolean</option><option>object</option><option>array</option><option>null</option>
+          </select>
+        </div>
+        <div><label style="font-size:.78rem;font-weight:700">Description</label><input type="text" id="newFieldDesc" class="form-input" placeholder="What this field is for"></div>
+        <div><label style="font-size:.78rem;font-weight:700">Enum values (comma-separated)</label><input type="text" id="newFieldEnum" class="form-input" placeholder="val1, val2, val3"></div>
+        <div style="padding-top:1.2rem"><button class="btn btn-primary" id="addFieldBtn">+ Add</button></div>
+      </div>
+      <div id="visualError" class="alert alert-danger mt-2 hidden"></div>
+      <div class="field-list" id="fieldList"></div>
+      <div id="visualOutputWrap" class="hidden">
+        <label class="form-label mt-2">JSON Schema (draft-07)</label>
+        <div class="schema-out" id="visualOut"></div>
+        <div class="btn-group mt-2">
+          <button class="btn btn-ghost btn-sm copy-btn" id="copyVisualBtn">Copy Schema</button>
+          <button class="btn btn-secondary btn-sm" id="dlVisualBtn">⬇ Download .json</button>
+          <button class="btn btn-primary btn-sm" id="aiWrapVisualBtn">🤖 AI Function Calling</button>
+        </div>
+        <div class="ai-wrap-panel" id="aiVisualPanel">
+          <div class="flex-between" style="margin-bottom:.4rem">
+            <strong style="font-size:.85rem">AI Function Calling Wrapper</strong>
+            <button class="btn btn-ghost btn-sm" id="closeVisualAI">✕ Close</button>
+          </div>
+          <div class="form-row" style="gap:.5rem;margin-bottom:.5rem">
+            <div class="form-group" style="flex:1"><label style="font-size:.78rem">Function name</label><input type="text" id="visualFnName" class="form-input" value="my_function" placeholder="my_function"></div>
+            <div class="form-group" style="flex:2"><label style="font-size:.78rem">Description</label><input type="text" id="visualFnDesc" class="form-input" value="Perform an action." placeholder="Describe what the function does..."></div>
+          </div>
+          <div class="ai-tabs">
+            <button class="btn btn-primary btn-sm" id="showOpenAIVisualBtn">OpenAI format</button>
+            <button class="btn btn-secondary btn-sm" id="showAnthropicVisualBtn">Anthropic format</button>
+          </div>
+          <div class="ai-out" id="aiVisualOut"></div>
+          <button class="btn btn-ghost btn-sm copy-btn mt-2" id="copyAIVisualBtn" style="margin-top:.4rem">Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+// ── Schema inference ───────────────────────────────────────────
+function inferSchema(value, depth = 0) {
+  if (depth > 6) return { type: 'object', description: 'Deeply nested — truncated' };
+  if (value === null) return { type: 'null' };
+  if (typeof value === 'boolean') return { type: 'boolean' };
+  if (typeof value === 'number') return { type: Number.isInteger(value) ? 'integer' : 'number' };
+  if (typeof value === 'string') return { type: 'string' };
+  if (Array.isArray(value)) {
+    if (!value.length) return { type: 'array', items: {} };
+    // Detect enum: if all items are strings and ≤8 unique values
+    const allStrings = value.every(v => typeof v === 'string');
+    const unique = [...new Set(value)];
+    if (allStrings && unique.length <= 8) return { type: 'array', items: { type: 'string', enum: unique } };
+    return { type: 'array', items: inferSchema(value[0], depth + 1) };
+  }
+  if (typeof value === 'object') {
+    const keys = Object.keys(value);
+    const properties = {};
+    keys.forEach(k => { properties[k] = inferSchema(value[k], depth + 1); });
+    return { type: 'object', properties, required: keys };
+  }
+  return {};
+}
+
+function inferFromArray(arr) {
+  if (!arr.length) return { type: 'array', items: {} };
+  // Compute intersection of required keys across all objects
+  const allKeys = arr.map(item => typeof item === 'object' && item !== null && !Array.isArray(item) ? Object.keys(item) : []);
+  const required = allKeys.length > 0 ? allKeys.reduce((a, b) => a.filter(k => b.includes(k))) : [];
+  const sample = arr[0];
+  const schema = inferSchema(sample, 0);
+  if (schema.type === 'object' && required.length < (schema.required || []).length) {
+    schema.required = required;
+  }
+  return { type: 'array', items: schema };
+}
+
+function wrapWithDraft(schema) {
+  return { '$schema': 'http://json-schema.org/draft-07/schema#', ...schema };
+}
+
+// ── Auto-generate tab ──────────────────────────────────────────
+let autoSchema = null;
+
+document.getElementById('generateBtn').addEventListener('click', () => {
+  const raw = document.getElementById('jsonInput').value.trim();
+  document.getElementById('autoError').classList.add('hidden');
+  if (!raw) return;
+  let parsed;
+  try { parsed = JSON.parse(raw); }
+  catch(e) {
+    const err = document.getElementById('autoError');
+    err.textContent = 'Invalid JSON: ' + e.message;
+    err.classList.remove('hidden');
+    return;
+  }
+  autoSchema = Array.isArray(parsed) ? wrapWithDraft(inferFromArray(parsed)) : wrapWithDraft(inferSchema(parsed));
+  document.getElementById('autoOut').textContent = JSON.stringify(autoSchema, null, 2);
+  document.getElementById('autoOutputWrap').classList.remove('hidden');
+  document.getElementById('aiAutoPanel').classList.remove('open');
+});
+
+document.getElementById('sampleObjBtn').addEventListener('click', () => {
+  document.getElementById('jsonInput').value = JSON.stringify({
+    "user_id": "u_12345",
+    "name": "Alice Johnson",
+    "age": 30,
+    "email": "alice@example.com",
+    "active": true,
+    "score": 98.7,
+    "tags": ["admin", "verified"],
+    "address": { "city": "New York", "country": "US" }
+  }, null, 2);
+});
+
+document.getElementById('sampleArrBtn').addEventListener('click', () => {
+  document.getElementById('jsonInput').value = JSON.stringify([
+    { "id": 1, "product": "Widget A", "price": 9.99, "in_stock": true },
+    { "id": 2, "product": "Widget B", "price": 14.99, "in_stock": false },
+    { "id": 3, "product": "Widget C", "price": 4.99, "in_stock": true }
+  ], null, 2);
+});
+
+document.getElementById('copyAutoBtn').addEventListener('click', function() {
+  copyText(document.getElementById('autoOut').textContent, this);
+});
+
+document.getElementById('dlAutoBtn').addEventListener('click', () => {
+  const blob = new Blob([document.getElementById('autoOut').textContent], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'schema.json'; a.click();
+});
+
+// ── Visual Builder tab ─────────────────────────────────────────
+let fields = []; // { name, type, description, required, enumVals }
+
+document.getElementById('addFieldBtn').addEventListener('click', () => {
+  const name = document.getElementById('newFieldName').value.trim();
+  const type = document.getElementById('newFieldType').value;
+  const desc = document.getElementById('newFieldDesc').value.trim();
+  const enumRaw = document.getElementById('newFieldEnum').value.trim();
+  const enumVals = enumRaw ? enumRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const errEl = document.getElementById('visualError');
+  errEl.classList.add('hidden');
+  if (!name) { errEl.textContent = 'Field name is required.'; errEl.classList.remove('hidden'); return; }
+  if (!/^\w+$/.test(name)) { errEl.textContent = 'Field name must contain only letters, numbers, and underscores.'; errEl.classList.remove('hidden'); return; }
+  if (fields.find(f => f.name === name)) { errEl.textContent = `Field "${name}" already exists.`; errEl.classList.remove('hidden'); return; }
+  fields.push({ name, type, description: desc, required: true, enumVals });
+  document.getElementById('newFieldName').value = '';
+  document.getElementById('newFieldDesc').value = '';
+  document.getElementById('newFieldEnum').value = '';
+  renderFieldList();
+  rebuildVisualSchema();
+});
+
+function renderFieldList() {
+  const list = document.getElementById('fieldList');
+  if (!fields.length) { list.innerHTML = ''; return; }
+  list.innerHTML = fields.map((f, i) => `
+    <div class="field-row">
+      <span style="font-weight:700;font-family:monospace">${escHtml(f.name)}</span>
+      <span style="color:var(--text-muted);font-size:.8rem">${f.type}</span>
+      <span style="font-size:.8rem;color:var(--text-muted)">${escHtml(f.description || '—')}</span>
+      <label style="font-size:.78rem;display:flex;align-items:center;gap:.3rem;white-space:nowrap">
+        <input type="checkbox" ${f.required ? 'checked' : ''} onchange="toggleRequired(${i},this.checked)"> required
+      </label>
+      ${f.enumVals.length ? `<span style="font-size:.72rem;color:var(--primary)">[enum]</span>` : '<span></span>'}
+      <button class="btn btn-ghost btn-sm" onclick="removeField(${i})">✕</button>
+    </div>`).join('');
+}
+
+window.toggleRequired = function(i, val) {
+  fields[i].required = val;
+  rebuildVisualSchema();
+};
+
+window.removeField = function(i) {
+  fields.splice(i, 1);
+  renderFieldList();
+  rebuildVisualSchema();
+};
+
+function rebuildVisualSchema() {
+  if (!fields.length) { document.getElementById('visualOutputWrap').classList.add('hidden'); return; }
+  const properties = {};
+  const required = [];
+  fields.forEach(f => {
+    const prop = { type: f.type };
+    if (f.description) prop.description = f.description;
+    if (f.enumVals.length) prop.enum = f.type === 'number' || f.type === 'integer'
+      ? f.enumVals.map(v => isNaN(v) ? v : Number(v))
+      : f.enumVals;
+    properties[f.name] = prop;
+    if (f.required) required.push(f.name);
+  });
+  const schema = { '$schema': 'http://json-schema.org/draft-07/schema#', type: 'object', properties };
+  if (required.length) schema.required = required;
+  document.getElementById('visualOut').textContent = JSON.stringify(schema, null, 2);
+  document.getElementById('visualOutputWrap').classList.remove('hidden');
+  document.getElementById('aiVisualPanel').classList.remove('open');
+  return schema;
+}
+
+document.getElementById('copyVisualBtn').addEventListener('click', function() {
+  copyText(document.getElementById('visualOut').textContent, this);
+});
+
+document.getElementById('dlVisualBtn').addEventListener('click', () => {
+  const blob = new Blob([document.getElementById('visualOut').textContent], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'schema.json'; a.click();
+});
+
+// ── AI Function Calling wrappers ───────────────────────────────
+function getSchemaWithoutDraft(outId) {
+  const raw = document.getElementById(outId).textContent;
+  try {
+    const obj = JSON.parse(raw);
+    const { '$schema': _drop, ...rest } = obj;
+    return rest;
+  } catch(e) { return {}; }
+}
+
+function buildOpenAIWrapper(fnName, fnDesc, schema) {
+  return JSON.stringify({ type: 'function', function: { name: fnName, description: fnDesc, parameters: schema } }, null, 2);
+}
+
+function buildAnthropicWrapper(fnName, fnDesc, schema) {
+  return JSON.stringify({ name: fnName, description: fnDesc, input_schema: schema }, null, 2);
+}
+
+function setupAIPanel(btnId, panelId, outSchemaId, openAIBtnId, anthropicBtnId, aiOutId, copyBtnId, closeBtnId, fnNameId, fnDescId) {
+  let currentFormat = 'openai';
+
+  function renderAI() {
+    const schema = getSchemaWithoutDraft(outSchemaId);
+    const name = document.getElementById(fnNameId).value || 'my_function';
+    const desc = document.getElementById(fnDescId).value || '';
+    const text = currentFormat === 'openai' ? buildOpenAIWrapper(name, desc, schema) : buildAnthropicWrapper(name, desc, schema);
+    document.getElementById(aiOutId).textContent = text;
+  }
+
+  document.getElementById(btnId).addEventListener('click', () => {
+    document.getElementById(panelId).classList.add('open');
+    currentFormat = 'openai';
+    renderAI();
+  });
+  document.getElementById(closeBtnId).addEventListener('click', () => {
+    document.getElementById(panelId).classList.remove('open');
+  });
+  document.getElementById(openAIBtnId).addEventListener('click', () => { currentFormat = 'openai'; renderAI(); });
+  document.getElementById(anthropicBtnId).addEventListener('click', () => { currentFormat = 'anthropic'; renderAI(); });
+  document.getElementById(fnNameId).addEventListener('input', renderAI);
+  document.getElementById(fnDescId).addEventListener('input', renderAI);
+  document.getElementById(copyBtnId).addEventListener('click', function() {
+    copyText(document.getElementById(aiOutId).textContent, this);
+  });
+}
+
+setupAIPanel('aiWrapAutoBtn',   'aiAutoPanel',   'autoOut',   'showOpenAIAutoBtn',   'showAnthropicAutoBtn',   'aiAutoOut',   'copyAIAutoBtn',   'closeAutoAI',   'autoFnName',   'autoFnDesc');
+setupAIPanel('aiWrapVisualBtn', 'aiVisualPanel', 'visualOut', 'showOpenAIVisualBtn', 'showAnthropicVisualBtn', 'aiVisualOut', 'copyAIVisualBtn', 'closeVisualAI', 'visualFnName', 'visualFnDesc');
+</script>
+</body>
+</html>

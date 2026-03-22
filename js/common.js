@@ -121,6 +121,9 @@ const OT_TOOLS = [
   { name: 'Regex Tester',            path: 'regex-tester',          cat: '💻 Development',          icon: '🔍' },
   { name: 'SQL Formatter',           path: 'sql-formatter',         cat: '💻 Development',          icon: '🗄️' },
   { name: 'File Compressor',         path: 'file-compressor',       cat: '💻 Development',          icon: '🗜️' },
+  { name: 'AI Token Counter',        path: 'ai-token-counter',      cat: '💻 Development',          icon: '🔢' },
+  { name: 'Prompt Template Builder', path: 'ai-prompt-template',    cat: '💻 Development',          icon: '📝' },
+  { name: 'JSON Schema Builder',     path: 'ai-json-schema',        cat: '💻 Development',          icon: '🏗️' },
   // 🎬 Media
   { name: 'YouTube Downloader',      path: 'yt-downloader',         cat: '🎬 Media',                icon: '📥' },
   { name: 'Speech & Voice',          path: 'speech-voice',          cat: '🎬 Media',                icon: '🎙️' },
@@ -150,6 +153,17 @@ const OT_TOOLS = [
   { name: 'URL Shortener',           path: 'url-shortener',         cat: '📤 Share',                icon: '🔗' },
   { name: 'Pastebin',                path: 'pastebin',              cat: '📤 Share',                icon: '📋' },
   { name: 'File Share',              path: 'file-share',            cat: '📤 Share',                icon: '📦' },
+  // 🎮 Relax
+  { name: '2048',                    path: '2048',                  cat: '🎮 Relax',                icon: '🔢' },
+  { name: 'Sudoku',                  path: 'sudoku',                cat: '🎮 Relax',                icon: '🧩' },
+  { name: 'Gomoku',                  path: 'gomoku',                cat: '🎮 Relax',                icon: '⭕' },
+  { name: 'Wordle',                  path: 'wordle',                cat: '🎮 Relax',                icon: '💬' },
+  { name: 'Memory Match',            path: 'memory',                cat: '🎮 Relax',                icon: '🎴' },
+  { name: 'Chess',                   path: 'chess',                 cat: '🎮 Relax',                icon: '♟️' },
+  { name: 'Simon Says',              path: 'simon-says',            cat: '🎮 Relax',                icon: '🔴' },
+  { name: 'Number Memory',           path: 'number-memory',         cat: '🎮 Relax',                icon: '🔢' },
+  { name: 'Visual Memory',           path: 'visual-memory',         cat: '🎮 Relax',                icon: '🧠' },
+  { name: 'Word Memory',             path: 'word-memory',           cat: '🎮 Relax',                icon: '🔤' },
 ];
 
 function initToolSidebar() {

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simon Says — Free Memory Sequence Game | Play at Work | Office Tools</title>
+  <meta name="description" content="Play the classic Simon Says color sequence memory game free in your browser. Watch the pattern, repeat it back. Great office brain training game — no download needed.">
+  <meta name="keywords" content="simon says game online free, color sequence memory game, simon game browser, office break game, brain training game, memory sequence game, play at work, free online simon">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Simon Says — Free Memory Sequence Game | Office Tools">
+  <meta property="og:description" content="Classic Simon Says color sequence game. Watch and repeat the pattern. Free browser game.">
+  <meta property="og:url" content="https://tools.grin.money/tools/simon-says/">
+  <link rel="canonical" href="https://tools.grin.money/tools/simon-says/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Simon Says","description":"Classic Simon Says color sequence memory game. Free browser game, no download.","applicationCategory":"Game","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/simon-says/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .game-wrap { display:flex; flex-direction:column; align-items:center; gap:1.25rem; }
+    .simon-board { display:grid; grid-template-columns:1fr 1fr; gap:12px; width:280px; }
+    .simon-btn {
+      height:120px; border-radius:14px; border:none; cursor:pointer;
+      opacity:.55; transition:opacity .12s, transform .12s;
+      box-shadow:0 4px 12px rgba(0,0,0,.2);
+    }
+    .simon-btn:disabled { cursor:not-allowed; }
+    .simon-btn.lit { opacity:1; transform:scale(1.04); }
+    #sRed    { background:#e53e3e; }
+    #sGreen  { background:#38a169; }
+    #sBlue   { background:#3182ce; }
+    #sYellow { background:#d69e2e; }
+    .hud { display:flex; gap:.75rem; flex-wrap:wrap; justify-content:center; }
+    .hud-box { background:var(--bg); border:1.5px solid var(--border); border-radius:var(--radius); padding:.35rem .9rem; text-align:center; min-width:80px; }
+    .hud-box small { display:block; font-size:.7rem; color:var(--text-muted); text-transform:uppercase; }
+    .hud-box span { display:block; font-size:1.2rem; font-weight:700; }
+    #status { font-size:1rem; font-weight:600; min-height:1.5rem; text-align:center; color:var(--text-muted); }
+    #status.ok  { color:var(--success); }
+    #status.bad { color:var(--danger); }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Simon Says</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔴 Simon Says</h1>
+    <p>Watch the color sequence, then repeat it. How far can you go?</p>
+  </div>
+
+  <div class="game-wrap">
+    <div class="hud">
+      <div class="hud-box"><small>Round</small><span id="round">—</span></div>
+      <div class="hud-box"><small>Best</small><span id="best">0</span></div>
+    </div>
+    <div class="simon-board">
+      <button class="simon-btn" id="sRed"    data-idx="0"></button>
+      <button class="simon-btn" id="sGreen"  data-idx="1"></button>
+      <button class="simon-btn" id="sBlue"   data-idx="2"></button>
+      <button class="simon-btn" id="sYellow" data-idx="3"></button>
+    </div>
+    <div id="status">Press Start to play</div>
+    <button class="btn btn-primary" id="startBtn">▶ Start</button>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+initThemeToggle('themeToggle');
+
+const BEST_KEY = 'ot-simon-best';
+const BTNS  = [document.getElementById('sRed'), document.getElementById('sGreen'), document.getElementById('sBlue'), document.getElementById('sYellow')];
+const FREQS = [261, 329, 392, 523]; // C4 E4 G4 C5
+let seq=[], step=0, playing=false, accepting=false;
+let audioCtx = null;
+
+function getAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playTone(idx, dur=120) {
+  try {
+    const ctx = getAudio();
+    const osc = ctx.createOscillator();
+    const gain= ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.value = FREQS[idx];
+    gain.gain.setValueAtTime(.4, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + dur/1000);
+    osc.start(); osc.stop(ctx.currentTime + dur/1000);
+  } catch(e){}
+}
+
+function lightUp(idx, dur=320) {
+  return new Promise(res => {
+    BTNS[idx].classList.add('lit');
+    playTone(idx, dur - 80);
+    setTimeout(() => { BTNS[idx].classList.remove('lit'); res(); }, dur);
+  });
+}
+
+function setStatus(msg, cls='') {
+  const el = document.getElementById('status');
+  el.textContent = msg; el.className = cls;
+}
+
+function setBtnsDisabled(val) {
+  BTNS.forEach(b => b.disabled = val);
+}
+
+async function playSequence() {
+  accepting = false;
+  setBtnsDisabled(true);
+  setStatus('Watch carefully…');
+  const delay = Math.max(200, 600 - Math.floor(seq.length/5)*20);
+  for (const idx of seq) {
+    await lightUp(idx, delay);
+    await new Promise(r=>setTimeout(r,80));
+  }
+  accepting = true;
+  step = 0;
+  setBtnsDisabled(false);
+  setStatus('Your turn! (' + seq.length + ' steps)');
+}
+
+function updateBest(n) {
+  const b = parseInt(localStorage.getItem(BEST_KEY)||0);
+  const nb = Math.max(n,b);
+  localStorage.setItem(BEST_KEY, nb);
+  document.getElementById('best').textContent = nb;
+}
+
+function startGame() {
+  seq = []; step = 0; playing = true;
+  document.getElementById('startBtn').textContent = '↩ Restart';
+  updateBest(0);
+  nextRound();
+}
+
+function nextRound() {
+  seq.push(Math.floor(Math.random()*4));
+  document.getElementById('round').textContent = seq.length;
+  setTimeout(playSequence, 600);
+}
+
+BTNS.forEach((btn, idx) => {
+  btn.addEventListener('click', async () => {
+    if (!accepting) return;
+    await lightUp(idx, 200);
+    if (idx !== seq[step]) {
+      // wrong
+      accepting = false;
+      setBtnsDisabled(true);
+      setStatus('❌ Wrong! Game over — round ' + seq.length, 'bad');
+      updateBest(seq.length - 1);
+      playing = false;
+      document.getElementById('startBtn').textContent = '▶ Start';
+      document.getElementById('round').textContent = '—';
+      return;
+    }
+    step++;
+    if (step === seq.length) {
+      accepting = false;
+      setBtnsDisabled(true);
+      setStatus('✅ Correct! Get ready…', 'ok');
+      updateBest(seq.length);
+      setTimeout(nextRound, 1000);
+    }
+  });
+});
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('best').textContent = localStorage.getItem(BEST_KEY)||0;
+</script>
+</body>
+</html>

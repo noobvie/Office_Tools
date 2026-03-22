@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Token Counter — Office Tools</title>
+  <meta name="description" content="Count tokens for GPT-4, Claude, Llama, and Gemini. Estimate API cost and context window usage before sending to any AI model.">
+  <meta name="keywords" content="token counter, AI token counter, GPT token counter, Claude tokens, LLM tokens, AI API cost estimator, context window, tiktoken">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="AI Token Counter — Office Tools">
+  <meta property="og:description" content="Count tokens for GPT-4, Claude, Llama, and Gemini. Estimate API cost and context window usage.">
+  <meta property="og:url" content="https://tools.grin.money/tools/ai-token-counter/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="AI Token Counter — Office Tools">
+  <meta name="twitter:description" content="Count tokens for GPT-4, Claude, Llama, and Gemini. Estimate API cost and context window usage.">
+  <link rel="canonical" href="https://tools.grin.money/tools/ai-token-counter/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"AI Token Counter","description":"Count tokens for GPT-4, Claude, Llama, and Gemini. Estimate API cost and context window usage.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/ai-token-counter/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .model-table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+    .model-table th { text-align: left; padding: .45rem .75rem; color: var(--text-muted); font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; border-bottom: 2px solid var(--border); }
+    .model-table td { padding: .45rem .75rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .model-table tr:last-child td { border-bottom: none; }
+    .model-table .model-name { font-weight: 600; }
+    .ctx-bar-wrap { width: 110px; display: inline-block; vertical-align: middle; }
+    .ctx-bar { height: 7px; border-radius: 4px; background: var(--bg-secondary); border: 1px solid var(--border); overflow: hidden; }
+    .ctx-fill { height: 100%; border-radius: 4px; transition: width .3s, background .3s; }
+    .ctx-pct { font-size: .75rem; color: var(--text-muted); margin-left: .4rem; }
+    .approx-note { font-size: .75rem; color: var(--text-muted); margin-top: .4rem; }
+    .cjk-badge { display: inline-block; font-size: .7rem; background: var(--warning-dim); color: var(--warning); border-radius: 4px; padding: .1rem .4rem; margin-left: .4rem; vertical-align: middle; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">AI Token Counter</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔢 AI Token Counter</h1>
+    <p>Estimate token count and API cost for any AI model before making your call.</p>
+  </div>
+
+  <div class="card">
+    <label class="form-label">Paste your text or prompt</label>
+    <textarea id="inputText" class="form-input" style="min-height:160px;font-family:'Courier New',monospace;font-size:.86rem;resize:vertical" placeholder="Paste your prompt, system message, or any text here..."></textarea>
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-top:.75rem" id="basicStats">
+      <div class="stat-card"><div class="stat-value" id="statTokens">0</div><div class="stat-label">Tokens (est.)</div></div>
+      <div class="stat-card"><div class="stat-value" id="statChars">0</div><div class="stat-label">Characters</div></div>
+      <div class="stat-card"><div class="stat-value" id="statWords">0</div><div class="stat-label">Words</div></div>
+      <div class="stat-card"><div class="stat-value" id="statLines">0</div><div class="stat-label">Lines</div></div>
+    </div>
+    <div id="approxNote" class="approx-note">Token count is estimated (≈chars÷4 for English). Actual count varies by model tokenizer.</div>
+  </div>
+
+  <div class="card mt-2" data-tabs>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="tabGPT">GPT</button>
+      <button class="tab-btn" data-tab="tabClaude">Claude</button>
+      <button class="tab-btn" data-tab="tabLlama">Llama</button>
+      <button class="tab-btn" data-tab="tabGemini">Gemini</button>
+    </div>
+
+    <div class="tab-pane active" id="tabGPT">
+      <table class="model-table" id="tblGPT"></table>
+    </div>
+    <div class="tab-pane" id="tabClaude">
+      <table class="model-table" id="tblClaude"></table>
+    </div>
+    <div class="tab-pane" id="tabLlama">
+      <table class="model-table" id="tblLlama"></table>
+    </div>
+    <div class="tab-pane" id="tabGemini">
+      <table class="model-table" id="tblGemini"></table>
+    </div>
+  </div>
+
+  <div class="approx-note" style="margin-top:.5rem;text-align:center">Prices as of 2026-03 and may change. Always verify at the provider's pricing page.</div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+// ── Model definitions ──────────────────────────────────────────
+// inputCost / outputCost in $ per 1M tokens
+const MODELS = {
+  GPT: [
+    { name: 'GPT-4o',         ctx: 128000,  inputCost: 2.50,  outputCost: 10.00, factor: 1.0 },
+    { name: 'GPT-4o mini',    ctx: 128000,  inputCost: 0.15,  outputCost: 0.60,  factor: 1.0 },
+    { name: 'GPT-4 Turbo',    ctx: 128000,  inputCost: 10.00, outputCost: 30.00, factor: 1.0 },
+    { name: 'GPT-3.5 Turbo',  ctx: 16385,   inputCost: 0.50,  outputCost: 1.50,  factor: 1.0 },
+  ],
+  Claude: [
+    { name: 'Claude 4 Opus',       ctx: 200000, inputCost: 15.00, outputCost: 75.00, factor: 1.0 },
+    { name: 'Claude 4 Sonnet',     ctx: 200000, inputCost: 3.00,  outputCost: 15.00, factor: 1.0 },
+    { name: 'Claude 3.5 Haiku',    ctx: 200000, inputCost: 0.80,  outputCost: 4.00,  factor: 1.0 },
+  ],
+  Llama: [
+    { name: 'Llama 3.1 405B',  ctx: 128000, inputCost: 3.00,  outputCost: 3.00,  factor: 1.0 },
+    { name: 'Llama 3.3 70B',   ctx: 128000, inputCost: 0.59,  outputCost: 0.79,  factor: 1.0 },
+    { name: 'Llama 3.2 8B',    ctx: 128000, inputCost: 0.18,  outputCost: 0.18,  factor: 1.0 },
+  ],
+  Gemini: [
+    { name: 'Gemini 2.0 Flash',  ctx: 1048576, inputCost: 0.10,  outputCost: 0.40,  factor: 0.92 },
+    { name: 'Gemini 1.5 Pro',    ctx: 2097152, inputCost: 1.25,  outputCost: 5.00,  factor: 0.92 },
+    { name: 'Gemini 1.5 Flash',  ctx: 1048576, inputCost: 0.075, outputCost: 0.30,  factor: 0.92 },
+  ],
+};
+
+// ── Token estimation ───────────────────────────────────────────
+function estimateTokens(text, factor = 1.0) {
+  if (!text) return 0;
+  // Detect CJK characters (Chinese, Japanese, Korean)
+  const cjkCount = (text.match(/[\u3000-\u9fff\uac00-\ud7af\uf900-\ufaff]/g) || []).length;
+  const isCJK = cjkCount / Math.max(text.length, 1) > 0.05;
+  let tokens;
+  if (isCJK) {
+    // CJK: roughly 1 token per character (much higher density than chars/4)
+    const nonCJK = text.length - cjkCount;
+    tokens = cjkCount + Math.round(nonCJK / 4);
+  } else {
+    tokens = Math.ceil(text.length / 4);
+  }
+  return Math.max(1, Math.round(tokens * factor));
+}
+
+function fmtCost(cost) {
+  if (cost < 0.0001) return '<$0.0001';
+  if (cost < 0.01)   return '$' + cost.toFixed(4);
+  if (cost < 1)      return '$' + cost.toFixed(3);
+  return '$' + cost.toFixed(2);
+}
+
+function fmtCtx(n) {
+  if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+  if (n >= 1000)    return (n/1000).toFixed(0) + 'K';
+  return String(n);
+}
+
+function ctxColor(pct) {
+  if (pct >= 90) return 'var(--danger)';
+  if (pct >= 75) return '#f97316';
+  if (pct >= 50) return 'var(--warning)';
+  return 'var(--success)';
+}
+
+function renderTable(tableId, models, tokens) {
+  const tbl = document.getElementById(tableId);
+  let html = `<thead><tr><th>Model</th><th>Tokens</th><th>Context</th><th>Est. Input Cost</th></tr></thead><tbody>`;
+  models.forEach(m => {
+    const tok = Math.round(tokens * m.factor);
+    const pct = Math.min(100, (tok / m.ctx) * 100);
+    const cost = (tok / 1_000_000) * m.inputCost;
+    const color = ctxColor(pct);
+    html += `<tr>
+      <td class="model-name">${m.name}</td>
+      <td>${fmt(tok)}</td>
+      <td>
+        <div class="ctx-bar-wrap">
+          <div class="ctx-bar"><div class="ctx-fill" style="width:${pct.toFixed(1)}%;background:${color}"></div></div>
+        </div>
+        <span class="ctx-pct">${pct < 1 ? '<1' : pct.toFixed(0)}% of ${fmtCtx(m.ctx)}</span>
+      </td>
+      <td>${fmtCost(cost)}</td>
+    </tr>`;
+  });
+  html += '</tbody>';
+  tbl.innerHTML = html;
+}
+
+function update() {
+  const text = document.getElementById('inputText').value;
+  const chars = text.length;
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const lines = text ? text.split('\n').length : 0;
+  const tokens = estimateTokens(text);
+
+  // Check CJK
+  const cjkCount = (text.match(/[\u3000-\u9fff\uac00-\ud7af\uf900-\ufaff]/g) || []).length;
+  const hasCJK = cjkCount / Math.max(text.length, 1) > 0.05;
+
+  document.getElementById('statTokens').textContent = fmt(tokens);
+  document.getElementById('statChars').textContent = fmt(chars);
+  document.getElementById('statWords').textContent = fmt(words);
+  document.getElementById('statLines').textContent = fmt(lines);
+
+  let noteText = 'Token count is estimated (≈chars÷4 for English). Actual count varies by model tokenizer.';
+  if (hasCJK) noteText += ' CJK text detected — using character-based estimate.';
+  document.getElementById('approxNote').textContent = noteText;
+
+  renderTable('tblGPT',    MODELS.GPT,    tokens);
+  renderTable('tblClaude', MODELS.Claude, tokens);
+  renderTable('tblLlama',  MODELS.Llama,  tokens);
+  renderTable('tblGemini', MODELS.Gemini, tokens);
+}
+
+document.getElementById('inputText').addEventListener('input', update);
+update();
+</script>
+</body>
+</html>

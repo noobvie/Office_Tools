@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2048 — Free Online 2048 Puzzle Game | Play at Work | Office Tools</title>
+  <meta name="description" content="Play the classic 2048 sliding tile puzzle free in your browser — no download, no install. Merge tiles to reach 2048. Perfect quick office break game.">
+  <meta name="keywords" content="2048 game online free, play 2048 browser, 2048 no download, office break game, 2048 puzzle, merge tiles, number puzzle game, free brain game, play at work">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="2048 — Free Online Puzzle Game | Office Tools">
+  <meta property="og:description" content="Classic 2048 sliding tile puzzle. Merge tiles to reach 2048. Free, browser-based, no download.">
+  <meta property="og:url" content="https://tools.grin.money/tools/2048/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="2048 — Free Online Puzzle Game">
+  <meta name="twitter:description" content="Merge tiles to reach 2048. Free browser game, no download needed.">
+  <link rel="canonical" href="https://tools.grin.money/tools/2048/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"2048","description":"Classic 2048 sliding tile puzzle. Merge tiles to reach 2048. Free browser game, no download needed.","applicationCategory":"Game","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/2048/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .game-wrap { display:flex; flex-direction:column; align-items:center; gap:1rem; }
+    .hud { display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; justify-content:center; }
+    .score-box { background:var(--bg); border:1.5px solid var(--border); border-radius:var(--radius); padding:.4rem .9rem; text-align:center; min-width:80px; }
+    .score-box small { display:block; font-size:.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; }
+    .score-box span { display:block; font-size:1.2rem; font-weight:700; }
+    .board-bg { background:#bbada0; border-radius:10px; padding:10px; display:inline-block; }
+    .board { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+    .cell {
+      width:80px; height:80px; border-radius:6px; background:#cdc1b4;
+      display:flex; align-items:center; justify-content:center;
+      font-size:1.6rem; font-weight:700; color:#776e65;
+      transition:background .1s, color .1s;
+      position:relative; overflow:hidden;
+    }
+    @media(max-width:400px) {
+      .cell { width:64px; height:64px; font-size:1.2rem; }
+      .board-bg { padding:7px; }
+      .board { gap:7px; }
+    }
+    .cell.pop { animation:pop .1s ease; }
+    @keyframes pop { 0%{transform:scale(1)} 50%{transform:scale(1.12)} 100%{transform:scale(1)} }
+    /* Tile colors */
+    .t2    { background:#eee4da; }
+    .t4    { background:#ede0c8; }
+    .t8    { background:#f2b179; color:#f9f6f2; }
+    .t16   { background:#f59563; color:#f9f6f2; }
+    .t32   { background:#f67c5f; color:#f9f6f2; }
+    .t64   { background:#f65e3b; color:#f9f6f2; }
+    .t128  { background:#edcf72; color:#f9f6f2; font-size:1.3rem; }
+    .t256  { background:#edcc61; color:#f9f6f2; font-size:1.3rem; }
+    .t512  { background:#edc850; color:#f9f6f2; font-size:1.3rem; }
+    .t1024 { background:#edc53f; color:#f9f6f2; font-size:1rem; }
+    .t2048 { background:#edc22e; color:#f9f6f2; font-size:1rem; }
+    .tbig  { background:#3c3a32; color:#f9f6f2; font-size:.85rem; }
+    .overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex;
+      align-items:center; justify-content:center; z-index:100; opacity:0;
+      pointer-events:none; transition:opacity .3s;
+    }
+    .overlay.show { opacity:1; pointer-events:all; }
+    .overlay-box { background:var(--bg-card); border-radius:var(--radius-lg); padding:2rem; text-align:center; max-width:280px; }
+    .overlay-box h2 { margin:0 0 .5rem; font-size:1.6rem; }
+    .overlay-box p { color:var(--text-muted); margin:0 0 1.2rem; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">2048</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔢 2048</h1>
+    <p>Slide tiles to merge them. Reach the <strong>2048</strong> tile to win!</p>
+  </div>
+
+  <div class="game-wrap">
+    <div class="hud">
+      <div class="score-box"><small>Score</small><span id="score">0</span></div>
+      <div class="score-box"><small>Best</small><span id="best">0</span></div>
+      <button class="btn btn-secondary" id="undoBtn">↩ Undo</button>
+      <button class="btn btn-primary" id="newBtn">New Game</button>
+    </div>
+    <div class="board-bg">
+      <div class="board" id="board"></div>
+    </div>
+    <p style="color:var(--text-muted);font-size:.82rem;text-align:center">Arrow keys or swipe to move tiles</p>
+  </div>
+</main>
+
+<div class="overlay" id="overlay">
+  <div class="overlay-box">
+    <h2 id="overlayTitle">🎉 You Win!</h2>
+    <p id="overlayMsg">You reached 2048!</p>
+    <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-secondary" id="continueBtn" style="display:none">Continue</button>
+      <button class="btn btn-primary" id="overlayNewBtn">New Game</button>
+    </div>
+  </div>
+</div>
+
+<script src="../../js/common.js"></script>
+<script>
+initThemeToggle('themeToggle');
+
+const BEST_KEY = 'ot-2048-best';
+let board, score, prev, won, over;
+
+function newGame() {
+  board = Array.from({length:4}, () => Array(4).fill(0));
+  score = 0;
+  prev  = null;
+  won   = false;
+  over  = false;
+  addTile(); addTile();
+  render();
+  hideOverlay();
+}
+
+function addTile() {
+  const empty = [];
+  for (let r=0;r<4;r++) for (let c=0;c<4;c++) if (!board[r][c]) empty.push([r,c]);
+  if (!empty.length) return false;
+  const [r,c] = empty[Math.floor(Math.random()*empty.length)];
+  board[r][c] = Math.random()<0.9 ? 2 : 4;
+  return true;
+}
+
+function cloneBoard() { return board.map(r=>[...r]); }
+
+function move(dir) {
+  if (over) return;
+  const old = cloneBoard();
+  const oldScore = score;
+  let moved = false;
+
+  const merge = row => {
+    let arr = row.filter(x=>x);
+    for (let i=0;i<arr.length-1;i++) {
+      if (arr[i]===arr[i+1]) { arr[i]*=2; score+=arr[i]; arr.splice(i+1,1); moved=true; }
+    }
+    while (arr.length<4) arr.push(0);
+    return arr;
+  };
+
+  if (dir==='left')  for (let r=0;r<4;r++) { const n=merge(board[r]); if(n.join()!==board[r].join()) moved=true; board[r]=n; }
+  if (dir==='right') for (let r=0;r<4;r++) { const n=merge([...board[r]].reverse()).reverse(); if(n.join()!==board[r].join()) moved=true; board[r]=n; }
+  if (dir==='up')    for (let c=0;c<4;c++) { const col=board.map(r=>r[c]); const n=merge(col); n.forEach((v,r)=>board[r][c]=v); if(n.join()!==col.join()) moved=true; }
+  if (dir==='down')  for (let c=0;c<4;c++) { const col=board.map(r=>r[c]); const n=merge([...col].reverse()).reverse(); n.forEach((v,r)=>board[r][c]=v); if(n.join()!==col.join()) moved=true; }
+
+  if (moved) {
+    prev = { board: old, score: oldScore };
+    addTile();
+    updateBest();
+    render();
+    checkState();
+  }
+}
+
+function checkState() {
+  const flat = board.flat();
+  if (!won && flat.includes(2048)) {
+    won = true;
+    showOverlay('🎉 You Win!', 'You reached 2048!', true);
+    return;
+  }
+  if (!flat.includes(0)) {
+    for (let r=0;r<4;r++) for (let c=0;c<4;c++) {
+      if ((c<3 && board[r][c]===board[r][c+1]) || (r<3 && board[r][c]===board[r+1][c])) return;
+    }
+    over = true;
+    showOverlay('😔 Game Over', `Score: ${score}`, false);
+  }
+}
+
+function updateBest() {
+  const b = parseInt(localStorage.getItem(BEST_KEY)||0);
+  if (score>b) localStorage.setItem(BEST_KEY, score);
+  document.getElementById('best').textContent = Math.max(score, b);
+}
+
+function render() {
+  const el = document.getElementById('board');
+  el.innerHTML = '';
+  document.getElementById('score').textContent = score;
+  document.getElementById('best').textContent = Math.max(score, parseInt(localStorage.getItem(BEST_KEY)||0));
+  board.flat().forEach(v => {
+    const c = document.createElement('div');
+    c.className = 'cell' + (v ? ' t'+tileClass(v) : '');
+    if (v) c.textContent = v;
+    el.appendChild(c);
+  });
+}
+
+function tileClass(v) {
+  if (v<=2048) return v;
+  return 'big';
+}
+
+function showOverlay(title, msg, canContinue) {
+  document.getElementById('overlayTitle').textContent = title;
+  document.getElementById('overlayMsg').textContent   = msg;
+  document.getElementById('continueBtn').style.display = canContinue ? '' : 'none';
+  document.getElementById('overlay').classList.add('show');
+}
+function hideOverlay() { document.getElementById('overlay').classList.remove('show'); }
+
+// Controls
+document.addEventListener('keydown', e => {
+  const map = { ArrowLeft:'left', ArrowRight:'right', ArrowUp:'up', ArrowDown:'down' };
+  if (map[e.key]) { e.preventDefault(); move(map[e.key]); }
+});
+
+let tx=0, ty=0;
+document.getElementById('board').addEventListener('touchstart', e=>{ tx=e.touches[0].clientX; ty=e.touches[0].clientY; }, {passive:true});
+document.getElementById('board').addEventListener('touchend', e=>{
+  const dx=e.changedTouches[0].clientX-tx, dy=e.changedTouches[0].clientY-ty;
+  if (Math.max(Math.abs(dx),Math.abs(dy))<30) return;
+  if (Math.abs(dx)>Math.abs(dy)) move(dx>0?'right':'left');
+  else move(dy>0?'down':'up');
+});
+
+document.getElementById('newBtn').addEventListener('click', newGame);
+document.getElementById('overlayNewBtn').addEventListener('click', newGame);
+document.getElementById('continueBtn').addEventListener('click', ()=>{ hideOverlay(); });
+document.getElementById('undoBtn').addEventListener('click', ()=>{
+  if (!prev) return;
+  board=prev.board; score=prev.score; prev=null; over=false;
+  render();
+});
+
+newGame();
+</script>
+</body>
+</html>

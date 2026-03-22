@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sudoku — Free Online Sudoku Puzzle | Play at Work | Office Tools</title>
+  <meta name="description" content="Play free Sudoku in your browser — Easy, Medium, and Hard difficulty. No download, no install. Classic 9×9 grid puzzle with timer, pencil mode, and hints. Perfect office break.">
+  <meta name="keywords" content="sudoku online free, play sudoku browser, sudoku no download, office break puzzle, free sudoku easy medium hard, sudoku game, number puzzle online, play at work">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Sudoku — Free Online Puzzle Game | Office Tools">
+  <meta property="og:description" content="Classic 9×9 Sudoku — Easy, Medium, Hard. Pencil mode, timer, hints. Free browser game.">
+  <meta property="og:url" content="https://tools.grin.money/tools/sudoku/">
+  <link rel="canonical" href="https://tools.grin.money/tools/sudoku/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Sudoku","description":"Classic 9×9 Sudoku puzzle — Easy, Medium, Hard. Free browser game with timer and pencil mode.","applicationCategory":"Game","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/sudoku/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .game-wrap { display:flex; flex-direction:column; align-items:center; gap:.9rem; }
+    .sudoku-grid {
+      display:grid; grid-template-columns:repeat(9,1fr);
+      border:3px solid var(--text); border-radius:4px; overflow:hidden;
+      width:min(360px,92vw);
+    }
+    .s-cell {
+      aspect-ratio:1; border:1px solid var(--border); background:var(--bg-card);
+      display:flex; align-items:center; justify-content:center;
+      font-size:clamp(.95rem,3.5vw,1.3rem); font-weight:600; cursor:pointer;
+      position:relative; transition:background .1s;
+      user-select:none;
+    }
+    /* Thick box borders */
+    .s-cell[data-c="2"],.s-cell[data-c="5"] { border-right:2.5px solid var(--text); }
+    .s-cell[data-r="2"],.s-cell[data-r="5"] { border-bottom:2.5px solid var(--text); }
+    .s-cell.given  { color:var(--text); font-weight:700; }
+    .s-cell.filled { color:var(--primary); }
+    .s-cell.error  { color:var(--danger)!important; background:color-mix(in srgb,var(--danger) 12%,var(--bg-card))!important; }
+    .s-cell.selected { background:color-mix(in srgb,var(--primary) 18%,var(--bg-card))!important; }
+    .s-cell.highlight-rc { background:color-mix(in srgb,var(--primary) 8%,var(--bg-card)); }
+    .s-cell.highlight-val { background:color-mix(in srgb,var(--primary) 14%,var(--bg-card)); }
+    .candidates { position:absolute; inset:0; display:grid; grid-template-columns:repeat(3,1fr); font-size:clamp(.35rem,1.5vw,.55rem); color:var(--text-muted); padding:1px; }
+    .candidates span { display:flex; align-items:center; justify-content:center; }
+    .hud { display:flex; gap:.6rem; flex-wrap:wrap; justify-content:center; }
+    .hud-box { background:var(--bg); border:1.5px solid var(--border); border-radius:var(--radius); padding:.3rem .7rem; text-align:center; min-width:72px; }
+    .hud-box small { display:block; font-size:.65rem; color:var(--text-muted); text-transform:uppercase; }
+    .hud-box span { display:block; font-size:1.1rem; font-weight:700; }
+    .diff-select { display:flex; gap:.4rem; }
+    .diff-btn { padding:.3rem .75rem; border:1.5px solid var(--border); border-radius:var(--radius); cursor:pointer; font-size:.82rem; background:var(--bg-card); }
+    .diff-btn.active { border-color:var(--primary); color:var(--primary); font-weight:600; }
+    .numpad { display:grid; grid-template-columns:repeat(5,1fr); gap:5px; width:min(300px,80vw); }
+    .num-key { padding:.55rem; border:1.5px solid var(--border); border-radius:var(--radius); cursor:pointer; text-align:center; font-size:1.1rem; font-weight:600; background:var(--bg-card); transition:background .1s; }
+    .num-key:active, .num-key:hover { background:var(--primary); color:#fff; border-color:var(--primary); }
+    .num-key.erase { font-size:.85rem; }
+    .pencil-toggle { padding:.3rem .75rem; border:1.5px solid var(--border); border-radius:var(--radius); cursor:pointer; font-size:.82rem; background:var(--bg-card); }
+    .pencil-toggle.on { border-color:var(--primary); color:var(--primary); font-weight:600; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Sudoku</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🧩 Sudoku</h1>
+    <p>Fill the 9×9 grid so every row, column, and 3×3 box contains 1–9.</p>
+  </div>
+
+  <div class="game-wrap">
+    <div class="diff-select">
+      <button class="diff-btn active" data-diff="easy">Easy</button>
+      <button class="diff-btn" data-diff="medium">Medium</button>
+      <button class="diff-btn" data-diff="hard">Hard</button>
+    </div>
+    <div class="hud">
+      <div class="hud-box"><small>Time</small><span id="timer">0:00</span></div>
+      <button class="pencil-toggle" id="pencilBtn">✏️ Pencil</button>
+      <button class="btn btn-secondary" id="checkBtn">Check</button>
+      <button class="btn btn-secondary" id="solveBtn">Solve</button>
+      <button class="btn btn-primary" id="newBtn">New Game</button>
+    </div>
+    <div class="sudoku-grid" id="sudokuGrid"></div>
+    <div class="numpad" id="numpad"></div>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+initThemeToggle('themeToggle');
+
+const REMOVE = {easy:35, medium:45, hard:55};
+let difficulty='easy', puzzle, solution, candidates, selected=null, pencilMode=false, timerInterval, seconds=0, paused=false;
+
+// ── Board generation ──
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+function generateSolved() {
+  const b=Array.from({length:9},()=>Array(9).fill(0));
+  function valid(b,r,c,n){
+    for(let i=0;i<9;i++){if(b[r][i]===n||b[i][c]===n)return false;}
+    const br=Math.floor(r/3)*3, bc=Math.floor(c/3)*3;
+    for(let i=0;i<3;i++)for(let j=0;j<3;j++)if(b[br+i][bc+j]===n)return false;
+    return true;
+  }
+  function fill(pos){
+    if(pos===81)return true;
+    const r=Math.floor(pos/9),c=pos%9;
+    const nums=shuffle([1,2,3,4,5,6,7,8,9]);
+    for(const n of nums){if(valid(b,r,c,n)){b[r][c]=n;if(fill(pos+1))return true;b[r][c]=0;}}
+    return false;
+  }
+  fill(0);
+  return b;
+}
+
+function generatePuzzle(diff) {
+  const sol=generateSolved();
+  const puz=sol.map(r=>[...r]);
+  const cells=shuffle(Array.from({length:81},(_,i)=>i));
+  let removed=0;
+  const target=REMOVE[diff];
+  for(const idx of cells){
+    if(removed>=target)break;
+    const r=Math.floor(idx/9),c=idx%9;
+    const bak=puz[r][c]; puz[r][c]=0; removed++;
+    // Simple uniqueness check (one quick solver pass)
+    if(!hasUniqueSolution(puz)){puz[r][c]=bak;removed--;}
+  }
+  return {puzzle:puz,solution:sol};
+}
+
+function countSolutions(b,limit=2){
+  let count=0;
+  function valid(b,r,c,n){for(let i=0;i<9;i++){if(b[r][i]===n||b[i][c]===n)return false;}const br=Math.floor(r/3)*3,bc=Math.floor(c/3)*3;for(let i=0;i<3;i++)for(let j=0;j<3;j++)if(b[br+i][bc+j]===n)return false;return true;}
+  function solve(pos){
+    if(count>=limit)return;
+    if(pos===81){count++;return;}
+    const r=Math.floor(pos/9),c=pos%9;
+    if(b[r][c]!==0){solve(pos+1);return;}
+    for(let n=1;n<=9;n++){if(valid(b,r,c,n)){b[r][c]=n;solve(pos+1);b[r][c]=0;}}
+  }
+  const copy=b.map(r=>[...r]);solve(0);return count;
+}
+function hasUniqueSolution(b){return countSolutions(b,2)===1;}
+
+// ── Rendering ──
+function buildGrid(){
+  const grid=document.getElementById('sudokuGrid');
+  grid.innerHTML='';
+  for(let r=0;r<9;r++)for(let c=0;c<9;c++){
+    const cell=document.createElement('div');
+    cell.className='s-cell';
+    cell.dataset.r=r; cell.dataset.c=c;
+    cell.addEventListener('click',()=>selectCell(r,c));
+    grid.appendChild(cell);
+  }
+}
+
+function renderAll(){
+  document.querySelectorAll('.s-cell').forEach(cell=>{
+    const r=+cell.dataset.r,c=+cell.dataset.c;
+    const val=puzzle[r][c];
+    cell.innerHTML='';
+    cell.className='s-cell';
+    if(val){
+      // check if given
+      if(solution[r][c]===val&&!candidates[r][c].length){
+        // determine if it's a given (puzzle has it as original)
+        cell.textContent=val;
+        cell.classList.add(isGiven[r][c]?'given':'filled');
+      } else {
+        cell.textContent=val;
+        cell.classList.add('filled');
+      }
+    } else if(candidates[r][c].length){
+      const cd=document.createElement('div');
+      cd.className='candidates';
+      for(let n=1;n<=9;n++){
+        const s=document.createElement('span');
+        s.textContent=candidates[r][c].includes(n)?n:'';
+        cd.appendChild(s);
+      }
+      cell.appendChild(cd);
+    }
+    if(selected&&selected[0]===r&&selected[1]===c) cell.classList.add('selected');
+  });
+  highlightRelated();
+}
+
+function highlightRelated(){
+  if(!selected)return;
+  const [sr,sc]=selected;
+  const sv=puzzle[sr][sc];
+  document.querySelectorAll('.s-cell').forEach(cell=>{
+    const r=+cell.dataset.r,c=+cell.dataset.c;
+    if(selected&&r===sr&&c===sc)return;
+    const sameBox=Math.floor(r/3)===Math.floor(sr/3)&&Math.floor(c/3)===Math.floor(sc/3);
+    if(r===sr||c===sc||sameBox) cell.classList.add('highlight-rc');
+    if(sv&&puzzle[r][c]===sv) cell.classList.add('highlight-val');
+  });
+}
+
+function selectCell(r,c){
+  selected=[r,c]; renderAll();
+}
+
+function inputNumber(n){
+  if(!selected)return;
+  const [r,c]=selected;
+  if(isGiven[r][c])return;
+  if(pencilMode){
+    if(!candidates[r][c]) candidates[r][c]=[];
+    const idx=candidates[r][c].indexOf(n);
+    if(idx>=0) candidates[r][c].splice(idx,1); else candidates[r][c].push(n);
+    puzzle[r][c]=0;
+  } else {
+    puzzle[r][c]=n; candidates[r][c]=[];
+    checkErrors();
+    if(isComplete()) celebrate();
+  }
+  renderAll();
+}
+
+function eraseCell(){
+  if(!selected)return;
+  const [r,c]=selected;
+  if(isGiven[r][c])return;
+  puzzle[r][c]=0; candidates[r][c]=[];
+  renderAll();
+}
+
+let isGiven;
+function checkErrors(){
+  document.querySelectorAll('.s-cell').forEach(cell=>{
+    const r=+cell.dataset.r,c=+cell.dataset.c;
+    const v=puzzle[r][c];
+    if(!v||isGiven[r][c])return;
+    cell.classList.toggle('error',v!==solution[r][c]);
+  });
+}
+
+function isComplete(){
+  for(let r=0;r<9;r++)for(let c=0;c<9;c++)if(puzzle[r][c]!==solution[r][c])return false;
+  return true;
+}
+
+function celebrate(){
+  clearInterval(timerInterval);
+  const m=Math.floor(seconds/60),s=seconds%60;
+  setTimeout(()=>alert(`🎉 Puzzle solved in ${m}:${s<10?'0':''}${s}!`),100);
+}
+
+function startTimer(){
+  clearInterval(timerInterval); seconds=0;
+  timerInterval=setInterval(()=>{
+    seconds++;
+    const m=Math.floor(seconds/60),s=seconds%60;
+    document.getElementById('timer').textContent=m+':'+(s<10?'0':'')+s;
+  },1000);
+}
+
+function newGame(){
+  const diff=difficulty;
+  const {puzzle:p,solution:sol}=generatePuzzle(diff);
+  puzzle=p.map(r=>[...r]);
+  solution=sol;
+  isGiven=p.map(r=>r.map(v=>v!==0));
+  candidates=Array.from({length:9},()=>Array.from({length:9},()=>[]));
+  selected=null;
+  buildGrid(); renderAll(); startTimer();
+}
+
+// ── Numpad ──
+function buildNumpad(){
+  const np=document.getElementById('numpad');
+  np.innerHTML='';
+  for(let n=1;n<=9;n++){
+    const k=document.createElement('div');
+    k.className='num-key'; k.textContent=n;
+    k.addEventListener('click',()=>inputNumber(n));
+    np.appendChild(k);
+  }
+  const er=document.createElement('div');
+  er.className='num-key erase'; er.textContent='⌫ Erase';
+  er.addEventListener('click',eraseCell);
+  np.appendChild(er);
+}
+
+// Keyboard
+document.addEventListener('keydown',e=>{
+  if(e.key>='1'&&e.key<='9') inputNumber(+e.key);
+  if(e.key==='Backspace'||e.key==='Delete') eraseCell();
+  if(selected){
+    const [r,c]=selected;
+    if(e.key==='ArrowUp'&&r>0) selectCell(r-1,c);
+    if(e.key==='ArrowDown'&&r<8) selectCell(r+1,c);
+    if(e.key==='ArrowLeft'&&c>0) selectCell(r,c-1);
+    if(e.key==='ArrowRight'&&c<8) selectCell(r,c+1);
+  }
+});
+
+// Buttons
+document.querySelectorAll('.diff-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.diff-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active'); difficulty=btn.dataset.diff; newGame();
+  });
+});
+document.getElementById('pencilBtn').addEventListener('click',()=>{
+  pencilMode=!pencilMode;
+  document.getElementById('pencilBtn').classList.toggle('on',pencilMode);
+});
+document.getElementById('checkBtn').addEventListener('click',()=>{
+  checkErrors();
+  document.querySelectorAll('.s-cell.error').forEach(c=>setTimeout(()=>c.classList.remove('error'),1500));
+});
+document.getElementById('solveBtn').addEventListener('click',()=>{
+  if(!confirm('Reveal the solution?'))return;
+  clearInterval(timerInterval);
+  puzzle=solution.map(r=>[...r]);
+  candidates=Array.from({length:9},()=>Array.from({length:9},()=>[]));
+  renderAll();
+});
+document.getElementById('newBtn').addEventListener('click',newGame);
+
+buildNumpad();
+newGame();
+</script>
+</body>
+</html>

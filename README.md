@@ -1,6 +1,6 @@
 # Office Tools
 
-56 free, browser-based utilities for everyday office and productivity work.
+69 free, browser-based utilities for everyday office, productivity, and AI development work.
 No build step, no framework, no tracking — everything runs locally in your browser.
 
 **Live site:** [https://github.com/noobvie/Office_Tools](https://github.com/noobvie/Office_Tools)
@@ -26,7 +26,7 @@ No build step, no framework, no tracking — everything runs locally in your bro
 | UUID Generator | UUID v4 and v7 — single or bulk, one-click copy |
 | Random Number Generator | Random integers or decimals in any range — no-duplicates option |
 | Lorem Ipsum Generator | Placeholder text by paragraphs, sentences, words, or list items |
-| Fake Data Generator | Realistic test data — names, emails, phones, addresses. Download CSV/JSON |
+| Fake Data Generator | Realistic test data — names, emails, phones, addresses. Download CSV/JSON/**JSONL AI training pairs** |
 | Wheel of Names | Animated spinning wheel to randomly pick a winner from your list |
 
 ### 📝 PDF & Text
@@ -66,11 +66,14 @@ No build step, no framework, no tracking — everything runs locally in your bro
 | Tool | Description |
 |------|-------------|
 | JSON Editor | Validate, format, minify JSON with syntax highlighting and tree view |
-| CSV ↔ JSON | Convert CSV and JSON — table preview, file upload, download |
+| CSV ↔ JSON | Convert CSV and JSON — table preview, file upload, download, **JSONL output** |
 | Crontab Explainer | Parse cron expressions into plain English — next 10 run times |
-| Regex Tester | Live regex match highlighting with capture groups and flag toggles |
+| Regex Tester | Live regex match highlighting with capture groups, flag toggles, **named group explainer** |
 | SQL Formatter | Beautify and minify SQL — uppercase keywords, configurable indent |
 | File Compressor | Create ZIP archives or extract ZIPs — 100% in your browser |
+| AI Token Counter | Estimate token count and API cost for GPT-4, Claude, Llama, Gemini — context window usage bar |
+| AI Prompt Template Builder | Write prompts with `{{variable}}` placeholders, fill in, preview, save to browser |
+| AI JSON Schema Builder | Auto-generate JSON Schema from any JSON or build visually — export for OpenAI/Anthropic tool calling |
 
 ### 🌐 Network & Security
 | Tool | Description |
@@ -100,6 +103,20 @@ No build step, no framework, no tracking — everything runs locally in your bro
 | URL Shortener | Short links with optional custom alias and expiry — self-hosted |
 | Pastebin | Share text/code with syntax label, expiry, and burn-after-read |
 | File Share | Upload .zip/.tar/.rar (up to 1 GB) and share a download link |
+
+### 🎮 Relax
+| Tool | Description |
+|------|-------------|
+| 2048 | Slide and merge tiles to reach 2048. Undo, best score, swipe on mobile |
+| Sudoku | 9×9 Sudoku — Easy / Medium / Hard, pencil mode, timer, check and solve |
+| Gomoku | 5-in-a-row on a 15×15 board. Heuristic AI or two-player local |
+| Wordle | Guess the 5-letter word in 6 tries. Daily word + free play mode |
+| Memory Match | Flip emoji cards to find matching pairs — 3 grid sizes, star rating |
+| Chess | Full-rules chess (castling, en passant, promotion) vs AI or friend |
+| Simon Says | Watch the color/sound sequence and repeat it — grows each round |
+| Number Memory | Memorize a number before it vanishes, then type it back — gets longer |
+| Visual Memory | Recall which grid squares were highlighted — grid expands each round |
+| Word Memory | Study a word list, then identify which words you actually saw |
 
 ---
 
