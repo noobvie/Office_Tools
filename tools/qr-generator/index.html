@@ -62,6 +62,14 @@
 
     /* ── Barcode format note ── */
     .bc-note { font-size:.8rem; color:var(--text-muted); margin-top:.3rem; }
+
+    /* ── QR Decoder ── */
+    .dec-drop-active { border-color:var(--primary) !important; background:color-mix(in srgb,var(--primary) 6%,transparent); }
+    #decVideo { width:100%; display:block; border-radius:var(--radius); background:#000; max-height:300px; object-fit:cover; }
+    .dec-scanning { display:flex; align-items:center; gap:.5rem; font-size:.85rem; color:var(--primary); margin-top:.5rem; }
+    .dec-scanning::before { content:''; display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--primary); animation:decpulse 1s infinite; }
+    @keyframes decpulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    #decResult { margin-top:.75rem; padding:.75rem; background:var(--bg); border:1.5px solid var(--border); border-radius:var(--radius); word-break:break-all; font-size:.95rem; min-height:2.5rem; }
   </style>
 </head>
 <body>
@@ -84,6 +92,7 @@
   <div class="section-tabs">
     <button class="section-tab active" data-panel="qrPanel">📱 QR Code</button>
     <button class="section-tab" data-panel="bcPanel">▌▌▌ Barcode</button>
+    <button class="section-tab" data-panel="decPanel">🔍 QR Decoder</button>
   </div>
 
   <!-- ════════════════ QR CODE PANEL ════════════════ -->
@@ -410,10 +419,59 @@
 
   </div><!-- /bcPanel -->
 
+  <!-- ════════════════ QR DECODER PANEL ════════════════ -->
+  <div class="section-panel" id="decPanel">
+
+    <div class="card">
+      <strong>QR Code Decoder</strong>
+      <p style="font-size:.85rem;color:var(--text-muted);margin:.3rem 0 1rem">Upload a QR code image or use your camera to scan and decode it instantly — no upload, runs entirely in your browser.</p>
+
+      <!-- Mode tabs -->
+      <div class="tabs" id="decTabs">
+        <button class="tab-btn active" data-dec="upload">📁 Upload Image</button>
+        <button class="tab-btn" data-dec="camera">📷 Use Camera</button>
+      </div>
+
+      <!-- Upload mode -->
+      <div id="decUploadMode" style="margin-top:1rem">
+        <div class="logo-upload-box" id="decDropZone" onclick="document.getElementById('decFileInput').click()" style="padding:1.5rem 1rem;font-size:.9rem">
+          📁 Click or drag &amp; drop a QR code image (PNG, JPG, WEBP, GIF)
+        </div>
+        <input type="file" id="decFileInput" accept="image/*" capture="environment" style="display:none">
+      </div>
+
+      <!-- Camera mode -->
+      <div id="decCameraMode" style="display:none;margin-top:1rem">
+        <div style="position:relative;background:#000;border-radius:var(--radius);overflow:hidden">
+          <video id="decVideo" playsinline muted autoplay></video>
+          <canvas id="decScanCanvas" style="display:none"></canvas>
+        </div>
+        <div id="decScanStatus" style="display:none" class="dec-scanning">Scanning for QR code…</div>
+        <div style="display:flex;gap:.5rem;margin-top:.75rem;flex-wrap:wrap">
+          <button class="btn btn-primary" id="decStartCam">▶ Start Camera</button>
+          <button class="btn btn-secondary" id="decStopCam" style="display:none">⏹ Stop</button>
+        </div>
+        <p class="bc-note" style="margin-top:.5rem">Requires camera permission. On iOS, use Safari and HTTPS. Camera stops automatically when a QR code is found.</p>
+      </div>
+    </div>
+
+    <!-- Result card -->
+    <div class="card mt-2" id="decResultCard" style="display:none">
+      <strong>Decoded Result</strong>
+      <div id="decResult"></div>
+      <div style="margin-top:.75rem;display:flex;gap:.5rem;flex-wrap:wrap">
+        <button class="btn btn-primary" id="decCopyBtn">Copy</button>
+        <a id="decOpenLink" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="display:none">🔗 Open Link</a>
+      </div>
+    </div>
+
+  </div><!-- /decPanel -->
+
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js" crossorigin="anonymous"></script>
 <script src="../../js/common.js"></script>
 <script>
 // ── Theme ──
@@ -779,6 +837,148 @@ document.getElementById('bcDownloadPng').addEventListener('click', () => {
     a.click();
   };
   img.src = url;
+});
+
+// ══════════════════════════════════════════
+// QR DECODER
+// ══════════════════════════════════════════
+
+// Mode switch
+document.querySelectorAll('#decTabs .tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#decTabs .tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const mode = btn.dataset.dec;
+    document.getElementById('decUploadMode').style.display = mode === 'upload' ? '' : 'none';
+    document.getElementById('decCameraMode').style.display = mode === 'camera' ? '' : 'none';
+    if (mode !== 'camera') stopCamera();
+  });
+});
+
+// ── Decode image pixels via jsQR ──
+function decodeImageData(canvas) {
+  const ctx = canvas.getContext('2d');
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  return jsQR(imageData.data, imageData.width, imageData.height);
+}
+
+// ── Upload mode ──
+function decodeFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width; canvas.height = img.height;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      const code = decodeImageData(canvas);
+      if (code) showDecResult(code.data);
+      else showDecError('No QR code found in this image. Make sure the QR code is clearly visible and not too small.');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+document.getElementById('decFileInput').addEventListener('change', e => {
+  if (e.target.files[0]) decodeFile(e.target.files[0]);
+});
+
+const decDropZone = document.getElementById('decDropZone');
+decDropZone.addEventListener('dragover', e => { e.preventDefault(); decDropZone.classList.add('dec-drop-active'); });
+decDropZone.addEventListener('dragleave', () => decDropZone.classList.remove('dec-drop-active'));
+decDropZone.addEventListener('drop', e => {
+  e.preventDefault(); decDropZone.classList.remove('dec-drop-active');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) decodeFile(file);
+});
+
+// ── Camera mode ──
+let camStream = null, camLoop = null;
+
+function startCamera() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert('Camera API not available. Make sure you are on HTTPS.');
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
+    .then(stream => {
+      camStream = stream;
+      const video = document.getElementById('decVideo');
+      video.srcObject = stream;
+      video.play();
+      document.getElementById('decStartCam').style.display = 'none';
+      document.getElementById('decStopCam').style.display = '';
+      document.getElementById('decScanStatus').style.display = '';
+      scanCamera();
+    })
+    .catch(err => {
+      alert('Camera access denied or unavailable: ' + (err.message || err));
+    });
+}
+
+function scanCamera() {
+  const video = document.getElementById('decVideo');
+  const canvas = document.getElementById('decScanCanvas');
+  function tick() {
+    if (!camStream) return;
+    if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      const code = decodeImageData(canvas);
+      if (code) {
+        stopCamera();
+        showDecResult(code.data);
+        return;
+      }
+    }
+    camLoop = requestAnimationFrame(tick);
+  }
+  camLoop = requestAnimationFrame(tick);
+}
+
+function stopCamera() {
+  if (camLoop) { cancelAnimationFrame(camLoop); camLoop = null; }
+  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  const video = document.getElementById('decVideo');
+  video.srcObject = null;
+  document.getElementById('decStartCam').style.display = '';
+  document.getElementById('decStopCam').style.display = 'none';
+  document.getElementById('decScanStatus').style.display = 'none';
+}
+
+document.getElementById('decStartCam').addEventListener('click', startCamera);
+document.getElementById('decStopCam').addEventListener('click', stopCamera);
+
+// ── Show result ──
+function showDecResult(text) {
+  document.getElementById('decResult').textContent = text;
+  document.getElementById('decResultCard').style.display = '';
+  // Show open-link button if it's a http/https URL
+  const openLink = document.getElementById('decOpenLink');
+  try {
+    const u = new URL(text);
+    if (u.protocol === 'http:' || u.protocol === 'https:') {
+      openLink.href = text; openLink.style.display = '';
+    } else { openLink.style.display = 'none'; }
+  } catch { openLink.style.display = 'none'; }
+}
+
+function showDecError(msg) {
+  document.getElementById('decResult').textContent = '⚠️ ' + msg;
+  document.getElementById('decOpenLink').style.display = 'none';
+  document.getElementById('decResultCard').style.display = '';
+}
+
+document.getElementById('decCopyBtn').addEventListener('click', () => {
+  const text = document.getElementById('decResult').textContent.replace(/^⚠️ /, '');
+  copyText(text, document.getElementById('decCopyBtn'));
+});
+
+// Stop camera if switching away from decoder tab
+document.querySelectorAll('.section-tab').forEach(btn => {
+  btn.addEventListener('click', () => { if (btn.dataset.panel !== 'decPanel') stopCamera(); });
 });
 </script>
 </body>

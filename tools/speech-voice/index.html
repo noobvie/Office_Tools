@@ -166,6 +166,27 @@
     /* ── Voice list ── */
     #ttsVoiceSelect { max-width: 100%; }
 
+    /* ── Voice effect presets ── */
+    .preset-btn {
+      padding: .28rem .7rem;
+      font-size: .8rem;
+      border: 1.5px solid var(--border);
+      border-radius: 50px;
+      background: var(--bg-secondary);
+      color: var(--text);
+      cursor: pointer;
+      transition: all .15s;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .preset-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .preset-btn.active {
+      border-color: var(--primary);
+      background: color-mix(in srgb, var(--primary) 12%, transparent);
+      color: var(--primary);
+      font-weight: 600;
+    }
+
     /* ── Mic button ── */
     .mic-btn {
       display: flex;
@@ -327,9 +348,25 @@
       <div class="opt-row">
         <label for="ttsLangFilter">Language:</label>
         <select id="ttsLangFilter">
+          <option value="all">🌐 All Languages</option>
           <option value="en">🇺🇸/🇬🇧 English</option>
           <option value="fr">🇫🇷 Français</option>
           <option value="es">🇪🇸 Español</option>
+          <option value="de">🇩🇪 Deutsch</option>
+          <option value="it">🇮🇹 Italiano</option>
+          <option value="pt">🇧🇷 Português</option>
+          <option value="ja">🇯🇵 日本語</option>
+          <option value="zh">🇨🇳 中文</option>
+          <option value="ko">🇰🇷 한국어</option>
+          <option value="ar">🇸🇦 العربية</option>
+          <option value="hi">🇮🇳 हिंदी</option>
+          <option value="ru">🇷🇺 Русский</option>
+          <option value="nl">🇳🇱 Nederlands</option>
+          <option value="pl">🇵🇱 Polski</option>
+          <option value="tr">🇹🇷 Türkçe</option>
+          <option value="sv">🇸🇪 Svenska</option>
+          <option value="id">🇮🇩 Bahasa Indonesia</option>
+          <option value="th">🇹🇭 ภาษาไทย</option>
         </select>
       </div>
 
@@ -345,7 +382,22 @@
 
       <div class="opt-row">
         <label for="ttsPitch">Pitch: <span id="ttsPitchVal">1.0</span></label>
-        <input type="range" id="ttsPitch" min="0.5" max="2" step="0.1" value="1">
+        <input type="range" id="ttsPitch" min="0.1" max="2" step="0.05" value="1">
+      </div>
+
+      <div style="margin-bottom:.75rem">
+        <label style="font-size:.84rem;color:var(--text-muted);display:block;margin-bottom:.45rem">Voice Style:</label>
+        <div id="ttsPresets" style="display:flex;gap:.4rem;flex-wrap:wrap">
+          <button class="preset-btn active"  data-rate="1.0"  data-pitch="1.0"  title="Normal speaking voice">🧑 Normal</button>
+          <button class="preset-btn"         data-rate="1.2"  data-pitch="1.75" title="High pitch, slightly faster">👦 Child</button>
+          <button class="preset-btn"         data-rate="0.85" data-pitch="0.7"  title="Slower, lower pitch">👴 Elderly</button>
+          <button class="preset-btn"         data-rate="0.9"  data-pitch="0.4"  title="Very low, flat tone">🤖 Robot</button>
+          <button class="preset-btn"         data-rate="1.1"  data-pitch="1.15" title="Energetic, slightly brighter">📻 Radio</button>
+          <button class="preset-btn"         data-rate="0.72" data-pitch="0.25" title="Very deep, slow">🎭 Giant</button>
+          <button class="preset-btn"         data-rate="1.75" data-pitch="1.0"  title="Fast-paced narration">⚡ Fast</button>
+          <button class="preset-btn"         data-rate="0.55" data-pitch="1.0"  title="Very slow, clear diction">🐢 Slow</button>
+          <button class="preset-btn"         data-rate="1.0"  data-pitch="1.9"  title="High, squeaky pitch">🐭 Cartoon</button>
+        </div>
       </div>
 
       <div class="form-group">
@@ -370,9 +422,10 @@
     </div>
 
     <div class="card mt-2" style="font-size:.82rem;color:var(--text-muted);line-height:1.7">
-      <strong style="color:var(--text)">ℹ About voices</strong><br>
-      Voices are provided by your operating system and browser. Windows and macOS include high-quality neural voices for English, French, and Spanish. The quality and number of voices available varies by platform.
-      If no voices appear for your selected language, your OS may not have that language pack installed.
+      <strong style="color:var(--text)">ℹ About voices &amp; languages</strong><br>
+      Voices are provided by your operating system and browser — this tool exposes <em>all</em> of them. Windows 11 and macOS include high-quality neural voices for many languages including English, French, Spanish, Japanese, Chinese, and more. Android/iOS also include system voices for their interface language.<br><br>
+      <strong>Voice Style presets</strong> work by adjusting pitch and speed — results vary by voice. Low-pitch presets (Robot, Giant) sound best with male voices; high-pitch presets (Child, Cartoon) sound best with female voices.<br><br>
+      If no voices appear for a language, your OS may not have that language pack installed. On Windows: <em>Settings → Time &amp; Language → Language → Add a language</em>.
     </div>
   </div>
 
@@ -665,12 +718,21 @@
   const ttsStopBtn     = document.getElementById('ttsStopBtn');
   const ttsStatus      = document.getElementById('ttsStatus');
 
-  const LANG_PREFIXES = { en: ['en'], fr: ['fr'], es: ['es'] };
+  const LANG_PREFIXES = { en: ['en'], fr: ['fr'], es: ['es'], de: ['de'], it: ['it'],
+    pt: ['pt'], ja: ['ja'], zh: ['zh'], ko: ['ko'], ar: ['ar'], hi: ['hi'],
+    ru: ['ru'], nl: ['nl'], pl: ['pl'], tr: ['tr'], sv: ['sv'], id: ['id'], th: ['th'] };
+
+  function getFilteredVoices() {
+    const voices = speechSynthesis.getVoices();
+    const val = ttsLangFilter.value;
+    if (val === 'all') return voices;
+    const prefix = LANG_PREFIXES[val] || [val];
+    return voices.filter(v => prefix.some(p => v.lang.startsWith(p)));
+  }
 
   function populateVoices() {
-    const voices = speechSynthesis.getVoices();
-    const prefix = LANG_PREFIXES[ttsLangFilter.value];
-    const filtered = voices.filter(v => prefix.some(p => v.lang.startsWith(p)));
+    const filtered = getFilteredVoices();
+    const showLang = ttsLangFilter.value === 'all';
     ttsVoiceSelect.innerHTML = '';
     if (!filtered.length) {
       ttsVoiceSelect.innerHTML = '<option>No voices found for this language</option>';
@@ -680,7 +742,8 @@
       const opt = document.createElement('option');
       opt.value = i;
       opt.dataset.name = v.name;
-      opt.textContent = v.name + (v.localService ? '' : ' (online)');
+      const langTag = showLang ? ` [${v.lang}]` : '';
+      opt.textContent = v.name + langTag + (v.localService ? '' : ' ☁');
       ttsVoiceSelect.appendChild(opt);
     });
   }
@@ -695,8 +758,28 @@
     ttsPlayBtn.disabled = true;
   }
 
-  ttsRate.addEventListener('input', () => ttsRateVal.textContent = parseFloat(ttsRate.value).toFixed(1) + '×');
-  ttsPitch.addEventListener('input', () => ttsPitchVal.textContent = parseFloat(ttsPitch.value).toFixed(1));
+  ttsRate.addEventListener('input', () => {
+    ttsRateVal.textContent = parseFloat(ttsRate.value).toFixed(1) + '×';
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  });
+  ttsPitch.addEventListener('input', () => {
+    ttsPitchVal.textContent = parseFloat(ttsPitch.value).toFixed(1);
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  });
+
+  // Voice style presets
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const rate  = parseFloat(btn.dataset.rate);
+      const pitch = parseFloat(btn.dataset.pitch);
+      ttsRate.value  = rate;
+      ttsPitch.value = pitch;
+      ttsRateVal.textContent  = rate.toFixed(1) + '×';
+      ttsPitchVal.textContent = pitch.toFixed(1);
+    });
+  });
   ttsInput.addEventListener('input', () => {
     document.getElementById('ttsCharCount').textContent = ttsInput.value.length;
   });
@@ -707,9 +790,7 @@
 
     speechSynthesis.cancel();
 
-    const voices = speechSynthesis.getVoices();
-    const prefix = LANG_PREFIXES[ttsLangFilter.value];
-    const filtered = voices.filter(v => prefix.some(p => v.lang.startsWith(p)));
+    const filtered = getFilteredVoices();
 
     const utter = new SpeechSynthesisUtterance(text);
     utter.rate  = parseFloat(ttsRate.value);
