@@ -390,9 +390,8 @@
      INIT — restore saved settings
   ══════════════════════════════════════════ */
   (function init() {
-    localUrlInput.value = localStorage.getItem(LS_LOCAL) || DEFAULT_LOCAL;
-    const savedKey = localStorage.getItem(LS_API_KEY) || '';
-    if (savedKey) ytApiKeyInput.value = savedKey;
+    try { localUrlInput.value = localStorage.getItem(LS_LOCAL) || DEFAULT_LOCAL; } catch(e) { localUrlInput.value = DEFAULT_LOCAL; }
+    try { const savedKey = localStorage.getItem(LS_API_KEY) || ''; if (savedKey) ytApiKeyInput.value = savedKey; } catch(e) {}
     pingCobaltHealth();
   })();
 
@@ -414,7 +413,8 @@
      cobalt GET / returns { cobalt: { version, ... }, git: { ... } }
   ══════════════════════════════════════════ */
   function pingCobaltHealth() {
-    const base = (localStorage.getItem(LS_LOCAL) || DEFAULT_LOCAL).replace(/\/$/, '');
+    let _lsLocal = DEFAULT_LOCAL; try { _lsLocal = localStorage.getItem(LS_LOCAL) || DEFAULT_LOCAL; } catch(e) {}
+    const base = _lsLocal.replace(/\/$/, '');
     fetch(base + '/', {
       headers: { 'Accept': 'application/json' },
       signal: AbortSignal.timeout(4000),
@@ -439,7 +439,7 @@
   ══════════════════════════════════════════ */
   document.getElementById('saveLocalBtn').addEventListener('click', () => {
     const v = localUrlInput.value.trim();
-    if (v) { localStorage.setItem(LS_LOCAL, v); showToast('Server URL saved'); pingCobaltHealth(); }
+    if (v) { try { localStorage.setItem(LS_LOCAL, v); } catch(e) {} showToast('Server URL saved'); pingCobaltHealth(); }
   });
   document.getElementById('resetLocalBtn').addEventListener('click', () => {
     localUrlInput.value = DEFAULT_LOCAL;
@@ -449,7 +449,7 @@
   });
   saveKeyBtn.addEventListener('click', () => {
     const k = ytApiKeyInput.value.trim();
-    if (k) { localStorage.setItem(LS_API_KEY, k); showToast('API key saved'); }
+    if (k) { try { localStorage.setItem(LS_API_KEY, k); } catch(e) {} showToast('API key saved'); }
   });
 
   /* ══════════════════════════════════════════
@@ -573,7 +573,8 @@
      * Free quota: 10,000 units/day. A playlistItems.list call costs 1 unit per page.
      * Get key: console.cloud.google.com → Enable YouTube Data API v3 → Credentials → API Key
      */
-    const apiKey = (ytApiKeyInput.value.trim() || localStorage.getItem(LS_API_KEY) || '').trim();
+    let _apiKey = ytApiKeyInput.value.trim(); try { _apiKey = _apiKey || localStorage.getItem(LS_API_KEY) || ''; } catch(e) {}
+    const apiKey = _apiKey.trim();
     if (!apiKey) {
       resultsArea.innerHTML = renderAlert('warning',
         '⚠️ A YouTube Data API v3 key is required to load playlist items. Enter your key in the field above and try again.');
@@ -709,7 +710,8 @@
      API: POST {base}/  → { status, url, filename }
   ══════════════════════════════════════════ */
   async function localFetch(url) {
-    const base    = (localStorage.getItem(LS_LOCAL) || DEFAULT_LOCAL).replace(/\/$/, '');
+    let _ls2 = DEFAULT_LOCAL; try { _ls2 = localStorage.getItem(LS_LOCAL) || DEFAULT_LOCAL; } catch(e) {}
+    const base    = _ls2.replace(/\/$/, '');
     const quality = document.getElementById('videoQuality').value;
     const bitrate = document.getElementById('audioBitrate').value;
 

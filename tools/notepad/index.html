@@ -83,13 +83,14 @@
 <script>
 const NUM_TABS = 5;
 const PREFIX   = 'ot-notepad-';
-let activeTab  = parseInt(localStorage.getItem(PREFIX + 'active') || '0');
+let activeTab  = 0;
+try { activeTab = parseInt(localStorage.getItem(PREFIX + 'active') || '0'); } catch(e) {}
 let saveTimer  = null;
 
-function getNote(i)       { return localStorage.getItem(PREFIX + 'note-' + i) || ''; }
-function getTabName(i)    { return localStorage.getItem(PREFIX + 'name-' + i) || ('Note ' + (i + 1)); }
-function setNote(i, v)    { localStorage.setItem(PREFIX + 'note-' + i, v); }
-function setTabName(i, v) { localStorage.setItem(PREFIX + 'name-' + i, v); }
+function getNote(i)       { try { return localStorage.getItem(PREFIX + 'note-' + i) || ''; } catch(e) { return ''; } }
+function getTabName(i)    { try { return localStorage.getItem(PREFIX + 'name-' + i) || ('Note ' + (i + 1)); } catch(e) { return 'Note ' + (i + 1); } }
+function setNote(i, v)    { try { localStorage.setItem(PREFIX + 'note-' + i, v); } catch(e) {} }
+function setTabName(i, v) { try { localStorage.setItem(PREFIX + 'name-' + i, v); } catch(e) {} }
 
 function buildTabs() {
   const strip = document.getElementById('tabStrip');
@@ -125,7 +126,7 @@ function buildTabs() {
 
 function switchTab(i) {
   activeTab = i;
-  localStorage.setItem(PREFIX + 'active', i);
+  try { localStorage.setItem(PREFIX + 'active', i); } catch(e) {}
   buildTabs();
   document.getElementById('npArea').value = getNote(i);
   updateStats();
@@ -156,8 +157,8 @@ document.getElementById('npDownload').addEventListener('click', () => {
   const text = document.getElementById('npArea').value;
   const name = getTabName(activeTab).replace(/[^a-z0-9]/gi, '_') || 'note';
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-  a.download = name + '.txt'; a.click(); URL.revokeObjectURL(a.href);
+  a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(text);
+  a.download = name + '.txt'; a.click();
 });
 
 document.getElementById('npCopy').addEventListener('click', function() {

@@ -240,10 +240,12 @@ function fmtSz(b) {
   return (b/1048576).toFixed(2) + ' MB';
 }
 function dlBlob(blob, name) {
-  const u = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = u; a.download = name; a.click();
-  setTimeout(() => URL.revokeObjectURL(u), 8000);
+  const reader = new FileReader();
+  reader.onload = e => {
+    const a = document.createElement('a');
+    a.href = e.target.result; a.download = name; a.click();
+  };
+  reader.readAsDataURL(blob);
 }
 function noExt(n) { return n.replace(/\.[^.]+$/, ''); }
 function isHeic(f) { return f.type === 'image/heic' || f.type === 'image/heif' || /\.(heic|heif)$/i.test(f.name); }

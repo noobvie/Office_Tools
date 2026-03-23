@@ -497,7 +497,7 @@
 
   micCopy.addEventListener('click', () => {
     const text = micTranscript.innerText;
-    navigator.clipboard.writeText(text).then(() => showToast('Copied!'));
+    copyText(text, micCopy);
   });
   micClear.addEventListener('click', () => {
     finalText = '';
@@ -636,7 +636,7 @@
   });
 
   fileCopy.addEventListener('click', () => {
-    navigator.clipboard.writeText(fileTranscript.textContent).then(() => showToast('Copied!'));
+    copyText(fileTranscript.textContent, fileCopy);
   });
   fileClear.addEventListener('click', () => {
     fileTranscript.textContent = '';

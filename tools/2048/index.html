@@ -180,8 +180,9 @@ function checkState() {
 }
 
 function updateBest() {
-  const b = parseInt(localStorage.getItem(BEST_KEY)||0);
-  if (score>b) localStorage.setItem(BEST_KEY, score);
+  let b = 0;
+  try { b = parseInt(localStorage.getItem(BEST_KEY)||0); } catch(e) {}
+  if (score>b) { try { localStorage.setItem(BEST_KEY, score); } catch(e) {} }
   document.getElementById('best').textContent = Math.max(score, b);
 }
 
@@ -189,7 +190,8 @@ function render() {
   const el = document.getElementById('board');
   el.innerHTML = '';
   document.getElementById('score').textContent = score;
-  document.getElementById('best').textContent = Math.max(score, parseInt(localStorage.getItem(BEST_KEY)||0));
+  let _b=0; try{_b=parseInt(localStorage.getItem(BEST_KEY)||0);}catch(e){}
+  document.getElementById('best').textContent = Math.max(score, _b);
   board.flat().forEach(v => {
     const c = document.createElement('div');
     c.className = 'cell' + (v ? ' t'+tileClass(v) : '');

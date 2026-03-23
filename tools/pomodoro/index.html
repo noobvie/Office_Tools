@@ -231,6 +231,13 @@ let sessionCount = 0;
 let workCount = 0;
 let log = [];
 
+// Wall-clock tracking — fixes iOS setInterval throttling
+let wallStart = null;   // Date.now() when timer last started/resumed
+let wallRemaining = 0;  // remaining secs at the moment of last start/resume
+
+// iOS Safari does not support Notification API at all (pre-16.4)
+const CAN_NOTIFY = (typeof Notification !== 'undefined');
+
 function getModeConfig() { return MODES[currentModeKey]; }
 
 function updateRing() {
@@ -258,22 +265,27 @@ function setMode(key) {
   totalSecs = durations[key] * 60;
   remaining = totalSecs;
   running = false;
+  wallStart = null;
+  wallRemaining = 0;
   clearInterval(interval);
+  interval = null;
   document.getElementById('startBtn').textContent = '▶';
   document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === key));
   render();
 }
 
 function tick() {
+  if (!running) return;
+  // Use wall clock so iOS throttling never causes drift
+  remaining = Math.max(0, wallRemaining - Math.floor((Date.now() - wallStart) / 1000));
+  render();
   if (remaining <= 0) {
     clearInterval(interval);
+    interval = null;
     running = false;
     document.getElementById('startBtn').textContent = '▶';
     onComplete();
-    return;
   }
-  remaining--;
-  render();
 }
 
 function onComplete() {
@@ -310,16 +322,24 @@ function updateSessionDots() {
 // Controls
 document.getElementById('startBtn').addEventListener('click', () => {
   if (running) {
+    // Pause: snapshot remaining via wall clock before stopping
+    remaining = Math.max(0, wallRemaining - Math.floor((Date.now() - wallStart) / 1000));
     clearInterval(interval);
+    interval = null;
     running = false;
     document.getElementById('startBtn').textContent = '▶';
+    render();
   } else {
-    if (Notification.permission === 'default' && document.getElementById('notifToggle').checked) {
+    // Request notification permission safely (not supported on older iOS)
+    if (CAN_NOTIFY && Notification.permission === 'default' && document.getElementById('notifToggle').checked) {
       Notification.requestPermission();
     }
+    // Set wall-clock reference point
+    wallStart = Date.now();
+    wallRemaining = remaining;
     running = true;
     document.getElementById('startBtn').textContent = '⏸';
-    interval = setInterval(tick, 1000);
+    interval = setInterval(tick, 500); // 500ms poll — catches up faster after iOS throttle
   }
 });
 
@@ -356,10 +376,10 @@ document.getElementById('applySettings').addEventListener('click', () => {
   setMode(currentModeKey);
 });
 
-// Notifications
+// Notifications — guarded for iOS Safari which lacks Notification API
 function notify(title, body) {
   if (!document.getElementById('notifToggle').checked) return;
-  if (Notification.permission === 'granted') new Notification(title, { body, icon: '' });
+  if (CAN_NOTIFY && Notification.permission === 'granted') new Notification(title, { body, icon: '' });
 }
 
 // Beep using Web Audio API
@@ -404,7 +424,15 @@ document.addEventListener('keydown', e => {
 
 // Notification permission checkbox
 document.getElementById('notifToggle').addEventListener('change', e => {
-  if (e.target.checked) Notification.requestPermission();
+  if (e.target.checked && CAN_NOTIFY) Notification.requestPermission();
+});
+
+// Page visibility — recalculate wall clock when tab returns to foreground
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && running) {
+    // Immediately sync display; interval will continue normally
+    tick();
+  }
 });
 
 // Init

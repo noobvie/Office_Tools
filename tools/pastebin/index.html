@@ -327,12 +327,10 @@ async function loadPaste(id) {
       copyText(rec.content, document.getElementById('copyContentBtn'));
 
     document.getElementById('downloadTxtBtn').onclick = () => {
-      const blob = new Blob([rec.content], { type: 'text/plain' });
       const a    = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
+      a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(rec.content);
       a.download = `${(rec.title || 'paste').replace(/[^a-z0-9]/gi, '_')}.txt`;
       a.click();
-      URL.revokeObjectURL(a.href);
     };
 
   } catch (err) {

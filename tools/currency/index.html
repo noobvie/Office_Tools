@@ -353,17 +353,20 @@ function getCurrencyCode(val) {
 // Merges crypto rates into the shared `rates` object as "units per 1 USD"
 async function fetchCryptoRates() {
   const cacheKey = 'ot-crypto-rates';
-  const cacheTs  = localStorage.getItem(`${cacheKey}-ts`);
+  let cacheTs = null;
+  try { cacheTs = localStorage.getItem(`${cacheKey}-ts`); } catch(e) {}
   const cacheAge = cacheTs ? (Date.now() - parseInt(cacheTs)) / 60000 : Infinity; // minutes
 
   if (cacheAge < 15) {
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      Object.assign(rates, parsed);
-      cryptoLastFetch = new Date(parseInt(cacheTs));
-      return;
-    }
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        Object.assign(rates, parsed);
+        cryptoLastFetch = new Date(parseInt(cacheTs));
+        return;
+      }
+    } catch(e) {}
   }
 
   try {
@@ -382,8 +385,7 @@ async function fetchCryptoRates() {
 
     Object.assign(rates, cryptoRates);
     cryptoLastFetch = new Date();
-    localStorage.setItem(cacheKey, JSON.stringify(cryptoRates));
-    localStorage.setItem(`${cacheKey}-ts`, Date.now().toString());
+    try { localStorage.setItem(cacheKey, JSON.stringify(cryptoRates)); localStorage.setItem(`${cacheKey}-ts`, Date.now().toString()); } catch(e) {}
   } catch (e) {
     // Fall back to FALLBACK_RATES crypto entries (already in rates)
     console.warn('CoinGecko failed, using fallback crypto rates:', e.message);
@@ -392,13 +394,16 @@ async function fetchCryptoRates() {
 
 async function fetchRates(base = 'USD') {
   const cacheKey = `ot-rates-${base}`;
-  const cacheTs  = localStorage.getItem(`${cacheKey}-ts`);
+  let cacheTs = null;
+  try { cacheTs = localStorage.getItem(`${cacheKey}-ts`); } catch(e) {}
   const cacheAge = cacheTs ? (Date.now() - parseInt(cacheTs)) / 3600000 : Infinity;
 
   // Use cache if < 4 hours old
   if (cacheAge < 4) {
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) { rates = JSON.parse(cached); lastFetch = new Date(parseInt(cacheTs)); return; }
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) { rates = JSON.parse(cached); lastFetch = new Date(parseInt(cacheTs)); return; }
+    } catch(e) {}
   }
 
   try {
@@ -408,8 +413,7 @@ async function fetchRates(base = 'USD') {
     if (data.result !== 'success') throw new Error('API error');
     rates = data.rates;
     lastFetch = new Date();
-    localStorage.setItem(cacheKey, JSON.stringify(rates));
-    localStorage.setItem(`${cacheKey}-ts`, Date.now().toString());
+    try { localStorage.setItem(cacheKey, JSON.stringify(rates)); localStorage.setItem(`${cacheKey}-ts`, Date.now().toString()); } catch(e) {}
   } catch(e) {
     // Fall back to static rates
     rates = FALLBACK_RATES;

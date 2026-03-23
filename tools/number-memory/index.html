@@ -121,8 +121,9 @@ function startRound() {
   phase = 'show';
 
   clearInterval(timer);
+  const _phaseOrigin = Date.now();
   timer = setInterval(() => {
-    elapsed += 100;
+    elapsed = Date.now() - _phaseOrigin;
     const pct = Math.max(0, 100 - (elapsed/displayMs*100));
     document.getElementById('progressFill').style.width = pct + '%';
     if (elapsed >= displayMs) {
@@ -170,7 +171,7 @@ document.getElementById('startBtn').addEventListener('click', () => {
 document.getElementById('submitBtn').addEventListener('click', checkAnswer);
 document.getElementById('numInput').addEventListener('keydown', e => { if(e.key==='Enter') checkAnswer(); });
 
-document.getElementById('best').textContent = localStorage.getItem(BEST_KEY)||0;
+try { document.getElementById('best').textContent = localStorage.getItem(BEST_KEY)||0; } catch(e) {}
 </script>
 </body>
 </html>

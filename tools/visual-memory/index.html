@@ -75,9 +75,10 @@ const BEST_KEY = 'ot-vismem-best';
 let round=0, cols=3, rows=3, highlighted=[], selected=[], phase='idle';
 
 function updateBest(n) {
-  const b = parseInt(localStorage.getItem(BEST_KEY)||0);
+  let b = 0;
+  try { b = parseInt(localStorage.getItem(BEST_KEY)||0); } catch(e) {}
   const nb = Math.max(n,b);
-  localStorage.setItem(BEST_KEY, nb);
+  try { localStorage.setItem(BEST_KEY, nb); } catch(e) {}
   document.getElementById('best').textContent = nb;
 }
 
@@ -191,7 +192,7 @@ document.getElementById('startBtn').addEventListener('click', () => {
   round = 0; startRound();
 });
 document.getElementById('submitBtn').addEventListener('click', checkAnswer);
-document.getElementById('best').textContent = localStorage.getItem(BEST_KEY)||0;
+try { document.getElementById('best').textContent = localStorage.getItem(BEST_KEY)||0; } catch(e) {}
 </script>
 </body>
 </html>

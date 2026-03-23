@@ -257,11 +257,12 @@ function celebrate(){
 
 function startTimer(){
   clearInterval(timerInterval); seconds=0;
+  const _timerOrigin=Date.now();
   timerInterval=setInterval(()=>{
-    seconds++;
+    seconds=Math.floor((Date.now()-_timerOrigin)/1000);
     const m=Math.floor(seconds/60),s=seconds%60;
     document.getElementById('timer').textContent=m+':'+(s<10?'0':'')+s;
-  },1000);
+  },500);
 }
 
 function newGame(){

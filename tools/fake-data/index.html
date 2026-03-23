@@ -343,14 +343,14 @@ function toCSV() {
 }
 
 document.getElementById('dlCsvBtn').addEventListener('click', () => {
-  const blob = new Blob([toCSV()], {type:'text/csv'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(toCSV());
   a.download = 'fake-data.csv'; a.click();
 });
 
 document.getElementById('dlJsonBtn').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify(generatedData, null, 2)], {type:'application/json'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(generatedData, null, 2));
   a.download = 'fake-data.json'; a.click();
 });
 
@@ -460,8 +460,8 @@ function renderAICard() {
   document.getElementById('aiChatOut').textContent    = chatLines.join('\n')   || '(no matching fields)';
 
   function dlJsonl(lines, filename) {
-    const blob = new Blob([lines.join('\n')], { type: 'application/x-ndjson' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = 'data:application/x-ndjson;charset=utf-8,' + encodeURIComponent(lines.join('\n'));
     a.download = filename; a.click();
   }
   document.getElementById('dlQABtn').onclick     = () => dlJsonl(qaLines, 'training-qa.jsonl');

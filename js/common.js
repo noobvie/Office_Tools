@@ -28,20 +28,37 @@ function initThemeToggle(btnId = 'themeToggle') {
     const idx  = OT_THEMES.indexOf(current);
     const next = OT_THEMES[(idx + 1) % OT_THEMES.length];
     document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('ot-theme', next);
+    try { localStorage.setItem('ot-theme', next); } catch(e) {}
     update();
   });
 }
 
-/* ---------- Copy to clipboard ---------- */
+/* ---------- Copy to clipboard (with iOS execCommand fallback) ---------- */
 function copyText(text, btn) {
-  navigator.clipboard.writeText(text).then(() => {
+  function flash() {
     if (!btn) return;
     const orig = btn.textContent;
     btn.textContent = 'Copied!';
     btn.classList.add('copied');
     setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1800);
-  });
+  }
+  function fallback() {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      flash();
+    } catch(e) {}
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(flash).catch(fallback);
+  } else {
+    fallback();
+  }
 }
 
 function makeCopyBtn(containerSelector) {
@@ -157,7 +174,6 @@ const OT_TOOLS = [
   { name: '2048',                    path: '2048',                  cat: '🎮 Relax',                icon: '🔢' },
   { name: 'Sudoku',                  path: 'sudoku',                cat: '🎮 Relax',                icon: '🧩' },
   { name: 'Gomoku',                  path: 'gomoku',                cat: '🎮 Relax',                icon: '⭕' },
-  { name: 'Wordle',                  path: 'wordle',                cat: '🎮 Relax',                icon: '💬' },
   { name: 'Memory Match',            path: 'memory',                cat: '🎮 Relax',                icon: '🎴' },
   { name: 'Chess',                   path: 'chess',                 cat: '🎮 Relax',                icon: '♟️' },
   { name: 'Simon Says',              path: 'simon-says',            cat: '🎮 Relax',                icon: '🔴' },

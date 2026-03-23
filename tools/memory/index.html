@@ -132,11 +132,12 @@ function newGame() {
   });
 
   updateHUD();
+  const _timerOrigin = Date.now() - seconds * 1000;
   timerInterval = setInterval(() => {
-    seconds++;
+    seconds = Math.floor((Date.now() - _timerOrigin) / 1000);
     const m = Math.floor(seconds/60), s = seconds%60;
     document.getElementById('timer').textContent = m+':'+(s<10?'0':'')+s;
-  }, 1000);
+  }, 500);
 
   document.getElementById('overlay').classList.remove('show');
 }

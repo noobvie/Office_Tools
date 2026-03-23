@@ -113,8 +113,9 @@ function startRound() {
   });
 
   clearInterval(timer);
+  const _phaseOrigin=Date.now();
   timer=setInterval(()=>{
-    elapsed+=100;
+    elapsed=Date.now()-_phaseOrigin;
     document.getElementById('progressFill').style.width=Math.max(0,100-elapsed/studyMs*100)+'%';
     if(elapsed>=studyMs){clearInterval(timer);startTest();}
   },100);
@@ -187,7 +188,7 @@ function submitTest() {
 
 document.getElementById('startBtn').addEventListener('click',()=>{round=0;score=0;document.getElementById('score').textContent=0;startRound();});
 document.getElementById('submitBtn').addEventListener('click',submitTest);
-document.getElementById('best').textContent=localStorage.getItem(BEST_KEY)||0;
+try { document.getElementById('best').textContent=localStorage.getItem(BEST_KEY)||0; } catch(e) {}
 </script>
 </body>
 </html>

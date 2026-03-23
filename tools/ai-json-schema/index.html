@@ -253,8 +253,8 @@ document.getElementById('copyAutoBtn').addEventListener('click', function() {
 });
 
 document.getElementById('dlAutoBtn').addEventListener('click', () => {
-  const blob = new Blob([document.getElementById('autoOut').textContent], { type: 'application/json' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(document.getElementById('autoOut').textContent);
   a.download = 'schema.json'; a.click();
 });
 
@@ -333,8 +333,8 @@ document.getElementById('copyVisualBtn').addEventListener('click', function() {
 });
 
 document.getElementById('dlVisualBtn').addEventListener('click', () => {
-  const blob = new Blob([document.getElementById('visualOut').textContent], { type: 'application/json' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(document.getElementById('visualOut').textContent);
   a.download = 'schema.json'; a.click();
 });
 

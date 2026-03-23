@@ -286,11 +286,12 @@ const CHARS = [
 
 const CATS = ['All', ...new Set(CHARS.map(c => c.cat))];
 let activeCat = 'All';
-let recent = JSON.parse(localStorage.getItem('ot-charmap-recent') || '[]');
+let recent = [];
+try { recent = JSON.parse(localStorage.getItem('ot-charmap-recent') || '[]'); } catch(e) {}
 
 function saveRecent(ch) {
   recent = [ch, ...recent.filter(c => c !== ch)].slice(0, 10);
-  localStorage.setItem('ot-charmap-recent', JSON.stringify(recent));
+  try { localStorage.setItem('ot-charmap-recent', JSON.stringify(recent)); } catch(e) {}
   renderRecent();
 }
 
@@ -307,16 +308,15 @@ function renderRecent() {
 }
 
 function copyCh(ch, el) {
-  navigator.clipboard.writeText(ch).then(() => {
-    el.classList.add('copied');
-    setTimeout(() => el.classList.remove('copied'), 1000);
-    saveRecent(ch);
-    const entry = CHARS.find(c => c.ch === ch);
-    if (entry) {
-      const cp = ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0');
-      document.getElementById('detailBox').textContent = `U+${cp} · ${entry.name} · HTML: &#${ch.codePointAt(0)};`;
-    }
-  });
+  copyText(ch, null);
+  el.classList.add('copied');
+  setTimeout(() => el.classList.remove('copied'), 1000);
+  saveRecent(ch);
+  const entry = CHARS.find(c => c.ch === ch);
+  if (entry) {
+    const cp = ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0');
+    document.getElementById('detailBox').textContent = `U+${cp} · ${entry.name} · HTML: &#${ch.codePointAt(0)};`;
+  }
 }
 
 function buildCatBar() {

@@ -257,7 +257,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous"></script>
 <script src="../../js/common.js"></script>
 <script>
-let savedHistory = JSON.parse(localStorage.getItem('ot-utm-history') || '[]');
+let savedHistory = [];
+try { savedHistory = JSON.parse(localStorage.getItem('ot-utm-history') || '[]'); } catch(e) {}
 let builtUrl = '';
 
 // Preset chips
@@ -380,7 +381,7 @@ document.getElementById('saveHistoryBtn').addEventListener('click', () => {
   if (!builtUrl) return;
   savedHistory.unshift({ url: builtUrl, time: new Date().toLocaleString() });
   if (savedHistory.length > 20) savedHistory.pop();
-  localStorage.setItem('ot-utm-history', JSON.stringify(savedHistory));
+  try { localStorage.setItem('ot-utm-history', JSON.stringify(savedHistory)); } catch(e) {}
   renderHistory();
 });
 

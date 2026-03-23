@@ -214,7 +214,7 @@ function loadHistory() {
   try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch { return []; }
 }
 function saveHistory(hist) {
-  localStorage.setItem(HIST_KEY, JSON.stringify(hist.slice(0, 20)));
+  try { localStorage.setItem(HIST_KEY, JSON.stringify(hist.slice(0, 20))); } catch(e) {}
 }
 function addHistory(entry) {
   let hist = loadHistory().filter(h => h.ip !== entry.ip);

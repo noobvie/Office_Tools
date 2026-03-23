@@ -153,8 +153,8 @@ document.getElementById('copyDec').addEventListener('click', function() { copyTe
 
 function dlText(text, filename) {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-  a.download = filename; a.click(); URL.revokeObjectURL(a.href);
+  a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(text);
+  a.download = filename; a.click();
 }
 document.getElementById('dlEnc').addEventListener('click', () => dlText(document.getElementById('encOutput').value, 'encoded.txt'));
 document.getElementById('dlDec').addEventListener('click', () => dlText(document.getElementById('decOutput').value, 'decoded.txt'));

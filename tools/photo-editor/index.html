@@ -1187,13 +1187,10 @@
     const quality = parseInt(document.getElementById('exportQuality').value) / 100;
     const ext     = fmt === 'image/png' ? 'png' : fmt === 'image/webp' ? 'webp' : 'jpg';
 
-    canvas.toBlob(blob => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = sourceFileName + '_edited.' + ext; a.click();
-      URL.revokeObjectURL(url);
-      setStatus('✅ Downloaded as ' + a.download, 'ok');
-    }, fmt, quality);
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL(fmt, quality);
+    a.download = sourceFileName + '_edited.' + ext; a.click();
+    setStatus('✅ Downloaded as ' + a.download, 'ok');
   });
 
   /* ══════════════════════════════════════════

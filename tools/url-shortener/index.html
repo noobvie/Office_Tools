@@ -185,7 +185,7 @@ async function codeExists(code) {
 
 /* ── History ─────────────────────────────────────────────── */
 function loadHistory() { try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch { return []; } }
-function saveHistory(h) { localStorage.setItem(HIST_KEY, JSON.stringify(h.slice(0, 20))); }
+function saveHistory(h) { try { localStorage.setItem(HIST_KEY, JSON.stringify(h.slice(0, 20))); } catch(e) {} }
 
 function renderHistory() {
   const hist = loadHistory();
