@@ -110,7 +110,6 @@ No build step, no framework, no tracking — everything runs locally in your bro
 | 2048 | Slide and merge tiles to reach 2048. Undo, best score, swipe on mobile |
 | Sudoku | 9×9 Sudoku — Easy / Medium / Hard, pencil mode, timer, check and solve |
 | Gomoku | 5-in-a-row on a 15×15 board. Heuristic AI or two-player local |
-| Wordle | Guess the 5-letter word in 6 tries. Daily word + free play mode |
 | Memory Match | Flip emoji cards to find matching pairs — 3 grid sizes, star rating |
 | Chess | Full-rules chess (castling, en passant, promotion) vs AI or friend |
 | Simon Says | Watch the color/sound sequence and repeat it — grows each round |
