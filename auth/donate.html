@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Support Grin — Office Tools</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .donate-tabs {
+      display: flex;
+      gap: .5rem;
+      margin-bottom: 1.25rem;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 0;
+    }
+    .donate-tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      padding: .6rem 1rem;
+      font-size: .88rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: color .15s, border-color .15s;
+      white-space: nowrap;
+    }
+    .donate-tab-btn:hover  { color: var(--primary); }
+    .donate-tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    .donate-pane { display: none; }
+    .donate-pane.active { display: block; }
+
+    .slatepack-box {
+      font-family: 'Courier New', monospace;
+      font-size: .74rem;
+      background: var(--bg-secondary);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: .75rem 1rem;
+      word-break: break-all;
+      white-space: pre-wrap;
+      max-height: 200px;
+      overflow-y: auto;
+      user-select: all;
+      line-height: 1.5;
+    }
+    .cmd-box {
+      font-family: 'Courier New', monospace;
+      font-size: .82rem;
+      background: var(--bg-secondary);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: .6rem 1rem;
+      word-break: break-all;
+      white-space: pre-wrap;
+      user-select: all;
+    }
+
+    .amount-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin: .75rem 0;
+    }
+    .amount-btn {
+      padding: .5rem 1.25rem;
+      border: 2px solid var(--border);
+      border-radius: 50px;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: .88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .amount-btn:hover  { border-color: var(--primary); color: var(--primary); }
+    .amount-btn.active { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
+
+    .step-label {
+      font-size: .72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-muted);
+      margin-bottom: .35rem;
+    }
+
+    .thank-you { text-align: center; padding: 3rem 2rem; }
+    .thank-you .big-emoji { font-size: 3.5rem; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Support Grin</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>❤️ Support Grin Development</h1>
+    <p>All tools are free. If they save you time, consider sending some Grin our way.<br>
+       <a href="https://grin.mw" target="_blank" rel="noopener" style="color:var(--primary)">What is Grin?</a>
+       — a private, lightweight, open-source cryptocurrency with no amounts visible on-chain.</p>
+  </div>
+
+  <!-- Tab switcher -->
+  <div class="donate-tabs" role="tablist">
+    <button class="donate-tab-btn active" data-pane="pane-tor"     role="tab">1. TOR Direct</button>
+    <button class="donate-tab-btn"        data-pane="pane-receive" role="tab">2. Slatepack — You Send</button>
+    <button class="donate-tab-btn"        data-pane="pane-invoice" role="tab">3. Invoice — We Request</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Pane 1 — Direct TOR send
+       ══════════════════════════════════════════════════════════ -->
+  <div id="pane-tor" class="donate-pane active">
+    <div class="card">
+      <strong>Send directly from your Grin wallet via TOR</strong>
+      <p style="font-size:.88rem;color:var(--text-muted);margin:.75rem 0">
+        The simplest method — just open your wallet, paste the address below and send any amount.
+        TOR must be running. If the connection is unstable, use one of the other tabs.
+      </p>
+      <div class="step-label">Our Grin Address</div>
+      <div class="cmd-box" id="torAddress"></div>
+      <button class="btn btn-ghost btn-sm mt-2" id="copyAddrBtn">Copy Address</button>
+    </div>
+
+    <div class="card mt-2" style="background:var(--bg-secondary)">
+      <strong>Quick steps</strong>
+      <ol style="font-size:.86rem;color:var(--text-muted);margin:.6rem 0;padding-left:1.2rem;line-height:2">
+        <li>Make sure TOR is running (or built into your wallet)</li>
+        <li>In your wallet: <strong>Send → paste address above → enter amount</strong></li>
+        <li>Confirm. Done!</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Pane 2 — Slatepack (You Send / We Receive)
+       ══════════════════════════════════════════════════════════ -->
+  <div id="pane-receive" class="donate-pane">
+
+    <!-- Step 1: user generates send slate -->
+    <div class="card" id="rcv-s1">
+      <strong>Step 1 — Generate a send slate from your wallet</strong>
+      <p style="font-size:.88rem;color:var(--text-muted);margin:.75rem 0">
+        Open your terminal and run the command below (replace <code>&lt;amount&gt;</code> with your donation in GRIN):
+      </p>
+      <div class="step-label">Run in your terminal</div>
+      <div class="cmd-box" id="sendCmd"></div>
+      <button class="btn btn-ghost btn-sm mt-2" id="copySendCmd">Copy Command</button>
+
+      <div class="form-group mt-2">
+        <label>Paste the output slatepack from your wallet here:</label>
+        <textarea id="rcvSlate1" rows="6"
+          placeholder="BEGINSLATEPACK.&#10;…&#10;ENDSLATEPACK."
+          style="font-family:monospace;font-size:.78rem"></textarea>
+      </div>
+      <div id="rcvError" class="alert alert-danger mt-2" style="display:none"></div>
+      <button class="btn btn-primary mt-2" id="rcvProcessBtn">Process Donation →</button>
+    </div>
+
+    <!-- Step 2: we return our response, user finalizes -->
+    <div class="card" id="rcv-s2" style="display:none">
+      <strong>Step 2 — Finalize from your wallet</strong>
+      <p style="font-size:.88rem;color:var(--text-muted);margin:.75rem 0">
+        Copy our response slatepack below, save it to a file (e.g. <code>response.slatepack</code>),
+        then run <code>grin-wallet finalize -i response.slatepack</code> to broadcast.
+      </p>
+      <div class="step-label">Our Response Slatepack</div>
+      <div class="slatepack-box" id="rcvSlate2"></div>
+      <button class="btn btn-ghost btn-sm mt-2" id="copyRcvResp">Copy Response</button>
+
+      <div class="card mt-2" style="background:var(--bg-secondary)">
+        <div class="step-label">Run in your terminal</div>
+        <div class="cmd-box">grin-wallet finalize -i response.slatepack</div>
+      </div>
+
+      <div class="card mt-2 thank-you" style="background:var(--primary-dim)">
+        <div class="big-emoji">🙏</div>
+        <h2 style="margin:.5rem 0">Almost there!</h2>
+        <p style="color:var(--text-muted);font-size:.9rem">
+          Run the finalize command in your wallet to complete the donation. Thank you!
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Pane 3 — Invoice (We Request / You Pay)
+       ══════════════════════════════════════════════════════════ -->
+  <div id="pane-invoice" class="donate-pane">
+
+    <!-- Step 1: choose amount + address, create invoice -->
+    <div class="card" id="inv-s1">
+      <strong>Step 1 — Choose donation amount</strong>
+
+      <div class="amount-grid" id="amountGrid">
+        <button class="amount-btn" data-amount="1">1 GRIN</button>
+        <button class="amount-btn" data-amount="5">5 GRIN</button>
+        <button class="amount-btn" data-amount="10">10 GRIN</button>
+        <button class="amount-btn" data-amount="custom">Custom…</button>
+      </div>
+      <div id="customWrap" style="display:none;margin-bottom:.75rem">
+        <input type="number" id="customAmt" min="0.001" step="0.001"
+               placeholder="Amount in GRIN" style="max-width:200px">
+      </div>
+
+      <div class="form-group mt-2">
+        <label>Your Grin wallet address <span style="color:var(--text-muted);font-weight:400">(so we direct the invoice to you)</span></label>
+        <input type="text" id="invAddress" placeholder="grin1…" autocomplete="off">
+      </div>
+
+      <div id="invError" class="alert alert-danger mt-2" style="display:none"></div>
+      <button class="btn btn-primary mt-2" id="invCreateBtn" disabled>Create Invoice →</button>
+    </div>
+
+    <!-- Step 2: show invoice slate, user pays, pastes response -->
+    <div class="card" id="inv-s2" style="display:none">
+      <strong>Step 2 — Pay the invoice from your wallet</strong>
+      <p style="font-size:.88rem;color:var(--text-muted);margin:.75rem 0">
+        Copy the invoice slatepack below, save it to a file (e.g. <code>invoice.slatepack</code>),
+        then run <code>grin-wallet pay -i invoice.slatepack</code>.
+      </p>
+
+      <div class="step-label">Invoice Slatepack — copy this into your wallet</div>
+      <div class="slatepack-box" id="invSlate1"></div>
+      <button class="btn btn-ghost btn-sm mt-2" id="copyInvSlate">Copy Invoice</button>
+
+      <div class="card mt-2" style="background:var(--bg-secondary)">
+        <div class="step-label">Run in your terminal</div>
+        <div class="cmd-box">grin-wallet pay -i invoice.slatepack</div>
+      </div>
+
+      <div class="form-group mt-2">
+        <label>Paste your wallet's payment response here:</label>
+        <textarea id="invSlate2" rows="6"
+          placeholder="BEGINSLATEPACK.&#10;…&#10;ENDSLATEPACK."
+          style="font-family:monospace;font-size:.78rem"></textarea>
+      </div>
+      <div id="invError2" class="alert alert-danger mt-2" style="display:none"></div>
+      <div class="btn-group mt-2">
+        <button class="btn btn-primary" id="invFinalizeBtn">Finalize Donation →</button>
+        <button class="btn btn-ghost btn-sm" id="invBackBtn">← Back</button>
+      </div>
+    </div>
+
+    <!-- Step 3: success -->
+    <div class="card mt-2 thank-you" id="inv-s3" style="display:none">
+      <div class="big-emoji">✅</div>
+      <h2 style="margin:.75rem 0 .5rem">Thank you!</h2>
+      <p style="color:var(--text-muted)">Your donation has been received and broadcast to the Grin network.</p>
+      <p style="color:var(--text-muted);font-size:.85rem;margin-top:.5rem">You're awesome. Grin on! 😄</p>
+      <a href="../index.html" class="btn btn-primary"
+         style="display:inline-block;margin-top:1.25rem;text-decoration:none">Back to Tools</a>
+    </div>
+  </div>
+
+  <!-- Why Grin card (always visible) -->
+  <div class="card mt-2" style="background:var(--bg-secondary)">
+    <strong>Why Grin?</strong>
+    <p style="font-size:.85rem;color:var(--text-muted);margin-top:.5rem;line-height:1.7">
+      Grin uses MimbleWimble — no transaction amounts or addresses are visible on-chain.
+      No accounts, no KYC, no payment processor.
+      <a href="https://grin.mw" target="_blank" rel="noopener" style="color:var(--primary)">Learn more →</a>
+    </p>
+  </div>
+
+</main>
+
+<script src="../js/config.js"></script>
+<script src="../js/common.js"></script>
+<script>
+  const GRIN_ADDR = OT_CONFIG.GRIN_ADDRESS;
+  const SERVER    = OT_CONFIG.GRIN_SERVER_URL;
+
+  // ── Populate static address fields ───────────────────────────
+  document.getElementById('torAddress').textContent = GRIN_ADDR;
+  document.getElementById('sendCmd').textContent    = `grin-wallet send -d ${GRIN_ADDR} <amount>`;
+
+  // ── Tab switching ─────────────────────────────────────────────
+  document.querySelectorAll('.donate-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.donate-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.donate-pane').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.pane).classList.add('active');
+    });
+  });
+
+  // ── Pane 1: TOR ───────────────────────────────────────────────
+  document.getElementById('copyAddrBtn').addEventListener('click', () => {
+    copyText(GRIN_ADDR, document.getElementById('copyAddrBtn'));
+  });
+  document.getElementById('copySendCmd').addEventListener('click', () => {
+    copyText(document.getElementById('sendCmd').textContent, document.getElementById('copySendCmd'));
+  });
+
+  // ── Pane 2: Receive ───────────────────────────────────────────
+  document.getElementById('rcvProcessBtn').addEventListener('click', async () => {
+    const slatepack = document.getElementById('rcvSlate1').value.trim();
+    if (!slatepack) { alert('Paste your slatepack first.'); return; }
+    const btn   = document.getElementById('rcvProcessBtn');
+    const errEl = document.getElementById('rcvError');
+    btn.disabled = true; btn.textContent = 'Processing…'; errEl.style.display = 'none';
+    try {
+      const res  = await fetch(SERVER + '/api/donate/receive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slatepack }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Server error');
+      document.getElementById('rcvSlate2').textContent = data.slatepack;
+      document.getElementById('rcv-s1').style.display = 'none';
+      document.getElementById('rcv-s2').style.display = '';
+    } catch (err) {
+      errEl.textContent = err.message; errEl.style.display = '';
+    }
+    btn.disabled = false; btn.textContent = 'Process Donation →';
+  });
+
+  document.getElementById('copyRcvResp').addEventListener('click', () => {
+    copyText(document.getElementById('rcvSlate2').textContent, document.getElementById('copyRcvResp'));
+  });
+
+  // ── Pane 3: Invoice ───────────────────────────────────────────
+  let selectedAmount = null;
+
+  document.querySelectorAll('.amount-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (btn.dataset.amount === 'custom') {
+        document.getElementById('customWrap').style.display = '';
+        selectedAmount = parseFloat(document.getElementById('customAmt').value) || null;
+      } else {
+        document.getElementById('customWrap').style.display = 'none';
+        selectedAmount = parseFloat(btn.dataset.amount);
+      }
+      updateInvBtn();
+    });
+  });
+
+  document.getElementById('customAmt').addEventListener('input', () => {
+    selectedAmount = parseFloat(document.getElementById('customAmt').value) || null;
+    updateInvBtn();
+  });
+
+  document.getElementById('invAddress').addEventListener('input', updateInvBtn);
+
+  function updateInvBtn() {
+    const addr  = document.getElementById('invAddress').value.trim();
+    const valid = selectedAmount > 0 && addr.length > 5;
+    document.getElementById('invCreateBtn').disabled = !valid;
+  }
+
+  document.getElementById('invCreateBtn').addEventListener('click', async () => {
+    const address = document.getElementById('invAddress').value.trim();
+    const btn     = document.getElementById('invCreateBtn');
+    const errEl   = document.getElementById('invError');
+    btn.disabled = true; btn.textContent = 'Creating invoice…'; errEl.style.display = 'none';
+    try {
+      const res  = await fetch(SERVER + '/api/donate/invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: selectedAmount, address }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Server error');
+      document.getElementById('invSlate1').textContent = data.slatepack;
+      document.getElementById('inv-s1').style.display = 'none';
+      document.getElementById('inv-s2').style.display = '';
+    } catch (err) {
+      errEl.textContent = err.message; errEl.style.display = '';
+    }
+    btn.disabled = false; btn.textContent = 'Create Invoice →';
+  });
+
+  document.getElementById('copyInvSlate').addEventListener('click', () => {
+    copyText(document.getElementById('invSlate1').textContent, document.getElementById('copyInvSlate'));
+  });
+
+  document.getElementById('invFinalizeBtn').addEventListener('click', async () => {
+    const slatepack = document.getElementById('invSlate2').value.trim();
+    if (!slatepack) { alert('Paste your payment response first.'); return; }
+    const btn   = document.getElementById('invFinalizeBtn');
+    const errEl = document.getElementById('invError2');
+    btn.disabled = true; btn.textContent = 'Finalizing…'; errEl.style.display = 'none';
+    try {
+      const res  = await fetch(SERVER + '/api/donate/finalize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slatepack }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Server error');
+      document.getElementById('inv-s2').style.display = 'none';
+      document.getElementById('inv-s3').style.display = '';
+    } catch (err) {
+      errEl.textContent = err.message; errEl.style.display = '';
+    }
+    btn.disabled = false; btn.textContent = 'Finalize Donation →';
+  });
+
+  document.getElementById('invBackBtn').addEventListener('click', () => {
+    document.getElementById('inv-s2').style.display = 'none';
+    document.getElementById('inv-s1').style.display = '';
+  });
+</script>
+</body>
+</html>

@@ -274,6 +274,18 @@ function initToolSidebar() {
   });
 }
 
+/* ---------- Root path helper (works at any directory depth) ---------- */
+function _otRootPath() {
+  if (_OT_SCRIPT_SRC) {
+    // Derive from the known common.js URL — strip "/js/common.js" → root
+    const m = _OT_SCRIPT_SRC.match(/^(.*?)\/js\/common\.js/);
+    if (m) return m[1] + '/';
+  }
+  // Fallback: count non-html path segments
+  const segs = window.location.pathname.split('/').filter(s => s && !s.endsWith('.html'));
+  return segs.length === 0 ? './' : '../'.repeat(segs.length);
+}
+
 /* ---------- Auto-init on DOMContentLoaded ---------- */
 document.addEventListener('DOMContentLoaded', () => {
   // Inject favicon once — path derived from common.js script URL so it works at any depth
@@ -290,4 +302,44 @@ document.addEventListener('DOMContentLoaded', () => {
   initTabs();
   initToolSidebar();
   // Auth nav rendered by auth.js when present (loaded after common.js on auth-enabled pages)
+
+  // Floating donate heart button — shown on all pages except donate.html itself
+  if (!window.location.pathname.endsWith('/donate.html')) {
+    const root = _otRootPath();
+    const btn  = document.createElement('a');
+    btn.id    = 'ot-donate-heart';
+    btn.href  = root + 'auth/donate.html';
+    btn.title = 'Support Grin ❤️';
+    btn.setAttribute('aria-label', 'Support Grin');
+    btn.textContent = '❤️';
+    btn.style.cssText = [
+      'position:fixed',
+      'bottom:1.5rem',
+      'right:1.5rem',
+      'z-index:900',
+      'width:44px',
+      'height:44px',
+      'border-radius:50%',
+      'background:var(--bg-card)',
+      'border:1.5px solid var(--border)',
+      'box-shadow:var(--shadow-md)',
+      'display:flex',
+      'align-items:center',
+      'justify-content:center',
+      'font-size:1.25rem',
+      'text-decoration:none',
+      'cursor:pointer',
+      'transition:transform .15s, box-shadow .15s',
+      'line-height:1',
+    ].join(';');
+    btn.addEventListener('mouseenter', () => {
+      btn.style.transform  = 'scale(1.18)';
+      btn.style.boxShadow  = '0 6px 20px rgba(0,0,0,.18)';
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.transform  = '';
+      btn.style.boxShadow  = '';
+    });
+    document.body.appendChild(btn);
+  }
 });

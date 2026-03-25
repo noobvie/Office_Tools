@@ -183,7 +183,6 @@ const OTAuth = (() => {
     // Remove existing
     document.getElementById('ot-gate-modal')?.remove();
 
-    const isPremiumBlock = reason === 'premium';
     const html = `
       <div id="ot-gate-modal" style="
         position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;
@@ -191,27 +190,15 @@ const OTAuth = (() => {
         <div style="
           background:var(--bg-card);border:1.5px solid var(--border);border-radius:var(--radius-lg);
           padding:2rem;max-width:420px;width:100%;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.3)">
-          <div style="font-size:2.5rem">${isPremiumBlock ? '🔒' : '⏳'}</div>
-          <h2 style="margin:.75rem 0 .5rem;font-size:1.3rem">
-            ${isPremiumBlock ? 'Pro Feature' : 'Daily Limit Reached'}
-          </h2>
+          <div style="font-size:2.5rem">⏳</div>
+          <h2 style="margin:.75rem 0 .5rem;font-size:1.3rem">Daily Limit Reached</h2>
           <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.25rem">
-            ${isPremiumBlock
-              ? 'This tool requires a Pro subscription. Upgrade with Grin to unlock unlimited access.'
-              : `You've used your ${cfg().FREE_DAILY_LIMIT || 10} free uses for today. Register for free to get unlimited access to all tools.`
-            }
+            You've used your ${cfg().FREE_DAILY_LIMIT || 10} free uses for today. Come back tomorrow!<br>
+            If these tools save you time, consider supporting Grin development.
           </p>
-          ${!isPremiumBlock ? `
-          <a href="${_rootPath()}auth/register.html" class="btn btn-primary" style="display:block;margin-bottom:.6rem;text-decoration:none">
-            Create Free Account — Unlimited Access
-          </a>` : ''}
-          <a href="${_rootPath()}auth/upgrade.html" class="btn ${isPremiumBlock ? 'btn-primary' : 'btn-secondary'}" style="display:block;margin-bottom:.6rem;text-decoration:none">
-            ${isPremiumBlock ? '🚀 Upgrade to Pro with Grin' : '🚀 Upgrade to Pro'}
+          <a href="${_rootPath()}auth/donate.html" class="btn btn-primary" style="display:block;margin-bottom:.6rem;text-decoration:none">
+            ❤️ Support Grin
           </a>
-          ${isLoggedIn() ? '' : `
-          <a href="${_rootPath()}auth/login.html" style="font-size:.82rem;color:var(--text-muted);text-decoration:none">
-            Already have an account? Log in
-          </a><br>`}
           <button onclick="document.getElementById('ot-gate-modal').remove()"
             style="margin-top:.75rem;background:none;border:none;cursor:pointer;font-size:.82rem;color:var(--text-muted)">
             Dismiss
@@ -256,7 +243,7 @@ const OTAuth = (() => {
               <br><span style="font-size:.7rem">${plan}</span>
             </div>
             <a href="${root}auth/dashboard.html" style="display:block;padding:.55rem .85rem;font-size:.83rem;text-decoration:none;color:var(--text)" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''">👤 My Dashboard</a>
-            ${!isPro() ? `<a href="${root}auth/upgrade.html" style="display:block;padding:.55rem .85rem;font-size:.83rem;text-decoration:none;color:var(--primary)" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''">🚀 Upgrade to Pro</a>` : ''}
+            <a href="${root}auth/donate.html" style="display:block;padding:.55rem .85rem;font-size:.83rem;text-decoration:none;color:var(--primary)" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''" >❤️ Support Grin</a>
             <div style="border-top:1px solid var(--border)">
               <button onclick="OTAuth.logout()" style="width:100%;text-align:left;padding:.55rem .85rem;font-size:.83rem;background:none;border:none;cursor:pointer;color:var(--text)" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''">
                 🚪 Sign Out
@@ -273,8 +260,7 @@ const OTAuth = (() => {
       });
     } else {
       el.innerHTML = `
-        <a href="${root}auth/login.html"    class="btn btn-ghost  btn-sm" style="text-decoration:none">Log In</a>
-        <a href="${root}auth/register.html" class="btn btn-primary btn-sm" style="text-decoration:none">Sign Up</a>`;
+        <a href="${root}auth/donate.html" class="btn btn-primary btn-sm" style="text-decoration:none">❤️ Donate</a>`;
     }
   }
 
