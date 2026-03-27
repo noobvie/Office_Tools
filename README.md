@@ -3,7 +3,7 @@
 69 free, browser-based utilities for everyday office, productivity, and AI development work.
 No build step, no framework, no tracking — everything runs locally in your browser.
 
-**Live site:** [https://github.com/noobvie/Office_Tools](https://github.com/noobvie/Office_Tools)
+**Live site:** [https://tools.grin.money/](https://tools.grin.money/)
 
 ---
 
