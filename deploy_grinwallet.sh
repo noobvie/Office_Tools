@@ -22,7 +22,7 @@
 #              /opt/office-tools/data/.wallet_seed.enc (OpenSSL-encrypted)
 #    Server:   /opt/office-tools/server/.env
 # ============================================================
-set -euo pipefail
+set -uo pipefail
 
 # ── Paths ──────────────────────────────────────────────────────
 INSTALL_DIR="/opt/office-tools"
@@ -118,12 +118,15 @@ download_grin_wallet() {
   log "Fetching latest grin-wallet release from GitHub…"
   local api_url="https://api.github.com/repos/mimblewimble/grin-wallet/releases/latest"
   local dl_url
-  dl_url=$(curl -fsSL "$api_url" \
+  local api_json
+  api_json=$(curl -fsSL "$api_url") || die "Could not reach GitHub API. Check internet connection."
+  dl_url=$(printf '%s\n' "$api_json" \
     | grep '"browser_download_url"' \
     | grep 'linux-amd64' \
     | grep -v 'sha256' \
     | head -1 \
-    | sed 's/.*"browser_download_url": *"\([^"]*\)".*/\1/')
+    | sed 's/.*"browser_download_url": *"\([^"]*\)".*/\1/' \
+    || true)
 
   [[ -z "$dl_url" ]] && die "Could not fetch grin-wallet download URL. Check internet connection."
 
@@ -183,7 +186,7 @@ check_server_online() {
   local http_code
   http_code=$(curl -o /dev/null -s -w "%{http_code}" --max-time 5 "${url}/v2/foreign" 2>/dev/null || echo "000")
   # Accept 2xx, 3xx, and 405 (Method Not Allowed = endpoint exists but GET not allowed)
-  if [[ "$http_code" =~ ^(2|3)[0-9]{2}$ || "$http_code" == "405" || "$http_code" == "404" ]]; then
+  if [[ "$http_code" =~ ^(2|3)[0-9]{2}$ ]] || [[ "$http_code" == "405" ]] || [[ "$http_code" == "404" ]]; then
     echo "online"
   else
     echo "offline"
@@ -562,8 +565,7 @@ print_status() {
   fi
 
   # Systemd service
-  if systemctl list-unit-files "${SERVICE_NAME}.service" &>/dev/null \
-      && systemctl list-unit-files "${SERVICE_NAME}.service" | grep -q "$SERVICE_NAME"; then
+  if systemctl list-unit-files "${SERVICE_NAME}.service" 2>/dev/null | grep -q "$SERVICE_NAME"; then
     if systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
       echo -e "  Listener    : ${GRN}running${NC}"
     else
