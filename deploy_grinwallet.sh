@@ -532,6 +532,55 @@ option_manage_service() {
   done
 }
 
+# ── Current status snapshot ────────────────────────────────────
+print_status() {
+  echo
+  echo -e "  ${CYN}Current Status${NC}"
+  echo "  ─────────────────────────────────────────"
+
+  # Binary
+  if [[ -x "$WALLET_BIN" ]]; then
+    local ver; ver=$("$WALLET_BIN" --version 2>&1 | head -1)
+    echo -e "  Binary      : ${GRN}installed${NC}  ${ver}"
+  else
+    echo -e "  Binary      : ${RED}not installed${NC}"
+  fi
+
+  # Wallet initialised (wallet.seed written by grin-wallet init)
+  if [[ -f "${WALLET_DATA_DIR}/wallet.seed" ]]; then
+    echo -e "  Wallet      : ${GRN}initialized${NC}"
+  elif [[ -x "$WALLET_BIN" ]]; then
+    echo -e "  Wallet      : ${YEL}not initialized${NC}  (run option 1)"
+  else
+    echo -e "  Wallet      : ${RED}not initialized${NC}"
+  fi
+
+  # Node configured in toml
+  if [[ -f "$WALLET_TOML" ]]; then
+    local node; node=$(grep 'check_node_api_http_addr' "$WALLET_TOML" | cut -d'"' -f2)
+    echo -e "  Node        : ${node}"
+  fi
+
+  # Systemd service
+  if systemctl list-unit-files "${SERVICE_NAME}.service" &>/dev/null \
+      && systemctl list-unit-files "${SERVICE_NAME}.service" | grep -q "$SERVICE_NAME"; then
+    if systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
+      echo -e "  Listener    : ${GRN}running${NC}"
+    else
+      echo -e "  Listener    : ${YEL}stopped${NC}"
+    fi
+    if systemctl is-enabled --quiet "$SERVICE_NAME" 2>/dev/null; then
+      echo -e "  Auto-start  : enabled"
+    else
+      echo -e "  Auto-start  : disabled"
+    fi
+  else
+    echo -e "  Listener    : ${RED}service not installed${NC}"
+  fi
+
+  echo "  ─────────────────────────────────────────"
+}
+
 # ── Main menu ──────────────────────────────────────────────────
 main() {
   echo
@@ -540,6 +589,7 @@ main() {
   echo "╚══════════════════════════════════════════════╝"
 
   while true; do
+    print_status
     echo
     echo "  1) Integrate Grin Wallet   (download · init · recover · configure)"
     echo "  2) Manage Wallet Service   (start · stop · restart · schedule)"

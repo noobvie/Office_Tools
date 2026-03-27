@@ -287,15 +287,91 @@ app.use((err, _req, res, next) => {
   next(err);
 });
 
+// ── Boot state — tracks wallet start attempts in memory ────────
+const bootState = {
+  state:   'idle',   // 'idle' | 'starting' | 'failed'
+  attempt: 0,
+  maxAttempts: 3,
+  bootTimeoutMs: 30000,
+};
+
+function resetBootState() {
+  bootState.state   = 'idle';
+  bootState.attempt = 0;
+}
+
+// Poll systemctl until active or timeout. Returns true if active.
+async function waitForService(timeoutMs) {
+  const { exec } = require('child_process');
+  const deadline = Date.now() + timeoutMs;
+  return new Promise(resolve => {
+    const check = () => {
+      exec('systemctl is-active --quiet office-tools-grin-listener', err => {
+        if (!err) return resolve(true);
+        if (Date.now() >= deadline) return resolve(false);
+        setTimeout(check, 3000);
+      });
+    };
+    check();
+  });
+}
+
+// Async retry loop — runs in background, does not block the HTTP response
+async function runBootManager() {
+  const { exec } = require('child_process');
+  bootState.state   = 'starting';
+  bootState.attempt = 0;
+
+  for (let i = 1; i <= bootState.maxAttempts; i++) {
+    bootState.attempt = i;
+    await new Promise((resolve, reject) =>
+      exec('systemctl start office-tools-grin-listener', e => e ? reject(e) : resolve())
+    ).catch(() => {});                    // ignore start errors, let waitForService decide
+
+    const up = await waitForService(bootState.bootTimeoutMs);
+    if (up) { resetBootState(); return; } // success — back to idle
+
+    // Not up after 30s — stop and retry (unless last attempt)
+    if (i < bootState.maxAttempts) {
+      await new Promise((resolve, reject) =>
+        exec('systemctl stop office-tools-grin-listener', e => e ? reject(e) : resolve())
+      ).catch(() => {});
+      await new Promise(r => setTimeout(r, 2000));  // brief pause before retry
+    }
+  }
+  // All attempts exhausted
+  bootState.state = 'failed';
+}
+
 // ── Wallet status — used by donate page badge ─────────────────
-// Runs a fast, non-destructive wallet command to confirm the wallet is accessible.
 app.get('/api/wallet/status', async (req, res) => {
   try {
     await grinWallet(['account', '-l']);
-    res.json({ status: 'ok' });
+    resetBootState();     // wallet is up — clear any stale failed state
+    res.json({ status: 'ok', bootState: bootState.state });
   } catch (err) {
-    res.status(503).json({ status: 'error', message: err.message });
+    res.status(503).json({
+      status:    'error',
+      message:   err.message,
+      bootState: bootState.state,   // 'idle' | 'starting' | 'failed'
+      attempt:   bootState.attempt,
+      maxAttempts: bootState.maxAttempts,
+    });
   }
+});
+
+// ── Wallet start — kicks off boot manager ─────────────────────
+app.post('/api/wallet/start', (req, res) => {
+  if (bootState.state === 'starting') {
+    return res.status(202).json({
+      ok: false,
+      message: 'Already starting',
+      attempt: bootState.attempt,
+      maxAttempts: bootState.maxAttempts,
+    });
+  }
+  runBootManager();   // fire and forget
+  res.json({ ok: true, message: 'Boot started' });
 });
 
 // ── Health ────────────────────────────────────────────────────
