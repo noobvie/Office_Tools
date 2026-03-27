@@ -380,6 +380,9 @@ EOF
 
 # ── Option 1: Integrate Grin Wallet ───────────────────────────
 option_integrate() {
+  # Show line + command on any unexpected failure, then pause before returning to menu
+  trap 'echo; err "Failed at line ${LINENO}: ${BASH_COMMAND}"; echo; read -r -p "Press Enter to return to menu…"; trap - ERR' ERR
+
   sep
   log "=== Option 1: Integrate Grin Wallet ==="
   sep
@@ -492,6 +495,9 @@ option_integrate() {
   log "  For auto-restart without prompt: set GRIN_WALLET_PASS_KEYRING=1 in .env"
   log "  and store once: secret-tool store --label='Grin wallet' service grin-wallet account mainnet"
   sep
+  trap - ERR
+  echo
+  read -r -p "Press Enter to return to menu…"
 }
 
 # ── Option 2: Manage Wallet Listener Service ──────────────────
