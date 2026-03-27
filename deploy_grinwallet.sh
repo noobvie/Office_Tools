@@ -119,26 +119,53 @@ download_grin_wallet() {
   local api_url="https://api.github.com/repos/mimblewimble/grin-wallet/releases/latest"
   local dl_url
   local api_json
-  api_json=$(curl -fsSL "$api_url") || die "Could not reach GitHub API. Check internet connection."
+  if ! api_json=$(curl -fsSL --connect-timeout 10 "$api_url" 2>&1); then
+    err "Could not reach GitHub API: $api_json"
+    return 1
+  fi
+
+  # Check for GitHub API error (rate-limit, auth, etc.)
+  if echo "$api_json" | grep -q '"message"' && ! echo "$api_json" | grep -q '"browser_download_url"'; then
+    local gh_msg; gh_msg=$(echo "$api_json" | grep '"message"' | head -1 | sed 's/.*"message": *"\([^"]*\)".*/\1/')
+    err "GitHub API error: ${gh_msg}"
+    return 1
+  fi
+
+  # Asset naming: linux-x86_64.tar.gz (not linux-amd64)
   dl_url=$(printf '%s\n' "$api_json" \
     | grep '"browser_download_url"' \
-    | grep 'linux-amd64' \
+    | grep 'linux-x86_64\.tar\.gz' \
     | grep -v 'sha256' \
     | head -1 \
     | sed 's/.*"browser_download_url": *"\([^"]*\)".*/\1/' \
     || true)
 
-  [[ -z "$dl_url" ]] && die "Could not fetch grin-wallet download URL. Check internet connection."
+  if [[ -z "$dl_url" ]]; then
+    err "Could not find a linux-x86_64 asset in the GitHub release."
+    warn "Available assets:"
+    printf '%s\n' "$api_json" | grep '"browser_download_url"' | sed 's/.*"\(https[^"]*\)".*/  \1/' >&2
+    return 1
+  fi
+
+  log "Latest: $dl_url"
 
   local filename; filename=$(basename "$dl_url")
   local tmpdir;   tmpdir=$(mktemp -d)
 
   log "Downloading: $filename"
-  curl -fL "$dl_url" -o "${tmpdir}/${filename}"
+  if ! curl -fL --progress-bar "$dl_url" -o "${tmpdir}/${filename}"; then
+    err "Download failed: $dl_url"
+    rm -rf "$tmpdir"
+    return 1
+  fi
 
   log "Extracting to ${WALLET_BIN_DIR}…"
   mkdir -p "$WALLET_BIN_DIR"
-  tar -xzf "${tmpdir}/${filename}" -C "$WALLET_BIN_DIR" --strip-components=1
+  if ! tar -xzf "${tmpdir}/${filename}" -C "$WALLET_BIN_DIR" --strip-components=1; then
+    err "Extraction failed. Archive may be corrupt."
+    rm -rf "$tmpdir"
+    return 1
+  fi
   chmod +x "$WALLET_BIN"
   rm -rf "$tmpdir"
 
@@ -327,7 +354,11 @@ update_server_env() {
 
 # ── Install systemd listener service ──────────────────────────
 install_listener_service() {
-  [[ ! -x "$WALLET_BIN" ]] && die "grin-wallet binary not found. Run option 1 first."
+  if [[ ! -x "$WALLET_BIN" ]]; then
+    err "grin-wallet binary not found. Run option 1 first."
+    read -r -p "Press Enter to return to menu…"
+    return 1
+  fi
 
   log "Creating wrapper script: ${LISTENER_WRAPPER}"
   if [[ -f "$ENCRYPTED_PASS" ]]; then
