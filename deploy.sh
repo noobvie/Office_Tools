@@ -1746,11 +1746,13 @@ while true; do
     echo -e "    ${BOLD}5)${RESET}   Update from Repo    ${DIM}pull specific branch · restart services${RESET}"
     echo -e "    ${BOLD}6)${RESET}   Admin Tasks         ${DIM}status · restart · URLs · backup · cleanup${RESET}"
     echo -e "  ${DIM}  ──────────────────────────────────────────────${RESET}"
+    echo -e "    ${BOLD}G)${RESET}   Grin Wallet         ${DIM}download · init · recover · service manager${RESET}"
+    echo -e "  ${DIM}  ──────────────────────────────────────────────${RESET}"
     echo -e "  ${RED}  DEL)${RESET} Delete              ${DIM}permanently remove Office Tools${RESET}"
     echo -e "    ${BOLD}0)${RESET}   Exit"
     echo -e "  ${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
-    echo -ne "  Choose [0-6 / del]: "; read -r _choice
+    echo -ne "  Choose [0-6 / G / del]: "; read -r _choice
     echo ""
 
     case "${_choice,,}" in
@@ -1760,6 +1762,14 @@ while true; do
         4)   opt_4_set_admin      ;;
         5)   opt_5_update_repo    ;;
         6)   opt_6_admin_tasks    ;;
+        g)
+            _gwscript="$(dirname "$(realpath "$0")")/deploy_grinwallet.sh"
+            if [[ ! -f "$_gwscript" ]]; then
+                warn "deploy_grinwallet.sh not found next to deploy.sh."
+            else
+                bash "$_gwscript"
+            fi
+            ;;
         del) opt_del_delete; break ;;
         0)   echo -e "${DIM}Goodbye.${RESET}"; exit 0 ;;
         *)   warn "Invalid choice: $_choice" ;;

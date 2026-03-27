@@ -23,6 +23,7 @@ const { promisify } = require('util');
 const fs            = require('fs');
 const os            = require('os');
 const path          = require('path');
+const readline      = require('readline');
 const Database      = require('better-sqlite3');
 const multer        = require('multer');
 
@@ -31,8 +32,11 @@ const app  = express();
 const PORT = process.env.PORT || 3001;
 
 // ── Config ────────────────────────────────────────────────────
-const GRIN_WALLET_BIN  = process.env.GRIN_WALLET_BIN  || 'grin-wallet';
-const GRIN_WALLET_PASS = process.env.GRIN_WALLET_PASS || '';
+const GRIN_WALLET_BIN      = process.env.GRIN_WALLET_BIN      || 'grin-wallet';
+const GRIN_WALLET_FALLBACK = process.env.GRIN_WALLET_FALLBACK || '/opt/grin/cmdwallet/mainnet/grin-wallet';
+
+// Passphrase is resolved at startup — see loadPassphrase() below
+let GRIN_WALLET_PASS = '';
 const CORS_ORIGINS     = (process.env.CORS_ORIGINS || 'http://localhost:8080').split(',').map(s => s.trim());
 
 // ── SQLite tools DB ───────────────────────────────────────────
@@ -88,17 +92,34 @@ app.use(express.json());
 
 // ── Grin wallet helpers ───────────────────────────────────────
 async function grinWallet(args) {
-  const baseArgs = GRIN_WALLET_PASS ? ['-p', GRIN_WALLET_PASS, ...args] : args;
-  try {
-    const { stdout, stderr } = await execFileAsync(GRIN_WALLET_BIN, baseArgs, {
-      timeout: 60000,
-      maxBuffer: 2 * 1024 * 1024,
-    });
-    return stdout + (stderr || '');
-  } catch (err) {
-    const out = (err.stdout || '') + (err.stderr || '');
-    throw new Error(`grin-wallet ${args[0]} failed: ${err.message}\n${out}`);
+  const baseArgs   = GRIN_WALLET_PASS ? ['-p', GRIN_WALLET_PASS, ...args] : args;
+  // Try primary binary first; on ENOENT fall back to the known install location
+  const candidates = GRIN_WALLET_BIN !== GRIN_WALLET_FALLBACK
+    ? [GRIN_WALLET_BIN, GRIN_WALLET_FALLBACK]
+    : [GRIN_WALLET_BIN];
+
+  for (const bin of candidates) {
+    try {
+      const { stdout, stderr } = await execFileAsync(bin, baseArgs, {
+        timeout: 60000,
+        maxBuffer: 2 * 1024 * 1024,
+      });
+      return stdout + (stderr || '');
+    } catch (err) {
+      if (err.code === 'ENOENT') {
+        console.warn(`[grin-wallet] binary not found at "${bin}", trying next…`);
+        continue; // try the next candidate
+      }
+      // Real execution error — don't try fallback
+      const out = (err.stdout || '') + (err.stderr || '');
+      throw new Error(`grin-wallet ${args[0]} failed: ${err.message}\n${out}`);
+    }
   }
+
+  throw new Error(
+    `grin-wallet binary not found. Tried: ${candidates.join(', ')}. ` +
+    `Set GRIN_WALLET_BIN= or GRIN_WALLET_FALLBACK= in .env`
+  );
 }
 
 function extractSlatepack(output) {
@@ -266,11 +287,95 @@ app.use((err, _req, res, next) => {
   next(err);
 });
 
+// ── Wallet status — used by donate page badge ─────────────────
+// Runs a fast, non-destructive wallet command to confirm the wallet is accessible.
+app.get('/api/wallet/status', async (req, res) => {
+  try {
+    await grinWallet(['account', '-l']);
+    res.json({ status: 'ok' });
+  } catch (err) {
+    res.status(503).json({ status: 'error', message: err.message });
+  }
+});
+
 // ── Health ────────────────────────────────────────────────────
 app.get('/api/health', (_, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
+// ── Passphrase loading ────────────────────────────────────────
+/**
+ * Priority order (best → least secure):
+ *   1. Interactive prompt  — typed at startup, lives in memory only, never on disk
+ *   2. GRIN_WALLET_PASS_FILE — path to a chmod-600 file containing just the passphrase
+ *   3. GRIN_WALLET_PASS env var — convenient but visible in /proc/<pid>/environ
+ *   4. Empty string — wallet has no passphrase
+ */
+async function loadPassphrase() {
+  // Priority 1: OS keyring via secret-tool (no file, no env, survives restarts)
+  //   Setup once: secret-tool store --label="Grin wallet" service grin-wallet account mainnet
+  if (process.env.GRIN_WALLET_PASS_KEYRING === '1') {
+    try {
+      const { execFileSync } = require('child_process');
+      const out = execFileSync('secret-tool', ['lookup', 'service', 'grin-wallet', 'account', 'mainnet'], {
+        timeout: 5000,
+      });
+      GRIN_WALLET_PASS = out.toString().trim();
+      console.log('Grin wallet passphrase loaded from OS keyring.');
+      return;
+    } catch (e) {
+      console.error('OS keyring lookup failed:', e.message);
+      console.error('Run: secret-tool store --label="Grin wallet" service grin-wallet account mainnet');
+      process.exit(1);
+    }
+  }
+
+  // Priority 2: Env var (convenient, least secure — visible in /proc/<pid>/environ)
+  if (process.env.GRIN_WALLET_PASS) {
+    GRIN_WALLET_PASS = process.env.GRIN_WALLET_PASS;
+    console.log('Grin wallet passphrase loaded from environment variable.');
+    return;
+  }
+
+  // Priority 3: Interactive prompt — typed once, kept in memory only, never on disk
+  if (process.stdin.isTTY) {
+    GRIN_WALLET_PASS = await promptPassphrase();
+    if (GRIN_WALLET_PASS) console.log('Grin wallet passphrase loaded from prompt (in memory only).');
+    return;
+  }
+
+  // No passphrase
+  console.log('No Grin wallet passphrase set (wallet assumed to have none).');
+}
+
+function promptPassphrase() {
+  return new Promise(resolve => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    // Suppress echo so the passphrase isn't visible on screen
+    rl._writeToOutput = () => {};
+    process.stdout.write('Grin wallet passphrase (Enter for none): ');
+    rl.question('', pass => {
+      process.stdout.write('\n');
+      rl.close();
+      resolve(pass);
+    });
+  });
+}
+
 // ── Start ─────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`Office Tools server running on port ${PORT}`);
-  console.log(`Grin wallet:  ${GRIN_WALLET_BIN}`);
-});
+async function main() {
+  await loadPassphrase();
+  app.listen(PORT, () => {
+    console.log(`Office Tools server running on port ${PORT}`);
+    console.log(`Grin wallet:  ${GRIN_WALLET_BIN} (fallback: ${GRIN_WALLET_FALLBACK})`);
+    if (process.env.GRIN_WALLET_PASS_FILE) {
+      console.log(`Passphrase:   from file (${process.env.GRIN_WALLET_PASS_FILE})`);
+    } else if (process.env.GRIN_WALLET_PASS) {
+      console.log(`Passphrase:   from environment variable`);
+    } else if (GRIN_WALLET_PASS) {
+      console.log(`Passphrase:   from interactive prompt (in memory only)`);
+    } else {
+      console.log(`Passphrase:   none`);
+    }
+  });
+}
+
+main();

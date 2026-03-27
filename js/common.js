@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const root = _otRootPath();
     const btn  = document.createElement('a');
     btn.id    = 'ot-donate-heart';
-    btn.href  = root + 'auth/donate.html';
+    btn.href  = root + 'pages/donate.html';
     btn.title = 'Support Grin ❤️';
     btn.setAttribute('aria-label', 'Support Grin');
     btn.textContent = '❤️';

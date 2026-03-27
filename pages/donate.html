@@ -89,6 +89,27 @@
 
     .thank-you { text-align: center; padding: 3rem 2rem; }
     .thank-you .big-emoji { font-size: 3.5rem; }
+
+    /* Wallet status badge */
+    #walletStatus {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      font-size: .78rem;
+      font-weight: 700;
+      padding: .25rem .75rem;
+      border-radius: 50px;
+      border: 1.5px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text-muted);
+    }
+    #walletStatus.ok     { border-color: var(--success); color: var(--success); background: var(--success-dim); }
+    #walletStatus.error  { border-color: var(--danger);  color: var(--danger);  background: var(--danger-dim);  }
+    .ws-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
@@ -103,10 +124,13 @@
 
 <main class="tool-main">
   <div class="tool-header">
-    <h1>❤️ Support Grin Development</h1>
+    <h1>❤️ Support Grin Fan</h1>
     <p>All tools are free. If they save you time, consider sending some Grin our way.<br>
        <a href="https://grin.mw" target="_blank" rel="noopener" style="color:var(--primary)">What is Grin?</a>
        — a private, lightweight, open-source cryptocurrency with no amounts visible on-chain.</p>
+    <div style="margin-top:.75rem">
+      <span id="walletStatus"><span class="ws-dot"></span> Checking wallet…</span>
+    </div>
   </div>
 
   <!-- Tab switcher -->
@@ -148,10 +172,22 @@
 
     <!-- Step 1: user generates send slate -->
     <div class="card" id="rcv-s1">
-      <strong>Step 1 — Generate a send slate from your wallet</strong>
+      <strong>Step 1 — Choose amount &amp; generate a send slate</strong>
       <p style="font-size:.88rem;color:var(--text-muted);margin:.75rem 0">
-        Open your terminal and run the command below (replace <code>&lt;amount&gt;</code> with your donation in GRIN):
+        Pick a donation amount, then run the shown command from your terminal.
       </p>
+
+      <div class="amount-grid" id="rcvAmountGrid">
+        <button class="amount-btn" data-amount="10">10 GRIN</button>
+        <button class="amount-btn" data-amount="50">50 GRIN</button>
+        <button class="amount-btn" data-amount="100">100 GRIN</button>
+        <button class="amount-btn" data-amount="custom">Custom…</button>
+      </div>
+      <div id="rcvCustomWrap" style="display:none;margin-bottom:.75rem">
+        <input type="number" id="rcvCustomAmt" min="0.001" step="0.001"
+               placeholder="Amount in GRIN" style="max-width:200px">
+      </div>
+
       <div class="step-label">Run in your terminal</div>
       <div class="cmd-box" id="sendCmd"></div>
       <button class="btn btn-ghost btn-sm mt-2" id="copySendCmd">Copy Command</button>
@@ -202,9 +238,9 @@
       <strong>Step 1 — Choose donation amount</strong>
 
       <div class="amount-grid" id="amountGrid">
-        <button class="amount-btn" data-amount="1">1 GRIN</button>
-        <button class="amount-btn" data-amount="5">5 GRIN</button>
         <button class="amount-btn" data-amount="10">10 GRIN</button>
+        <button class="amount-btn" data-amount="50">50 GRIN</button>
+        <button class="amount-btn" data-amount="100">100 GRIN</button>
         <button class="amount-btn" data-amount="custom">Custom…</button>
       </div>
       <div id="customWrap" style="display:none;margin-bottom:.75rem">
@@ -267,7 +303,7 @@
     <strong>Why Grin?</strong>
     <p style="font-size:.85rem;color:var(--text-muted);margin-top:.5rem;line-height:1.7">
       Grin uses MimbleWimble — no transaction amounts or addresses are visible on-chain.
-      No accounts, no KYC, no payment processor.
+      No accounts, no KYC, no centralized investor.
       <a href="https://grin.mw" target="_blank" rel="noopener" style="color:var(--primary)">Learn more →</a>
     </p>
   </div>
@@ -283,6 +319,26 @@
   // ── Populate static address fields ───────────────────────────
   document.getElementById('torAddress').textContent = GRIN_ADDR;
   document.getElementById('sendCmd').textContent    = `grin-wallet send -d ${GRIN_ADDR} <amount>`;
+
+  // ── Wallet status badge ───────────────────────────────────────
+  async function checkWalletStatus() {
+    const badge = document.getElementById('walletStatus');
+    try {
+      const res  = await fetch(SERVER + '/api/wallet/status', { signal: AbortSignal.timeout(8000) });
+      const data = await res.json();
+      if (res.ok && data.status === 'ok') {
+        badge.className = 'ok';
+        badge.innerHTML = '<span class="ws-dot"></span> Wallet online — ready to receive donations';
+      } else {
+        throw new Error(data.message || 'Wallet error');
+      }
+    } catch (err) {
+      badge.className = 'error';
+      badge.innerHTML = '<span class="ws-dot"></span> Wallet offline — TOR Direct only';
+    }
+  }
+  checkWalletStatus();
+  setInterval(checkWalletStatus, 30000);
 
   // ── Tab switching ─────────────────────────────────────────────
   document.querySelectorAll('.donate-tab-btn').forEach(btn => {
@@ -300,6 +356,29 @@
   });
   document.getElementById('copySendCmd').addEventListener('click', () => {
     copyText(document.getElementById('sendCmd').textContent, document.getElementById('copySendCmd'));
+  });
+
+  // ── Pane 2: Amount buttons ────────────────────────────────────
+  let rcvAmount = null;
+  document.querySelectorAll('#rcvAmountGrid .amount-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#rcvAmountGrid .amount-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (btn.dataset.amount === 'custom') {
+        document.getElementById('rcvCustomWrap').style.display = '';
+        rcvAmount = parseFloat(document.getElementById('rcvCustomAmt').value) || null;
+      } else {
+        document.getElementById('rcvCustomWrap').style.display = 'none';
+        rcvAmount = parseFloat(btn.dataset.amount);
+      }
+      document.getElementById('sendCmd').textContent =
+        `grin-wallet send -d ${GRIN_ADDR} ${rcvAmount ?? '<amount>'}`;
+    });
+  });
+  document.getElementById('rcvCustomAmt').addEventListener('input', () => {
+    rcvAmount = parseFloat(document.getElementById('rcvCustomAmt').value) || null;
+    document.getElementById('sendCmd').textContent =
+      `grin-wallet send -d ${GRIN_ADDR} ${rcvAmount ?? '<amount>'}`;
   });
 
   // ── Pane 2: Receive ───────────────────────────────────────────

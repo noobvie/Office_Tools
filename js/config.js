@@ -1,14 +1,9 @@
 /* ============================================================
    Office Tools — Backend Configuration
-   Update PB_URL and GRIN_SERVER_URL before deploying.
+   Update GRIN_SERVER_URL before deploying.
    ============================================================ */
 
 window.OT_CONFIG = {
-
-  /* PocketBase server URL (used only by tools that need server-side storage) */
-  PB_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:8090'
-    : 'https://pb.yourdomain.com',   // ← change to your PocketBase host
 
   /* Grin server URL (donation endpoints + tools API) */
   GRIN_SERVER_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
