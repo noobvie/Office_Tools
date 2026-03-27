@@ -5,6 +5,11 @@ No build step, no framework, no tracking — everything runs locally in your bro
 
 **Live site:** [https://tools.grin.money/](https://tools.grin.money/)
 
+```bash
+git clone https://github.com/noobvie/Office_Tools.git
+sudo bash Office_Tools/deploy.sh
+```
+
 ---
 
 ## Tools
@@ -155,11 +160,6 @@ The frontend works fully without the backend. Auth and Pro features are opt-in.
 ---
 
 ## Production Deployment
-
-```bash
-git clone https://github.com/noobvie/Office_Tools.git
-sudo bash Office_Tools/deploy.sh
-```
 
 Supports **Debian · Ubuntu · AlmaLinux · Rocky Linux · CentOS Stream**.
 
