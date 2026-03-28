@@ -134,11 +134,10 @@ download_grin_wallet() {
 
   # Asset naming: linux-x86_64.tar.gz (not linux-amd64)
   dl_url=$(printf '%s\n' "$api_json" \
-    | grep '"browser_download_url"' \
     | grep 'linux-x86_64\.tar\.gz' \
     | grep -v 'sha256' \
+    | grep -o 'https://[^"]*' \
     | head -1 \
-    | sed 's/.*"browser_download_url": *"\([^"]*\)".*/\1/' \
     || true)
 
   if [[ -z "$dl_url" ]]; then
@@ -160,9 +159,9 @@ download_grin_wallet() {
     return 1
   fi
 
-  log "Extracting to ${WALLET_BIN_DIR}…"
-  mkdir -p "$WALLET_BIN_DIR"
-  if ! tar -xzf "${tmpdir}/${filename}" -C "$WALLET_BIN_DIR" --strip-components=1; then
+  log "Extracting to ${WALLET_DIR}…"
+  mkdir -p "$WALLET_DIR"
+  if ! tar -xzf "${tmpdir}/${filename}" -C "$WALLET_DIR"; then
     err "Extraction failed. Archive may be corrupt."
     rm -rf "$tmpdir"
     return 1
