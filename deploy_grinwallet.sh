@@ -310,9 +310,8 @@ encrypt_passphrase() {
   local pass="$1"
   [[ -z "$pass" ]] && { warn "No passphrase to encrypt."; return; }
   mkdir -p "$(dirname "$ENCRYPTED_PASS")"
-  log "Encrypting passphrase with OpenSSL AES-256-CBC + PBKDF2…"
-  printf '%s' "$pass" | openssl enc -aes-256-cbc -pbkdf2 -iter 100000 \
-    -pass "pass:$(machine_key)" -out "$ENCRYPTED_PASS"
+  log "Saving passphrase (plain text, root-only)…"
+  printf '%s' "$pass" > "$ENCRYPTED_PASS"
   chown "root:${GRIN_GROUP}" "$ENCRYPTED_PASS"
   chmod 640 "$ENCRYPTED_PASS"
   log "Saved: ${ENCRYPTED_PASS}"
@@ -390,8 +389,7 @@ wallet_start() {
 
   if [[ -f "$ENCRYPTED_PASS" ]]; then
     local pass
-    pass=$(openssl enc -d -aes-256-cbc -pbkdf2 \
-      -pass "pass:$(machine_key)" -in "$ENCRYPTED_PASS" 2>/dev/null || true)
+    pass=$(cat "$ENCRYPTED_PASS" 2>/dev/null || true)
     if [[ -n "$pass" ]]; then
       # Write passphrase into wrapper; wrapper deletes itself before exec
       cat > "$wrapper" <<WRAPPER
@@ -491,12 +489,12 @@ option_integrate() {
       echo
       warn "IMPORTANT: Write down the seed phrase shown above on paper."
       echo
-      read -r -p "Save OpenSSL-encrypted passphrase to disk? [y/N] " save_pass
+      read -r -p "Save passphrase to disk? [y/N] " save_pass
       if [[ "${save_pass,,}" == "y" ]]; then
         if wallet_pass=$(read_pass_confirmed); then
           encrypt_passphrase "$wallet_pass"
           echo
-          read -r -p "Also save OpenSSL-encrypted seed backup? [y/N] " save_seed
+          read -r -p "Also save seed backup? [y/N] " save_seed
           [[ "${save_seed,,}" == "y" ]] && encrypt_seed "$wallet_pass"
         else
           warn "Passphrase entry cancelled — skipping encrypt."
@@ -510,7 +508,7 @@ option_integrate() {
       echo
       (cd "$WALLET_DIR" && ./grin-wallet init -hr)
       echo
-      read -r -p "Save OpenSSL-encrypted passphrase to disk? [y/N] " save_pass
+      read -r -p "Save passphrase to disk? [y/N] " save_pass
       if [[ "${save_pass,,}" == "y" ]]; then
         if wallet_pass=$(read_pass_confirmed); then
           encrypt_passphrase "$wallet_pass"
@@ -585,7 +583,7 @@ option_manage_service() {
     echo "  3) Restart listener"
     echo "  4) Attach to tmux session  (Ctrl-b d to detach)"
     echo "  5) View wallet log (last 60 lines)"
-    echo "  6) Re-save passphrase      (re-encrypt with current machine key)"
+    echo "  6) Re-save passphrase"
     echo "  0) Back"
     echo
     read -r -p "Choice [0-6]: " svc_choice
