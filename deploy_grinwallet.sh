@@ -354,8 +354,7 @@ encrypt_seed() {
 # ── Update server .env with wallet binary path ────────────────
 update_server_env() {
   if [[ ! -f "$SERVER_ENV" ]]; then
-    warn "${SERVER_ENV} not found — skipping .env update."
-    warn "Manually set: GRIN_WALLET_BIN=${WALLET_BIN}"
+    log "${SERVER_ENV} not found — skipping .env update (deploy Office Tools server to enable)."
     return
   fi
   upsert_env "GRIN_WALLET_BIN" "$WALLET_BIN" "$SERVER_ENV"
@@ -391,15 +390,16 @@ wallet_start() {
     local pass
     pass=$(cat "$ENCRYPTED_PASS" 2>/dev/null || true)
     if [[ -n "$pass" ]]; then
-      # Write passphrase into wrapper; wrapper deletes itself before exec
+      # Write passphrase as a literal into wrapper; wrapper deletes itself then execs
+      local quoted_pass; quoted_pass=$(printf '%q' "$pass")
       cat > "$wrapper" <<WRAPPER
 #!/bin/bash
-PASS=$(printf '%q' "$pass")
-rm -f "$wrapper"
+PASS=${quoted_pass}
+rm -f "${wrapper}"
 cd "${WALLET_DIR}"
 exec ./grin-wallet -p "\$PASS" listen
 WRAPPER
-      unset pass
+      unset pass quoted_pass
     else
       warn "Could not decrypt passphrase — starting without it."
       cat > "$wrapper" <<WRAPPER
