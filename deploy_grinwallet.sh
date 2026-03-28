@@ -442,6 +442,108 @@ reboot_autostart_enabled() {
   crontab -l 2>/dev/null | grep -q "grin-listen.sh"
 }
 
+# ── Watchdog cron (every 30 min — checks port 3415) ───────────
+WATCHDOG_SCRIPT="/opt/office-tools/data/grin-watchdog.sh"
+WATCHDOG_CRON_TAG="grin-watchdog"
+
+watchdog_enabled() {
+  crontab -l 2>/dev/null | grep -q "$WATCHDOG_CRON_TAG"
+}
+
+write_watchdog_script() {
+  mkdir -p "$(dirname "$WATCHDOG_SCRIPT")"
+  cat > "$WATCHDOG_SCRIPT" <<WDOG
+#!/bin/bash
+# Grin wallet watchdog — started by cron every 30 min
+# Checks port 3415; if not listening, starts the tmux listener session.
+TMUX_SESSION="${TMUX_SESSION}"
+LISTENER_SCRIPT="${LISTENER_SCRIPT}"
+GRIN_USER="${GRIN_USER}"
+GRIN_GROUP="${GRIN_GROUP}"
+LOG="/opt/office-tools/data/grin-watchdog.log"
+
+log() { echo "\$(date '+%Y-%m-%d %H:%M:%S') \$*" >> "\$LOG"; }
+
+# Check if port 3415 is accepting connections
+# How long a tmux session must exist (seconds) before we consider it stale.
+# grin-wallet can take 2-3 min to sync and open the listener port.
+STALE_AFTER=300   # 5 minutes
+
+# ── Step 1: port check ────────────────────────────────────────
+if timeout 5 bash -c 'echo >/dev/tcp/127.0.0.1/3415' 2>/dev/null; then
+  log "Port 3415 OK — wallet listener is running."
+  exit 0
+fi
+
+log "Port 3415 not reachable."
+
+# ── Step 2: is a tmux session present? ───────────────────────
+if ! tmux has-session -t "\$TMUX_SESSION" 2>/dev/null; then
+  log "No tmux session found — starting wallet listener."
+  tmux new-session -d -s "\$TMUX_SESSION" -x 220 -y 50 \
+    "su -s /bin/bash \${GRIN_USER} -c 'bash \${LISTENER_SCRIPT}'" 2>/dev/null
+  sleep 3
+  if tmux has-session -t "\$TMUX_SESSION" 2>/dev/null; then
+    log "Wallet listener started successfully."
+  else
+    log "ERROR: tmux session exited immediately — check listener script."
+  fi
+  exit 0
+fi
+
+# ── Step 3: session exists but port is down — is it still young? ─
+# Use the PID of the tmux server to find when the session was created.
+SESSION_START=\$(tmux display-message -t "\$TMUX_SESSION" -p '#{session_created}' 2>/dev/null)
+NOW=\$(date +%s)
+AGE=\$(( NOW - SESSION_START ))
+
+if [[ "\$AGE" -lt "\$STALE_AFTER" ]]; then
+  log "tmux session is only \${AGE}s old (threshold: \${STALE_AFTER}s) — still initializing, leaving it alone."
+  exit 0
+fi
+
+# ── Step 4: session is old and port still down → stale, restart ─
+log "tmux session has been running \${AGE}s with no port 3415 — considered stale. Restarting."
+tmux kill-session -t "\$TMUX_SESSION" 2>/dev/null || true
+pkill -f "grin-wallet.*listen" 2>/dev/null || true
+sleep 2
+tmux new-session -d -s "\$TMUX_SESSION" -x 220 -y 50 \
+  "su -s /bin/bash \${GRIN_USER} -c 'bash \${LISTENER_SCRIPT}'" 2>/dev/null
+sleep 3
+if tmux has-session -t "\$TMUX_SESSION" 2>/dev/null; then
+  log "Wallet listener restarted successfully."
+else
+  log "ERROR: tmux session exited immediately after restart — check listener script."
+fi
+WDOG
+  chmod 750 "$WATCHDOG_SCRIPT"
+  chown "root:${GRIN_GROUP}" "$WATCHDOG_SCRIPT"
+  log "Watchdog script written: ${WATCHDOG_SCRIPT}"
+}
+
+enable_watchdog() {
+  write_listener_script
+  write_watchdog_script
+  if watchdog_enabled; then
+    warn "Watchdog cron already enabled."
+    return
+  fi
+  local cron_line="*/30 * * * * bash ${WATCHDOG_SCRIPT} # ${WATCHDOG_CRON_TAG}"
+  ( crontab -l 2>/dev/null; echo "$cron_line" ) | crontab -
+  log "Watchdog cron enabled (every 30 min)."
+  log "Cron entry: ${cron_line}"
+  log "Log: /opt/office-tools/data/grin-watchdog.log"
+}
+
+disable_watchdog() {
+  if ! watchdog_enabled; then
+    warn "Watchdog cron not found."
+    return
+  fi
+  crontab -l 2>/dev/null | grep -v "$WATCHDOG_CRON_TAG" | crontab -
+  log "Watchdog cron disabled."
+}
+
 enable_reboot_autostart() {
   write_listener_script
 
@@ -647,6 +749,12 @@ option_manage_service() {
       echo -e "  Auto-start : ${YEL}disabled${NC}"
     fi
 
+    if watchdog_enabled; then
+      echo -e "  Watchdog   : ${GRN}enabled${NC}  (cron every 30 min — port 3415)"
+    else
+      echo -e "  Watchdog   : ${YEL}disabled${NC}"
+    fi
+
     echo
     echo "  1) Start listener"
     echo "  2) Stop listener"
@@ -656,16 +764,21 @@ option_manage_service() {
     echo "  6) Re-save passphrase"
     echo "  7) Enable auto-start on reboot  (cron @reboot)"
     echo "  8) Disable auto-start on reboot"
+    echo "  9) Enable watchdog  (cron every 30 min — auto-restart if port 3415 down)"
+    echo " 10) Disable watchdog"
+    echo " 11) View watchdog log"
     echo "  0) Back"
     echo
-    read -r -p "Choice [0-8]: " svc_choice
+    read -r -p "Choice [0-11]: " svc_choice
 
     case "$svc_choice" in
       1) wallet_start ;;
       2) wallet_stop ;;
       3) wallet_stop; sleep 1; wallet_start ;;
       4)
-        if wallet_is_running; then
+        if [[ -n "${TMUX:-}" ]]; then
+          warn "Already inside a tmux session. Run this script outside tmux to avoid nesting."
+        elif wallet_is_running; then
           log "Attaching to tmux session '${TMUX_SESSION}' — press Ctrl-b d to detach."
           tmux attach -t "$TMUX_SESSION"
         else
@@ -692,6 +805,16 @@ option_manage_service() {
         ;;
       7) enable_reboot_autostart ;;
       8) disable_reboot_autostart ;;
+      9) enable_watchdog ;;
+      10) disable_watchdog ;;
+      11)
+        local wlog="/opt/office-tools/data/grin-watchdog.log"
+        if [[ -f "$wlog" ]]; then
+          tail -n 60 "$wlog"
+        else
+          warn "Watchdog log not found: ${wlog}  (watchdog may not have run yet)"
+        fi
+        ;;
       0) break ;;
       *) warn "Invalid choice." ;;
     esac
