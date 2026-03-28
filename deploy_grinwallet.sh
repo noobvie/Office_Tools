@@ -26,14 +26,15 @@ set -uo pipefail
 
 # ── Paths ──────────────────────────────────────────────────────
 INSTALL_DIR="/opt/office-tools"
-WALLET_BIN_DIR="${INSTALL_DIR}/cmdgrinwallet"
-WALLET_DATA_DIR="${INSTALL_DIR}/data/wallet"
-WALLET_BIN="${WALLET_BIN_DIR}/grin-wallet"
-WALLET_TOML="${WALLET_DATA_DIR}/grin-wallet.toml"
+WALLET_DIR="${INSTALL_DIR}/cmdgrinwallet"   # binary + toml + wallet data all live here (-r flag)
+WALLET_BIN_DIR="${WALLET_DIR}"              # kept for compatibility with setup_grin_user
+WALLET_DATA_DIR="${WALLET_DIR}"             # grin-wallet -r points here; toml & seed written here
+WALLET_BIN="${WALLET_DIR}/grin-wallet"
+WALLET_TOML="${WALLET_DIR}/grin-wallet.toml"
 SERVER_ENV="${INSTALL_DIR}/server/.env"
 ENCRYPTED_PASS="${INSTALL_DIR}/data/.wallet_pass.enc"
 ENCRYPTED_SEED="${INSTALL_DIR}/data/.wallet_seed.enc"
-LISTENER_WRAPPER="${WALLET_BIN_DIR}/start-listener.sh"
+LISTENER_WRAPPER="${WALLET_DIR}/start-listener.sh"
 SERVICE_NAME="office-tools-grin-listener"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 GRIN_USER="grin"
@@ -517,8 +518,9 @@ option_integrate() {
   sep
   log "Grin Wallet integration complete!"
   echo
+  echo "  Wallet dir:    ${WALLET_DIR}/"
   echo "  Binary:        ${WALLET_BIN}"
-  echo "  Wallet data:   ${WALLET_DATA_DIR}/"
+  echo "  Toml:          ${WALLET_TOML}"
   [[ -f "$ENCRYPTED_PASS" ]] && echo "  Enc passphrase: ${ENCRYPTED_PASS}"
   [[ -f "$ENCRYPTED_SEED" ]] && echo "  Enc seed:       ${ENCRYPTED_SEED}"
   echo
