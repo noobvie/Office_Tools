@@ -260,7 +260,13 @@ patch_check_node() {
     printf "  %d) %-36s %b\n" "$((i+1))" "$host" "$flag"
   done
 
-  printf "  4) %-36s %b\n" "Local node  127.0.0.1:3413" "${YEL}(install later)${NC}"
+  local local_flag
+  if ss -tlnp 2>/dev/null | grep -q ':3413' || netstat -tlnp 2>/dev/null | grep -q ':3413'; then
+    local_flag="${GRN}● running${NC}"
+  else
+    local_flag="${YEL}○ install later${NC}"
+  fi
+  printf "  4) %-36s %b\n" "Local node  127.0.0.1:3413" "$local_flag"
   echo "  0) Back"
   echo
 
