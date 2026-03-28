@@ -132,13 +132,12 @@ Office_Tools/
 ├── sitemap.xml                 ← Auto-patched with real domain on deploy
 ├── css/style.css               ← Shared styles, dark/light/matrix themes
 ├── js/
-│   ├── config.js               ← PocketBase URL, Grin payment server URL
-│   ├── common.js               ← Shared nav, theme toggle, utilities
-│   └── auth.js                 ← Login/register/session state (PocketBase SDK)
-├── auth/                       ← Login, register, dashboard, upgrade pages
-├── admin/index.html            ← Admin dashboard
+│   ├── config.js               ← Grin payment server URL, Grin wallet address
+│   └── common.js               ← Shared nav, theme toggle, copy utilities
+├── pages/
+│   └── donate.html             ← Grin donation page (TOR / Slatepack / Invoice)
 ├── backend/
-│   ├── grin-payment-server.js  ← Node.js/Express — Grin payments + SQLite tools API
+│   ├── grin-payment-server.js  ← Node.js/Express — Grin donations + SQLite tools API
 │   ├── package.json
 │   └── .env.example
 ├── yt-server/                  ← Node.js yt-dlp proxy (YouTube download backend)
@@ -150,12 +149,12 @@ Office_Tools/
 ## Tech Stack
 
 - **Frontend:** HTML / CSS / Vanilla JS — no framework, no build step
-- **Backend (optional):** PocketBase (auth, admin UI) · Node.js + Express (Grin payments, URL shortener, Pastebin, File Share via SQLite)
+- **Backend (optional):** Node.js + Express — Grin donations, URL shortener, Pastebin, File Share (SQLite)
 - **YouTube backend:** Node.js + yt-dlp + ffmpeg (systemd service, port 9000)
-- **Crypto payments:** Grin Wallet via Owner API v3
+- **Crypto donations:** Grin wallet via tmux listener (port 3415) + watchdog cron
 - **AI (browser-only):** `@xenova/transformers` Whisper-tiny (Speech→Text) · `@imgly/background-removal` (Photo Editor)
 
-The frontend works fully without the backend. Auth and Pro features are opt-in.
+The frontend works fully without the backend. The backend is only needed for URL Shortener, Pastebin, File Share, and Grin donations.
 
 ---
 
@@ -166,12 +165,10 @@ Supports **Debian · Ubuntu · AlmaLinux · Rocky Linux · CentOS Stream**.
 | Option | What it does |
 |--------|-------------|
 | 1) Install / Update | UTC timezone · OS packages · nginx · certbot · Node.js 20 · yt-dlp (pip3) · ffmpeg · pull latest code · weekly auto-update cron |
-| 2) Add Domain | Domain + Let's Encrypt SSL · nginx HTTPS config · sitemap.xml domain patching · optional backend |
+| 2) Add Domain | Domain + Let's Encrypt SSL · nginx HTTPS config · sitemap.xml patching · optional Node.js backend |
 | 3) Remove / Switch | Remove nginx vhost + SSL cert, or switch to a new domain |
-| 4) Set / Reset Admin | Create or update PocketBase superuser account |
-| 5) Update from Repo | Pull any branch, sync frontend + backend, update yt-dlp binary, restart services |
-| 6) Admin Tasks | Service status · restart all · list URLs/ports · backup/restore DB · clean logs · purge temp · **update yt-dlp** |
-| DEL) Delete | Remove all services, configs, certs, and directories |
+| 4) Update from Repo | Pull any branch, sync frontend + backend, update yt-dlp binary, restart services |
+| 5) Admin Tasks | Service status · restart all · list URLs/ports · backup SQLite DB · clean logs · purge temp · update yt-dlp |
 
 **Security:** HSTS · TLS 1.2/1.3 · security headers · `microphone=(self)` for Speech & Voice · gzip · `client_max_body_size 1100M`
 
@@ -180,12 +177,31 @@ Supports **Debian · Ubuntu · AlmaLinux · Rocky Linux · CentOS Stream**.
 /var/www/office-tools/        ← frontend (sitemap.xml patched with real domain)
 /opt/office-tools/repo/       ← git repo
 /opt/office-tools/backend/    ← Node.js server + .env
-/opt/office-tools/pocketbase/ ← PocketBase binary + data
+/opt/office-tools/data/       ← SQLite DB (tools.db) + file uploads
 /opt/office-tools/yt-server/  ← yt-dlp Node.js server
-/opt/office-tools/data/       ← SQLite DB + file uploads
-/opt/office-tools/backups/    ← PocketBase database backups
+/opt/office-tools/cmdgrinwallet/ ← grin-wallet binary + config + wallet_data/
+/opt/office-tools/data/.temp  ← wallet passphrase (plain text, chmod 640, root:grin)
 /var/log/office-tools/        ← deploy logs
 ```
+
+---
+
+## Grin Wallet Setup
+
+The Grin wallet listener runs in a **tmux session** (not systemd) managed by `deploy_grinwallet.sh`:
+
+```bash
+sudo bash deploy_grinwallet.sh
+```
+
+| Option | What it does |
+|--------|-------------|
+| 1) Integrate Grin Wallet | Download binary · init or recover wallet · configure node · save passphrase |
+| 2) Manage Listener | Start/Stop/Restart tmux session · view logs · re-save passphrase |
+| 2 → 7) Auto-start on reboot | Adds `@reboot` cron entry to start the tmux session after boot |
+| 2 → 9) Watchdog cron | Checks port 3415 every 30 min · restarts listener if down · logs to `grin-watchdog.log` |
+
+The donate page badge (`pages/donate.html`) checks port 3415 via the Node.js backend (`/api/wallet/status`). If the port is reachable the badge shows green; otherwise it shows offline with a "check back in one hour" message — the watchdog handles automatic recovery.
 
 ---
 

@@ -44,7 +44,6 @@ REPO_DIR="/opt/office-tools/repo"
 WEB_ROOT="/var/www/office-tools"
 BACKEND_DIR="/opt/office-tools/backend"
 COBALT_DIR="/opt/office-tools/cobalt"
-PB_DIR="/opt/office-tools/pocketbase"
 DEPLOY_CONF="/opt/office-tools/deploy.conf"
 LOG_DIR="/var/log/office-tools"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -88,10 +87,10 @@ detect_os() {
 }
 
 # ─── Config helpers ────────────────────────────────────────────────────────────
-DOMAIN=""; EMAIL=""; SETUP_BACKEND="n"; PB_ADMIN_EMAIL=""
+DOMAIN=""; EMAIL=""; SETUP_BACKEND="n"
 
 load_conf() {
-    DOMAIN=""; EMAIL=""; SETUP_BACKEND="n"; PB_ADMIN_EMAIL=""
+    DOMAIN=""; EMAIL=""; SETUP_BACKEND="n"
     [[ -f "$DEPLOY_CONF" ]] && source "$DEPLOY_CONF" || true
 }
 
@@ -102,14 +101,13 @@ save_conf() {
 DOMAIN="${DOMAIN}"
 EMAIL="${EMAIL}"
 SETUP_BACKEND="${SETUP_BACKEND}"
-PB_ADMIN_EMAIL="${PB_ADMIN_EMAIL}"
 CONFEOF
     chmod 600 "$DEPLOY_CONF"
 }
 
 # ─── System timezone ──────────────────────────────────────────────────────────
-# Forces the server to UTC so logs, PocketBase records, and service timestamps
-# are all consistent.  Browser-based tools are unaffected by server timezone —
+# Forces the server to UTC so logs and service timestamps are all consistent.
+# Browser-based tools are unaffected by server timezone —
 # they already use UTC JS methods internally.
 enforce_utc_timezone() {
     section "Enforcing UTC system timezone"
@@ -403,7 +401,6 @@ _patch_domain() {
     local dir="$1" domain="$2"
     local cfg="$dir/js/config.js"
     if [[ -f "$cfg" ]]; then
-        sed -i "s|https://pb\.yourdomain\.com|https://${domain}/pb-api|g"  "$cfg"
         sed -i "s|https://pay\.yourdomain\.com|https://${domain}/pay-api|g" "$cfg"
         sed -i "s|https://yourdomain\.com|https://${domain}|g"              "$cfg"
     fi
@@ -439,18 +436,6 @@ server {
 
     location / { try_files \$uri \$uri/ \$uri.html =404; }
 
-    location ^~ /pb-api/ {
-        proxy_pass         http://127.0.0.1:8090/;
-        proxy_http_version 1.1;
-        proxy_set_header   Upgrade           \$http_upgrade;
-        proxy_set_header   Connection        "upgrade";
-        proxy_set_header   Host              \$host;
-        proxy_set_header   X-Real-IP         \$remote_addr;
-        proxy_set_header   X-Forwarded-For   \$proxy_add_x_forwarded_for;
-        proxy_set_header   X-Forwarded-Proto \$scheme;
-        proxy_read_timeout 300s;
-        proxy_buffering    off;
-    }
     location ^~ /pay-api/ {
         proxy_pass         http://127.0.0.1:3001/;
         proxy_http_version 1.1;
@@ -532,35 +517,6 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
-    location ^~ /pb-api/ {
-        proxy_pass         http://127.0.0.1:8090/;
-        proxy_http_version 1.1;
-        proxy_set_header   Upgrade           \$http_upgrade;
-        proxy_set_header   Connection        "upgrade";
-        proxy_set_header   Host              \$host;
-        proxy_set_header   X-Real-IP         \$remote_addr;
-        proxy_set_header   X-Forwarded-For   \$proxy_add_x_forwarded_for;
-        proxy_set_header   X-Forwarded-Proto \$scheme;
-        proxy_read_timeout 300s;
-        proxy_buffering    off;
-        client_max_body_size 1100M;
-    }
-    location ^~ /_/ {
-        proxy_pass http://127.0.0.1:8090/_/;
-        proxy_http_version 1.1;
-        proxy_set_header Host              \$host;
-        proxy_set_header X-Real-IP         \$remote_addr;
-        proxy_set_header X-Forwarded-For   \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-    }
-    location ^~ /api/ {
-        proxy_pass http://127.0.0.1:8090/api/;
-        proxy_http_version 1.1;
-        proxy_set_header Host              \$host;
-        proxy_set_header X-Real-IP         \$remote_addr;
-        proxy_set_header X-Forwarded-For   \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-    }
     location ^~ /pay-api/ {
         proxy_pass            http://127.0.0.1:3001/;
         proxy_http_version    1.1;
@@ -612,9 +568,7 @@ get_ssl() {
 setup_backend_first() {
     local domain="$1"
 
-    section "Backend setup — PocketBase + Grin payment server"
-    echo -ne "  PocketBase admin email:    "; read -r PB_ADMIN_EMAIL
-    echo -ne "  PocketBase admin password: "; read -rs _PB_PASS; echo ""
+    section "Backend setup — Grin payment server"
     echo -ne "  Grin wallet password:      "; read -rs _GW_PASS; echo ""
     echo ""
     info "Get your Grin receiving address with: grin-wallet address"
@@ -629,9 +583,6 @@ setup_backend_first() {
 # Office Tools backend config
 GRIN_WALLET_PASS=${_GW_PASS}
 GRIN_RECEIVING_ADDRESS=${_GW_ADDR}
-PB_URL=http://127.0.0.1:8090
-PB_ADMIN_EMAIL=${PB_ADMIN_EMAIL}
-PB_ADMIN_PASSWORD=${_PB_PASS}
 PORT=3001
 CORS_ORIGINS=https://${domain}
 PAYMENT_EXPIRY_MINUTES=30
@@ -644,48 +595,12 @@ ENVEOF
     cd "$BACKEND_DIR" && npm install --omit=dev && cd /
     success "Backend files ready at $BACKEND_DIR"
 
-    # Download PocketBase
-    section "Downloading PocketBase"
-    mkdir -p "$PB_DIR"
-    local pb_ver
-    pb_ver=$(curl -s https://api.github.com/repos/pocketbase/pocketbase/releases/latest \
-        | grep '"tag_name"' | cut -d'"' -f4 | sed 's/v//')
-    local pb_zip="pocketbase_${pb_ver}_linux_amd64.zip"
-    curl -L "https://github.com/pocketbase/pocketbase/releases/download/v${pb_ver}/${pb_zip}" \
-        -o "/tmp/${pb_zip}"
-    unzip -o "/tmp/${pb_zip}" -d "$PB_DIR"
-    chmod +x "$PB_DIR/pocketbase"
-    rm -f "/tmp/${pb_zip}"
-    mkdir -p "$PB_DIR/pb_hooks"
-    cp "$BACKEND_DIR/pb_hooks/main.pb.js" "$PB_DIR/pb_hooks/"
-    chown -R www-data:www-data "$PB_DIR"
-    success "PocketBase ${pb_ver} installed at $PB_DIR"
-
-    # Systemd services
-    section "Creating systemd services"
-    cat > /etc/systemd/system/office-tools-pb.service << PBEOF
-[Unit]
-Description=Office Tools — PocketBase
-After=network.target
-[Service]
-Type=simple
-User=www-data
-Group=www-data
-WorkingDirectory=${PB_DIR}
-ExecStart=${PB_DIR}/pocketbase serve --http=127.0.0.1:8090
-Environment=TZ=UTC
-Restart=on-failure
-RestartSec=5s
-StandardOutput=journal
-StandardError=journal
-[Install]
-WantedBy=multi-user.target
-PBEOF
-
+    # Systemd service
+    section "Creating systemd service"
     cat > /etc/systemd/system/office-tools-pay.service << PAYEOF
 [Unit]
 Description=Office Tools — Grin Payment Server
-After=network.target office-tools-pb.service
+After=network.target
 [Service]
 Type=simple
 User=www-data
@@ -703,127 +618,11 @@ WantedBy=multi-user.target
 PAYEOF
 
     systemctl daemon-reload
-    systemctl enable office-tools-pb office-tools-pay
-    systemctl start  office-tools-pb
-
-    info "Waiting for PocketBase to initialize…"
-    local _waited=0
-    while ! curl -s "http://127.0.0.1:8090/api/health" | grep -q '"code":200' 2>/dev/null; do
-        sleep 2; _waited=$((_waited+2))
-        [[ $_waited -ge 30 ]] && { warn "PocketBase did not respond in 30 s"; break; }
-    done
-
-    if [[ -n "$PB_ADMIN_EMAIL" && -n "$_PB_PASS" ]]; then
-        "$PB_DIR/pocketbase" superuser upsert "$PB_ADMIN_EMAIL" "$_PB_PASS" \
-            && success "PocketBase superuser created: $PB_ADMIN_EMAIL" \
-            || warn "Superuser creation failed — use Option 4 to retry"
-        setup_pb_collections "$PB_ADMIN_EMAIL" "$_PB_PASS"
-    fi
-
+    systemctl enable office-tools-pay
     systemctl start office-tools-pay || \
         warn "Payment server failed to start — check: journalctl -u office-tools-pay"
 
-    success "Backend services enabled and started"
-}
-
-# ─── PocketBase collection auto-setup ─────────────────────────────────────────
-# Creates short_urls, pastes, file_shares collections with public API rules.
-# Uses curl + python3 (always available on Linux). Safe to call multiple times.
-setup_pb_collections() {
-    local email="$1" pass="$2"
-    local pb_base="http://127.0.0.1:8090"
-    section "Setting up PocketBase collections"
-
-    # ── Step 1: authenticate ──────────────────────────────────
-    local token=""
-    for auth_path in "/api/collections/_superusers/auth-with-password" "/api/superusers/auth-with-password" "/api/admins/auth-with-password"; do
-        local resp
-        resp=$(curl -sf -X POST "${pb_base}${auth_path}" \
-            -H "Content-Type: application/json" \
-            -d "{\"identity\":\"${email}\",\"password\":\"${pass}\"}" 2>&1) || true
-        token=$(echo "$resp" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('token',''))" 2>/dev/null || true)
-        if [ -n "$token" ]; then
-            info "Authenticated with PocketBase (${auth_path})"
-            break
-        fi
-    done
-
-    if [ -z "$token" ]; then
-        warn "PocketBase auth failed — check admin credentials and that PocketBase is running on port 8090"
-        warn "Manual fix: visit https://${DOMAIN:-localhost}/_/ and create collections: short_urls, pastes, file_shares"
-        return 1
-    fi
-
-    # ── Step 2: public rules + collection definitions ─────────
-    local rules='"listRule":"","viewRule":"","createRule":"","updateRule":null,"deleteRule":null'
-
-    local short_urls_def="{\"name\":\"short_urls\",\"type\":\"base\",${rules},\"fields\":[
-        {\"name\":\"code\",\"type\":\"text\",\"required\":true},
-        {\"name\":\"long_url\",\"type\":\"text\",\"required\":true},
-        {\"name\":\"expires\",\"type\":\"date\",\"required\":false}]}"
-
-    local pastes_def="{\"name\":\"pastes\",\"type\":\"base\",${rules},\"fields\":[
-        {\"name\":\"code\",\"type\":\"text\",\"required\":true},
-        {\"name\":\"title\",\"type\":\"text\",\"required\":false},
-        {\"name\":\"content\",\"type\":\"text\",\"required\":true},
-        {\"name\":\"syntax\",\"type\":\"text\",\"required\":false},
-        {\"name\":\"expires\",\"type\":\"date\",\"required\":false},
-        {\"name\":\"burn_after_read\",\"type\":\"bool\",\"required\":false}]}"
-
-    local file_shares_def="{\"name\":\"file_shares\",\"type\":\"base\",${rules},\"fields\":[
-        {\"name\":\"code\",\"type\":\"text\",\"required\":true},
-        {\"name\":\"original_name\",\"type\":\"text\",\"required\":false},
-        {\"name\":\"file_size\",\"type\":\"number\",\"required\":false},
-        {\"name\":\"file\",\"type\":\"file\",\"required\":true,\"options\":{\"maxSize\":1073741824,\"maxSelect\":1}},
-        {\"name\":\"expires\",\"type\":\"date\",\"required\":false}]}"
-
-    # ── Step 3: create or patch each collection ───────────────
-    local ok=true
-    for col_name in short_urls pastes file_shares; do
-        local varname="${col_name}_def"
-        local col_json="${!varname}"
-
-        # Check if collection already exists
-        local http_status
-        http_status=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "Authorization: ${token}" \
-            "${pb_base}/api/collections/${col_name}")
-
-        if [ "$http_status" = "200" ]; then
-            # Patch rules only (preserve existing fields)
-            local patch_resp
-            patch_resp=$(curl -sf -X PATCH "${pb_base}/api/collections/${col_name}" \
-                -H "Content-Type: application/json" \
-                -H "Authorization: ${token}" \
-                -d "{${rules}}" 2>&1) || true
-            local err
-            err=$(echo "$patch_resp" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('message',''))" 2>/dev/null || true)
-            if [ -n "$err" ]; then
-                warn "  ${col_name}: patch failed — ${err}"; ok=false
-            else
-                success "  ${col_name}: exists — API rules set to public"
-            fi
-        else
-            # Create collection
-            local create_resp
-            create_resp=$(curl -sf -X POST "${pb_base}/api/collections" \
-                -H "Content-Type: application/json" \
-                -H "Authorization: ${token}" \
-                -d "$col_json" 2>&1) || true
-            local created_name
-            created_name=$(echo "$create_resp" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('name',''))" 2>/dev/null || true)
-            if [ "$created_name" = "$col_name" ]; then
-                success "  ${col_name}: created with public API rules"
-            else
-                local err2
-                err2=$(echo "$create_resp" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('message',''))" 2>/dev/null || echo "$create_resp")
-                warn "  ${col_name}: failed — ${err2}"; ok=false
-            fi
-        fi
-    done
-
-    $ok && success "PocketBase collections ready" || \
-        warn "Some collections need attention — visit https://${DOMAIN:-localhost}/_/"
+    success "Backend service enabled and started"
 }
 
 sync_backend() {
@@ -833,9 +632,8 @@ sync_backend() {
     # Ensure SQLite data directory exists and is owned by the service user
     mkdir -p /opt/office-tools/data/uploads
     chown -R www-data:www-data /opt/office-tools/data
-    cp "$BACKEND_DIR/pb_hooks/main.pb.js" "$PB_DIR/pb_hooks/" 2>/dev/null || true
-    systemctl restart office-tools-pb office-tools-pay 2>/dev/null || true
-    success "Backend synced and services restarted"
+    systemctl restart office-tools-pay 2>/dev/null || true
+    success "Backend synced and service restarted"
 }
 
 # ─── Summary printer ──────────────────────────────────────────────────────────
@@ -847,8 +645,6 @@ print_summary() {
     echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
     echo -e "  ${BOLD}Site:${RESET}           https://${domain}/"
-    echo -e "  ${BOLD}PocketBase UI:${RESET}  https://${domain}/_/"
-    echo -e "  ${BOLD}PB API:${RESET}         https://${domain}/pb-api/"
     echo -e "  ${BOLD}YT Downloader:${RESET}  https://${domain}/tools/yt-downloader/"
     echo -e "  ${BOLD}YT API:${RESET}         https://${domain}/yt-api/   ${DIM}(cobalt server, port 9000)${RESET}"
     echo -e "  ${BOLD}Web root:${RESET}       ${WEB_ROOT}"
@@ -876,27 +672,44 @@ show_status() {
     echo -e "  ──────────────────────────────────────────────────"
 
     if [[ -n "$DOMAIN" ]]; then
-        echo -e "  ${GREEN}●${RESET} Domain     : ${BOLD}${DOMAIN}${RESET}"
+        echo -e "  ${GREEN}●${RESET} Domain       : ${BOLD}${DOMAIN}${RESET}"
     else
-        echo -e "  ${DIM}○ Domain     : not configured${RESET}"
+        echo -e "  ${DIM}○ Domain       : not configured${RESET}"
     fi
 
     if [[ -d "$REPO_DIR/.git" ]]; then
         local commit; commit=$(git -C "$REPO_DIR" log -1 --format='%h %s' 2>/dev/null || echo "unknown")
-        echo -e "  ${GREEN}●${RESET} Repo       : ${DIM}${commit}${RESET}"
+        echo -e "  ${GREEN}●${RESET} Repo         : ${DIM}${commit}${RESET}"
     else
-        echo -e "  ${DIM}○ Repo       : not cloned${RESET}"
+        echo -e "  ${DIM}○ Repo         : not cloned${RESET}"
     fi
 
-    local svcs=("nginx" "office-tools-pb" "office-tools-pay" "office-tools-cobalt")
+    # Core services (cobalt excluded — managed separately)
+    local svcs=("nginx" "office-tools-pay")
     for svc in "${svcs[@]}"; do
         if systemctl is-active --quiet "$svc" 2>/dev/null; then
             echo -e "  ${GREEN}●${RESET} ${svc}  ${DIM}running${RESET}"
-        elif systemctl list-unit-files "${svc}.service" &>/dev/null 2>&1 \
-             && systemctl list-unit-files "${svc}.service" 2>/dev/null | grep -q "${svc}"; then
+        elif systemctl list-unit-files "${svc}.service" 2>/dev/null | grep -q "${svc}"; then
             echo -e "  ${YELLOW}●${RESET} ${svc}  ${DIM}stopped${RESET}"
         fi
     done
+
+    # Grin wallet listener — check port 3415
+    if timeout 3 bash -c 'echo >/dev/tcp/127.0.0.1/3415' 2>/dev/null; then
+        echo -e "  ${GREEN}●${RESET} grin-wallet  ${DIM}listening on port 3415${RESET}"
+    elif tmux has-session -t "donate_grin_wallet" 2>/dev/null; then
+        echo -e "  ${YELLOW}●${RESET} grin-wallet  ${DIM}tmux running but port 3415 not yet open${RESET}"
+    else
+        echo -e "  ${RED}●${RESET} grin-wallet  ${DIM}not running${RESET}"
+    fi
+
+    # Watchdog cron
+    if crontab -l 2>/dev/null | grep -q "grin-watchdog"; then
+        echo -e "  ${GREEN}●${RESET} watchdog     ${DIM}cron active (every 30 min)${RESET}"
+    else
+        echo -e "  ${DIM}○ watchdog     : cron not set${RESET}"
+    fi
+
     echo ""
 }
 
@@ -909,7 +722,7 @@ opt_1_install_update() {
     echo -e "    ${CYAN}·${RESET} Set system timezone  ${DIM}→ UTC (required for consistent timestamps)${RESET}"
     echo -e "    ${CYAN}·${RESET} Update OS packages   ${DIM}(${OS_FAMILY})${RESET}"
     echo -e "    ${CYAN}·${RESET} Install / update:    nginx · certbot · Node.js · git · curl"
-    echo -e "    ${CYAN}·${RESET} Install / update:    ffmpeg · cobalt ${DIM}(YouTube downloader)${RESET}"
+    echo -e "    ${CYAN}·${RESET} Install / update:    ffmpeg · cobalt ${DIM}(YouTube downloader backend)${RESET}"
     echo -e "    ${CYAN}·${RESET} Pull latest code     ${DIM}(Office Tools GitHub)${RESET}"
     echo -e "    ${CYAN}·${RESET} Sync frontend files  ${DIM}→ $WEB_ROOT${RESET}"
     echo -e "    ${CYAN}·${RESET} Restart services     ${DIM}(if already configured)${RESET}"
@@ -1002,9 +815,9 @@ opt_2_add_domain() {
 
     # Backend — only prompt on first install
     local _do_backend=false
-    if [[ ! -x "$PB_DIR/pocketbase" ]]; then
+    if [[ ! -d "$BACKEND_DIR" ]] || [[ ! -f "$BACKEND_DIR/.env" ]]; then
         echo ""
-        echo -e "  ${DIM}Backend services (PocketBase + Grin payment server) are optional.${RESET}"
+        echo -e "  ${DIM}Backend service (Grin payment server) is optional.${RESET}"
         echo -ne "  Set up backend? [Y/n]: "
         read -r _b; _b="${_b:-Y}"
         [[ "${_b,,}" == "y" ]] && _do_backend=true && SETUP_BACKEND="y"
@@ -1156,75 +969,6 @@ opt_3_remove_switch() {
     press_enter
 }
 
-# ─── Option 4: Set / Reset Admin Account ─────────────────────────────────────
-opt_4_set_admin() {
-    show_banner
-    section "Option 4 — Set / Reset Admin Account"
-
-    if [[ ! -x "$PB_DIR/pocketbase" ]]; then
-        warn "PocketBase is not installed. Run Option 2 to set up the backend first."
-        press_enter; return 0
-    fi
-
-    echo ""
-    echo -e "  Use this option to create or reset the PocketBase admin account."
-    echo -e "  The admin UI is accessible at: ${BOLD}https://${DOMAIN:-<your-domain>}/_/${RESET}"
-    echo ""
-    echo -ne "  Admin email (0 to cancel): "; read -r _email
-    [[ "$_email" == "0" || -z "$_email" ]] && return 0
-
-    echo -ne "  New password (min 8 chars): "; read -rs _pass; echo ""
-    [[ "$_pass" == "0" || -z "$_pass" ]] && return 0
-    if [[ ${#_pass} -lt 8 ]]; then
-        warn "Password must be at least 8 characters."; press_enter; return 0
-    fi
-    echo -ne "  Confirm password:          "; read -rs _pass2; echo ""
-    if [[ "$_pass" != "$_pass2" ]]; then
-        warn "Passwords do not match."; press_enter; return 0
-    fi
-
-    # Ensure PocketBase is running
-    if ! systemctl is-active --quiet office-tools-pb 2>/dev/null; then
-        info "Starting PocketBase…"
-        systemctl start office-tools-pb
-        sleep 3
-    fi
-
-    "$PB_DIR/pocketbase" superuser upsert "$_email" "$_pass" \
-        && success "Admin account set — you can now log in at https://${DOMAIN:-<domain>}/_/" \
-        || { warn "Failed to update admin account."; press_enter; return 0; }
-
-    # Update .env so payment server can authenticate
-    if [[ -f "$BACKEND_DIR/.env" ]]; then
-        sed -i "s|^PB_ADMIN_EMAIL=.*|PB_ADMIN_EMAIL=${_email}|"   "$BACKEND_DIR/.env"
-        sed -i "s|^PB_ADMIN_PASSWORD=.*|PB_ADMIN_PASSWORD=${_pass}|" "$BACKEND_DIR/.env"
-        systemctl restart office-tools-pay 2>/dev/null || true
-        success ".env updated and payment server restarted"
-    fi
-
-    PB_ADMIN_EMAIL="$_email"
-    save_conf
-
-    # Offer to set Grin receiving address
-    if [[ -f "$BACKEND_DIR/.env" ]]; then
-        echo ""
-        echo -ne "  Grin receiving address (Enter to skip): "; read -r _gaddr
-        if [[ -n "$_gaddr" ]]; then
-            if grep -q "^GRIN_RECEIVING_ADDRESS=" "$BACKEND_DIR/.env"; then
-                sed -i "s|^GRIN_RECEIVING_ADDRESS=.*|GRIN_RECEIVING_ADDRESS=${_gaddr}|" "$BACKEND_DIR/.env"
-            else
-                echo "GRIN_RECEIVING_ADDRESS=${_gaddr}" >> "$BACKEND_DIR/.env"
-            fi
-            success "GRIN_RECEIVING_ADDRESS updated"
-        fi
-    fi
-
-    # (Re-)create collections now that we have valid credentials
-    setup_pb_collections "$_email" "$_pass"
-
-    press_enter
-}
-
 # ─── Option 5: Update from Repo ───────────────────────────────────────────────
 opt_5_update_repo() {
     show_banner
@@ -1367,9 +1111,9 @@ opt_6_admin_tasks() {
         section "Option 6 — Admin Tasks"
 
         echo -e "    ${BOLD}a)${RESET}  Service Status       ${DIM}detailed status for all services${RESET}"
-        echo -e "    ${BOLD}b)${RESET}  Restart All Services ${DIM}nginx · PocketBase · payment · cobalt${RESET}"
+        echo -e "    ${BOLD}b)${RESET}  Restart All Services ${DIM}nginx · payment · cobalt${RESET}"
         echo -e "    ${BOLD}c)${RESET}  URLs & Ports         ${DIM}list all tool URLs, APIs, and listening ports${RESET}"
-        echo -e "    ${BOLD}d)${RESET}  Backup Database      ${DIM}tar PocketBase data → /opt/office-tools/backups/${RESET}"
+        echo -e "    ${BOLD}d)${RESET}  Backup Database      ${DIM}back up SQLite DB → /opt/office-tools/backups/${RESET}"
         echo -e "    ${BOLD}e)${RESET}  Restore Database     ${DIM}restore from a previous backup${RESET}"
         echo -e "    ${BOLD}f)${RESET}  Clean Old Logs       ${DIM}delete deploy logs older than 30 days${RESET}"
         echo -e "    ${BOLD}g)${RESET}  Purge Temp Files     ${DIM}file-share uploads${RESET}"
@@ -1397,7 +1141,7 @@ opt_6_admin_tasks() {
 
 _admin_service_status() {
     section "Service Status"
-    local svcs=("nginx" "office-tools-pb" "office-tools-pay" "office-tools-cobalt")
+    local svcs=("nginx" "office-tools-pay" "office-tools-cobalt")
     for svc in "${svcs[@]}"; do
         if ! systemctl list-unit-files "${svc}.service" &>/dev/null 2>&1 \
            || ! systemctl list-unit-files "${svc}.service" 2>/dev/null | grep -q "^${svc}"; then
@@ -1431,7 +1175,7 @@ _admin_service_status() {
     # Port listener table
     echo -e "  ${BOLD}Listening ports:${RESET}"
     echo -e "  ────────────────────────────────────────"
-    for port_svc in "80:nginx (HTTP)" "443:nginx (HTTPS)" "8090:PocketBase" "9000:cobalt" "8091:payment-server"; do
+    for port_svc in "80:nginx (HTTP)" "443:nginx (HTTPS)" "3001:payment-server" "9000:cobalt"; do
         local port="${port_svc%%:*}" label="${port_svc#*:}"
         if ss -tlnp 2>/dev/null | grep -q ":${port}\b"; then
             echo -e "  ${GREEN}●${RESET} :${port}  ${label}"
@@ -1445,7 +1189,7 @@ _admin_service_status() {
 
 _admin_restart_all() {
     section "Restarting All Services"
-    local svcs=("nginx" "office-tools-pb" "office-tools-pay" "office-tools-cobalt")
+    local svcs=("nginx" "office-tools-pay" "office-tools-cobalt")
     local any=false
     for svc in "${svcs[@]}"; do
         if systemctl list-unit-files "${svc}.service" 2>/dev/null | grep -q "^${svc}"; then
@@ -1482,15 +1226,12 @@ _admin_list_urls() {
 
     echo -e "  ${BOLD}Reverse-proxy routes (nginx)${RESET}"
     echo -e "  ${CYAN}·${RESET} YT Download API : ${base}/yt-api/             → 127.0.0.1:9000"
-    echo -e "  ${CYAN}·${RESET} PocketBase API  : ${base}/api/               → 127.0.0.1:8090"
-    echo -e "  ${CYAN}·${RESET} PocketBase UI   : ${base}/_/                 → 127.0.0.1:8090"
-    echo -e "  ${CYAN}·${RESET} Payment API     : ${base}/pay/               → 127.0.0.1:8091"
+    echo -e "  ${CYAN}·${RESET} Payment API     : ${base}/pay-api/            → 127.0.0.1:3001"
     echo ""
 
     echo -e "  ${BOLD}Internal services (not exposed directly)${RESET}"
     echo -e "  ${DIM}·${RESET} nginx           : :80 (HTTP) / :443 (HTTPS)"
-    echo -e "  ${DIM}·${RESET} PocketBase      : 127.0.0.1:8090"
-    echo -e "  ${DIM}·${RESET} Payment server  : 127.0.0.1:8091"
+    echo -e "  ${DIM}·${RESET} Payment server  : 127.0.0.1:3001"
     echo -e "  ${DIM}·${RESET} cobalt server   : 127.0.0.1:9000"
     echo ""
 
@@ -1505,7 +1246,6 @@ _admin_list_urls() {
 
     echo -e "  ${BOLD}Useful API endpoints${RESET}"
     echo -e "  ${DIM}·${RESET} cobalt health   : ${base}/yt-api/  ${DIM}(GET with Accept: application/json)${RESET}"
-    echo -e "  ${DIM}·${RESET} PocketBase health: http://127.0.0.1:8090/api/health"
     echo ""
 
     press_enter
@@ -1513,32 +1253,27 @@ _admin_list_urls() {
 
 _admin_backup_db() {
     local backup_dir="/opt/office-tools/backups"
+    local db_file="/opt/office-tools/data/tools.db"
     mkdir -p "$backup_dir"
     section "Backup Database"
 
-    if [[ ! -x "$PB_DIR/pocketbase" ]]; then
-        warn "PocketBase not installed — nothing to back up."
+    if [[ ! -f "$db_file" ]]; then
+        warn "SQLite database not found at $db_file — backend not installed or not yet started."
         press_enter; return 0
     fi
 
     local ts; ts=$(date +%Y%m%d_%H%M%S)
-    local backup_file="${backup_dir}/pb_backup_${ts}.tar.gz"
+    local backup_file="${backup_dir}/tools_backup_${ts}.db"
 
-    info "Stopping PocketBase briefly for a clean backup…"
-    systemctl stop office-tools-pb 2>/dev/null || true
-    sleep 1
-
-    tar -czf "$backup_file" -C "$PB_DIR" pb_data 2>/dev/null \
+    info "Copying SQLite database (tools.db)…"
+    cp "$db_file" "$backup_file" \
         && success "Backup saved: $backup_file" \
         || warn "Backup failed — check disk space and permissions"
-
-    info "Restarting PocketBase…"
-    systemctl start office-tools-pb 2>/dev/null || warn "PocketBase failed to restart"
 
     # Show last 5 backups
     echo ""
     echo -e "  ${BOLD}Recent backups:${RESET}"
-    ls -lh "${backup_dir}"/pb_backup_*.tar.gz 2>/dev/null \
+    ls -lh "${backup_dir}"/tools_backup_*.db 2>/dev/null \
         | tail -5 \
         | awk '{printf "  · %s  (%s)\n", $NF, $5}' \
         || echo -e "  ${DIM}(none)${RESET}"
@@ -1548,18 +1283,14 @@ _admin_backup_db() {
 
 _admin_restore_db() {
     local backup_dir="/opt/office-tools/backups"
+    local db_file="/opt/office-tools/data/tools.db"
     section "Restore Database"
-
-    if [[ ! -x "$PB_DIR/pocketbase" ]]; then
-        warn "PocketBase not installed."
-        press_enter; return 0
-    fi
 
     # List backups
     local backups=()
     while IFS= read -r f; do
         [[ -f "$f" ]] && backups+=("$f")
-    done < <(ls -t "${backup_dir}"/pb_backup_*.tar.gz 2>/dev/null)
+    done < <(ls -t "${backup_dir}"/tools_backup_*.db 2>/dev/null)
 
     if [[ "${#backups[@]}" -eq 0 ]]; then
         warn "No backups found in ${backup_dir}."
@@ -1589,22 +1320,21 @@ _admin_restore_db() {
     echo ""
     ask_proceed "Proceed" || return 0
 
-    info "Stopping PocketBase…"
-    systemctl stop office-tools-pb 2>/dev/null || true
+    info "Stopping payment server…"
+    systemctl stop office-tools-pay 2>/dev/null || true
     sleep 1
 
     info "Restoring backup…"
-    rm -rf "${PB_DIR}/pb_data"
-    tar -xzf "$chosen" -C "$PB_DIR" \
+    cp "$chosen" "$db_file" \
         && success "Restore complete" \
         || warn "Restore failed — check the backup file integrity"
 
-    chown -R www-data:www-data "$PB_DIR" 2>/dev/null || true
+    chown www-data:www-data "$db_file" 2>/dev/null || true
 
-    info "Restarting PocketBase…"
-    systemctl start office-tools-pb 2>/dev/null \
-        && success "PocketBase running" \
-        || warn "PocketBase failed to restart — check: journalctl -u office-tools-pb -n 20"
+    info "Restarting payment server…"
+    systemctl start office-tools-pay 2>/dev/null \
+        && success "Payment server running" \
+        || warn "Payment server failed to restart — check: journalctl -u office-tools-pay -n 20"
     press_enter
 }
 
@@ -1742,7 +1472,6 @@ while true; do
     echo -e "    ${BOLD}1)${RESET}   Install / Update    ${DIM}packages · OS · pull latest code${RESET}"
     echo -e "    ${BOLD}2)${RESET}   Add Domain          ${DIM}configure domain · SSL · backend${RESET}"
     echo -e "    ${BOLD}3)${RESET}   Remove / Switch     ${DIM}remove or change active domain${RESET}"
-    echo -e "    ${BOLD}4)${RESET}   Set Admin Account   ${DIM}set/reset PocketBase admin credentials${RESET}"
     echo -e "    ${BOLD}5)${RESET}   Update from Repo    ${DIM}pull specific branch · restart services${RESET}"
     echo -e "    ${BOLD}6)${RESET}   Admin Tasks         ${DIM}status · restart · URLs · backup · cleanup${RESET}"
     echo -e "  ${DIM}  ──────────────────────────────────────────────${RESET}"
@@ -1752,14 +1481,13 @@ while true; do
     echo -e "    ${BOLD}0)${RESET}   Exit"
     echo -e "  ${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
-    echo -ne "  Choose [0-6 / G / del]: "; read -r _choice
+    echo -ne "  Choose [0-3 / 5-6 / G / del]: "; read -r _choice
     echo ""
 
     case "${_choice,,}" in
         1)   opt_1_install_update ;;
         2)   opt_2_add_domain     ;;
         3)   opt_3_remove_switch  ;;
-        4)   opt_4_set_admin      ;;
         5)   opt_5_update_repo    ;;
         6)   opt_6_admin_tasks    ;;
         g)

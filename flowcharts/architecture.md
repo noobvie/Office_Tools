@@ -3,150 +3,137 @@
 ## How everything connects
 
 ```
-╔══════════════════════════════════════════════════════════════════════════════╗
-║                            USER'S BROWSER                                   ║
-║                                                                              ║
-║  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌─────────────────┐ ║
-║  │  index.html  │  │ auth/login   │  │auth/dashboard│  │ auth/upgrade    │ ║
-║  │  (tool hub)  │  │  register    │  │  (my account)│  │ (buy Pro/Grin)  │ ║
-║  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └────────┬────────┘ ║
-║         │  js/auth.js     │ PocketBase SDK   │ PocketBase SDK    │ fetch    ║
-╚═════════╪═════════════════╪══════════════════╪═══════════════════╪══════════╝
-          │                 │                  │                   │
-          ▼                 ▼                  ▼                   ▼
-╔══════════════════════════════════════════════════════════════════════════════╗
-║                     NGINX  (HTTPS :443 / HTTP :80 → redirect)               ║
-║                                                                              ║
-║  URL path       →   Action                                                   ║
-║  ─────────────────────────────────────────────────────────────────────────  ║
-║  /              →   serve /var/www/office-tools/  (static files)            ║
-║  /pb-api/*      →   proxy → PocketBase :8090     (frontend auth & data)     ║
-║  /_/*           →   proxy → PocketBase :8090/_/  (admin SPA HTML/JS/CSS)   ║
-║  /api/*         →   proxy → PocketBase :8090/api/ (admin SPA API calls)    ║
-║  /pay-api/*     →   proxy → Node.js :3001         (Grin payment server)    ║
-║  /backend/      →   403 DENIED                                              ║
-║  *.env *.sh etc →   403 DENIED                                              ║
-╚══════════════════════════════════╤═══════════════════════╤══════════════════╝
-                                   │                       │
-          ┌────────────────────────┘                       └──────────────┐
-          ▼                                                                ▼
-╔═════════════════════════════╗                        ╔═══════════════════════════╗
-║     POCKETBASE  :8090       ║                        ║  NODE.JS PAYMENT  :3001   ║
-║                             ║                        ║  grin-payment-server.js   ║
-║  Collections (SQLite DB):   ║◄───────────────────────║                           ║
-║  • users                    ║  internal HTTP         ║  POST /api/payment/       ║
-║  • subscriptions            ║  (PB admin token)      ║    initiate               ║
-║  • grin_payments            ║                        ║  POST /api/payment/       ║
-║                             ║                        ║    respond                ║
-║  Hooks (pb_hooks/main.pb.js)║                        ║  GET  /api/payment/       ║
-║  • on user create →         ║                        ║    status/:id             ║
-║    send welcome email       ║                        ║                           ║
-║  • cron daily 03:00 →       ║                        ╚══════════════╤════════════╝
-║    expire old subscriptions ║                                       │
-║  • cron every 15min →       ║                                       │ JSON-RPC
-║    expire old payments      ║                                       ▼
-║                             ║                        ╔═══════════════════════════╗
-╚════════════════╤════════════╝                        ║   GRIN WALLET  :3420      ║
-                 │                                     ║   Owner API v3            ║
-                 │ SMTP                                ║                           ║
-                 ▼                                     ║  open_wallet              ║
-        ┌─────────────────┐                            ║  init_send_tx             ║
-        │   Email Server  │                            ║  finalize_tx              ║
-        │  (welcome mail) │                            ║  post_tx                  ║
-        └─────────────────┘                            ╚═══════════════════════════╝
+Browser
+  │
+  ├── index.html / tools/*   → 100% local, no backend
+  │
+  ├── pages/donate.html      → fetch /pay-api/...
+  │
+  └── yt-downloader          → fetch /yt-api/...
+          │                           │
+          ▼                           ▼
+       NGINX :443 / :80
+          │                           │
+          │ /pay-api/*                │ /yt-api/*
+          ▼                           ▼
+   Node.js :3001              yt-server :9000
+   grin-payment-server.js     yt-dlp proxy
+          │
+          ├── GET  /api/wallet/status  → TCP probe 127.0.0.1:3415
+          ├── POST /api/donate/receive  → grin-wallet CLI subprocess
+          ├── POST /api/donate/invoice  → grin-wallet CLI subprocess
+          ├── POST /api/donate/finalize → grin-wallet CLI subprocess
+          ├── POST /api/tools/s        → SQLite tools.db
+          ├── GET  /api/tools/s/:code  → SQLite tools.db
+          ├── POST /api/tools/p        → SQLite tools.db
+          ├── GET  /api/tools/p/:code  → SQLite tools.db
+          ├── POST /api/tools/f        → SQLite tools.db + disk
+          └── GET  /api/tools/f/:id   → SQLite tools.db + disk
+
+grin-wallet listen :3415
+  tmux session "donate_grin_wallet"
+  managed by deploy_grinwallet.sh
+  watchdog cron every 30 min checks port, restarts if stale
 ```
 
 ---
 
-## Page-by-page: what each page calls
+## nginx URL routing
 
-### Public pages (no login required)
-
-| Page | Path | Backend calls |
-|------|------|---------------|
-| Tool hub | `/` | `GET /pb-api/api/collections/users/auth-refresh` (check session) |
-| Any tool | `/tools/<name>/` | None (runs 100% locally in browser) |
-| Login | `/auth/login.html` | `POST /pb-api/api/collections/users/auth-with-password` |
-| Register | `/auth/register.html` | `POST /pb-api/api/collections/users/records` |
-
-### Authenticated pages (require login)
-
-| Page | Path | Backend calls |
-|------|------|---------------|
-| Dashboard | `/auth/dashboard.html` | `GET /pb-api/api/collections/subscriptions/records?filter=user=...` |
-| Upgrade | `/auth/upgrade.html` | `POST /pay-api/api/payment/initiate` → `POST /pay-api/api/payment/respond` → `GET /pay-api/api/payment/status/:id` |
-
-### Admin pages (require PocketBase superuser)
-
-| Page | Path | What it is |
-|------|------|------------|
-| Custom admin | `/admin/` | Static HTML page — shows users/subs via `GET /pb-api/api/collections/...` |
-| PocketBase admin | `/pb-api/_/` | PocketBase's built-in admin SPA (login with superuser creds) |
+| Path | Destination |
+|------|-------------|
+| `/` | Static files `/var/www/office-tools/` |
+| `/pay-api/*` | Node.js :3001 |
+| `/yt-api/*` | yt-server :9000 |
+| `/backend/` | 403 DENIED |
+| `*.env` `*.sh` `*.md` | 403 DENIED |
 
 ---
 
-## Grin payment flow step-by-step
+## Tools — backend usage
+
+### No backend required (100% browser-local)
+
+All tools run entirely in the browser. No server calls needed.
+
+Exceptions — these tools call external public APIs directly from the browser:
+- **Currency & Crypto** → `open.er-api.com` + `api.coingecko.com`
+- **What Is My IP** → `ipify.org` · `icanhazip.com` · `ip-api.com`
+- **IP Location** → `ipwho.is`
+
+### Tools that use the Node.js backend (port 3001)
+
+| Tool | Endpoints used |
+|------|----------------|
+| URL Shortener | `POST /api/tools/s` · `GET /api/tools/s/:code` |
+| Pastebin | `POST /api/tools/p` · `GET /api/tools/p/:code` |
+| File Share | `POST /api/tools/f` · `GET /api/tools/f/:id/download` |
+| Donate — badge | `GET /api/wallet/status` |
+| Donate — receive | `POST /api/donate/receive` |
+| Donate — invoice | `POST /api/donate/invoice` |
+| Donate — finalize | `POST /api/donate/finalize` |
+
+### YouTube Downloader
+
+Uses the yt-server (port 9000) via nginx `/yt-api/` proxy.
+The yt-server spawns a `yt-dlp` subprocess and streams the result.
+
+---
+
+## Grin donation flows
+
+### Method 1 — TOR Direct
+
+User wallet connects directly to `grin-wallet listen :3415` over TOR.
+No backend involved — pure peer-to-peer.
+
+### Method 2 — Slatepack (You Send)
 
 ```
-auth/upgrade.html                 pay-api (Node.js :3001)          Grin Wallet :3420
-       │                                  │                                │
-       │  POST /pay-api/api/payment/      │                                │
-       │    initiate                      │                                │
-       │  { plan, user_token }            │                                │
-       │ ────────────────────────────────►│                                │
-       │                                  │  open_wallet                   │
-       │                                  │ ──────────────────────────────►│
-       │                                  │  init_send_tx (create slate)  │
-       │                                  │ ──────────────────────────────►│
-       │                                  │◄───────────────────────────────│
-       │                                  │  save grin_payments record     │
-       │                                  │ ──────────► PocketBase :8090   │
-       │◄─────────────────────────────────│                                │
-       │  { payment_id, slatepack }       │                                │
-       │                                  │                                │
-       │  [user sends Grin transaction]   │                                │
-       │                                  │                                │
-       │  POST /pay-api/api/payment/      │                                │
-       │    respond                       │                                │
-       │  { payment_id, slatepack_resp }  │                                │
-       │ ────────────────────────────────►│                                │
-       │                                  │  finalize_tx                   │
-       │                                  │ ──────────────────────────────►│
-       │                                  │  post_tx (broadcast)           │
-       │                                  │ ──────────────────────────────►│
-       │                                  │  update grin_payments → paid   │
-       │                                  │  create subscriptions record   │
-       │                                  │ ──────────► PocketBase :8090   │
-       │◄─────────────────────────────────│                                │
-       │  { success: true }               │                                │
+1. User runs: grin-wallet send -d <our_address> <amount>
+   → wallet outputs a send slatepack
+
+2. User pastes slatepack into donate.html
+   POST /api/donate/receive { slatepack }
+   → backend runs: grin-wallet receive -i <file>
+   → returns response slatepack
+
+3. User runs: grin-wallet finalize -i response.slatepack
+   → broadcasts the transaction
+```
+
+### Method 3 — Invoice (We Request)
+
+```
+1. User enters amount + their wallet address in donate.html
+   POST /api/donate/invoice { amount, address }
+   → backend runs: grin-wallet invoice
+   → returns invoice slatepack
+
+2. User runs: grin-wallet pay -i invoice.slatepack
+   → wallet outputs a payment slatepack
+
+3. User pastes payment slatepack into donate.html
+   POST /api/donate/finalize { slatepack }
+   → backend runs: grin-wallet finalize
+   → broadcasts the transaction
 ```
 
 ---
 
-## PocketBase admin UI: why three nginx locations
-
-The admin UI at `/_/` is a Single-Page App (SPA) built into PocketBase.
-It makes two types of requests that need separate nginx routes:
+## Wallet status badge logic
 
 ```
-Browser requests /_/index.html
-       │
-       ▼
-  location ^~ /_/    ← serves the HTML shell + assets (index-xyz.js, index-xyz.css)
-       │  proxy_pass http://127.0.0.1:8090/_/
-       │
-       ▼
-  Browser JS runs, calls /api/collections, /api/admins ...
-       │
-       ▼
-  location ^~ /api/  ← admin SPA API calls (absolute path /api/)
-       │  proxy_pass http://127.0.0.1:8090/api/
-       │
-  (NOT /pb-api/ — that prefix is only for the frontend app)
+donate.html polls every 30s:
+  GET /api/wallet/status
+    → Node.js does TCP connect to 127.0.0.1:3415 (3s timeout)
+    → reachable   : 200 { status: 'ok' }    → green badge "Wallet online"
+    → unreachable : 503 { status: 'error' } → red badge   "Wallet offline"
 
-  location ^~ /pb-api/ ← frontend app calls  (js/auth.js, PocketBase SDK)
-       │  proxy_pass http://127.0.0.1:8090/    (strips /pb-api/ prefix)
+Watchdog cron (every 30 min) — /opt/office-tools/data/grin-watchdog.sh:
+  TCP probe 127.0.0.1:3415
+    reachable                        → exit, all good
+    not reachable, no tmux session   → start fresh tmux session
+    not reachable, tmux < 5 min old  → leave it (still initializing)
+    not reachable, tmux >= 5 min old → kill stale session, restart
 ```
-
-The `^~` prefix on all three stops the static-asset caching rule
-`~* \.(css|js|...)$` from intercepting admin SPA JS/CSS files.

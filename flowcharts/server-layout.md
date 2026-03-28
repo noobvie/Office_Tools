@@ -6,101 +6,66 @@
 /
 ├── var/
 │   ├── www/
-│   │   └── office-tools/              ← nginx serves this directory (public web root)
+│   │   └── office-tools/              ← nginx serves this (public web root)
 │   │       ├── index.html             ← tool hub
-│   │       ├── css/
-│   │       │   └── style.css
+│   │       ├── css/style.css
 │   │       ├── js/
-│   │       │   ├── config.js          ← patched by deploy.sh with your domain URLs
-│   │       │   ├── common.js
-│   │       │   └── auth.js
-│   │       ├── auth/
-│   │       │   ├── login.html
-│   │       │   ├── register.html
-│   │       │   ├── dashboard.html
-│   │       │   └── upgrade.html
-│   │       ├── admin/
-│   │       │   └── index.html
+│   │       │   ├── config.js          ← patched by deploy.sh with domain + server URL
+│   │       │   └── common.js
+│   │       ├── pages/
+│   │       │   └── donate.html        ← Grin donation page
 │   │       └── tools/
-│   │           ├── aspect-ratio/index.html
-│   │           ├── base64-converter/index.html
-│   │           ├── color-converter/index.html
-│   │           ├── contrast-checker/index.html
-│   │           ├── crontab/index.html
-│   │           ├── csv-json/index.html
-│   │           ├── currency/index.html
-│   │           ├── date-calculator/index.html
-│   │           ├── fake-data/index.html
-│   │           ├── hash-generator/index.html
-│   │           ├── json-editor/index.html
-│   │           ├── markdown-editor/index.html
-│   │           ├── my-ip/index.html
-│   │           ├── palette-extractor/index.html
-│   │           ├── password-generator/index.html
-│   │           ├── percentage-calculator/index.html
-│   │           ├── pomodoro/index.html
-│   │           ├── qr-generator/index.html
-│   │           ├── random-number/index.html
-│   │           ├── screenshot-beautifier/index.html
-│   │           ├── text-diff/index.html
-│   │           ├── typing-speed/index.html
-│   │           ├── unix-timestamp/index.html
-│   │           ├── url-encoder/index.html
-│   │           ├── utm-builder/index.html
-│   │           ├── uuid-generator/index.html
-│   │           ├── wheel-of-names/index.html
-│   │           └── word-counter/index.html
+│   │           └── <tool-name>/index.html  (69 tools)
 │   │
 │   └── log/
 │       └── office-tools/
-│           ├── deploy_20260319_120000.log   ← per-run deploy log
-│           └── deploy_20260319_130000.log
+│           └── deploy_YYYYMMDD_HHMMSS.log
 │
 ├── opt/
 │   └── office-tools/
-│       ├── deploy.conf                ← saved config (domain, email, passwords)
-│       │                                 skips re-prompting on redeploy
+│       ├── deploy.conf                ← saved config (domain, email)
 │       │
-│       ├── repo/                      ← git clone of github.com/noobvie/Office_Tools
-│       │   ├── deploy.sh              ← run this to redeploy: sudo bash /opt/office-tools/repo/deploy.sh
-│       │   ├── index.html
-│       │   ├── backend/
-│       │   │   ├── grin-payment-server.js
-│       │   │   ├── package.json
-│       │   │   ├── pb_hooks/main.pb.js
-│       │   │   └── pb_schema.json
+│       ├── repo/                      ← git clone of Office_Tools repo
+│       │   ├── deploy.sh
+│       │   ├── deploy_grinwallet.sh
 │       │   └── ...
 │       │
 │       ├── backend/                   ← Node.js payment server (runtime)
 │       │   ├── grin-payment-server.js
 │       │   ├── node_modules/
 │       │   ├── package.json
-│       │   └── .env                  ← secrets (NOT in git): PB credentials, Grin wallet pass
+│       │   └── .env                  ← secrets: GRIN_WALLET_BIN, CORS_ORIGINS, etc.
 │       │
-│       └── pocketbase/
-│           ├── pocketbase             ← binary (downloaded by deploy.sh)
-│           ├── pb_hooks/
-│           │   └── main.pb.js         ← server-side hooks (cron, welcome email)
-│           └── pb_data/
-│               ├── data.db            ← SQLite: users, subscriptions, grin_payments
-│               └── logs/
+│       ├── data/
+│       │   ├── tools.db              ← SQLite: short_urls, pastes, file_shares
+│       │   ├── uploads/              ← file share uploads
+│       │   ├── .temp                 ← grin-wallet passphrase (chmod 640, root:grin)
+│       │   ├── grin-listen.sh        ← wallet listener wrapper (written by deploy_grinwallet.sh)
+│       │   └── grin-watchdog.sh      ← watchdog script (written by deploy_grinwallet.sh)
+│       │
+│       ├── cmdgrinwallet/            ← grin-wallet installation
+│       │   ├── grin-wallet           ← binary (downloaded by deploy_grinwallet.sh)
+│       │   ├── grin-wallet.toml      ← config (node selection)
+│       │   ├── wallet_data/          ← wallet files (created by grin-wallet init)
+│       │   └── grin-wallet.log       ← runtime log
+│       │
+│       └── yt-server/               ← yt-dlp Node.js proxy
+│           ├── server.js
+│           ├── node_modules/
+│           └── package.json
 │
 ├── etc/
 │   ├── nginx/
-│   │   ├── sites-available/
-│   │   │   └── office-tools          ← nginx config written by deploy.sh
-│   │   └── sites-enabled/
-│   │       └── office-tools          ← symlink to sites-available/office-tools
+│   │   ├── sites-available/office-tools   ← nginx config written by deploy.sh
+│   │   └── sites-enabled/office-tools     ← symlink
 │   │
-│   ├── letsencrypt/
-│   │   └── live/
-│   │       └── tools.example.com/
-│   │           ├── fullchain.pem      ← SSL certificate (auto-renewed by certbot)
-│   │           └── privkey.pem
+│   ├── letsencrypt/live/<domain>/
+│   │   ├── fullchain.pem              ← SSL cert (auto-renewed by certbot)
+│   │   └── privkey.pem
 │   │
 │   └── systemd/system/
-│       ├── office-tools-pb.service    ← PocketBase systemd service
-│       └── office-tools-pay.service   ← Node.js payment server systemd service
+│       └── office-tools-pay.service   ← Node.js payment server
+│           (office-tools-pb removed — PocketBase no longer used)
 │
 └── usr/bin/
     ├── nginx
@@ -112,36 +77,34 @@
 
 ## What is NOT served publicly
 
-These paths are blocked in nginx (`deny all; return 404`):
-
 | Path | Why blocked |
 |------|-------------|
-| `/backend/` | Source code lives in repo but must not be accessible |
+| `/backend/` | Source code — must not be accessible |
 | `*.env` | Secrets |
 | `*.sh` | Shell scripts |
 | `*.json` | Schema, package files |
 | `*.md` | Documentation |
-| `/.*` (dot files) | Hidden files, `.git`, etc. |
+| `/.*` | Hidden files, `.git`, etc. |
 
-The `backend/` folder is excluded entirely from the web root sync by `deploy.sh` using `rsync --exclude=backend/`.
+The `backend/` folder is excluded from the web root sync by `rsync --exclude=backend/`.
 
 ---
 
 ## Systemd services
 
 ```
-office-tools-pb.service
-  ExecStart: /opt/office-tools/pocketbase/pocketbase serve --http=127.0.0.1:8090
-  Listens:   127.0.0.1:8090   (localhost only — not exposed to internet)
-  Data:      /opt/office-tools/pocketbase/pb_data/
-
 office-tools-pay.service
   ExecStart: node /opt/office-tools/backend/grin-payment-server.js
-  Listens:   127.0.0.1:3001   (localhost only — not exposed to internet)
+  Listens:   127.0.0.1:3001   (localhost only)
   Env file:  /opt/office-tools/backend/.env
+
+office-tools-cobalt.service  (optional — YouTube download backend)
+  ExecStart: pnpm start (cobalt API)
+  Listens:   127.0.0.1:9000   (localhost only)
 ```
 
-Both services are localhost-only. All external access goes through nginx.
+The grin-wallet listener is NOT a systemd service — it runs in a tmux session
+managed by `deploy_grinwallet.sh` with an optional watchdog cron.
 
 ---
 
@@ -149,36 +112,34 @@ Both services are localhost-only. All external access goes through nginx.
 
 | Port | Service | Exposed? |
 |------|---------|----------|
-| 80   | nginx (HTTP → HTTPS redirect) | Yes, public |
-| 443  | nginx (HTTPS) | Yes, public |
-| 8090 | PocketBase | No, localhost only |
+| 80 | nginx (HTTP → HTTPS redirect) | Yes, public |
+| 443 | nginx (HTTPS) | Yes, public |
 | 3001 | Node.js payment server | No, localhost only |
-| 3420 | Grin Wallet Owner API | No, localhost only |
+| 3415 | grin-wallet listen (tmux) | No, localhost only |
+| 9000 | cobalt yt-server (optional) | No, localhost only |
 
 ---
 
 ## .env file contents (backend/.env)
 
 ```
-# PocketBase connection (internal)
-PB_URL=http://127.0.0.1:8090
-PB_ADMIN_EMAIL=admin@example.com
-PB_ADMIN_PASSWORD=your-pb-admin-password
+# Grin wallet binary path
+GRIN_WALLET_BIN=/opt/office-tools/cmdgrinwallet/grin-wallet
+GRIN_WALLET_FALLBACK=/opt/grin/cmdwallet/mainnet/grin-wallet
 
-# Grin Wallet Owner API
-GRIN_OWNER_URL=http://127.0.0.1:3420/v3/owner
-GRIN_WALLET_PASS=your-wallet-password
+# Passphrase — one of:
+GRIN_WALLET_PASS_FILE=/opt/office-tools/data/.temp   # recommended
+# GRIN_WALLET_PASS=yourpassphrase                    # or plain env var
+
+# Grin wallet listener port (for status check)
+GRIN_LISTEN_PORT=3415
+GRIN_LISTEN_HOST=127.0.0.1
 
 # CORS — must match your domain
 CORS_ORIGINS=https://tools.example.com
 
-# Payment expiry window
-PAYMENT_EXPIRY_MINUTES=30
-
-# Plan prices in nanogrin (1 GRIN = 1,000,000,000 nanogrin)
-PLAN_PRO_MONTHLY_NANOGRIN=10000000000
-PLAN_PRO_YEARLY_NANOGRIN=100000000000
-PLAN_LIFETIME_NANOGRIN=500000000000
+# Server port
+PORT=3001
 ```
 
 ---
@@ -186,18 +147,30 @@ PLAN_LIFETIME_NANOGRIN=500000000000
 ## Redeploy workflow
 
 ```
-[on your local machine]
+[local machine]
   git add -A && git commit -m "..." && git push
 
-[on the server]
+[server]
   sudo bash /opt/office-tools/repo/deploy.sh
 
   What redeploy does:
-    1. git pull (gets latest changes)
-    2. rsync frontend to /var/www/office-tools/ (excludes backend/, .git)
-    3. patch js/config.js with saved domain (from deploy.conf)
+    1. git pull (latest changes)
+    2. rsync frontend → /var/www/office-tools/  (excludes backend/, .git)
+    3. patch js/config.js with saved domain
     4. rewrite nginx config
     5. nginx -t && systemctl reload nginx
-    6. if backend exists: restart services only (no reinstall)
+    6. if backend exists: npm install + restart office-tools-pay
     7. SSL cert: skipped if still valid
+```
+
+---
+
+## Grin wallet cron entries (root crontab)
+
+```
+# Auto-start wallet on reboot (set via deploy_grinwallet.sh option 2 → 7)
+@reboot sleep 30 && tmux new-session -d -s donate_grin_wallet ...
+
+# Watchdog — restart wallet if port 3415 down (set via option 2 → 9)
+*/30 * * * * bash /opt/office-tools/data/grin-watchdog.sh # grin-watchdog
 ```

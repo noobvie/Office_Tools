@@ -88,12 +88,27 @@ setup_grin_user() {
   log "Ownership set: ${WALLET_DIR} → ${GRIN_USER}:${GRIN_GROUP}"
 }
 
-# ── Helper: read passphrase (hidden input) ─────────────────────
+# ── Helper: read passphrase (hidden input, confirmed) ──────────
+# Rules: minimum 3 characters, empty not accepted, 0 to cancel.
 read_pass_confirmed() {
-  local pass
-  read -r -s -p "Passphrase (Enter for none, 0 to cancel): " pass; echo
-  [[ "$pass" == "0" ]] && return 1
-  echo "$pass"
+  local pass pass2
+  while true; do
+    read -r -s -p "Passphrase (min 3 chars, 0 to cancel): " pass; echo
+    [[ "$pass" == "0" ]] && return 1
+    if [[ ${#pass} -lt 3 ]]; then
+      warn "Passphrase must be at least 3 characters. Try again."
+      continue
+    fi
+    read -r -s -p "Confirm passphrase: " pass2; echo
+    if [[ "$pass" != "$pass2" ]]; then
+      warn "Passphrases do not match. Try again."
+      unset pass pass2
+      continue
+    fi
+    unset pass2
+    break
+  done
+  printf '%s' "$pass"
 }
 
 # ── Helper: update or append a key in .env ────────────────────
@@ -359,7 +374,8 @@ write_listener_script() {
   if [[ -f "$PASS_FILE" ]]; then
     cat > "$LISTENER_SCRIPT" <<SCRIPT
 #!/bin/bash
-PASS=\$(cat "${PASS_FILE}")
+# IFS= / read strips trailing newline safely; tr -d handles any \r on edge cases
+PASS=\$(tr -d '\r\n' < "${PASS_FILE}")
 cd "${WALLET_DIR}"
 exec ./grin-wallet -p "\$PASS" listen
 SCRIPT
