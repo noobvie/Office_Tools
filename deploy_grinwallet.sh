@@ -361,10 +361,7 @@ update_server_env() {
     return
   fi
   upsert_env "GRIN_WALLET_BIN" "$WALLET_BIN" "$SERVER_ENV"
-  if [[ -f "$PASS_FILE" ]]; then
-    upsert_env "GRIN_WALLET_PASS_FILE" "$PASS_FILE" "$SERVER_ENV"
-    log "Set GRIN_WALLET_PASS_FILE in ${SERVER_ENV}"
-  fi
+  # Passphrase is read directly from PASS_FILE at the hardcoded path — no .env entry needed
   log "Updated ${SERVER_ENV}"
 }
 
@@ -374,10 +371,10 @@ write_listener_script() {
   if [[ -f "$PASS_FILE" ]]; then
     cat > "$LISTENER_SCRIPT" <<SCRIPT
 #!/bin/bash
-# IFS= / read strips trailing newline safely; tr -d handles any \r on edge cases
-PASS=\$(tr -d '\r\n' < "${PASS_FILE}")
+# Read passphrase into env var — never appears in ps/top/proc
+export GRIN_WALLET_PASSWORD=\$(tr -d '\r\n' < "${PASS_FILE}")
 cd "${WALLET_DIR}"
-exec ./grin-wallet -p "\$PASS" listen
+exec ./grin-wallet listen
 SCRIPT
   else
     cat > "$LISTENER_SCRIPT" <<SCRIPT
@@ -445,8 +442,9 @@ WRAPPER
 
 wallet_stop() {
   if wallet_is_running; then
-    tmux kill-session -t "$TMUX_SESSION"
     pkill -f "grin-wallet.*listen" 2>/dev/null || true
+    sleep 1
+    tmux kill-session -t "$TMUX_SESSION" 2>/dev/null || true
     log "Wallet listener stopped."
   else
     warn "Wallet listener is not running."
@@ -520,8 +518,11 @@ fi
 
 # ── Step 4: session is old and port still down → stale, restart ─
 log "tmux session has been running \${AGE}s with no port 3415 — considered stale. Restarting."
-tmux kill-session -t "\$TMUX_SESSION" 2>/dev/null || true
+# Kill grin-wallet FIRST before killing tmux — prevents orphan processes
+# (tmux kill-session reparents children to PID 1 instantly; pkill must run before that)
 pkill -f "grin-wallet.*listen" 2>/dev/null || true
+sleep 1
+tmux kill-session -t "\$TMUX_SESSION" 2>/dev/null || true
 sleep 2
 tmux new-session -d -s "\$TMUX_SESSION" -x 220 -y 50 \
   "su -s /bin/bash \${GRIN_USER} -c 'bash \${LISTENER_SCRIPT}'" 2>/dev/null

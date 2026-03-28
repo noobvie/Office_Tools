@@ -21,9 +21,7 @@ const cors          = require('cors');
 const { execFile }  = require('child_process');
 const { promisify } = require('util');
 const fs            = require('fs');
-const os            = require('os');
 const path          = require('path');
-const readline      = require('readline');
 const Database      = require('better-sqlite3');
 const multer        = require('multer');
 
@@ -34,10 +32,10 @@ const PORT = process.env.PORT || 3001;
 // ── Config ────────────────────────────────────────────────────
 const GRIN_WALLET_BIN      = process.env.GRIN_WALLET_BIN      || 'grin-wallet';
 const GRIN_WALLET_FALLBACK = process.env.GRIN_WALLET_FALLBACK || '/opt/grin/cmdwallet/mainnet/grin-wallet';
-
-// Passphrase is resolved at startup — see loadPassphrase() below
-let GRIN_WALLET_PASS = '';
-const CORS_ORIGINS     = (process.env.CORS_ORIGINS || 'http://localhost:8080').split(',').map(s => s.trim());
+// Single passphrase source: /opt/office-tools/data/.temp (plain text, chmod 640, root:grin)
+// Loaded once at startup into GRIN_WALLET_PASSWORD env var for subprocess calls — never passed as -p flag
+const PASS_FILE = process.env.GRIN_WALLET_PASS_FILE || '/opt/office-tools/data/.temp';
+const CORS_ORIGINS = (process.env.CORS_ORIGINS || 'http://localhost:8080').split(',').map(s => s.trim());
 
 // ── SQLite tools DB ───────────────────────────────────────────
 const TOOLS_DB_PATH = process.env.TOOLS_DB    || '/opt/office-tools/data/tools.db';
@@ -91,26 +89,26 @@ app.use(cors({ origin: CORS_ORIGINS, methods: ['GET','POST','DELETE'], allowedHe
 app.use(express.json());
 
 // ── Grin wallet helpers ───────────────────────────────────────
+// Passphrase is passed via GRIN_WALLET_PASSWORD env var — never via -p flag
+// so it does not appear in ps/top/proc listings.
 async function grinWallet(args) {
-  const baseArgs   = GRIN_WALLET_PASS ? ['-p', GRIN_WALLET_PASS, ...args] : args;
-  // Try primary binary first; on ENOENT fall back to the known install location
   const candidates = GRIN_WALLET_BIN !== GRIN_WALLET_FALLBACK
     ? [GRIN_WALLET_BIN, GRIN_WALLET_FALLBACK]
     : [GRIN_WALLET_BIN];
 
   for (const bin of candidates) {
     try {
-      const { stdout, stderr } = await execFileAsync(bin, baseArgs, {
+      const { stdout, stderr } = await execFileAsync(bin, args, {
         timeout: 60000,
         maxBuffer: 2 * 1024 * 1024,
+        env: { ...process.env },  // GRIN_WALLET_PASSWORD already set in process.env at startup
       });
       return stdout + (stderr || '');
     } catch (err) {
       if (err.code === 'ENOENT') {
         console.warn(`[grin-wallet] binary not found at "${bin}", trying next…`);
-        continue; // try the next candidate
+        continue;
       }
-      // Real execution error — don't try fallback
       const out = (err.stdout || '') + (err.stderr || '');
       throw new Error(`grin-wallet ${args[0]} failed: ${err.message}\n${out}`);
     }
@@ -320,95 +318,32 @@ app.get('/api/wallet/status', async (req, res) => {
 app.get('/api/health', (_, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
 // ── Passphrase loading ────────────────────────────────────────
-/**
- * Priority order:
- *   1. GRIN_WALLET_PASS_KEYRING=1  — OS keyring via secret-tool (most secure)
- *   2. GRIN_WALLET_PASS_FILE       — path to a plain-text file (chmod 640, root:grin)
- *   3. GRIN_WALLET_PASS            — env var (visible in /proc/<pid>/environ)
- *   4. Interactive TTY prompt      — typed once, lives in memory only
- *   5. Empty string                — wallet has no passphrase
- */
-async function loadPassphrase() {
-  // Priority 1: OS keyring via secret-tool
-  //   Setup once: secret-tool store --label="Grin wallet" service grin-wallet account mainnet
-  if (process.env.GRIN_WALLET_PASS_KEYRING === '1') {
-    try {
-      const { execFileSync } = require('child_process');
-      const out = execFileSync('secret-tool', ['lookup', 'service', 'grin-wallet', 'account', 'mainnet'], {
-        timeout: 5000,
-      });
-      GRIN_WALLET_PASS = out.toString().trim();
-      console.log('Grin wallet passphrase loaded from OS keyring.');
-      return;
-    } catch (e) {
-      console.error('OS keyring lookup failed:', e.message);
-      console.error('Run: secret-tool store --label="Grin wallet" service grin-wallet account mainnet');
-      process.exit(1);
-    }
-  }
-
-  // Priority 2: Passphrase file (set GRIN_WALLET_PASS_FILE=/opt/office-tools/data/.temp)
-  if (process.env.GRIN_WALLET_PASS_FILE) {
-    try {
-      GRIN_WALLET_PASS = fs.readFileSync(process.env.GRIN_WALLET_PASS_FILE, 'utf8').trim();
-      console.log(`Grin wallet passphrase loaded from file (${process.env.GRIN_WALLET_PASS_FILE}).`);
-      return;
-    } catch (e) {
-      console.error(`Failed to read GRIN_WALLET_PASS_FILE (${process.env.GRIN_WALLET_PASS_FILE}):`, e.message);
-      process.exit(1);
-    }
-  }
-
-  // Priority 3: Env var
-  if (process.env.GRIN_WALLET_PASS) {
-    GRIN_WALLET_PASS = process.env.GRIN_WALLET_PASS;
-    console.log('Grin wallet passphrase loaded from environment variable.');
+// Single source of truth: PASS_FILE (/opt/office-tools/data/.temp)
+// Loaded once at startup and set as GRIN_WALLET_PASSWORD in process.env
+// so all grin-wallet subprocess calls inherit it without exposing it via -p flag.
+function loadPassphrase() {
+  if (!fs.existsSync(PASS_FILE)) {
+    console.log(`Passphrase file not found (${PASS_FILE}) — wallet assumed to have no passphrase.`);
     return;
   }
-
-  // Priority 4: Interactive prompt — typed once, kept in memory only
-  if (process.stdin.isTTY) {
-    GRIN_WALLET_PASS = await promptPassphrase();
-    if (GRIN_WALLET_PASS) console.log('Grin wallet passphrase loaded from prompt (in memory only).');
-    return;
+  try {
+    const pass = fs.readFileSync(PASS_FILE, 'utf8').replace(/[\r\n]/g, '');
+    if (pass) {
+      process.env.GRIN_WALLET_PASSWORD = pass;
+      console.log(`Grin wallet passphrase loaded from ${PASS_FILE}`);
+    } else {
+      console.log(`Passphrase file is empty — wallet assumed to have no passphrase.`);
+    }
+  } catch (e) {
+    console.error(`Failed to read passphrase file (${PASS_FILE}):`, e.message);
+    process.exit(1);
   }
-
-  // No passphrase
-  console.log('No Grin wallet passphrase set (wallet assumed to have none).');
-}
-
-function promptPassphrase() {
-  return new Promise(resolve => {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    // Suppress echo so the passphrase isn't visible on screen
-    rl._writeToOutput = () => {};
-    process.stdout.write('Grin wallet passphrase (Enter for none): ');
-    rl.question('', pass => {
-      process.stdout.write('\n');
-      rl.close();
-      resolve(pass);
-    });
-  });
 }
 
 // ── Start ─────────────────────────────────────────────────────
-async function main() {
-  await loadPassphrase();
-  app.listen(PORT, () => {
-    console.log(`Office Tools server running on port ${PORT}`);
-    console.log(`Grin wallet:  ${GRIN_WALLET_BIN} (fallback: ${GRIN_WALLET_FALLBACK})`);
-    if (process.env.GRIN_WALLET_PASS_KEYRING === '1') {
-      console.log(`Passphrase:   from OS keyring`);
-    } else if (process.env.GRIN_WALLET_PASS_FILE) {
-      console.log(`Passphrase:   from file (${process.env.GRIN_WALLET_PASS_FILE})`);
-    } else if (process.env.GRIN_WALLET_PASS) {
-      console.log(`Passphrase:   from environment variable`);
-    } else if (GRIN_WALLET_PASS) {
-      console.log(`Passphrase:   from interactive prompt (in memory only)`);
-    } else {
-      console.log(`Passphrase:   none`);
-    }
-  });
-}
-
-main();
+loadPassphrase();
+app.listen(PORT, () => {
+  console.log(`Office Tools server running on port ${PORT}`);
+  console.log(`Grin wallet:  ${GRIN_WALLET_BIN} (fallback: ${GRIN_WALLET_FALLBACK})`);
+  console.log(`Passphrase:   ${process.env.GRIN_WALLET_PASSWORD ? `loaded from ${PASS_FILE}` : 'none'}`);
+});
