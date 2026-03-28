@@ -186,8 +186,8 @@ chain_type = "Mainnet"
 api_listen_interface = "127.0.0.1"
 api_listen_port = 3415
 owner_api_listen_port = 3420
-api_secret_path = "${WALLET_DATA_DIR}/.api_secret"
-owner_api_secret_path = "${WALLET_DATA_DIR}/.owner_api_secret"
+api_secret_path = "${WALLET_DIR}/.api_secret"
+owner_api_secret_path = "${WALLET_DIR}/.owner_api_secret"
 check_node_api_http_addr = "http://127.0.0.1:3413"
 owner_api_include_foreign = false
 data_file_dir = "${WALLET_DATA_DIR}/"
@@ -200,7 +200,7 @@ log_to_stdout = false
 stdout_log_level = "Info"
 log_to_file = true
 file_log_level = "Debug"
-log_file_path = "${WALLET_DATA_DIR}/grin-wallet.log"
+log_file_path = "${WALLET_DIR}/grin-wallet.log"
 log_max_size = 16777216
 log_max_files = 3
 EOF
@@ -313,9 +313,9 @@ encrypt_seed() {
   # Run recover in a subshell; capture stdout
   local seed_output
   if [[ -n "$wallet_pass" ]]; then
-    seed_output=$("$WALLET_BIN" -r "$WALLET_DATA_DIR" -p "$wallet_pass" recover 2>&1) || true
+    seed_output=$(cd "$WALLET_DIR" && "$WALLET_BIN" -p "$wallet_pass" recover 2>&1) || true
   else
-    seed_output=$("$WALLET_BIN" -r "$WALLET_DATA_DIR" recover 2>&1) || true
+    seed_output=$(cd "$WALLET_DIR" && "$WALLET_BIN" recover 2>&1) || true
   fi
 
   echo
@@ -373,12 +373,14 @@ install_listener_service() {
 # Decrypts the OpenSSL-encrypted passphrase at runtime — never stored in plaintext.
 # Run: openssl enc -d -aes-256-cbc -pbkdf2 -in ${ENCRYPTED_PASS}  to view manually.
 PASS=\$(openssl enc -d -aes-256-cbc -pbkdf2 -in "${ENCRYPTED_PASS}" 2>/dev/null || echo "")
-exec "${WALLET_BIN}" -r "${WALLET_DATA_DIR}" \${PASS:+-p "\$PASS"} listen
+cd "${WALLET_DIR}"
+exec "${WALLET_BIN}" \${PASS:+-p "\$PASS"} listen
 EOF
   else
     cat > "$LISTENER_WRAPPER" <<EOF
 #!/usr/bin/env bash
-exec "${WALLET_BIN}" -r "${WALLET_DATA_DIR}" listen
+cd "${WALLET_DIR}"
+exec "${WALLET_BIN}" listen
 EOF
   fi
   chmod 700 "$LISTENER_WRAPPER"
@@ -467,7 +469,7 @@ option_integrate() {
       log "Creating new wallet…"
       log "You will be prompted for a passphrase (press Enter to use none)."
       echo
-      "$WALLET_BIN" -r "$WALLET_DATA_DIR" init -h
+      (cd "$WALLET_DIR" && "$WALLET_BIN" init -h)
       echo
       warn "IMPORTANT: Write down the seed phrase shown above on paper. It cannot be recovered."
       echo
@@ -487,7 +489,7 @@ option_integrate() {
       log "Recovering wallet from seed…"
       log "You will be prompted for your 24-word seed phrase and a new passphrase."
       echo
-      "$WALLET_BIN" -r "$WALLET_DATA_DIR" init -hr
+      (cd "$WALLET_DIR" && "$WALLET_BIN" init -hr)
       echo
       read -r -p "Save OpenSSL-encrypted passphrase to disk? [y/N] " save_pass
       if [[ "${save_pass,,}" == "y" ]]; then
