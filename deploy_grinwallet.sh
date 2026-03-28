@@ -35,7 +35,7 @@ WALLET_TOML="${WALLET_DIR}/grin-wallet.toml"
 SERVER_ENV="/opt/office-tools/server/.env"
 ENCRYPTED_PASS="/opt/office-tools/data/.wallet_pass.enc"
 ENCRYPTED_SEED="/opt/office-tools/data/.wallet_seed.enc"
-TMUX_SESSION="grin_wallet"
+TMUX_SESSION="donate_grin_wallet"
 GRIN_USER="grin"
 GRIN_GROUP="grin"
 
@@ -574,14 +574,21 @@ option_manage_service() {
       echo -e "  Status : ${RED}STOPPED ✗${NC}"
     fi
     echo
+    if [[ -f "$ENCRYPTED_PASS" ]]; then
+      echo -e "  Passphrase : ${GRN}saved${NC}  (${ENCRYPTED_PASS})"
+    else
+      echo -e "  Passphrase : ${YEL}not saved${NC}  (wallet will fail to auto-start if it has a passphrase)"
+    fi
+    echo
     echo "  1) Start listener"
     echo "  2) Stop listener"
     echo "  3) Restart listener"
     echo "  4) Attach to tmux session  (Ctrl-b d to detach)"
     echo "  5) View wallet log (last 60 lines)"
+    echo "  6) Re-save passphrase      (re-encrypt with current machine key)"
     echo "  0) Back"
     echo
-    read -r -p "Choice [0-5]: " svc_choice
+    read -r -p "Choice [0-6]: " svc_choice
 
     case "$svc_choice" in
       1)
@@ -609,6 +616,16 @@ option_manage_service() {
           tail -n 60 "$logfile"
         else
           warn "Log file not found: ${logfile}"
+        fi
+        ;;
+      6)
+        rm -f "$ENCRYPTED_PASS"
+        local new_pass
+        if new_pass=$(read_pass_confirmed); then
+          encrypt_passphrase "$new_pass"
+          unset new_pass
+        else
+          warn "Cancelled."
         fi
         ;;
       0) break ;;
