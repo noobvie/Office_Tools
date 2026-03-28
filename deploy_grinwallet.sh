@@ -473,9 +473,13 @@ option_integrate() {
   case "$wallet_choice" in
     1)
       log "Creating new wallet…"
+      if [[ -f "${WALLET_DIR}/wallet.seed" ]]; then
+        warn "wallet.seed already exists — removing before creating new wallet."
+        rm -f "${WALLET_DIR}/wallet.seed"
+      fi
       log "You will be prompted for a passphrase (press Enter to use none)."
       echo
-      (cd "$WALLET_DIR" && "$WALLET_BIN" init -h)
+      cd "$WALLET_DIR" && "$WALLET_BIN" init -h
       echo
       warn "IMPORTANT: Write down the seed phrase shown above on paper. It cannot be recovered."
       echo
@@ -493,9 +497,14 @@ option_integrate() {
       ;;
     2)
       log "Recovering wallet from seed…"
+      # Remove leftover wallet.seed from any previous failed attempt
+      if [[ -f "${WALLET_DIR}/wallet.seed" ]]; then
+        warn "wallet.seed already exists — removing before recovery."
+        rm -f "${WALLET_DIR}/wallet.seed"
+      fi
       log "You will be prompted for your 24-word seed phrase and a new passphrase."
       echo
-      (cd "$WALLET_DIR" && "$WALLET_BIN" init -hr)
+      cd "$WALLET_DIR" && "$WALLET_BIN" init -hr
       echo
       read -r -p "Save OpenSSL-encrypted passphrase to disk? [y/N] " save_pass
       if [[ "${save_pass,,}" == "y" ]]; then
