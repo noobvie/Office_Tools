@@ -257,10 +257,10 @@ select_node_url() {
   if ss -tlnp 2>/dev/null | grep -q ':3413' || netstat -tlnp 2>/dev/null | grep -q ':3413'; then
     local_flag="${GRN}● running${NC}"
   else
-    local_flag="${YEL}○ install later${NC}"
+    local_flag="${YEL}○ install it by Grin Node Toolkit${NC}"
   fi
   printf "  4) %-36s %b\n" "Local node  127.0.0.1:3413" "$local_flag" >&2
-  echo "  0) Keep default (127.0.0.1:3413)" >&2
+  echo "  0) Back (keep current setting)" >&2
   echo >&2
 
   local choice
@@ -274,7 +274,7 @@ select_node_url() {
         warn "That server appears offline. Use it anyway? [y/N]" >&2
         local yn; read -r -p "" yn >&2
         if [[ "${yn,,}" != "y" ]]; then
-          warn "No change — will use default 127.0.0.1:3413." >&2
+          warn "No change — keeping current setting." >&2
           echo ""
           return
         fi
