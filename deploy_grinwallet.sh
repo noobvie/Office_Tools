@@ -80,21 +80,9 @@ setup_grin_user() {
 
 # ── Helper: read passphrase (hidden, confirmed, min 3 chars) ───
 read_pass_confirmed() {
-  local pass pass2
-  while true; do
-    read -r -s -p "Enter wallet passphrase (min 3 chars, or 0 to go back): " pass; echo
-    [[ "$pass" == "0" ]] && return 1
-    if [[ -z "$pass" || ${#pass} -lt 3 ]]; then
-      warn "Passphrase required and must be at least 3 characters. Try again."
-      continue
-    fi
-    read -r -s -p "Confirm passphrase: " pass2; echo
-    if [[ "$pass" != "$pass2" ]]; then
-      warn "Passphrases don't match, try again."
-      continue
-    fi
-    break
-  done
+  local pass
+  read -r -s -p "Passphrase (Enter for none, 0 to cancel): " pass; echo
+  [[ "$pass" == "0" ]] && return 1
   echo "$pass"
 }
 
@@ -397,7 +385,10 @@ wallet_start() {
 PASS=${quoted_pass}
 rm -f "${wrapper}"
 cd "${WALLET_DIR}"
-exec ./grin-wallet -p "\$PASS" listen
+./grin-wallet -p "\$PASS" listen
+echo ""
+echo "=== grin-wallet exited (see error above) ==="
+read -r -p "Press Enter to close..."
 WRAPPER
       unset pass quoted_pass
     else
@@ -406,7 +397,10 @@ WRAPPER
 #!/bin/bash
 rm -f "$wrapper"
 cd "${WALLET_DIR}"
-exec ./grin-wallet listen
+./grin-wallet listen
+echo ""
+echo "=== grin-wallet exited (see error above) ==="
+read -r -p "Press Enter to close..."
 WRAPPER
     fi
   else
@@ -416,7 +410,10 @@ WRAPPER
 #!/bin/bash
 rm -f "$wrapper"
 cd "${WALLET_DIR}"
-exec ./grin-wallet listen
+./grin-wallet listen
+echo ""
+echo "=== grin-wallet exited (see error above) ==="
+read -r -p "Press Enter to close..."
 WRAPPER
   fi
 
@@ -491,39 +488,41 @@ option_integrate() {
   case "$wallet_choice" in
     1)
       log "Creating new wallet…"
-      # Remove any existing toml and seed so init starts clean
       rm -f "$WALLET_TOML" "${WALLET_DIR}/wallet_data/wallet.seed"
       echo
-      (cd "$WALLET_DIR" && ./grin-wallet init -h)
+      warn "Enter a passphrase to protect your wallet (you will type it ONCE — it is saved automatically)."
+      warn "Leave blank and press Enter for no passphrase."
+      echo
+      if wallet_pass=$(read_pass_confirmed); then
+        (cd "$WALLET_DIR" && ./grin-wallet -p "$wallet_pass" init -h)
+      else
+        # No passphrase — run without -p
+        (cd "$WALLET_DIR" && ./grin-wallet init -h)
+      fi
       echo
       warn "IMPORTANT: Write down the seed phrase shown above on paper."
       echo
-      read -r -p "Save passphrase to disk? [y/N] " save_pass
-      if [[ "${save_pass,,}" == "y" ]]; then
-        if wallet_pass=$(read_pass_confirmed); then
-          encrypt_passphrase "$wallet_pass"
-          echo
-          read -r -p "Also save seed backup? [y/N] " save_seed
-          [[ "${save_seed,,}" == "y" ]] && encrypt_seed "$wallet_pass"
-        else
-          warn "Passphrase entry cancelled — skipping encrypt."
-        fi
+      if [[ -n "$wallet_pass" ]]; then
+        encrypt_passphrase "$wallet_pass"
+        read -r -p "Also save seed backup? [y/N] " save_seed
+        [[ "${save_seed,,}" == "y" ]] && encrypt_seed "$wallet_pass"
       fi
       ;;
     2)
       log "Recovering wallet from seed…"
-      # Remove any existing toml and seed so init starts clean
       rm -f "$WALLET_TOML" "${WALLET_DIR}/wallet_data/wallet.seed"
       echo
-      (cd "$WALLET_DIR" && ./grin-wallet init -hr)
+      warn "Enter the passphrase that protects this wallet (you will type it ONCE — it is saved automatically)."
+      warn "Leave blank and press Enter if the wallet has no passphrase."
       echo
-      read -r -p "Save passphrase to disk? [y/N] " save_pass
-      if [[ "${save_pass,,}" == "y" ]]; then
-        if wallet_pass=$(read_pass_confirmed); then
-          encrypt_passphrase "$wallet_pass"
-        else
-          warn "Passphrase entry cancelled — skipping encrypt."
-        fi
+      if wallet_pass=$(read_pass_confirmed); then
+        (cd "$WALLET_DIR" && ./grin-wallet -p "$wallet_pass" init -hr)
+      else
+        (cd "$WALLET_DIR" && ./grin-wallet init -hr)
+      fi
+      echo
+      if [[ -n "$wallet_pass" ]]; then
+        encrypt_passphrase "$wallet_pass"
       fi
       ;;
     0|*)
