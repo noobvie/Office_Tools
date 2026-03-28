@@ -7,7 +7,7 @@
 #    — Download latest grin-wallet binary (mainnet)
 #    — Init new wallet  (grin-wallet init -h)
 #    — Recover wallet   (grin-wallet init -hr)
-#    — Patch grin-wallet.toml for mainnet
+#    — Configure grin-wallet.toml (node selection)
 #    — Optionally encrypt & save passphrase/seed via OpenSSL
 #    — Update server .env with wallet binary path
 #
@@ -15,25 +15,27 @@
 #    — Start / Stop / Restart office-tools-grin-listener
 #    — Enable / Disable auto-start on reboot
 #
-#  Paths
-#    Binary:   /opt/office-tools/cmdgrinwallet/grin-wallet
-#    Data:     /opt/office-tools/data/wallet/
-#    Secrets:  /opt/office-tools/data/.wallet_pass.enc (OpenSSL-encrypted)
-#              /opt/office-tools/data/.wallet_seed.enc (OpenSSL-encrypted)
-#    Server:   /opt/office-tools/server/.env
+#  All wallet files live in one directory:
+#    /opt/office-tools/cmdgrinwallet/
+#      grin-wallet          binary
+#      grin-wallet.toml     config
+#      wallet.seed          created by init
+#      start-listener.sh    systemd wrapper
+#      grin-wallet.log      runtime log
+#
+#  Secrets (root-only):
+#    /opt/office-tools/data/.wallet_pass.enc
+#    /opt/office-tools/data/.wallet_seed.enc
 # ============================================================
 set -uo pipefail
 
 # ── Paths ──────────────────────────────────────────────────────
-INSTALL_DIR="/opt/office-tools"
-WALLET_DIR="${INSTALL_DIR}/cmdgrinwallet"   # binary + toml + wallet data all live here (-r flag)
-WALLET_BIN_DIR="${WALLET_DIR}"              # kept for compatibility with setup_grin_user
-WALLET_DATA_DIR="${WALLET_DIR}"             # grin-wallet -r points here; toml & seed written here
+WALLET_DIR="/opt/office-tools/cmdgrinwallet"
 WALLET_BIN="${WALLET_DIR}/grin-wallet"
 WALLET_TOML="${WALLET_DIR}/grin-wallet.toml"
-SERVER_ENV="${INSTALL_DIR}/server/.env"
-ENCRYPTED_PASS="${INSTALL_DIR}/data/.wallet_pass.enc"
-ENCRYPTED_SEED="${INSTALL_DIR}/data/.wallet_seed.enc"
+SERVER_ENV="/opt/office-tools/server/.env"
+ENCRYPTED_PASS="/opt/office-tools/data/.wallet_pass.enc"
+ENCRYPTED_SEED="/opt/office-tools/data/.wallet_seed.enc"
 LISTENER_WRAPPER="${WALLET_DIR}/start-listener.sh"
 SERVICE_NAME="office-tools-grin-listener"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
@@ -53,7 +55,6 @@ sep()  { echo -e "${CYN}──────────────────�
 
 # ── Create grin system user/group & fix ownership ─────────────
 setup_grin_user() {
-  # Create group if missing
   if ! getent group "$GRIN_GROUP" &>/dev/null; then
     groupadd --system "$GRIN_GROUP"
     log "Created system group: ${GRIN_GROUP}"
@@ -61,29 +62,26 @@ setup_grin_user() {
     log "Group already exists: ${GRIN_GROUP}"
   fi
 
-  # Create system user if missing (no login shell, no home dir in /home)
   if ! id "$GRIN_USER" &>/dev/null; then
     useradd --system \
             --gid "$GRIN_GROUP" \
             --no-create-home \
-            --home-dir "$WALLET_DATA_DIR" \
+            --home-dir "$WALLET_DIR" \
             --shell /usr/sbin/nologin \
             --comment "Grin wallet service account" \
             "$GRIN_USER"
-    log "Created system user: ${GRIN_USER} (no login, no home in /home)"
+    log "Created system user: ${GRIN_USER} (no login)"
   else
     log "User already exists: ${GRIN_USER}"
   fi
 
-  # Create dirs and set ownership
-  mkdir -p "$WALLET_BIN_DIR" "$WALLET_DATA_DIR"
-  chown -R "${GRIN_USER}:${GRIN_GROUP}" "$WALLET_BIN_DIR" "$WALLET_DATA_DIR"
-  chmod 750 "$WALLET_BIN_DIR"
-  chmod 700 "$WALLET_DATA_DIR"
-  log "Ownership set: ${WALLET_BIN_DIR} & ${WALLET_DATA_DIR} → ${GRIN_USER}:${GRIN_GROUP}"
+  mkdir -p "$WALLET_DIR" "/opt/office-tools/data"
+  chown -R "${GRIN_USER}:${GRIN_GROUP}" "$WALLET_DIR"
+  chmod 750 "$WALLET_DIR"
+  log "Ownership set: ${WALLET_DIR} → ${GRIN_USER}:${GRIN_GROUP}"
 }
 
-# ── Helper: read passphrase (hidden, confirmed) ────────────────
+# ── Helper: read passphrase (hidden, confirmed, min 3 chars) ───
 read_pass_confirmed() {
   local pass pass2
   while true; do
@@ -114,25 +112,23 @@ upsert_env() {
   fi
 }
 
-# ── Download latest grin-wallet binary ────────────────────────
+# ── Download latest grin-wallet binary from GitHub ────────────
 download_grin_wallet() {
   log "Fetching latest grin-wallet release from GitHub…"
   local api_url="https://api.github.com/repos/mimblewimble/grin-wallet/releases/latest"
-  local dl_url
-  local api_json
+  local api_json dl_url
+
   if ! api_json=$(curl -fsSL --connect-timeout 10 "$api_url" 2>&1); then
     err "Could not reach GitHub API: $api_json"
     return 1
   fi
 
-  # Check for GitHub API error (rate-limit, auth, etc.)
   if echo "$api_json" | grep -q '"message"' && ! echo "$api_json" | grep -q '"browser_download_url"'; then
     local gh_msg; gh_msg=$(echo "$api_json" | grep '"message"' | head -1 | sed 's/.*"message": *"\([^"]*\)".*/\1/')
     err "GitHub API error: ${gh_msg}"
     return 1
   fi
 
-  # Asset naming: linux-x86_64.tar.gz (not linux-amd64)
   dl_url=$(printf '%s\n' "$api_json" \
     | grep 'linux-x86_64\.tar\.gz' \
     | grep -v 'sha256' \
@@ -148,13 +144,12 @@ download_grin_wallet() {
   fi
 
   log "Latest: $dl_url"
-
   local filename; filename=$(basename "$dl_url")
   local tmpdir;   tmpdir=$(mktemp -d)
 
   log "Downloading: $filename"
   if ! curl -fL --progress-bar "$dl_url" -o "${tmpdir}/${filename}"; then
-    err "Download failed: $dl_url"
+    err "Download failed."
     rm -rf "$tmpdir"
     return 1
   fi
@@ -173,13 +168,10 @@ download_grin_wallet() {
   log "Installed: $version"
 }
 
-# ── Create (or recreate) mainnet grin-wallet.toml ─────────────
+# ── Create mainnet grin-wallet.toml (always fresh) ────────────
 create_wallet_toml() {
   mkdir -p "$WALLET_DIR"
-  if [[ -f "$WALLET_TOML" ]]; then
-    log "Removing old grin-wallet.toml and recreating…"
-    rm -f "$WALLET_TOML"
-  fi
+  [[ -f "$WALLET_TOML" ]] && { log "Removing old grin-wallet.toml…"; rm -f "$WALLET_TOML"; }
   cat > "$WALLET_TOML" <<EOF
 [wallet]
 chain_type = "Mainnet"
@@ -208,12 +200,11 @@ EOF
   log "Created ${WALLET_TOML}"
 }
 
-# ── Check if a URL is reachable (HTTP 2xx/3xx) ────────────────
+# ── Check if a URL is reachable ────────────────────────────────
 check_server_online() {
   local url="$1"
   local http_code
   http_code=$(curl -o /dev/null -s -w "%{http_code}" --max-time 5 "${url}/v2/foreign" 2>/dev/null || echo "000")
-  # Accept 2xx, 3xx, and 405 (Method Not Allowed = endpoint exists but GET not allowed)
   if [[ "$http_code" =~ ^(2|3)[0-9]{2}$ ]] || [[ "$http_code" == "405" ]] || [[ "$http_code" == "404" ]]; then
     echo "online"
   else
@@ -221,7 +212,7 @@ check_server_online() {
   fi
 }
 
-# ── Patch check_node URL in toml ──────────────────────────────
+# ── Select Grin node and patch check_node_api_http_addr ───────
 patch_check_node() {
   echo
   local current_node
@@ -229,7 +220,6 @@ patch_check_node() {
   log "Current node: ${current_node}"
   echo
 
-  # ── External servers (live status check) ────────────────────
   local ext_servers=(
     "https://api.grin.money"
     "https://api.grinily.com"
@@ -244,7 +234,6 @@ patch_check_node() {
     ext_statuses+=("$(check_server_online "$url")")
   done
 
-  # ── Menu ────────────────────────────────────────────────────
   echo "  Select Grin node for grin-wallet.toml:"
   echo
 
@@ -275,7 +264,6 @@ patch_check_node() {
 
   case "$choice" in
     1|2|3)
-      # External node — only update the URL, no local path patching needed
       local selected_url="${ext_servers[$((choice-1))]}"
       local selected_status="${ext_statuses[$((choice-1))]}"
       if [[ "$selected_status" == "offline" ]]; then
@@ -287,11 +275,7 @@ patch_check_node() {
       log "Updated check_node_api_http_addr → ${selected_url}"
       ;;
     4)
-      # Local node — update URL and ensure local paths are correct
       sed -i "s|check_node_api_http_addr = .*|check_node_api_http_addr = \"http://127.0.0.1:3413\"|" "$WALLET_TOML"
-      sed -i "s|api_secret_path = .*|api_secret_path = \"${WALLET_DIR}/.api_secret\"|" "$WALLET_TOML"
-      sed -i "s|owner_api_secret_path = .*|owner_api_secret_path = \"${WALLET_DIR}/.owner_api_secret\"|" "$WALLET_TOML"
-      sed -i "s|data_file_dir = .*|data_file_dir = \"${WALLET_DIR}/\"|" "$WALLET_TOML"
       log "Updated check_node_api_http_addr → http://127.0.0.1:3413"
       warn "Remember to install a local Grin node before starting the wallet listener."
       ;;
@@ -305,46 +289,46 @@ patch_check_node() {
 encrypt_passphrase() {
   local pass="$1"
   [[ -z "$pass" ]] && { warn "No passphrase to encrypt."; return; }
-  log "Encrypting passphrase with OpenSSL AES-256-CBC + PBKDF2 (100,000 iterations)…"
+  mkdir -p "$(dirname "$ENCRYPTED_PASS")"
+  log "Encrypting passphrase with OpenSSL AES-256-CBC + PBKDF2…"
   printf '%s' "$pass" | openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -out "$ENCRYPTED_PASS"
-  chmod 600 "$ENCRYPTED_PASS"
+  chown "root:${GRIN_GROUP}" "$ENCRYPTED_PASS"
+  chmod 640 "$ENCRYPTED_PASS"
   log "Saved: ${ENCRYPTED_PASS}"
-  log "To decrypt: openssl enc -d -aes-256-cbc -pbkdf2 -in ${ENCRYPTED_PASS}"
 }
 
 # ── Encrypt seed phrase to disk (OpenSSL AES-256-CBC) ─────────
 encrypt_seed() {
   local wallet_pass="$1"
   log "Retrieving wallet seed phrase…"
-  # Run recover in a subshell; capture stdout
   local seed_output
   if [[ -n "$wallet_pass" ]]; then
-    seed_output=$(cd "$WALLET_DIR" && "$WALLET_BIN" -p "$wallet_pass" recover 2>&1) || true
+    seed_output=$("$WALLET_BIN" -r "$WALLET_DIR" -p "$wallet_pass" recover 2>&1) || true
   else
-    seed_output=$(cd "$WALLET_DIR" && "$WALLET_BIN" recover 2>&1) || true
+    seed_output=$("$WALLET_BIN" -r "$WALLET_DIR" recover 2>&1) || true
   fi
 
   echo
   warn "The seed phrase will be printed briefly. Make sure you are alone."
-  read -r -s -p "Press Enter to view seed, then we will encrypt it immediately…"
-  echo
+  read -r -s -p "Press Enter to view seed, then we will encrypt it immediately…"; echo
   echo "─── SEED PHRASE ───────────────────────────────"
   echo "$seed_output"
   echo "───────────────────────────────────────────────"
   echo
   warn "Write it down on paper NOW if you haven't already."
-  read -r -p "Enter a password to encrypt this seed backup: " -s seed_enc_pass; echo
-  read -r -p "Confirm seed backup password: " -s seed_enc_pass2; echo
+  read -r -s -p "Enter a password to encrypt this seed backup: " seed_enc_pass; echo
+  read -r -s -p "Confirm seed backup password: " seed_enc_pass2; echo
   if [[ "$seed_enc_pass" != "$seed_enc_pass2" ]]; then
     warn "Passwords don't match. Seed will NOT be saved."; return
   fi
 
+  mkdir -p "$(dirname "$ENCRYPTED_SEED")"
   printf '%s\n' "$seed_output" | openssl enc -aes-256-cbc -pbkdf2 -iter 100000 \
     -pass "pass:${seed_enc_pass}" -out "$ENCRYPTED_SEED"
+  chown root:root "$ENCRYPTED_SEED"
   chmod 600 "$ENCRYPTED_SEED"
   unset seed_enc_pass seed_enc_pass2
   log "Encrypted seed saved: ${ENCRYPTED_SEED}"
-  log "To decrypt: openssl enc -d -aes-256-cbc -pbkdf2 -in ${ENCRYPTED_SEED}"
 }
 
 # ── Update server .env with wallet binary path ────────────────
@@ -354,9 +338,7 @@ update_server_env() {
     warn "Manually set: GRIN_WALLET_BIN=${WALLET_BIN}"
     return
   fi
-  upsert_env "GRIN_WALLET_BIN"      "$WALLET_BIN"                           "$SERVER_ENV"
-  upsert_env "GRIN_WALLET_FALLBACK" "${WALLET_BIN_DIR}/grin-wallet"         "$SERVER_ENV"
-  # Remove plaintext passphrase if it was set — user should use prompt or keyring
+  upsert_env "GRIN_WALLET_BIN" "$WALLET_BIN" "$SERVER_ENV"
   if grep -q "^GRIN_WALLET_PASS=" "$SERVER_ENV" 2>/dev/null; then
     sed -i "s|^GRIN_WALLET_PASS=.*|# GRIN_WALLET_PASS= (use startup prompt or GRIN_WALLET_PASS_KEYRING=1)|" "$SERVER_ENV"
     warn "Cleared GRIN_WALLET_PASS from .env — use interactive prompt or OS keyring."
@@ -376,17 +358,13 @@ install_listener_service() {
   if [[ -f "$ENCRYPTED_PASS" ]]; then
     cat > "$LISTENER_WRAPPER" <<EOF
 #!/usr/bin/env bash
-# Decrypts the OpenSSL-encrypted passphrase at runtime — never stored in plaintext.
-# Run: openssl enc -d -aes-256-cbc -pbkdf2 -in ${ENCRYPTED_PASS}  to view manually.
 PASS=\$(openssl enc -d -aes-256-cbc -pbkdf2 -in "${ENCRYPTED_PASS}" 2>/dev/null || echo "")
-cd "${WALLET_DIR}"
-exec "${WALLET_BIN}" \${PASS:+-p "\$PASS"} listen
+exec "${WALLET_BIN}" -r "${WALLET_DIR}" \${PASS:+-p "\$PASS"} listen
 EOF
   else
     cat > "$LISTENER_WRAPPER" <<EOF
 #!/usr/bin/env bash
-cd "${WALLET_DIR}"
-exec "${WALLET_BIN}" listen
+exec "${WALLET_BIN}" -r "${WALLET_DIR}" listen
 EOF
   fi
   chmod 700 "$LISTENER_WRAPPER"
@@ -394,7 +372,7 @@ EOF
   log "Creating service: ${SERVICE_FILE}"
   cat > "$SERVICE_FILE" <<EOF
 [Unit]
-Description=Office Tools — Grin Wallet TOR Listener
+Description=Office Tools — Grin Wallet Listener
 Documentation=https://docs.grin.mw
 After=network.target
 
@@ -407,7 +385,6 @@ Restart=on-failure
 RestartSec=10
 StandardOutput=journal
 StandardError=journal
-# Restrict filesystem access
 ProtectHome=true
 PrivateTmp=true
 NoNewPrivileges=true
@@ -425,19 +402,18 @@ EOF
 
 # ── Option 1: Integrate Grin Wallet ───────────────────────────
 option_integrate() {
-  # Show line + command on any unexpected failure, then pause before returning to menu
-  trap 'echo; err "Failed at line ${LINENO}: ${BASH_COMMAND}"; echo; read -r -p "Press Enter to return to menu…"; trap - ERR' ERR
+  trap 'echo; err "Failed at line ${LINENO}: ${BASH_COMMAND}"; echo; read -r -p "Press Enter to return to menu…"; trap - ERR; return 1' ERR
 
   sep
   log "=== Option 1: Integrate Grin Wallet ==="
   sep
 
-  # ── Step 0: System user ─────────────────────────────────────
+  # Step 0: System user
   echo
   log "Step 0/5 — System User (grin:grin)"
   setup_grin_user
 
-  # ── Step 1: Binary ──────────────────────────────────────────
+  # Step 1: Binary
   echo
   log "Step 1/5 — Grin Wallet Binary"
   if [[ -x "$WALLET_BIN" ]]; then
@@ -449,23 +425,19 @@ option_integrate() {
     download_grin_wallet
   fi
 
-  # ── Step 2: Config ──────────────────────────────────────────
+  # Step 2: Config — always recreate toml, then select node
   echo
   log "Step 2/5 — Wallet Configuration (grin-wallet.toml)"
   create_wallet_toml
   patch_check_node
 
-  # ── Step 3: Init or Recover ─────────────────────────────────
+  # Step 3: Init or Recover
   echo
   log "Step 3/5 — Wallet Initialization"
   echo
-  echo "  1) Create NEW wallet    [grin-wallet init -h]"
-  echo "     Generates a fresh seed phrase. Back it up securely!"
-  echo
-  echo "  2) RECOVER wallet       [grin-wallet init -hr]"
-  echo "     Restores a wallet from an existing 24-word seed phrase."
-  echo
-  echo "  0) Skip (wallet already initialized)"
+  echo "  1) Create NEW wallet    (grin-wallet init -h)"
+  echo "  2) RECOVER wallet       (grin-wallet init -hr)"
+  echo "  0) Skip — wallet already initialized"
   echo
   read -r -p "Choice [0-2]: " wallet_choice
 
@@ -473,15 +445,11 @@ option_integrate() {
   case "$wallet_choice" in
     1)
       log "Creating new wallet…"
-      if [[ -f "${WALLET_DIR}/wallet.seed" ]]; then
-        warn "wallet.seed already exists — removing before creating new wallet."
-        rm -f "${WALLET_DIR}/wallet.seed"
-      fi
-      log "You will be prompted for a passphrase (press Enter to use none)."
+      [[ -f "${WALLET_DIR}/wallet.seed" ]] && { warn "Removing existing wallet.seed before init."; rm -f "${WALLET_DIR}/wallet.seed"; }
       echo
-      cd "$WALLET_DIR" && "$WALLET_BIN" init -h
+      "$WALLET_BIN" -r "$WALLET_DIR" init -h
       echo
-      warn "IMPORTANT: Write down the seed phrase shown above on paper. It cannot be recovered."
+      warn "IMPORTANT: Write down the seed phrase shown above on paper."
       echo
       read -r -p "Save OpenSSL-encrypted passphrase to disk? [y/N] " save_pass
       if [[ "${save_pass,,}" == "y" ]]; then
@@ -497,14 +465,9 @@ option_integrate() {
       ;;
     2)
       log "Recovering wallet from seed…"
-      # Remove leftover wallet.seed from any previous failed attempt
-      if [[ -f "${WALLET_DIR}/wallet.seed" ]]; then
-        warn "wallet.seed already exists — removing before recovery."
-        rm -f "${WALLET_DIR}/wallet.seed"
-      fi
-      log "You will be prompted for your 24-word seed phrase and a new passphrase."
+      [[ -f "${WALLET_DIR}/wallet.seed" ]] && { warn "Removing existing wallet.seed before recovery."; rm -f "${WALLET_DIR}/wallet.seed"; }
       echo
-      cd "$WALLET_DIR" && "$WALLET_BIN" init -hr
+      "$WALLET_BIN" -r "$WALLET_DIR" init -hr
       echo
       read -r -p "Save OpenSSL-encrypted passphrase to disk? [y/N] " save_pass
       if [[ "${save_pass,,}" == "y" ]]; then
@@ -520,18 +483,14 @@ option_integrate() {
       ;;
   esac
 
-  # ── Step 4: Re-apply ownership after wallet init ────────────
+  # Step 4: Fix ownership after init (grin-wallet writes files as root during init)
   echo
-  log "Step 4/5 — Fix Ownership After Wallet Init"
-  chown -R "${GRIN_USER}:${GRIN_GROUP}" "$WALLET_DATA_DIR"
-  chmod 700 "$WALLET_DATA_DIR"
-  # Encrypted pass: root owns it, grin group can read (needed by service wrapper)
-  [[ -f "$ENCRYPTED_PASS" ]] && chown "root:${GRIN_GROUP}" "$ENCRYPTED_PASS" && chmod 640 "$ENCRYPTED_PASS"
-  # Encrypted seed: root-only, no need for the service to read it
-  [[ -f "$ENCRYPTED_SEED" ]] && chown root:root "$ENCRYPTED_SEED" && chmod 600 "$ENCRYPTED_SEED"
-  log "Ownership confirmed: ${WALLET_DATA_DIR} → ${GRIN_USER}:${GRIN_GROUP}"
+  log "Step 4/5 — Fix Ownership"
+  chown -R "${GRIN_USER}:${GRIN_GROUP}" "$WALLET_DIR"
+  chmod 750 "$WALLET_DIR"
+  log "Ownership confirmed: ${WALLET_DIR} → ${GRIN_USER}:${GRIN_GROUP}"
 
-  # ── Step 5: Server .env ─────────────────────────────────────
+  # Step 5: Server .env
   echo
   log "Step 5/5 — Update Server Configuration"
   update_server_env
@@ -540,15 +499,11 @@ option_integrate() {
   sep
   log "Grin Wallet integration complete!"
   echo
-  echo "  Wallet dir:    ${WALLET_DIR}/"
-  echo "  Binary:        ${WALLET_BIN}"
-  echo "  Toml:          ${WALLET_TOML}"
-  [[ -f "$ENCRYPTED_PASS" ]] && echo "  Enc passphrase: ${ENCRYPTED_PASS}"
-  [[ -f "$ENCRYPTED_SEED" ]] && echo "  Enc seed:       ${ENCRYPTED_SEED}"
-  echo
-  log "Passphrase note: The server reads the passphrase via interactive prompt at startup."
-  log "  For auto-restart without prompt: set GRIN_WALLET_PASS_KEYRING=1 in .env"
-  log "  and store once: secret-tool store --label='Grin wallet' service grin-wallet account mainnet"
+  echo "  Wallet dir : ${WALLET_DIR}/"
+  echo "  Binary     : ${WALLET_BIN}"
+  echo "  Config     : ${WALLET_TOML}"
+  [[ -f "$ENCRYPTED_PASS" ]] && echo "  Enc pass   : ${ENCRYPTED_PASS}"
+  [[ -f "$ENCRYPTED_SEED" ]] && echo "  Enc seed   : ${ENCRYPTED_SEED}"
   sep
   trap - ERR
   echo
@@ -559,17 +514,15 @@ option_integrate() {
 option_manage_service() {
   sep
   log "=== Option 2: Grin Wallet Listener Service ==="
-  log "Service: ${SERVICE_NAME}  (enables TOR direct-send on donate page)"
   sep
 
   while true; do
     echo
-    # Status
     local running enabled
-    systemctl is-active  --quiet "$SERVICE_NAME" 2>/dev/null && running="RUNNING ✓" || running="STOPPED ✗"
-    systemctl is-enabled --quiet "$SERVICE_NAME" 2>/dev/null && enabled="ENABLED"   || enabled="DISABLED"
-    echo "  Status:     ${running}"
-    echo "  Auto-start: ${enabled}"
+    systemctl is-active  --quiet "$SERVICE_NAME" 2>/dev/null && running="${GRN}RUNNING ✓${NC}" || running="${RED}STOPPED ✗${NC}"
+    systemctl is-enabled --quiet "$SERVICE_NAME" 2>/dev/null && enabled="ENABLED" || enabled="DISABLED"
+    echo -e "  Status:     ${running}"
+    echo    "  Auto-start: ${enabled}"
     echo
     echo "  1) Start"
     echo "  2) Stop"
@@ -583,11 +536,11 @@ option_manage_service() {
     read -r -p "Choice [0-7]: " svc_choice
 
     case "$svc_choice" in
-      1) systemctl start   "$SERVICE_NAME" && log "Started." ;;
-      2) systemctl stop    "$SERVICE_NAME" && log "Stopped." ;;
-      3) systemctl restart "$SERVICE_NAME" && log "Restarted." ;;
-      4) systemctl enable  "$SERVICE_NAME" && log "Auto-start enabled (starts on next reboot)." ;;
-      5) systemctl disable "$SERVICE_NAME" && log "Auto-start disabled." ;;
+      1) systemctl start   "$SERVICE_NAME" && log "Started."   || err "Failed to start." ;;
+      2) systemctl stop    "$SERVICE_NAME" && log "Stopped."   || err "Failed to stop."  ;;
+      3) systemctl restart "$SERVICE_NAME" && log "Restarted." || err "Failed to restart." ;;
+      4) systemctl enable  "$SERVICE_NAME" && log "Auto-start enabled."  || true ;;
+      5) systemctl disable "$SERVICE_NAME" && log "Auto-start disabled." || true ;;
       6) install_listener_service ;;
       7) journalctl -u "$SERVICE_NAME" -n 60 --no-pager ;;
       0) break ;;
@@ -602,7 +555,6 @@ print_status() {
   echo -e "  ${CYN}Current Status${NC}"
   echo "  ─────────────────────────────────────────"
 
-  # Binary
   if [[ -x "$WALLET_BIN" ]]; then
     local ver; ver=$("$WALLET_BIN" --version 2>&1 | head -1)
     echo -e "  Binary      : ${GRN}installed${NC}  ${ver}"
@@ -610,8 +562,7 @@ print_status() {
     echo -e "  Binary      : ${RED}not installed${NC}"
   fi
 
-  # Wallet initialised (wallet.seed written by grin-wallet init)
-  if [[ -f "${WALLET_DATA_DIR}/wallet.seed" ]]; then
+  if [[ -f "${WALLET_DIR}/wallet.seed" ]]; then
     echo -e "  Wallet      : ${GRN}initialized${NC}"
   elif [[ -x "$WALLET_BIN" ]]; then
     echo -e "  Wallet      : ${YEL}not initialized${NC}  (run option 1)"
@@ -619,13 +570,11 @@ print_status() {
     echo -e "  Wallet      : ${RED}not initialized${NC}"
   fi
 
-  # Node configured in toml
   if [[ -f "$WALLET_TOML" ]]; then
     local node; node=$(grep 'check_node_api_http_addr' "$WALLET_TOML" | cut -d'"' -f2)
     echo -e "  Node        : ${node}"
   fi
 
-  # Systemd service
   if systemctl list-unit-files "${SERVICE_NAME}.service" 2>/dev/null | grep -q "$SERVICE_NAME"; then
     if systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
       echo -e "  Listener    : ${GRN}running${NC}"
@@ -633,9 +582,9 @@ print_status() {
       echo -e "  Listener    : ${YEL}stopped${NC}"
     fi
     if systemctl is-enabled --quiet "$SERVICE_NAME" 2>/dev/null; then
-      echo -e "  Auto-start  : enabled"
+      echo    "  Auto-start  : enabled"
     else
-      echo -e "  Auto-start  : disabled"
+      echo    "  Auto-start  : disabled"
     fi
   else
     echo -e "  Listener    : ${RED}service not installed${NC}"
@@ -655,7 +604,7 @@ main() {
     print_status
     echo
     echo "  1) Integrate Grin Wallet   (download · init · recover · configure)"
-    echo "  2) Manage Wallet Service   (start · stop · restart · schedule)"
+    echo "  2) Manage Wallet Service   (start · stop · restart · logs)"
     echo "  0) Exit"
     echo
     read -r -p "Choice [0-2]: " choice
