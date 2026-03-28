@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-#  Office Tools — Grin Wallet Setup & Service Manager
+#  Office Tools — Grin Wallet Setup & Listener Manager
 #  deploy_grinwallet.sh
 #
 #  Option 1: Integrate Grin Wallet
@@ -11,16 +11,15 @@
 #    — Optionally encrypt & save passphrase/seed via OpenSSL
 #    — Update server .env with wallet binary path
 #
-#  Option 2: Manage Wallet Service
-#    — Start / Stop / Restart office-tools-grin-listener
-#    — Enable / Disable auto-start on reboot
+#  Option 2: Manage Wallet Listener (tmux)
+#    — Start / Stop / Restart grin-wallet listen in tmux session
+#    — Attach to session to watch live output
 #
-#  All wallet files live in one directory:
+#  All wallet files live in one directory (grin-wallet uses CWD):
 #    /opt/office-tools/cmdgrinwallet/
 #      grin-wallet          binary
 #      grin-wallet.toml     config
 #      wallet.seed          created by init
-#      start-listener.sh    systemd wrapper
 #      grin-wallet.log      runtime log
 #
 #  Secrets (root-only):
@@ -36,9 +35,7 @@ WALLET_TOML="${WALLET_DIR}/grin-wallet.toml"
 SERVER_ENV="/opt/office-tools/server/.env"
 ENCRYPTED_PASS="/opt/office-tools/data/.wallet_pass.enc"
 ENCRYPTED_SEED="/opt/office-tools/data/.wallet_seed.enc"
-LISTENER_WRAPPER="${WALLET_DIR}/start-listener.sh"
-SERVICE_NAME="office-tools-grin-listener"
-SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
+TMUX_SESSION="grin_wallet"
 GRIN_USER="grin"
 GRIN_GROUP="grin"
 
@@ -182,7 +179,7 @@ api_secret_path = "${WALLET_DIR}/.api_secret"
 owner_api_secret_path = "${WALLET_DIR}/.owner_api_secret"
 check_node_api_http_addr = "http://127.0.0.1:3413"
 owner_api_include_foreign = false
-data_file_dir = "${WALLET_DIR}/"
+data_file_dir = "${WALLET_DIR}/wallet_data/"
 no_commit_cache = false
 dark_background_color_scheme = true
 keybase_notify_ttl = 1440
@@ -303,9 +300,9 @@ encrypt_seed() {
   log "Retrieving wallet seed phrase…"
   local seed_output
   if [[ -n "$wallet_pass" ]]; then
-    seed_output=$("$WALLET_BIN" -r "$WALLET_DIR" -p "$wallet_pass" recover 2>&1) || true
+    seed_output=$(cd "$WALLET_DIR" && ./grin-wallet -p "$wallet_pass" recover 2>&1) || true
   else
-    seed_output=$("$WALLET_BIN" -r "$WALLET_DIR" recover 2>&1) || true
+    seed_output=$(cd "$WALLET_DIR" && ./grin-wallet recover 2>&1) || true
   fi
 
   echo
@@ -346,58 +343,49 @@ update_server_env() {
   log "Updated ${SERVER_ENV}"
 }
 
-# ── Install systemd listener service ──────────────────────────
-install_listener_service() {
+# ── tmux helpers ──────────────────────────────────────────────
+wallet_is_running() {
+  tmux has-session -t "$TMUX_SESSION" 2>/dev/null
+}
+
+wallet_start() {
   if [[ ! -x "$WALLET_BIN" ]]; then
     err "grin-wallet binary not found. Run option 1 first."
-    read -r -p "Press Enter to return to menu…"
     return 1
   fi
-
-  log "Creating wrapper script: ${LISTENER_WRAPPER}"
-  if [[ -f "$ENCRYPTED_PASS" ]]; then
-    cat > "$LISTENER_WRAPPER" <<EOF
-#!/usr/bin/env bash
-PASS=\$(openssl enc -d -aes-256-cbc -pbkdf2 -in "${ENCRYPTED_PASS}" 2>/dev/null || echo "")
-exec "${WALLET_BIN}" -r "${WALLET_DIR}" \${PASS:+-p "\$PASS"} listen
-EOF
-  else
-    cat > "$LISTENER_WRAPPER" <<EOF
-#!/usr/bin/env bash
-exec "${WALLET_BIN}" -r "${WALLET_DIR}" listen
-EOF
+  if wallet_is_running; then
+    warn "Wallet listener is already running (tmux: ${TMUX_SESSION})."
+    return
   fi
-  chmod 700 "$LISTENER_WRAPPER"
 
-  log "Creating service: ${SERVICE_FILE}"
-  cat > "$SERVICE_FILE" <<EOF
-[Unit]
-Description=Office Tools — Grin Wallet Listener
-Documentation=https://docs.grin.mw
-After=network.target
+  local listen_cmd
+  if [[ -f "$ENCRYPTED_PASS" ]]; then
+    # Decrypt passphrase at start time — never stored in plaintext in the session
+    local pass
+    pass=$(openssl enc -d -aes-256-cbc -pbkdf2 -in "$ENCRYPTED_PASS" 2>/dev/null || true)
+    if [[ -n "$pass" ]]; then
+      listen_cmd="cd ${WALLET_DIR} && ./grin-wallet -p ${pass} listen"
+    else
+      warn "Could not decrypt passphrase — starting without it."
+      listen_cmd="cd ${WALLET_DIR} && ./grin-wallet listen"
+    fi
+    unset pass
+  else
+    listen_cmd="cd ${WALLET_DIR} && ./grin-wallet listen"
+  fi
 
-[Service]
-Type=simple
-User=${GRIN_USER}
-Group=${GRIN_GROUP}
-ExecStart=${LISTENER_WRAPPER}
-Restart=on-failure
-RestartSec=10
-StandardOutput=journal
-StandardError=journal
-ProtectHome=true
-PrivateTmp=true
-NoNewPrivileges=true
+  tmux new-session -d -s "$TMUX_SESSION" -x 220 -y 50 "su -s /bin/bash ${GRIN_USER} -c '${listen_cmd}'"
+  log "Wallet listener started in tmux session: ${TMUX_SESSION}"
+  log "Attach with: tmux attach -t ${TMUX_SESSION}"
+}
 
-[Install]
-WantedBy=multi-user.target
-EOF
-
-  systemctl daemon-reload
-  log "Service installed: ${SERVICE_NAME}"
-  echo
-  read -r -p "Enable auto-start on reboot? [Y/n] " yn
-  [[ "${yn,,}" != "n" ]] && systemctl enable "$SERVICE_NAME" && log "Auto-start enabled."
+wallet_stop() {
+  if wallet_is_running; then
+    tmux kill-session -t "$TMUX_SESSION"
+    log "Wallet listener stopped."
+  else
+    warn "Wallet listener is not running."
+  fi
 }
 
 # ── Option 1: Integrate Grin Wallet ───────────────────────────
@@ -445,9 +433,9 @@ option_integrate() {
   case "$wallet_choice" in
     1)
       log "Creating new wallet…"
-      [[ -f "${WALLET_DIR}/wallet.seed" ]] && { warn "Removing existing wallet.seed before init."; rm -f "${WALLET_DIR}/wallet.seed"; }
+      [[ -f "${WALLET_DIR}/wallet_data/wallet.seed" ]] && { warn "Removing existing wallet.seed before init."; rm -f "${WALLET_DIR}/wallet_data/wallet.seed"; }
       echo
-      "$WALLET_BIN" -r "$WALLET_DIR" init -h
+      cd "$WALLET_DIR" && ./grin-wallet init -h
       echo
       warn "IMPORTANT: Write down the seed phrase shown above on paper."
       echo
@@ -465,9 +453,9 @@ option_integrate() {
       ;;
     2)
       log "Recovering wallet from seed…"
-      [[ -f "${WALLET_DIR}/wallet.seed" ]] && { warn "Removing existing wallet.seed before recovery."; rm -f "${WALLET_DIR}/wallet.seed"; }
+      [[ -f "${WALLET_DIR}/wallet_data/wallet.seed" ]] && { warn "Removing existing wallet.seed before recovery."; rm -f "${WALLET_DIR}/wallet_data/wallet.seed"; }
       echo
-      "$WALLET_BIN" -r "$WALLET_DIR" init -hr
+      cd "$WALLET_DIR" && ./grin-wallet init -hr
       echo
       read -r -p "Save OpenSSL-encrypted passphrase to disk? [y/N] " save_pass
       if [[ "${save_pass,,}" == "y" ]]; then
@@ -510,42 +498,62 @@ option_integrate() {
   read -r -p "Press Enter to return to menu…"
 }
 
-# ── Option 2: Manage Wallet Listener Service ──────────────────
+# ── Option 2: Manage Wallet Listener (tmux) ───────────────────
 option_manage_service() {
   sep
-  log "=== Option 2: Grin Wallet Listener Service ==="
+  log "=== Option 2: Grin Wallet Listener (tmux) ==="
   sep
 
   while true; do
     echo
-    local running enabled
-    systemctl is-active  --quiet "$SERVICE_NAME" 2>/dev/null && running="${GRN}RUNNING ✓${NC}" || running="${RED}STOPPED ✗${NC}"
-    systemctl is-enabled --quiet "$SERVICE_NAME" 2>/dev/null && enabled="ENABLED" || enabled="DISABLED"
-    echo -e "  Status:     ${running}"
-    echo    "  Auto-start: ${enabled}"
+    if wallet_is_running; then
+      echo -e "  Status : ${GRN}RUNNING ✓${NC}  (tmux: ${TMUX_SESSION})"
+    else
+      echo -e "  Status : ${RED}STOPPED ✗${NC}"
+    fi
     echo
-    echo "  1) Start"
-    echo "  2) Stop"
-    echo "  3) Restart"
-    echo "  4) Enable auto-start on reboot"
-    echo "  5) Disable auto-start on reboot"
-    echo "  6) Install / reinstall service unit"
-    echo "  7) View logs (last 60 lines)"
+    echo "  1) Start listener"
+    echo "  2) Stop listener"
+    echo "  3) Restart listener"
+    echo "  4) Attach to tmux session  (Ctrl-b d to detach)"
+    echo "  5) View wallet log (last 60 lines)"
     echo "  0) Back"
     echo
-    read -r -p "Choice [0-7]: " svc_choice
+    read -r -p "Choice [0-5]: " svc_choice
 
     case "$svc_choice" in
-      1) systemctl start   "$SERVICE_NAME" && log "Started."   || err "Failed to start." ;;
-      2) systemctl stop    "$SERVICE_NAME" && log "Stopped."   || err "Failed to stop."  ;;
-      3) systemctl restart "$SERVICE_NAME" && log "Restarted." || err "Failed to restart." ;;
-      4) systemctl enable  "$SERVICE_NAME" && log "Auto-start enabled."  || true ;;
-      5) systemctl disable "$SERVICE_NAME" && log "Auto-start disabled." || true ;;
-      6) install_listener_service ;;
-      7) journalctl -u "$SERVICE_NAME" -n 60 --no-pager ;;
+      1)
+        wallet_start
+        ;;
+      2)
+        wallet_stop
+        ;;
+      3)
+        wallet_stop
+        sleep 1
+        wallet_start
+        ;;
+      4)
+        if wallet_is_running; then
+          log "Attaching to tmux session '${TMUX_SESSION}' — press Ctrl-b d to detach."
+          tmux attach -t "$TMUX_SESSION"
+        else
+          warn "Wallet listener is not running. Start it first (option 1)."
+        fi
+        ;;
+      5)
+        local logfile="${WALLET_DIR}/grin-wallet.log"
+        if [[ -f "$logfile" ]]; then
+          tail -n 60 "$logfile"
+        else
+          warn "Log file not found: ${logfile}"
+        fi
+        ;;
       0) break ;;
       *) warn "Invalid choice." ;;
     esac
+    echo
+    read -r -p "Press Enter to continue…"
   done
 }
 
@@ -562,7 +570,9 @@ print_status() {
     echo -e "  Binary      : ${RED}not installed${NC}"
   fi
 
-  if [[ -f "${WALLET_DIR}/wallet.seed" ]]; then
+  # wallet.seed lives in wallet_data/ subdir (grin-wallet default)
+  local seed_file="${WALLET_DIR}/wallet_data/wallet.seed"
+  if [[ -f "$seed_file" ]]; then
     echo -e "  Wallet      : ${GRN}initialized${NC}"
   elif [[ -x "$WALLET_BIN" ]]; then
     echo -e "  Wallet      : ${YEL}not initialized${NC}  (run option 1)"
@@ -575,19 +585,10 @@ print_status() {
     echo -e "  Node        : ${node}"
   fi
 
-  if systemctl list-unit-files "${SERVICE_NAME}.service" 2>/dev/null | grep -q "$SERVICE_NAME"; then
-    if systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
-      echo -e "  Listener    : ${GRN}running${NC}"
-    else
-      echo -e "  Listener    : ${YEL}stopped${NC}"
-    fi
-    if systemctl is-enabled --quiet "$SERVICE_NAME" 2>/dev/null; then
-      echo    "  Auto-start  : enabled"
-    else
-      echo    "  Auto-start  : disabled"
-    fi
+  if wallet_is_running; then
+    echo -e "  Listener    : ${GRN}running${NC}  (tmux: ${TMUX_SESSION})"
   else
-    echo -e "  Listener    : ${RED}service not installed${NC}"
+    echo -e "  Listener    : ${YEL}stopped${NC}"
   fi
 
   echo "  ─────────────────────────────────────────"
