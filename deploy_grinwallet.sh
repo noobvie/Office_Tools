@@ -209,30 +209,26 @@ check_server_online() {
   fi
 }
 
-# ── Select Grin node and patch check_node_api_http_addr ───────
-patch_check_node() {
-  echo
-  local current_node
-  current_node=$(grep 'check_node_api_http_addr' "$WALLET_TOML" | cut -d'"' -f2)
-  log "Current node: ${current_node}"
-  echo
-
+# ── Select Grin node — returns URL via stdout, empty = local default ──
+# Used during option 1 (before init) to pick a node without writing toml yet.
+# After init, the caller applies the returned URL to the freshly written toml.
+select_node_url() {
   local ext_servers=(
     "https://api.grin.money"
     "https://api.grinily.com"
     "https://api.grinnode.org"
   )
 
-  echo "  Checking external node availability…"
-  echo
+  echo "  Checking external node availability…" >&2
+  echo >&2
 
   local ext_statuses=()
   for url in "${ext_servers[@]}"; do
     ext_statuses+=("$(check_server_online "$url")")
   done
 
-  echo "  Select Grin node for grin-wallet.toml:"
-  echo
+  echo "  Select Grin node for grin-wallet.toml:" >&2
+  echo >&2
 
   local i
   for i in "${!ext_servers[@]}"; do
@@ -243,7 +239,7 @@ patch_check_node() {
     else
       flag="${RED}○ offline${NC}"
     fi
-    printf "  %d) %-36s %b\n" "$((i+1))" "$host" "$flag"
+    printf "  %d) %-36s %b\n" "$((i+1))" "$host" "$flag" >&2
   done
 
   local local_flag
@@ -252,34 +248,53 @@ patch_check_node() {
   else
     local_flag="${YEL}○ install later${NC}"
   fi
-  printf "  4) %-36s %b\n" "Local node  127.0.0.1:3413" "$local_flag"
-  echo "  0) Back"
-  echo
+  printf "  4) %-36s %b\n" "Local node  127.0.0.1:3413" "$local_flag" >&2
+  echo "  0) Keep default (127.0.0.1:3413)" >&2
+  echo >&2
 
   local choice
-  read -r -p "Choice [0-4]: " choice
+  read -r -p "Choice [0-4]: " choice >&2
 
   case "$choice" in
     1|2|3)
       local selected_url="${ext_servers[$((choice-1))]}"
       local selected_status="${ext_statuses[$((choice-1))]}"
       if [[ "$selected_status" == "offline" ]]; then
-        warn "That server appears offline. Use it anyway? [y/N]"
-        read -r -p "" yn
-        [[ "${yn,,}" != "y" ]] && { log "No changes made."; return; }
+        warn "That server appears offline. Use it anyway? [y/N]" >&2
+        local yn; read -r -p "" yn >&2
+        if [[ "${yn,,}" != "y" ]]; then
+          warn "No change — will use default 127.0.0.1:3413." >&2
+          echo ""
+          return
+        fi
       fi
-      sed -i "s|check_node_api_http_addr = .*|check_node_api_http_addr = \"${selected_url}\"|" "$WALLET_TOML"
-      log "Updated check_node_api_http_addr → ${selected_url}"
+      echo "$selected_url"
       ;;
     4)
-      sed -i "s|check_node_api_http_addr = .*|check_node_api_http_addr = \"http://127.0.0.1:3413\"|" "$WALLET_TOML"
-      log "Updated check_node_api_http_addr → http://127.0.0.1:3413"
-      warn "Remember to install a local Grin node before starting the wallet listener."
+      warn "Remember to install a local Grin node before starting the wallet listener." >&2
+      echo "http://127.0.0.1:3413"
       ;;
     0|*)
-      log "No changes made."
+      echo ""
       ;;
   esac
+}
+
+# ── Patch check_node_api_http_addr in existing toml (standalone use) ──
+patch_check_node() {
+  echo
+  local current_node
+  current_node=$(grep 'check_node_api_http_addr' "$WALLET_TOML" | cut -d'"' -f2)
+  log "Current node: ${current_node}"
+  echo
+
+  local chosen; chosen=$(select_node_url)
+  if [[ -n "$chosen" ]]; then
+    sed -i "s|check_node_api_http_addr = .*|check_node_api_http_addr = \"${chosen}\"|" "$WALLET_TOML"
+    log "Updated check_node_api_http_addr → ${chosen}"
+  else
+    log "No changes made."
+  fi
 }
 
 # ── Encrypt passphrase to disk (OpenSSL AES-256-CBC) ──────────
@@ -413,11 +428,12 @@ option_integrate() {
     download_grin_wallet
   fi
 
-  # Step 2: Config — always recreate toml, then select node
+  # Step 2: Select node (save choice — toml is written AFTER init so grin-wallet init doesn't complain)
   echo
-  log "Step 2/5 — Wallet Configuration (grin-wallet.toml)"
-  create_wallet_toml
-  patch_check_node
+  log "Step 2/5 — Select Grin Node"
+  # Ask node selection and remember the URL; toml is not written yet
+  local chosen_node=""
+  chosen_node=$(select_node_url)   # returns the URL or empty for local default
 
   # Step 3: Init or Recover
   echo
@@ -433,9 +449,10 @@ option_integrate() {
   case "$wallet_choice" in
     1)
       log "Creating new wallet…"
-      [[ -f "${WALLET_DIR}/wallet_data/wallet.seed" ]] && { warn "Removing existing wallet.seed before init."; rm -f "${WALLET_DIR}/wallet_data/wallet.seed"; }
+      # Remove any existing toml and seed so init starts clean
+      rm -f "$WALLET_TOML" "${WALLET_DIR}/wallet_data/wallet.seed"
       echo
-      cd "$WALLET_DIR" && ./grin-wallet init -h
+      (cd "$WALLET_DIR" && ./grin-wallet init -h)
       echo
       warn "IMPORTANT: Write down the seed phrase shown above on paper."
       echo
@@ -453,9 +470,10 @@ option_integrate() {
       ;;
     2)
       log "Recovering wallet from seed…"
-      [[ -f "${WALLET_DIR}/wallet_data/wallet.seed" ]] && { warn "Removing existing wallet.seed before recovery."; rm -f "${WALLET_DIR}/wallet_data/wallet.seed"; }
+      # Remove any existing toml and seed so init starts clean
+      rm -f "$WALLET_TOML" "${WALLET_DIR}/wallet_data/wallet.seed"
       echo
-      cd "$WALLET_DIR" && ./grin-wallet init -hr
+      (cd "$WALLET_DIR" && ./grin-wallet init -hr)
       echo
       read -r -p "Save OpenSSL-encrypted passphrase to disk? [y/N] " save_pass
       if [[ "${save_pass,,}" == "y" ]]; then
@@ -470,6 +488,15 @@ option_integrate() {
       log "Skipping wallet initialization."
       ;;
   esac
+
+  # Write our toml now (after init) and apply the node choice from step 2
+  echo
+  log "Step 2b/5 — Write grin-wallet.toml (replacing init-generated config)"
+  create_wallet_toml
+  if [[ -n "$chosen_node" ]]; then
+    sed -i "s|check_node_api_http_addr = .*|check_node_api_http_addr = \"${chosen_node}\"|" "$WALLET_TOML"
+    log "Node set → ${chosen_node}"
+  fi
 
   # Step 4: Fix ownership after init (grin-wallet writes files as root during init)
   echo
