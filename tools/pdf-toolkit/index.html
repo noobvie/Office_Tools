@@ -74,11 +74,20 @@
     .thumb-item.drag-over { border-color: var(--primary); background: var(--primary-dim); }
     .thumb-item.dragging  { opacity: 0.4; }
     .thumb-item canvas, .thumb-item img { width: 100%; display: block; }
-    .thumb-num {
-      position: absolute; bottom: 4px; left: 4px;
-      background: rgba(0,0,0,.65); color: #fff;
-      font-size: .68rem; padding: 1px 6px; border-radius: 4px;
+    .thumb-nav {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: rgba(0,0,0,.62);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 2px 3px; gap: 2px;
     }
+    .thumb-nav span { color: #fff; font-size: .68rem; flex: 1; text-align: center; }
+    .thumb-mv {
+      background: none; border: none; color: #fff; cursor: pointer;
+      font-size: .7rem; padding: 1px 4px; line-height: 1;
+      border-radius: 3px; flex-shrink: 0; opacity: .85;
+    }
+    .thumb-mv:hover:not(:disabled) { background: rgba(255,255,255,.2); opacity: 1; }
+    .thumb-mv:disabled { opacity: .2; cursor: default; }
     .thumb-del {
       position: absolute; top: 3px; right: 3px;
       background: rgba(220,30,30,.85); color: #fff;
@@ -518,8 +527,9 @@ function renderBuildThumbGrid() {
   }
   pageArea.style.display = ''; outputArea.style.display = '';
   document.getElementById('buildPageCount').textContent =
-    `${buildPages.length} page${buildPages.length !== 1 ? 's' : ''} — drag to reorder`;
+    `${buildPages.length} page${buildPages.length !== 1 ? 's' : ''} — drag or use ◀ ▶ to reorder`;
 
+  const total = buildPages.length;
   grid.innerHTML = buildPages.map((pg, di) => {
     const src   = buildSources[pg.srcIdx];
     const label = src.type === 'pdf' ? `p${pg.pageIdx + 1}` : src.file.name.slice(0, 8);
@@ -529,7 +539,11 @@ function renderBuildThumbGrid() {
     return `
       <div class="thumb-item" draggable="true" data-di="${di}">
         ${inner}
-        <span class="thumb-num">${di + 1}</span>
+        <div class="thumb-nav">
+          <button class="thumb-mv thumb-mv-l" data-di="${di}" title="Move left" ${di === 0 ? 'disabled' : ''}>&#9664;</button>
+          <span>${di + 1}</span>
+          <button class="thumb-mv thumb-mv-r" data-di="${di}" title="Move right" ${di === total - 1 ? 'disabled' : ''}>&#9654;</button>
+        </div>
         <button class="thumb-del" data-di="${di}" title="Remove">&#10005;</button>
       </div>`;
   }).join('');
@@ -539,6 +553,22 @@ function renderBuildThumbGrid() {
       e.stopPropagation();
       buildPages.splice(+btn.dataset.di, 1);
       renderBuildThumbGrid();
+    })
+  );
+
+  grid.querySelectorAll('.thumb-mv-l').forEach(btn =>
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const i = +btn.dataset.di;
+      if (i > 0) { [buildPages[i - 1], buildPages[i]] = [buildPages[i], buildPages[i - 1]]; renderBuildThumbGrid(); }
+    })
+  );
+
+  grid.querySelectorAll('.thumb-mv-r').forEach(btn =>
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const i = +btn.dataset.di;
+      if (i < buildPages.length - 1) { [buildPages[i], buildPages[i + 1]] = [buildPages[i + 1], buildPages[i]]; renderBuildThumbGrid(); }
     })
   );
 
