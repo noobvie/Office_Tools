@@ -368,6 +368,13 @@ wallet_start() {
     return
   fi
 
+  # Kill any orphaned grin-wallet process not in tmux (e.g. from a previous failed start)
+  if pgrep -f "grin-wallet.*listen" &>/dev/null; then
+    warn "Killing orphaned grin-wallet process before starting..."
+    pkill -f "grin-wallet.*listen" 2>/dev/null || true
+    sleep 1
+  fi
+
   # Build a wrapper script that the grin user executes inside tmux.
   # The passphrase is written to a root-only temp file, read once by the
   # wrapper, then immediately deleted — never appears in ps or shell args.
