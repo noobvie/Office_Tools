@@ -680,7 +680,7 @@ option_systemd() {
       5)
         systemctl stop    "$SYSTEMD_SERVICE" 2>/dev/null || true
         systemctl disable "$SYSTEMD_SERVICE" 2>/dev/null || true
-        rm -f "$SYSTEMD_FILE"
+        rm -f "$SYSTEMD_FILE" "/opt/office-tools/data/grin-listen.sh"
         systemctl daemon-reload
         log "Service removed."
         ;;
@@ -700,14 +700,24 @@ option_systemd() {
     read -r -p "Install systemd service now? [Y/n] " yn
     [[ "${yn,,}" == "n" ]] && return
 
-    # Build ExecStart — pass passphrase via file if available
-    local exec_start
+    # Write a wrapper script — avoids all systemd ExecStart quoting issues
+    local wrapper="/opt/office-tools/data/grin-listen.sh"
     if [[ -f "$ENCRYPTED_PASS" ]]; then
-      # Read passphrase from file at service start time via a wrapper
-      exec_start="/bin/bash -c 'PASS=\$(cat ${ENCRYPTED_PASS}); exec ${WALLET_BIN} -p \"\$PASS\" listen'"
+      cat > "$wrapper" <<'WRAPPER'
+#!/bin/bash
+PASS=$(cat /opt/office-tools/data/.temp)
+cd /opt/office-tools/cmdgrinwallet
+exec ./grin-wallet -p "$PASS" listen
+WRAPPER
     else
-      exec_start="${WALLET_BIN} listen"
+      cat > "$wrapper" <<'WRAPPER'
+#!/bin/bash
+cd /opt/office-tools/cmdgrinwallet
+exec ./grin-wallet listen
+WRAPPER
     fi
+    chmod 750 "$wrapper"
+    chown "root:${GRIN_GROUP}" "$wrapper"
 
     cat > "$SYSTEMD_FILE" <<EOF
 [Unit]
@@ -719,7 +729,7 @@ Type=simple
 User=${GRIN_USER}
 Group=${GRIN_GROUP}
 WorkingDirectory=${WALLET_DIR}
-ExecStart=${exec_start}
+ExecStart=/bin/bash ${wrapper}
 Restart=on-failure
 RestartSec=10
 StandardOutput=append:${WALLET_DIR}/grin-wallet.log
