@@ -297,13 +297,22 @@ patch_check_node() {
   fi
 }
 
+# ── Machine-specific key (no interactive prompt needed) ────────
+# Derived from /etc/machine-id — ties the encrypted file to this server.
+machine_key() {
+  local mid
+  mid=$(cat /etc/machine-id 2>/dev/null || hostname)
+  printf '%s' "grin-wallet-${mid}" | sha256sum | cut -d' ' -f1
+}
+
 # ── Encrypt passphrase to disk (OpenSSL AES-256-CBC) ──────────
 encrypt_passphrase() {
   local pass="$1"
   [[ -z "$pass" ]] && { warn "No passphrase to encrypt."; return; }
   mkdir -p "$(dirname "$ENCRYPTED_PASS")"
   log "Encrypting passphrase with OpenSSL AES-256-CBC + PBKDF2…"
-  printf '%s' "$pass" | openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -out "$ENCRYPTED_PASS"
+  printf '%s' "$pass" | openssl enc -aes-256-cbc -pbkdf2 -iter 100000 \
+    -pass "pass:$(machine_key)" -out "$ENCRYPTED_PASS"
   chown "root:${GRIN_GROUP}" "$ENCRYPTED_PASS"
   chmod 640 "$ENCRYPTED_PASS"
   log "Saved: ${ENCRYPTED_PASS}"
@@ -373,23 +382,49 @@ wallet_start() {
     return
   fi
 
-  local listen_cmd
+  # Build a wrapper script that the grin user executes inside tmux.
+  # The passphrase is written to a root-only temp file, read once by the
+  # wrapper, then immediately deleted — never appears in ps or shell args.
+  local wrapper; wrapper=$(mktemp /tmp/grin-listen-XXXXXX.sh)
+  chmod 700 "$wrapper"
+
   if [[ -f "$ENCRYPTED_PASS" ]]; then
-    # Decrypt passphrase at start time — never stored in plaintext in the session
     local pass
-    pass=$(openssl enc -d -aes-256-cbc -pbkdf2 -in "$ENCRYPTED_PASS" 2>/dev/null || true)
+    pass=$(openssl enc -d -aes-256-cbc -pbkdf2 \
+      -pass "pass:$(machine_key)" -in "$ENCRYPTED_PASS" 2>/dev/null || true)
     if [[ -n "$pass" ]]; then
-      listen_cmd="cd ${WALLET_DIR} && ./grin-wallet -p ${pass} listen"
+      # Write passphrase into wrapper; wrapper deletes itself before exec
+      cat > "$wrapper" <<WRAPPER
+#!/bin/bash
+PASS=$(printf '%q' "$pass")
+rm -f "$wrapper"
+cd "${WALLET_DIR}"
+exec ./grin-wallet -p "\$PASS" listen
+WRAPPER
+      unset pass
     else
       warn "Could not decrypt passphrase — starting without it."
-      listen_cmd="cd ${WALLET_DIR} && ./grin-wallet listen"
+      cat > "$wrapper" <<WRAPPER
+#!/bin/bash
+rm -f "$wrapper"
+cd "${WALLET_DIR}"
+exec ./grin-wallet listen
+WRAPPER
     fi
-    unset pass
   else
-    listen_cmd="cd ${WALLET_DIR} && ./grin-wallet listen"
+    warn "No saved passphrase found — if the wallet has a passphrase, listener will fail."
+    warn "Re-run option 1 and save the passphrase so the web service can auto-start it."
+    cat > "$wrapper" <<WRAPPER
+#!/bin/bash
+rm -f "$wrapper"
+cd "${WALLET_DIR}"
+exec ./grin-wallet listen
+WRAPPER
   fi
 
-  tmux new-session -d -s "$TMUX_SESSION" -x 220 -y 50 "su -s /bin/bash ${GRIN_USER} -c '${listen_cmd}'"
+  chown "${GRIN_USER}:${GRIN_GROUP}" "$wrapper"
+  tmux new-session -d -s "$TMUX_SESSION" -x 220 -y 50 \
+    "su -s /bin/bash ${GRIN_USER} -c 'bash ${wrapper}'"
   log "Wallet listener started in tmux session: ${TMUX_SESSION}"
   log "Attach with: tmux attach -t ${TMUX_SESSION}"
 }
