@@ -93,15 +93,15 @@ setup_grin_user() {
 read_pass_confirmed() {
   local pass pass2
   while true; do
-    read -r -s -p "Passphrase (min 3 chars, 0 to cancel): " pass; echo
+    read -r -s -p "Passphrase (min 3 chars, 0 to cancel): " pass; echo >&2
     [[ "$pass" == "0" ]] && return 1
     if [[ ${#pass} -lt 3 ]]; then
-      warn "Passphrase must be at least 3 characters. Try again."
+      warn "Passphrase must be at least 3 characters. Try again." >&2
       continue
     fi
-    read -r -s -p "Confirm passphrase: " pass2; echo
+    read -r -s -p "Confirm passphrase: " pass2; echo >&2
     if [[ "$pass" != "$pass2" ]]; then
-      warn "Passphrases do not match. Try again."
+      warn "Passphrases do not match. Try again." >&2
       unset pass pass2
       continue
     fi
