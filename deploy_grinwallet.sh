@@ -649,6 +649,102 @@ option_manage_service() {
   done
 }
 
+# ── Option 3: Install / Remove systemd service ────────────────
+SYSTEMD_SERVICE="office-tools-grin-listener"
+SYSTEMD_FILE="/etc/systemd/system/${SYSTEMD_SERVICE}.service"
+
+option_systemd() {
+  sep
+  log "=== Option 3: systemd Service (${SYSTEMD_SERVICE}) ==="
+  sep
+  echo
+
+  if [[ -f "$SYSTEMD_FILE" ]]; then
+    local state; state=$(systemctl is-active "$SYSTEMD_SERVICE" 2>/dev/null || echo "inactive")
+    echo -e "  Service file : ${GRN}installed${NC}  ($SYSTEMD_FILE)"
+    echo -e "  State        : ${state}"
+    echo
+    echo "  1) Start service"
+    echo "  2) Stop service"
+    echo "  3) Restart service"
+    echo "  4) View status / logs"
+    echo "  5) Remove service"
+    echo "  0) Back"
+    echo
+    read -r -p "Choice [0-5]: " s
+    case "$s" in
+      1) systemctl start  "$SYSTEMD_SERVICE" && log "Started."  || err "Failed to start." ;;
+      2) systemctl stop   "$SYSTEMD_SERVICE" && log "Stopped."  || err "Failed to stop."  ;;
+      3) systemctl restart "$SYSTEMD_SERVICE" && log "Restarted." || err "Failed to restart." ;;
+      4) systemctl status "$SYSTEMD_SERVICE" --no-pager -l; echo; journalctl -u "$SYSTEMD_SERVICE" -n 30 --no-pager ;;
+      5)
+        systemctl stop    "$SYSTEMD_SERVICE" 2>/dev/null || true
+        systemctl disable "$SYSTEMD_SERVICE" 2>/dev/null || true
+        rm -f "$SYSTEMD_FILE"
+        systemctl daemon-reload
+        log "Service removed."
+        ;;
+      0) return ;;
+    esac
+  else
+    echo -e "  Service file : ${YEL}not installed${NC}"
+    echo
+    if [[ ! -x "$WALLET_BIN" ]]; then
+      err "grin-wallet binary not found. Run option 1 first."
+      read -r -p "Press Enter to continue…"; return
+    fi
+    if [[ ! -f "$ENCRYPTED_PASS" ]]; then
+      warn "No passphrase file found at ${ENCRYPTED_PASS}."
+      warn "Run option 2 → Re-save passphrase first, or the service will start without a passphrase."
+    fi
+    read -r -p "Install systemd service now? [Y/n] " yn
+    [[ "${yn,,}" == "n" ]] && return
+
+    # Build ExecStart — pass passphrase via file if available
+    local exec_start
+    if [[ -f "$ENCRYPTED_PASS" ]]; then
+      # Read passphrase from file at service start time via a wrapper
+      exec_start="/bin/bash -c 'PASS=\$(cat ${ENCRYPTED_PASS}); exec ${WALLET_BIN} -p \"\$PASS\" listen'"
+    else
+      exec_start="${WALLET_BIN} listen"
+    fi
+
+    cat > "$SYSTEMD_FILE" <<EOF
+[Unit]
+Description=Grin Wallet Listener (Office Tools)
+After=network.target
+
+[Service]
+Type=simple
+User=${GRIN_USER}
+Group=${GRIN_GROUP}
+WorkingDirectory=${WALLET_DIR}
+ExecStart=${exec_start}
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:${WALLET_DIR}/grin-wallet.log
+StandardError=append:${WALLET_DIR}/grin-wallet.log
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    systemctl daemon-reload
+    systemctl enable "$SYSTEMD_SERVICE"
+    systemctl start  "$SYSTEMD_SERVICE"
+    sleep 2
+    local state; state=$(systemctl is-active "$SYSTEMD_SERVICE" 2>/dev/null || echo "unknown")
+    if [[ "$state" == "active" ]]; then
+      log "Service installed and running."
+    else
+      err "Service installed but state is '${state}'. Check: journalctl -u ${SYSTEMD_SERVICE} -n 20"
+    fi
+  fi
+
+  echo
+  read -r -p "Press Enter to continue…"
+}
+
 # ── Current status snapshot ────────────────────────────────────
 print_status() {
   echo
@@ -677,7 +773,10 @@ print_status() {
     echo -e "  Node        : ${node}"
   fi
 
-  if wallet_is_running; then
+  local svc_state; svc_state=$(systemctl is-active "$SYSTEMD_SERVICE" 2>/dev/null || echo "inactive")
+  if [[ "$svc_state" == "active" ]]; then
+    echo -e "  Listener    : ${GRN}running${NC}  (systemd: ${SYSTEMD_SERVICE})"
+  elif wallet_is_running; then
     echo -e "  Listener    : ${GRN}running${NC}  (tmux: ${TMUX_SESSION})"
   else
     echo -e "  Listener    : ${YEL}stopped${NC}"
@@ -697,14 +796,16 @@ main() {
     print_status
     echo
     echo "  1) Integrate Grin Wallet   (download · init · recover · configure)"
-    echo "  2) Manage Wallet Service   (start · stop · restart · logs)"
+    echo "  2) Manage Wallet Listener  (tmux: start · stop · restart · logs)"
+    echo "  3) systemd Service         (install · start · stop · required to start wallet from donate page)"
     echo "  0) Exit"
     echo
-    read -r -p "Choice [0-2]: " choice
+    read -r -p "Choice [0-3]: " choice
 
     case "$choice" in
       1) option_integrate ;;
       2) option_manage_service ;;
+      3) option_systemd ;;
       0) log "Goodbye."; exit 0 ;;
       *) warn "Invalid choice." ;;
     esac
