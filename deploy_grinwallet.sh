@@ -8,23 +8,32 @@
 #    — Init new wallet  (grin-wallet init -h)
 #    — Recover wallet   (grin-wallet init -hr)
 #    — Configure grin-wallet.toml (node selection)
-#    — Optionally encrypt & save passphrase/seed via OpenSSL
+#    — Optionally save passphrase for auto-start (plain text)
 #    — Update server .env with wallet binary path
 #
 #  Option 2: Manage Wallet Listener (tmux)
-#    — Start / Stop / Restart grin-wallet listen in tmux session
-#    — Attach to session to watch live output
+#    — Start / Stop / Restart grin-wallet listen in tmux
+#    — Attach to session · View logs · Re-save passphrase
+#    — Enable / disable auto-start on reboot (cron @reboot)
 #
-#  All wallet files live in one directory (grin-wallet uses CWD):
+#  Wallet files live in:
 #    /opt/office-tools/cmdgrinwallet/
 #      grin-wallet          binary
 #      grin-wallet.toml     config
-#      wallet.seed          created by init
+#      wallet_data/         created by init
 #      grin-wallet.log      runtime log
 #
-#  Secrets (root-only):
+#  Auto-start helper (written by option 2):
+#    /opt/office-tools/data/grin-listen.sh
+#
+#  Saved passphrase (plain text, root-only, chmod 640):
 #    /opt/office-tools/data/.temp
-#    /opt/office-tools/data/.wallet_seed.enc
+#
+#  ⚠  SECURITY NOTE
+#    The saved passphrase is stored in PLAIN TEXT.
+#    Your hosting provider and anyone with root access can read it.
+#    Recommendation: transfer funds to a personal wallet regularly
+#    rather than keeping a large balance on this server.
 # ============================================================
 set -uo pipefail
 
@@ -33,8 +42,9 @@ WALLET_DIR="/opt/office-tools/cmdgrinwallet"
 WALLET_BIN="${WALLET_DIR}/grin-wallet"
 WALLET_TOML="${WALLET_DIR}/grin-wallet.toml"
 SERVER_ENV="/opt/office-tools/server/.env"
-ENCRYPTED_PASS="/opt/office-tools/data/.temp"
-ENCRYPTED_SEED="/opt/office-tools/data/.wallet_seed.enc"
+PASS_FILE="/opt/office-tools/data/.temp"
+SEED_FILE="/opt/office-tools/data/.wallet_seed.enc"
+LISTENER_SCRIPT="/opt/office-tools/data/grin-listen.sh"
 TMUX_SESSION="donate_grin_wallet"
 GRIN_USER="grin"
 GRIN_GROUP="grin"
@@ -78,7 +88,7 @@ setup_grin_user() {
   log "Ownership set: ${WALLET_DIR} → ${GRIN_USER}:${GRIN_GROUP}"
 }
 
-# ── Helper: read passphrase (hidden, confirmed, min 3 chars) ───
+# ── Helper: read passphrase (hidden input) ─────────────────────
 read_pass_confirmed() {
   local pass
   read -r -s -p "Passphrase (Enter for none, 0 to cancel): " pass; echo
@@ -197,9 +207,7 @@ check_server_online() {
   fi
 }
 
-# ── Select Grin node — returns URL via stdout, empty = local default ──
-# Used during option 1 (before init) to pick a node without writing toml yet.
-# After init, the caller applies the returned URL to the freshly written toml.
+# ── Select Grin node — returns URL via stdout ─────────────────
 select_node_url() {
   local ext_servers=(
     "https://api.grin.money"
@@ -268,7 +276,7 @@ select_node_url() {
   esac
 }
 
-# ── Patch check_node_api_http_addr in existing toml (standalone use) ──
+# ── Patch check_node_api_http_addr in existing toml ───────────
 patch_check_node() {
   echo
   local current_node
@@ -285,28 +293,19 @@ patch_check_node() {
   fi
 }
 
-# ── Machine-specific key (no interactive prompt needed) ────────
-# Derived from /etc/machine-id — ties the encrypted file to this server.
-machine_key() {
-  local mid
-  mid=$(cat /etc/machine-id 2>/dev/null || hostname)
-  printf '%s' "grin-wallet-${mid}" | sha256sum | cut -d' ' -f1
-}
-
-# ── Encrypt passphrase to disk (OpenSSL AES-256-CBC) ──────────
-encrypt_passphrase() {
+# ── Save passphrase to disk (plain text, root-only) ────────────
+save_passphrase() {
   local pass="$1"
-  [[ -z "$pass" ]] && { warn "No passphrase to encrypt."; return; }
-  mkdir -p "$(dirname "$ENCRYPTED_PASS")"
-  log "Saving passphrase (plain text, root-only)…"
-  printf '%s' "$pass" > "$ENCRYPTED_PASS"
-  chown "root:${GRIN_GROUP}" "$ENCRYPTED_PASS"
-  chmod 640 "$ENCRYPTED_PASS"
-  log "Saved: ${ENCRYPTED_PASS}"
+  [[ -z "$pass" ]] && { warn "No passphrase to save."; return; }
+  mkdir -p "$(dirname "$PASS_FILE")"
+  printf '%s' "$pass" > "$PASS_FILE"
+  chown "root:${GRIN_GROUP}" "$PASS_FILE"
+  chmod 640 "$PASS_FILE"
+  log "Passphrase saved: ${PASS_FILE}"
 }
 
-# ── Encrypt seed phrase to disk (OpenSSL AES-256-CBC) ─────────
-encrypt_seed() {
+# ── Save encrypted seed backup (OpenSSL AES-256-CBC) ──────────
+save_seed_backup() {
   local wallet_pass="$1"
   log "Retrieving wallet seed phrase…"
   local seed_output
@@ -330,13 +329,14 @@ encrypt_seed() {
     warn "Passwords don't match. Seed will NOT be saved."; return
   fi
 
-  mkdir -p "$(dirname "$ENCRYPTED_SEED")"
+  mkdir -p "$(dirname "$SEED_FILE")"
   printf '%s\n' "$seed_output" | openssl enc -aes-256-cbc -pbkdf2 -iter 100000 \
-    -pass "pass:${seed_enc_pass}" -out "$ENCRYPTED_SEED"
-  chown root:root "$ENCRYPTED_SEED"
-  chmod 600 "$ENCRYPTED_SEED"
+    -pass "pass:${seed_enc_pass}" -out "$SEED_FILE"
+  chown root:root "$SEED_FILE"
+  chmod 600 "$SEED_FILE"
   unset seed_enc_pass seed_enc_pass2
-  log "Encrypted seed saved: ${ENCRYPTED_SEED}"
+  log "Encrypted seed saved: ${SEED_FILE}"
+  log "To recover: openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 -in ${SEED_FILE}"
 }
 
 # ── Update server .env with wallet binary path ────────────────
@@ -346,11 +346,33 @@ update_server_env() {
     return
   fi
   upsert_env "GRIN_WALLET_BIN" "$WALLET_BIN" "$SERVER_ENV"
-  if grep -q "^GRIN_WALLET_PASS=" "$SERVER_ENV" 2>/dev/null; then
-    sed -i "s|^GRIN_WALLET_PASS=.*|# GRIN_WALLET_PASS= (use startup prompt or GRIN_WALLET_PASS_KEYRING=1)|" "$SERVER_ENV"
-    warn "Cleared GRIN_WALLET_PASS from .env — use interactive prompt or OS keyring."
+  if [[ -f "$PASS_FILE" ]]; then
+    upsert_env "GRIN_WALLET_PASS_FILE" "$PASS_FILE" "$SERVER_ENV"
+    log "Set GRIN_WALLET_PASS_FILE in ${SERVER_ENV}"
   fi
   log "Updated ${SERVER_ENV}"
+}
+
+# ── Write the persistent listener wrapper script ───────────────
+write_listener_script() {
+  mkdir -p "$(dirname "$LISTENER_SCRIPT")"
+  if [[ -f "$PASS_FILE" ]]; then
+    cat > "$LISTENER_SCRIPT" <<SCRIPT
+#!/bin/bash
+PASS=\$(cat "${PASS_FILE}")
+cd "${WALLET_DIR}"
+exec ./grin-wallet -p "\$PASS" listen
+SCRIPT
+  else
+    cat > "$LISTENER_SCRIPT" <<SCRIPT
+#!/bin/bash
+cd "${WALLET_DIR}"
+exec ./grin-wallet listen
+SCRIPT
+  fi
+  chmod 750 "$LISTENER_SCRIPT"
+  chown "root:${GRIN_GROUP}" "$LISTENER_SCRIPT"
+  log "Listener script written: ${LISTENER_SCRIPT}"
 }
 
 # ── tmux helpers ──────────────────────────────────────────────
@@ -368,67 +390,32 @@ wallet_start() {
     return
   fi
 
-  # Kill any orphaned grin-wallet process not in tmux (e.g. from a previous failed start)
+  # Kill any orphaned grin-wallet process not in tmux
   if pgrep -f "grin-wallet.*listen" &>/dev/null; then
-    warn "Killing orphaned grin-wallet process before starting..."
+    warn "Killing orphaned grin-wallet process before starting…"
     pkill -f "grin-wallet.*listen" 2>/dev/null || true
     sleep 1
   fi
 
-  # Build a wrapper script that the grin user executes inside tmux.
-  # The passphrase is written to a root-only temp file, read once by the
-  # wrapper, then immediately deleted — never appears in ps or shell args.
+  # Write wrapper then run it in tmux.
+  # The passphrase is read from PASS_FILE inside the wrapper — never appears in ps args.
+  write_listener_script
+
+  # Build a one-shot tmux wrapper that shows output and waits on exit for debugging
   local wrapper; wrapper=$(mktemp /tmp/grin-listen-XXXXXX.sh)
+  cat > "$wrapper" <<WRAPPER
+#!/bin/bash
+bash "${LISTENER_SCRIPT}"
+echo ""
+echo "=== grin-wallet exited (see error above) ==="
+read -r -p "Press Enter to close..."
+WRAPPER
   chmod 700 "$wrapper"
+  chown "${GRIN_USER}:${GRIN_GROUP}" "$wrapper"
 
-  if [[ -f "$ENCRYPTED_PASS" ]]; then
-    local pass
-    pass=$(cat "$ENCRYPTED_PASS" 2>/dev/null || true)
-    if [[ -n "$pass" ]]; then
-      # Write passphrase as a literal into wrapper; wrapper deletes itself then execs
-      local quoted_pass; quoted_pass=$(printf '%q' "$pass")
-      cat > "$wrapper" <<WRAPPER
-#!/bin/bash
-PASS=${quoted_pass}
-rm -f "${wrapper}"
-cd "${WALLET_DIR}"
-./grin-wallet -p "\$PASS" listen
-echo ""
-echo "=== grin-wallet exited (see error above) ==="
-read -r -p "Press Enter to close..."
-WRAPPER
-      unset pass quoted_pass
-    else
-      warn "Could not decrypt passphrase — starting without it."
-      cat > "$wrapper" <<WRAPPER
-#!/bin/bash
-rm -f "$wrapper"
-cd "${WALLET_DIR}"
-./grin-wallet listen
-echo ""
-echo "=== grin-wallet exited (see error above) ==="
-read -r -p "Press Enter to close..."
-WRAPPER
-    fi
-  else
-    warn "No saved passphrase found — if the wallet has a passphrase, listener will fail."
-    warn "Re-run option 1 and save the passphrase so the web service can auto-start it."
-    cat > "$wrapper" <<WRAPPER
-#!/bin/bash
-rm -f "$wrapper"
-cd "${WALLET_DIR}"
-./grin-wallet listen
-echo ""
-echo "=== grin-wallet exited (see error above) ==="
-read -r -p "Press Enter to close..."
-WRAPPER
-  fi
-
-  # Ensure grin user owns all wallet files (init may have created them as root)
   chown -R "${GRIN_USER}:${GRIN_GROUP}" "$WALLET_DIR"
   chmod 750 "$WALLET_DIR"
 
-  chown "${GRIN_USER}:${GRIN_GROUP}" "$wrapper"
   tmux new-session -d -s "$TMUX_SESSION" -x 220 -y 50 \
     "su -s /bin/bash ${GRIN_USER} -c 'bash ${wrapper}'"
   sleep 1
@@ -436,17 +423,48 @@ WRAPPER
     log "Wallet listener started in tmux session: ${TMUX_SESSION}"
     log "Attach with: tmux attach -t ${TMUX_SESSION}"
   else
-    err "tmux session exited immediately — attach to check: tmux attach -t ${TMUX_SESSION}"
+    err "tmux session exited immediately — check: tmux attach -t ${TMUX_SESSION}"
   fi
 }
 
 wallet_stop() {
   if wallet_is_running; then
     tmux kill-session -t "$TMUX_SESSION"
+    pkill -f "grin-wallet.*listen" 2>/dev/null || true
     log "Wallet listener stopped."
   else
     warn "Wallet listener is not running."
   fi
+}
+
+# ── Auto-start on reboot (cron @reboot) ───────────────────────
+reboot_autostart_enabled() {
+  crontab -l 2>/dev/null | grep -q "grin-listen.sh"
+}
+
+enable_reboot_autostart() {
+  write_listener_script
+
+  local cron_line="@reboot sleep 30 && tmux new-session -d -s ${TMUX_SESSION} -x 220 -y 50 \"su -s /bin/bash ${GRIN_USER} -c 'bash ${LISTENER_SCRIPT}'\" 2>/dev/null"
+
+  if reboot_autostart_enabled; then
+    warn "Auto-start cron already set."
+    return
+  fi
+
+  # Append to root crontab
+  ( crontab -l 2>/dev/null; echo "$cron_line" ) | crontab -
+  log "Auto-start on reboot enabled (root crontab @reboot)."
+  log "Cron entry: ${cron_line}"
+}
+
+disable_reboot_autostart() {
+  if ! reboot_autostart_enabled; then
+    warn "Auto-start cron not found."
+    return
+  fi
+  crontab -l 2>/dev/null | grep -v "grin-listen.sh" | crontab -
+  log "Auto-start on reboot disabled."
 }
 
 # ── Option 1: Integrate Grin Wallet ───────────────────────────
@@ -474,12 +492,11 @@ option_integrate() {
     download_grin_wallet
   fi
 
-  # Step 2: Select node (save choice — toml is written AFTER init so grin-wallet init doesn't complain)
+  # Step 2: Select node (toml is written AFTER init so grin-wallet init doesn't overwrite it)
   echo
   log "Step 2/5 — Select Grin Node"
-  # Ask node selection and remember the URL; toml is not written yet
   local chosen_node=""
-  chosen_node=$(select_node_url)   # returns the URL or empty for local default
+  chosen_node=$(select_node_url)
 
   # Step 3: Init or Recover
   echo
@@ -497,30 +514,45 @@ option_integrate() {
       log "Creating new wallet…"
       rm -f "$WALLET_TOML" "${WALLET_DIR}/wallet_data/wallet.seed"
       echo
-      warn "Enter a passphrase to protect your wallet (you will type it ONCE — it is saved automatically)."
-      warn "Leave blank and press Enter for no passphrase."
+      echo "  Enter a passphrase to protect your wallet."
+      echo "  Leave blank for no passphrase."
       echo
       if wallet_pass=$(read_pass_confirmed); then
         (cd "$WALLET_DIR" && ./grin-wallet -p "$wallet_pass" init -h)
       else
-        # No passphrase — run without -p
         (cd "$WALLET_DIR" && ./grin-wallet init -h)
       fi
       echo
       warn "IMPORTANT: Write down the seed phrase shown above on paper."
       echo
       if [[ -n "$wallet_pass" ]]; then
-        encrypt_passphrase "$wallet_pass"
-        read -r -p "Also save seed backup? [y/N] " save_seed
-        [[ "${save_seed,,}" == "y" ]] && encrypt_seed "$wallet_pass"
+        echo
+        echo -e "  ${YEL}╔══════════════════════════════════════════════════════════╗${NC}"
+        echo -e "  ${YEL}║  ⚠  SECURITY WARNING — READ BEFORE SAVING               ║${NC}"
+        echo -e "  ${YEL}║                                                          ║${NC}"
+        echo -e "  ${YEL}║  Saving the passphrase allows auto-start on reboot       ║${NC}"
+        echo -e "  ${YEL}║  and remote start via the web interface.                 ║${NC}"
+        echo -e "  ${YEL}║                                                          ║${NC}"
+        echo -e "  ${YEL}║  ⚠  It will be stored in PLAIN TEXT on this server.     ║${NC}"
+        echo -e "  ${YEL}║     Your hosting provider can read it.                  ║${NC}"
+        echo -e "  ${YEL}║     Anyone with root access can read it.                ║${NC}"
+        echo -e "  ${YEL}║                                                          ║${NC}"
+        echo -e "  ${YEL}║  Recommendation: transfer funds to a personal wallet     ║${NC}"
+        echo -e "  ${YEL}║  regularly — do not keep a large balance here.           ║${NC}"
+        echo -e "  ${YEL}╚══════════════════════════════════════════════════════════╝${NC}"
+        echo
+        read -r -p "  Save passphrase for auto-start? [y/N] " save_pass
+        [[ "${save_pass,,}" == "y" ]] && save_passphrase "$wallet_pass"
+        read -r -p "  Also save encrypted seed backup? [y/N] " save_seed
+        [[ "${save_seed,,}" == "y" ]] && save_seed_backup "$wallet_pass"
       fi
       ;;
     2)
       log "Recovering wallet from seed…"
       rm -f "$WALLET_TOML" "${WALLET_DIR}/wallet_data/wallet.seed"
       echo
-      warn "Enter the passphrase that protects this wallet (you will type it ONCE — it is saved automatically)."
-      warn "Leave blank and press Enter if the wallet has no passphrase."
+      echo "  Enter the passphrase that protects this wallet."
+      echo "  Leave blank if the wallet has no passphrase."
       echo
       if wallet_pass=$(read_pass_confirmed); then
         (cd "$WALLET_DIR" && ./grin-wallet -p "$wallet_pass" init -hr)
@@ -529,7 +561,23 @@ option_integrate() {
       fi
       echo
       if [[ -n "$wallet_pass" ]]; then
-        encrypt_passphrase "$wallet_pass"
+        echo
+        echo -e "  ${YEL}╔══════════════════════════════════════════════════════════╗${NC}"
+        echo -e "  ${YEL}║  ⚠  SECURITY WARNING — READ BEFORE SAVING               ║${NC}"
+        echo -e "  ${YEL}║                                                          ║${NC}"
+        echo -e "  ${YEL}║  Saving the passphrase allows auto-start on reboot       ║${NC}"
+        echo -e "  ${YEL}║  and remote start via the web interface.                 ║${NC}"
+        echo -e "  ${YEL}║                                                          ║${NC}"
+        echo -e "  ${YEL}║  ⚠  It will be stored in PLAIN TEXT on this server.     ║${NC}"
+        echo -e "  ${YEL}║     Your hosting provider can read it.                  ║${NC}"
+        echo -e "  ${YEL}║     Anyone with root access can read it.                ║${NC}"
+        echo -e "  ${YEL}║                                                          ║${NC}"
+        echo -e "  ${YEL}║  Recommendation: transfer funds to a personal wallet     ║${NC}"
+        echo -e "  ${YEL}║  regularly — do not keep a large balance here.           ║${NC}"
+        echo -e "  ${YEL}╚══════════════════════════════════════════════════════════╝${NC}"
+        echo
+        read -r -p "  Save passphrase for auto-start? [y/N] " save_pass
+        [[ "${save_pass,,}" == "y" ]] && save_passphrase "$wallet_pass"
       fi
       ;;
     0|*)
@@ -537,16 +585,16 @@ option_integrate() {
       ;;
   esac
 
-  # Write our toml now (after init) and apply the node choice from step 2
+  # Write toml now (after init so it isn't overwritten) and apply node choice
   echo
-  log "Step 2b/5 — Write grin-wallet.toml (replacing init-generated config)"
+  log "Step 2b/5 — Write grin-wallet.toml"
   create_wallet_toml
   if [[ -n "$chosen_node" ]]; then
     sed -i "s|check_node_api_http_addr = .*|check_node_api_http_addr = \"${chosen_node}\"|" "$WALLET_TOML"
     log "Node set → ${chosen_node}"
   fi
 
-  # Step 4: Fix ownership after init (grin-wallet writes files as root during init)
+  # Step 4: Fix ownership (grin-wallet writes files as root during init)
   echo
   log "Step 4/5 — Fix Ownership"
   chown -R "${GRIN_USER}:${GRIN_GROUP}" "$WALLET_DIR"
@@ -565,8 +613,8 @@ option_integrate() {
   echo "  Wallet dir : ${WALLET_DIR}/"
   echo "  Binary     : ${WALLET_BIN}"
   echo "  Config     : ${WALLET_TOML}"
-  [[ -f "$ENCRYPTED_PASS" ]] && echo "  Enc pass   : ${ENCRYPTED_PASS}"
-  [[ -f "$ENCRYPTED_SEED" ]] && echo "  Enc seed   : ${ENCRYPTED_SEED}"
+  [[ -f "$PASS_FILE" ]] && echo "  Passphrase : ${PASS_FILE}  (plain text)"
+  [[ -f "$SEED_FILE" ]] && echo "  Seed backup: ${SEED_FILE}  (AES-256 encrypted)"
   sep
   trap - ERR
   echo
@@ -582,16 +630,23 @@ option_manage_service() {
   while true; do
     echo
     if wallet_is_running; then
-      echo -e "  Status : ${GRN}RUNNING ✓${NC}  (tmux: ${TMUX_SESSION})"
+      echo -e "  Listener   : ${GRN}RUNNING ✓${NC}  (tmux: ${TMUX_SESSION})"
     else
-      echo -e "  Status : ${RED}STOPPED ✗${NC}"
+      echo -e "  Listener   : ${RED}STOPPED ✗${NC}"
     fi
-    echo
-    if [[ -f "$ENCRYPTED_PASS" ]]; then
-      echo -e "  Passphrase : ${GRN}saved${NC}  (${ENCRYPTED_PASS})"
+
+    if [[ -f "$PASS_FILE" ]]; then
+      echo -e "  Passphrase : ${GRN}saved${NC}  (${PASS_FILE})"
     else
-      echo -e "  Passphrase : ${YEL}not saved${NC}  (wallet will fail to auto-start if it has a passphrase)"
+      echo -e "  Passphrase : ${YEL}not saved${NC}  (listener will fail if wallet has a passphrase)"
     fi
+
+    if reboot_autostart_enabled; then
+      echo -e "  Auto-start : ${GRN}enabled${NC}  (cron @reboot)"
+    else
+      echo -e "  Auto-start : ${YEL}disabled${NC}"
+    fi
+
     echo
     echo "  1) Start listener"
     echo "  2) Stop listener"
@@ -599,22 +654,16 @@ option_manage_service() {
     echo "  4) Attach to tmux session  (Ctrl-b d to detach)"
     echo "  5) View wallet log (last 60 lines)"
     echo "  6) Re-save passphrase"
+    echo "  7) Enable auto-start on reboot  (cron @reboot)"
+    echo "  8) Disable auto-start on reboot"
     echo "  0) Back"
     echo
-    read -r -p "Choice [0-6]: " svc_choice
+    read -r -p "Choice [0-8]: " svc_choice
 
     case "$svc_choice" in
-      1)
-        wallet_start
-        ;;
-      2)
-        wallet_stop
-        ;;
-      3)
-        wallet_stop
-        sleep 1
-        wallet_start
-        ;;
+      1) wallet_start ;;
+      2) wallet_stop ;;
+      3) wallet_stop; sleep 1; wallet_start ;;
       4)
         if wallet_is_running; then
           log "Attaching to tmux session '${TMUX_SESSION}' — press Ctrl-b d to detach."
@@ -632,127 +681,23 @@ option_manage_service() {
         fi
         ;;
       6)
-        rm -f "$ENCRYPTED_PASS"
+        rm -f "$PASS_FILE"
         local new_pass
         if new_pass=$(read_pass_confirmed); then
-          encrypt_passphrase "$new_pass"
+          save_passphrase "$new_pass"
           unset new_pass
         else
           warn "Cancelled."
         fi
         ;;
+      7) enable_reboot_autostart ;;
+      8) disable_reboot_autostart ;;
       0) break ;;
       *) warn "Invalid choice." ;;
     esac
     echo
     read -r -p "Press Enter to continue…"
   done
-}
-
-# ── Option 3: Install / Remove systemd service ────────────────
-SYSTEMD_SERVICE="office-tools-grin-listener"
-SYSTEMD_FILE="/etc/systemd/system/${SYSTEMD_SERVICE}.service"
-
-option_systemd() {
-  sep
-  log "=== Option 3: systemd Service (${SYSTEMD_SERVICE}) ==="
-  sep
-  echo
-
-  if [[ -f "$SYSTEMD_FILE" ]]; then
-    local state; state=$(systemctl is-active "$SYSTEMD_SERVICE" 2>/dev/null || echo "inactive")
-    echo -e "  Service file : ${GRN}installed${NC}  ($SYSTEMD_FILE)"
-    echo -e "  State        : ${state}"
-    echo
-    echo "  1) Start service"
-    echo "  2) Stop service"
-    echo "  3) Restart service"
-    echo "  4) View status / logs"
-    echo "  5) Remove service"
-    echo "  0) Back"
-    echo
-    read -r -p "Choice [0-5]: " s
-    case "$s" in
-      1) systemctl start  "$SYSTEMD_SERVICE" && log "Started."  || err "Failed to start." ;;
-      2) systemctl stop   "$SYSTEMD_SERVICE" && log "Stopped."  || err "Failed to stop."  ;;
-      3) systemctl restart "$SYSTEMD_SERVICE" && log "Restarted." || err "Failed to restart." ;;
-      4) systemctl status "$SYSTEMD_SERVICE" --no-pager -l; echo; journalctl -u "$SYSTEMD_SERVICE" -n 30 --no-pager ;;
-      5)
-        systemctl stop    "$SYSTEMD_SERVICE" 2>/dev/null || true
-        systemctl disable "$SYSTEMD_SERVICE" 2>/dev/null || true
-        rm -f "$SYSTEMD_FILE" "/opt/office-tools/data/grin-listen.sh"
-        systemctl daemon-reload
-        log "Service removed."
-        ;;
-      0) return ;;
-    esac
-  else
-    echo -e "  Service file : ${YEL}not installed${NC}"
-    echo
-    if [[ ! -x "$WALLET_BIN" ]]; then
-      err "grin-wallet binary not found. Run option 1 first."
-      read -r -p "Press Enter to continue…"; return
-    fi
-    if [[ ! -f "$ENCRYPTED_PASS" ]]; then
-      warn "No passphrase file found at ${ENCRYPTED_PASS}."
-      warn "Run option 2 → Re-save passphrase first, or the service will start without a passphrase."
-    fi
-    read -r -p "Install systemd service now? [Y/n] " yn
-    [[ "${yn,,}" == "n" ]] && return
-
-    # Write a wrapper script — avoids all systemd ExecStart quoting issues
-    local wrapper="/opt/office-tools/data/grin-listen.sh"
-    if [[ -f "$ENCRYPTED_PASS" ]]; then
-      cat > "$wrapper" <<'WRAPPER'
-#!/bin/bash
-PASS=$(cat /opt/office-tools/data/.temp)
-cd /opt/office-tools/cmdgrinwallet
-exec ./grin-wallet -p "$PASS" listen
-WRAPPER
-    else
-      cat > "$wrapper" <<'WRAPPER'
-#!/bin/bash
-cd /opt/office-tools/cmdgrinwallet
-exec ./grin-wallet listen
-WRAPPER
-    fi
-    chmod 750 "$wrapper"
-    chown "root:${GRIN_GROUP}" "$wrapper"
-
-    cat > "$SYSTEMD_FILE" <<EOF
-[Unit]
-Description=Grin Wallet Listener (Office Tools)
-After=network.target
-
-[Service]
-Type=simple
-User=${GRIN_USER}
-Group=${GRIN_GROUP}
-WorkingDirectory=${WALLET_DIR}
-ExecStart=/bin/bash ${wrapper}
-Restart=on-failure
-RestartSec=10
-StandardOutput=append:${WALLET_DIR}/grin-wallet.log
-StandardError=append:${WALLET_DIR}/grin-wallet.log
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-    systemctl daemon-reload
-    systemctl enable "$SYSTEMD_SERVICE"
-    systemctl start  "$SYSTEMD_SERVICE"
-    sleep 2
-    local state; state=$(systemctl is-active "$SYSTEMD_SERVICE" 2>/dev/null || echo "unknown")
-    if [[ "$state" == "active" ]]; then
-      log "Service installed and running."
-    else
-      err "Service installed but state is '${state}'. Check: journalctl -u ${SYSTEMD_SERVICE} -n 20"
-    fi
-  fi
-
-  echo
-  read -r -p "Press Enter to continue…"
 }
 
 # ── Current status snapshot ────────────────────────────────────
@@ -763,33 +708,35 @@ print_status() {
 
   if [[ -x "$WALLET_BIN" ]]; then
     local ver; ver=$("$WALLET_BIN" --version 2>&1 | head -1)
-    echo -e "  Binary      : ${GRN}installed${NC}  ${ver}"
+    echo -e "  Binary     : ${GRN}installed${NC}  ${ver}"
   else
-    echo -e "  Binary      : ${RED}not installed${NC}"
+    echo -e "  Binary     : ${RED}not installed${NC}"
   fi
 
-  # wallet.seed lives in wallet_data/ subdir (grin-wallet default)
   local seed_file="${WALLET_DIR}/wallet_data/wallet.seed"
   if [[ -f "$seed_file" ]]; then
-    echo -e "  Wallet      : ${GRN}initialized${NC}"
+    echo -e "  Wallet     : ${GRN}initialized${NC}"
   elif [[ -x "$WALLET_BIN" ]]; then
-    echo -e "  Wallet      : ${YEL}not initialized${NC}  (run option 1)"
+    echo -e "  Wallet     : ${YEL}not initialized${NC}  (run option 1)"
   else
-    echo -e "  Wallet      : ${RED}not initialized${NC}"
+    echo -e "  Wallet     : ${RED}not initialized${NC}"
   fi
 
   if [[ -f "$WALLET_TOML" ]]; then
     local node; node=$(grep 'check_node_api_http_addr' "$WALLET_TOML" | cut -d'"' -f2)
-    echo -e "  Node        : ${node}"
+    echo -e "  Node       : ${node}"
   fi
 
-  local svc_state; svc_state=$(systemctl is-active "$SYSTEMD_SERVICE" 2>/dev/null || echo "inactive")
-  if [[ "$svc_state" == "active" ]]; then
-    echo -e "  Listener    : ${GRN}running${NC}  (systemd: ${SYSTEMD_SERVICE})"
-  elif wallet_is_running; then
-    echo -e "  Listener    : ${GRN}running${NC}  (tmux: ${TMUX_SESSION})"
+  if wallet_is_running; then
+    echo -e "  Listener   : ${GRN}running${NC}  (tmux: ${TMUX_SESSION})"
   else
-    echo -e "  Listener    : ${YEL}stopped${NC}"
+    echo -e "  Listener   : ${YEL}stopped${NC}"
+  fi
+
+  if reboot_autostart_enabled; then
+    echo -e "  Auto-start : ${GRN}enabled${NC}  (cron @reboot)"
+  else
+    echo -e "  Auto-start : ${YEL}disabled${NC}"
   fi
 
   echo "  ─────────────────────────────────────────"
@@ -806,16 +753,14 @@ main() {
     print_status
     echo
     echo "  1) Integrate Grin Wallet   (download · init · recover · configure)"
-    echo "  2) Manage Wallet Listener  (tmux: start · stop · restart · logs)"
-    echo "  3) systemd Service         (install · start · stop · required to start wallet from donate page)"
+    echo "  2) Manage Wallet Listener  (start · stop · logs · auto-start on reboot)"
     echo "  0) Exit"
     echo
-    read -r -p "Choice [0-3]: " choice
+    read -r -p "Choice [0-2]: " choice
 
     case "$choice" in
       1) option_integrate ;;
       2) option_manage_service ;;
-      3) option_systemd ;;
       0) log "Goodbye."; exit 0 ;;
       *) warn "Invalid choice." ;;
     esac

@@ -379,14 +379,15 @@ app.get('/api/health', (_, res) => res.json({ status: 'ok', ts: new Date().toISO
 
 // ── Passphrase loading ────────────────────────────────────────
 /**
- * Priority order (best → least secure):
- *   1. Interactive prompt  — typed at startup, lives in memory only, never on disk
- *   2. GRIN_WALLET_PASS_FILE — path to a chmod-600 file containing just the passphrase
- *   3. GRIN_WALLET_PASS env var — convenient but visible in /proc/<pid>/environ
- *   4. Empty string — wallet has no passphrase
+ * Priority order:
+ *   1. GRIN_WALLET_PASS_KEYRING=1  — OS keyring via secret-tool (most secure)
+ *   2. GRIN_WALLET_PASS_FILE       — path to a plain-text file (chmod 640, root:grin)
+ *   3. GRIN_WALLET_PASS            — env var (visible in /proc/<pid>/environ)
+ *   4. Interactive TTY prompt      — typed once, lives in memory only
+ *   5. Empty string                — wallet has no passphrase
  */
 async function loadPassphrase() {
-  // Priority 1: OS keyring via secret-tool (no file, no env, survives restarts)
+  // Priority 1: OS keyring via secret-tool
   //   Setup once: secret-tool store --label="Grin wallet" service grin-wallet account mainnet
   if (process.env.GRIN_WALLET_PASS_KEYRING === '1') {
     try {
@@ -404,14 +405,26 @@ async function loadPassphrase() {
     }
   }
 
-  // Priority 2: Env var (convenient, least secure — visible in /proc/<pid>/environ)
+  // Priority 2: Passphrase file (set GRIN_WALLET_PASS_FILE=/opt/office-tools/data/.temp)
+  if (process.env.GRIN_WALLET_PASS_FILE) {
+    try {
+      GRIN_WALLET_PASS = fs.readFileSync(process.env.GRIN_WALLET_PASS_FILE, 'utf8').trim();
+      console.log(`Grin wallet passphrase loaded from file (${process.env.GRIN_WALLET_PASS_FILE}).`);
+      return;
+    } catch (e) {
+      console.error(`Failed to read GRIN_WALLET_PASS_FILE (${process.env.GRIN_WALLET_PASS_FILE}):`, e.message);
+      process.exit(1);
+    }
+  }
+
+  // Priority 3: Env var
   if (process.env.GRIN_WALLET_PASS) {
     GRIN_WALLET_PASS = process.env.GRIN_WALLET_PASS;
     console.log('Grin wallet passphrase loaded from environment variable.');
     return;
   }
 
-  // Priority 3: Interactive prompt — typed once, kept in memory only, never on disk
+  // Priority 4: Interactive prompt — typed once, kept in memory only
   if (process.stdin.isTTY) {
     GRIN_WALLET_PASS = await promptPassphrase();
     if (GRIN_WALLET_PASS) console.log('Grin wallet passphrase loaded from prompt (in memory only).');
@@ -442,7 +455,9 @@ async function main() {
   app.listen(PORT, () => {
     console.log(`Office Tools server running on port ${PORT}`);
     console.log(`Grin wallet:  ${GRIN_WALLET_BIN} (fallback: ${GRIN_WALLET_FALLBACK})`);
-    if (process.env.GRIN_WALLET_PASS_FILE) {
+    if (process.env.GRIN_WALLET_PASS_KEYRING === '1') {
+      console.log(`Passphrase:   from OS keyring`);
+    } else if (process.env.GRIN_WALLET_PASS_FILE) {
       console.log(`Passphrase:   from file (${process.env.GRIN_WALLET_PASS_FILE})`);
     } else if (process.env.GRIN_WALLET_PASS) {
       console.log(`Passphrase:   from environment variable`);
