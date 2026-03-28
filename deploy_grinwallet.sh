@@ -23,7 +23,7 @@
 #      grin-wallet.log      runtime log
 #
 #  Secrets (root-only):
-#    /opt/office-tools/data/.wallet_pass.enc
+#    /opt/office-tools/data/.temp
 #    /opt/office-tools/data/.wallet_seed.enc
 # ============================================================
 set -uo pipefail
@@ -33,7 +33,7 @@ WALLET_DIR="/opt/office-tools/cmdgrinwallet"
 WALLET_BIN="${WALLET_DIR}/grin-wallet"
 WALLET_TOML="${WALLET_DIR}/grin-wallet.toml"
 SERVER_ENV="/opt/office-tools/server/.env"
-ENCRYPTED_PASS="/opt/office-tools/data/.wallet_pass.enc"
+ENCRYPTED_PASS="/opt/office-tools/data/.temp"
 ENCRYPTED_SEED="/opt/office-tools/data/.wallet_seed.enc"
 TMUX_SESSION="donate_grin_wallet"
 GRIN_USER="grin"
@@ -420,11 +420,20 @@ exec ./grin-wallet listen
 WRAPPER
   fi
 
+  # Ensure grin user owns all wallet files (init may have created them as root)
+  chown -R "${GRIN_USER}:${GRIN_GROUP}" "$WALLET_DIR"
+  chmod 750 "$WALLET_DIR"
+
   chown "${GRIN_USER}:${GRIN_GROUP}" "$wrapper"
   tmux new-session -d -s "$TMUX_SESSION" -x 220 -y 50 \
     "su -s /bin/bash ${GRIN_USER} -c 'bash ${wrapper}'"
-  log "Wallet listener started in tmux session: ${TMUX_SESSION}"
-  log "Attach with: tmux attach -t ${TMUX_SESSION}"
+  sleep 1
+  if tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
+    log "Wallet listener started in tmux session: ${TMUX_SESSION}"
+    log "Attach with: tmux attach -t ${TMUX_SESSION}"
+  else
+    err "tmux session exited immediately — attach to check: tmux attach -t ${TMUX_SESSION}"
+  fi
 }
 
 wallet_stop() {
