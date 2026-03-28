@@ -201,6 +201,7 @@ stdout_log_level = "Info"
 log_to_file = true
 file_log_level = "Debug"
 log_file_path = "${WALLET_DIR}/grin-wallet.log"
+log_file_append = true
 log_max_size = 16777216
 log_max_files = 3
 EOF
