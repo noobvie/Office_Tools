@@ -173,12 +173,12 @@ download_grin_wallet() {
   log "Installed: $version"
 }
 
-# ── Create default mainnet grin-wallet.toml ───────────────────
+# ── Create (or recreate) mainnet grin-wallet.toml ─────────────
 create_wallet_toml() {
-  mkdir -p "$WALLET_DATA_DIR"
+  mkdir -p "$WALLET_DIR"
   if [[ -f "$WALLET_TOML" ]]; then
-    log "grin-wallet.toml already exists — skipping creation."
-    return
+    log "Removing old grin-wallet.toml and recreating…"
+    rm -f "$WALLET_TOML"
   fi
   cat > "$WALLET_TOML" <<EOF
 [wallet]
@@ -190,7 +190,7 @@ api_secret_path = "${WALLET_DIR}/.api_secret"
 owner_api_secret_path = "${WALLET_DIR}/.owner_api_secret"
 check_node_api_http_addr = "http://127.0.0.1:3413"
 owner_api_include_foreign = false
-data_file_dir = "${WALLET_DATA_DIR}/"
+data_file_dir = "${WALLET_DIR}/"
 no_commit_cache = false
 dark_background_color_scheme = true
 keybase_notify_ttl = 1440
@@ -205,7 +205,7 @@ log_file_append = true
 log_max_size = 16777216
 log_max_files = 3
 EOF
-  log "Created ${WALLET_TOML} (mainnet, node: 127.0.0.1:3413)"
+  log "Created ${WALLET_TOML}"
 }
 
 # ── Check if a URL is reachable (HTTP 2xx/3xx) ────────────────
@@ -275,6 +275,7 @@ patch_check_node() {
 
   case "$choice" in
     1|2|3)
+      # External node — only update the URL, no local path patching needed
       local selected_url="${ext_servers[$((choice-1))]}"
       local selected_status="${ext_statuses[$((choice-1))]}"
       if [[ "$selected_status" == "offline" ]]; then
@@ -286,7 +287,11 @@ patch_check_node() {
       log "Updated check_node_api_http_addr → ${selected_url}"
       ;;
     4)
+      # Local node — update URL and ensure local paths are correct
       sed -i "s|check_node_api_http_addr = .*|check_node_api_http_addr = \"http://127.0.0.1:3413\"|" "$WALLET_TOML"
+      sed -i "s|api_secret_path = .*|api_secret_path = \"${WALLET_DIR}/.api_secret\"|" "$WALLET_TOML"
+      sed -i "s|owner_api_secret_path = .*|owner_api_secret_path = \"${WALLET_DIR}/.owner_api_secret\"|" "$WALLET_TOML"
+      sed -i "s|data_file_dir = .*|data_file_dir = \"${WALLET_DIR}/\"|" "$WALLET_TOML"
       log "Updated check_node_api_http_addr → http://127.0.0.1:3413"
       warn "Remember to install a local Grin node before starting the wallet listener."
       ;;
@@ -429,7 +434,7 @@ option_integrate() {
 
   # ── Step 0: System user ─────────────────────────────────────
   echo
-  log "Step 0/4 — System User (grin:grin)"
+  log "Step 0/5 — System User (grin:grin)"
   setup_grin_user
 
   # ── Step 1: Binary ──────────────────────────────────────────
