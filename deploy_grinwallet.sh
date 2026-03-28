@@ -371,10 +371,9 @@ write_listener_script() {
   if [[ -f "$PASS_FILE" ]]; then
     cat > "$LISTENER_SCRIPT" <<SCRIPT
 #!/bin/bash
-# Read passphrase into env var — never appears in ps/top/proc
-export GRIN_WALLET_PASSWORD=\$(tr -d '\r\n' < "${PASS_FILE}")
+PASS=\$(tr -d '\r\n' < "${PASS_FILE}")
 cd "${WALLET_DIR}"
-exec ./grin-wallet listen
+exec ./grin-wallet -p "\$PASS" listen
 SCRIPT
   else
     cat > "$LISTENER_SCRIPT" <<SCRIPT
