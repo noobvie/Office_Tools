@@ -665,7 +665,7 @@ enable_donate_ratelimit() {
   # Write the limit_req_zone to a dedicated conf.d file (http context)
   cat > "$NGINX_RATE_CONF" <<'RCONF'
 # Grin donate rate limit — max 6 requests/min per IP, burst 3
-limit_req_zone $binary_remote_addr zone=grin_donate:10m rate=6r/m;
+limit_req_zone $binary_remote_addr zone=grin_donate:10m rate=20r/m;
 limit_req_status 429;
 RCONF
 
@@ -942,11 +942,11 @@ option_manage_service() {
     echo
     echo "  ── nginx rate limiting ─────────────────────────────────────"
     if donate_ratelimit_enabled; then
-      echo -e "  Rate limit     : ${GRN}enabled${NC}  (6 req/min on /pay-api/api/donate/)"
+      echo -e "  Rate limit     : ${GRN}enabled${NC}  (20 req/min on /pay-api/api/donate/)"
     else
       echo -e "  Rate limit     : ${YEL}disabled${NC}"
     fi
-    echo " 14) Enable donate rate limit   (nginx 6 req/min on /pay-api/donate/)"
+    echo " 14) Enable donate rate limit   (nginx 20 req/min on /pay-api/api/donate/)"
     echo " 15) Disable donate rate limit"
     echo "  0) Back"
     echo
