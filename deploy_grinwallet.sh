@@ -269,7 +269,7 @@ select_node_url() {
     local_flag="${YEL}○ install it by Grin Node Toolkit${NC}"
   fi
   printf "  4) %-36s %b\n" "Local node  127.0.0.1:3413" "$local_flag" >&2
-  echo "  0) Back (keep current setting)" >&2
+  echo "  0) Back (return to main menu)" >&2
   echo >&2
 
   local choice
@@ -284,7 +284,7 @@ select_node_url() {
         local yn; read -r -p "" yn >&2
         if [[ "${yn,,}" != "y" ]]; then
           warn "No change — keeping current setting." >&2
-          echo ""
+          echo "BACK"
           return
         fi
       fi
@@ -294,7 +294,10 @@ select_node_url() {
       warn "Remember to install a local Grin node before starting the wallet listener." >&2
       echo "http://127.0.0.1:3413"
       ;;
-    0|*)
+    0)
+      echo "BACK"
+      ;;
+    *)
       echo ""
       ;;
   esac
@@ -309,11 +312,11 @@ patch_check_node() {
   echo
 
   local chosen; chosen=$(select_node_url)
-  if [[ -n "$chosen" ]]; then
+  if [[ "$chosen" == "BACK" || -z "$chosen" ]]; then
+    log "No changes made."
+  else
     sed -i "s|check_node_api_http_addr = .*|check_node_api_http_addr = \"${chosen}\"|" "$WALLET_TOML"
     log "Updated check_node_api_http_addr → ${chosen}"
-  else
-    log "No changes made."
   fi
 }
 
@@ -761,6 +764,11 @@ option_integrate() {
   log "Step 2/5 — Select Grin Node"
   local chosen_node=""
   chosen_node=$(select_node_url)
+  if [[ "$chosen_node" == "BACK" ]]; then
+    log "Returning to main menu."
+    trap - ERR
+    return 0
+  fi
 
   # Step 3: Init or Recover
   echo
