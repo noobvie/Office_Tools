@@ -11,14 +11,17 @@
 #    — Optionally save passphrase for auto-start (plain text)
 #    — Update server .env with wallet binary path
 #
-#  Option 2: Manage Services (two tmux sessions)
-#    — donate_grin_tor     : grin-wallet listen     (Foreign API  :3415)
-#    — donate_grin_slatepack: grin-wallet owner_api (Owner API    :3420)
+#  Option 2: Manage Listeners (two tmux sessions)
+#    — donate_grin_tor      : grin-wallet listen     (Foreign API  :3415)
+#    — donate_grin_slatepack: grin-wallet owner_api  (Owner API    :3420)
 #    — Start / Stop / Restart each session independently
-#    — View logs · Re-save passphrase
+#    — View wallet log
+#
+#  Option 3: Listener Settings
+#    — Re-save passphrase (stored in plain text, chmod 640)
 #    — Enable / disable auto-start on reboot (cron @reboot, both sessions)
 #    — Watchdog cron (every 30 min, port 3415)
-#    — nginx rate limiting on /pay-api/api/donate/ (6 req/min per IP)
+#    — nginx rate limiting on /pay-api/api/donate/ (20 req/min per IP)
 #
 #  Wallet files live in:
 #    /opt/office-tools/cmdgrinwallet/
@@ -883,9 +886,9 @@ option_integrate() {
 }
 
 # ── Option 2: Manage Wallet Listener (tmux) ───────────────────
-option_manage_service() {
+option_manage_listeners() {
   sep
-  log "=== Option 2: Grin Wallet Listener (tmux) ==="
+  log "=== Option 2: Manage Listeners ==="
   sep
 
   while true; do
@@ -902,24 +905,10 @@ option_manage_service() {
       echo -e "  Owner API      : ${RED}STOPPED ✗${NC}  (port 3420 / grin-wallet owner_api)"
     fi
 
-    if [[ -f "$PASS_FILE" ]]; then
-      echo -e "  Passphrase     : ${GRN}saved${NC}  (${PASS_FILE})"
-    else
-      echo -e "  Passphrase     : ${YEL}not saved${NC}  (listeners will fail if wallet has a passphrase)"
-    fi
-
-    if reboot_autostart_enabled; then
-      echo -e "  Auto-start     : ${GRN}enabled${NC}  (cron @reboot)"
-    else
-      echo -e "  Auto-start     : ${YEL}disabled${NC}"
-    fi
-
-    if watchdog_enabled; then
-      echo -e "  Watchdog       : ${GRN}enabled${NC}  (cron every 30 min — port 3415)"
-    else
-      echo -e "  Watchdog       : ${YEL}disabled${NC}"
-    fi
-
+    echo
+    echo -e "  ${CYN}ℹ  Both sessions must be running to accept donations:${NC}"
+    echo    "     TOR listener → Method 1 (TOR direct send)"
+    echo    "     Owner API    → Method 2 (Slatepack) + Method 3 (Invoice)"
     echo
     echo "  ── TOR listener (donate_grin_tor) ─────────────────────────"
     echo "  1) Start TOR listener"
@@ -931,26 +920,9 @@ option_manage_service() {
     echo "  5) Start Owner API"
     echo "  6) Stop Owner API"
     echo "  7) Restart Owner API"
-    echo
-    echo "  ── Settings ───────────────────────────────────────────────"
-    echo "  8) Re-save passphrase"
-    echo "  9) Enable auto-start on reboot  (cron @reboot)"
-    echo " 10) Disable auto-start on reboot"
-    echo " 11) Enable watchdog  (cron every 30 min — auto-restart if port 3415 down)"
-    echo " 12) Disable watchdog"
-    echo " 13) View watchdog log"
-    echo
-    echo "  ── nginx rate limiting ─────────────────────────────────────"
-    if donate_ratelimit_enabled; then
-      echo -e "  Rate limit     : ${GRN}enabled${NC}  (20 req/min on /pay-api/api/donate/)"
-    else
-      echo -e "  Rate limit     : ${YEL}disabled${NC}"
-    fi
-    echo " 14) Enable donate rate limit   (nginx 20 req/min on /pay-api/api/donate/)"
-    echo " 15) Disable donate rate limit"
     echo "  0) Back"
     echo
-    read -r -p "Choice [0-15]: " svc_choice
+    read -r -p "Choice [0-7]: " svc_choice
 
     case "$svc_choice" in
       1) wallet_start
@@ -979,7 +951,76 @@ option_manage_service() {
          echo
          warn "To view output run outside this script:  tmux attach -t ${TMUX_SESSION_OWNER}"
          ;;
-      8)
+      0) break ;;
+      *) warn "Invalid choice." ;;
+    esac
+    echo
+    read -r -p "Press Enter to continue…"
+  done
+}
+
+option_listener_settings() {
+  sep
+  log "=== Option 3: Listener Settings ==="
+  sep
+
+  while true; do
+    echo
+    if [[ -f "$PASS_FILE" ]]; then
+      echo -e "  Passphrase  : ${GRN}saved${NC}  (${PASS_FILE})"
+    else
+      echo -e "  Passphrase  : ${YEL}not saved${NC}  (listeners will fail if wallet has a passphrase)"
+    fi
+
+    if reboot_autostart_enabled; then
+      echo -e "  Auto-start  : ${GRN}enabled${NC}  (cron @reboot)"
+    else
+      echo -e "  Auto-start  : ${YEL}disabled${NC}"
+    fi
+
+    if watchdog_enabled; then
+      echo -e "  Watchdog    : ${GRN}enabled${NC}  (cron every 30 min — port 3415)"
+    else
+      echo -e "  Watchdog    : ${YEL}disabled${NC}"
+    fi
+
+    if donate_ratelimit_enabled; then
+      echo -e "  Rate limit  : ${GRN}enabled${NC}  (20 req/min on /pay-api/api/donate/)"
+    else
+      echo -e "  Rate limit  : ${YEL}disabled${NC}"
+    fi
+
+    echo
+    echo "  ── Passphrase ─────────────────────────────────────────────"
+    echo "  1) Re-save passphrase  (run after changing your wallet password)"
+    echo
+    echo "  ── Auto-start & Watchdog ──────────────────────────────────"
+    echo "  2) Enable auto-start on reboot   (cron @reboot — both sessions)"
+    echo "  3) Disable auto-start on reboot"
+    echo "  4) Enable watchdog   (cron every 30 min — auto-restart if port 3415 down)"
+    echo "  5) Disable watchdog"
+    echo "  6) View watchdog log"
+    echo
+    echo "  ── nginx API Security ─────────────────────────────────────"
+    echo "  Rate limiting protects the donate API endpoints from abuse and spam."
+    echo "  Recommended for public-facing servers. Requires nginx to be configured."
+    echo "  7) Enable donate rate limit    (20 req/min per IP, burst 3)"
+    echo "  8) Disable donate rate limit"
+    echo "  0) Back"
+    echo
+    read -r -p "Choice [0-8]: " set_choice
+
+    case "$set_choice" in
+      1)
+        echo
+        echo -e "  ${YEL}╔══════════════════════════════════════════════════════════╗${NC}"
+        echo -e "  ${YEL}║  ⚠  Security Warning                                    ║${NC}"
+        echo -e "  ${YEL}║  The passphrase will be stored in PLAIN TEXT on disk.   ║${NC}"
+        echo -e "  ${YEL}║  Location: ${PASS_FILE}            ║${NC}"
+        echo -e "  ${YEL}║  Anyone with root access can read it.                   ║${NC}"
+        echo -e "  ${YEL}║  Keep your wallet balance low — transfer funds often.   ║${NC}"
+        echo -e "  ${YEL}╚══════════════════════════════════════════════════════════╝${NC}"
+        echo
         rm -f "$PASS_FILE"
         local new_pass
         if new_pass=$(read_pass_confirmed); then
@@ -989,11 +1030,11 @@ option_manage_service() {
           warn "Cancelled."
         fi
         ;;
-      9) enable_reboot_autostart ;;
-      10) disable_reboot_autostart ;;
-      11) enable_watchdog ;;
-      12) disable_watchdog ;;
-      13)
+      2) enable_reboot_autostart ;;
+      3) disable_reboot_autostart ;;
+      4) enable_watchdog ;;
+      5) disable_watchdog ;;
+      6)
         local wlog="/opt/office-tools/data/grin-watchdog.log"
         if [[ -f "$wlog" ]]; then
           tail -n 60 "$wlog"
@@ -1001,8 +1042,8 @@ option_manage_service() {
           warn "Watchdog log not found: ${wlog}  (watchdog may not have run yet)"
         fi
         ;;
-      14) enable_donate_ratelimit ;;
-      15) disable_donate_ratelimit ;;
+      7) enable_donate_ratelimit ;;
+      8) disable_donate_ratelimit ;;
       0) break ;;
       *) warn "Invalid choice." ;;
     esac
@@ -1070,14 +1111,16 @@ main() {
     print_status
     echo
     echo "  1) Integrate Grin Wallet   (download · init · recover · configure)"
-    echo "  2) Manage Wallet Listener  (start · stop · logs · auto-start on reboot)"
+    echo "  2) Manage Listeners        (start · stop · restart · logs)"
+    echo "  3) Listener Settings       (passphrase · auto-start · watchdog · nginx rate limit)"
     echo "  0) Exit"
     echo
-    read -r -p "Choice [0-2]: " choice
+    read -r -p "Choice [0-3]: " choice
 
     case "$choice" in
       1) option_integrate ;;
-      2) option_manage_service ;;
+      2) option_manage_listeners ;;
+      3) option_listener_settings ;;
       0) log "Goodbye."; exit 0 ;;
       *) warn "Invalid choice." ;;
     esac

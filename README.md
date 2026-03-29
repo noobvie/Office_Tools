@@ -202,10 +202,11 @@ sudo bash deploy_grinwallet.sh
 | Option | What it does |
 |--------|-------------|
 | 1) Integrate Grin Wallet | Download binary · init or recover wallet · configure node · save passphrase |
-| 2) Manage Services | Start/Stop/Restart both tmux sessions · view logs · re-save passphrase |
-| 2 → 9) Auto-start on reboot | Adds `@reboot` cron entries for both sessions |
-| 2 → 11) Watchdog cron | Checks port 3415 every 30 min · restarts TOR listener if down · logs to `grin-watchdog.log` |
-| 2 → 14) nginx rate limit | Enables 6 req/min per IP on `/pay-api/api/donate/*` (burst 3) |
+| 2) Manage Listeners | Start/Stop/Restart each tmux session independently · view wallet log |
+| 3) Listener Settings | Re-save passphrase · auto-start · watchdog · nginx rate limit |
+| 3 → 2) Auto-start on reboot | Adds `@reboot` cron entries for both sessions |
+| 3 → 4) Watchdog cron | Checks port 3415 every 30 min · restarts TOR listener if down · logs to `grin-watchdog.log` |
+| 3 → 7) nginx rate limit | Enables 20 req/min per IP on `/pay-api/api/donate/*` (burst 3) |
 
 **Donation methods on `pages/donate.html`:**
 - **Method 1 — TOR direct send:** sender runs `grin-wallet send` over TOR directly to the server's onion address. Requires TOR.
