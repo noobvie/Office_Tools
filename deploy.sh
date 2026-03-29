@@ -1172,10 +1172,21 @@ _admin_service_status() {
     done
     echo ""
 
+    # Grin wallet listener (tmux, not systemd)
+    echo ""
+    if timeout 3 bash -c 'echo >/dev/tcp/127.0.0.1/3415' 2>/dev/null; then
+        echo -e "  ${GREEN}●${RESET} grin-wallet            ${GREEN}listening :3415${RESET}"
+    elif tmux has-session -t "donate_grin_wallet" 2>/dev/null; then
+        echo -e "  ${YELLOW}●${RESET} grin-wallet            ${YELLOW}tmux running, port 3415 not yet open${RESET}"
+    else
+        echo -e "  ${DIM}○ grin-wallet            not running${RESET}"
+    fi
+    echo ""
+
     # Port listener table
     echo -e "  ${BOLD}Listening ports:${RESET}"
     echo -e "  ────────────────────────────────────────"
-    for port_svc in "80:nginx (HTTP)" "443:nginx (HTTPS)" "3001:payment-server" "9000:cobalt"; do
+    for port_svc in "80:nginx (HTTP)" "443:nginx (HTTPS)" "3001:payment-server" "3415:grin-wallet" "9000:cobalt (optional)"; do
         local port="${port_svc%%:*}" label="${port_svc#*:}"
         if ss -tlnp 2>/dev/null | grep -q ":${port}\b"; then
             echo -e "  ${GREEN}●${RESET} :${port}  ${label}"
@@ -1225,27 +1236,42 @@ _admin_list_urls() {
     echo ""
 
     echo -e "  ${BOLD}Reverse-proxy routes (nginx)${RESET}"
-    echo -e "  ${CYAN}·${RESET} YT Download API : ${base}/yt-api/             → 127.0.0.1:9000"
     echo -e "  ${CYAN}·${RESET} Payment API     : ${base}/pay-api/            → 127.0.0.1:3001"
+    [[ -d "$COBALT_DIR/.git" ]] && \
+    echo -e "  ${CYAN}·${RESET} YT Download API : ${base}/yt-api/             → 127.0.0.1:9000"
     echo ""
 
-    echo -e "  ${BOLD}Internal services (not exposed directly)${RESET}"
+    echo -e "  ${BOLD}Internal services${RESET}"
     echo -e "  ${DIM}·${RESET} nginx           : :80 (HTTP) / :443 (HTTPS)"
-    echo -e "  ${DIM}·${RESET} Payment server  : 127.0.0.1:3001"
-    echo -e "  ${DIM}·${RESET} cobalt server   : 127.0.0.1:9000"
+    echo -e "  ${DIM}·${RESET} payment server  : 127.0.0.1:3001"
+    echo -e "  ${DIM}·${RESET} grin-wallet     : 127.0.0.1:3415  (tmux: donate_grin_wallet)"
+    [[ -d "$COBALT_DIR/.git" ]] && \
+    echo -e "  ${DIM}·${RESET} cobalt server   : 127.0.0.1:9000  (optional)"
     echo ""
 
-    echo -e "  ${BOLD}Tool direct URLs${RESET}"
-    local tools=("currency" "loan-calculator" "tip-calculator" "yt-downloader"
-                 "url-shortener" "pastebin" "file-share" "ip-location"
-                 "password-generator" "qr-generator" "unit-converter" "timezone")
-    for t in "${tools[@]}"; do
+    echo -e "  ${BOLD}Pages${RESET}"
+    echo -e "  ${DIM}·${RESET} ${base}/"
+    echo -e "  ${DIM}·${RESET} ${base}/pages/donate.html"
+    echo ""
+
+    echo -e "  ${BOLD}Backend-dependent tools${RESET}"
+    for t in "url-shortener" "pastebin" "file-share"; do
         echo -e "  ${DIM}·${RESET} ${base}/tools/${t}/"
     done
     echo ""
 
-    echo -e "  ${BOLD}Useful API endpoints${RESET}"
-    echo -e "  ${DIM}·${RESET} cobalt health   : ${base}/yt-api/  ${DIM}(GET with Accept: application/json)${RESET}"
+    echo -e "  ${BOLD}Sample tools (browser-local, no backend)${RESET}"
+    for t in "currency" "password-generator" "qr-generator" "hash-generator" \
+             "ip-location" "my-ip" "loan-calculator" "unit-converter" \
+             "ai-token-counter" "yt-downloader"; do
+        echo -e "  ${DIM}·${RESET} ${base}/tools/${t}/"
+    done
+    echo ""
+
+    echo -e "  ${BOLD}API health checks${RESET}"
+    echo -e "  ${DIM}·${RESET} payment server  : ${base}/pay-api/health"
+    [[ -d "$COBALT_DIR/.git" ]] && \
+    echo -e "  ${DIM}·${RESET} cobalt          : ${base}/yt-api/  ${DIM}(GET with Accept: application/json)${RESET}"
     echo ""
 
     press_enter
@@ -1329,7 +1355,7 @@ _admin_restore_db() {
         && success "Restore complete" \
         || warn "Restore failed — check the backup file integrity"
 
-    chown www-data:www-data "$db_file" 2>/dev/null || true
+    chown root:root "$db_file" 2>/dev/null || true
 
     info "Restarting payment server…"
     systemctl start office-tools-pay 2>/dev/null \
@@ -1367,6 +1393,17 @@ _admin_clean_logs() {
             success "Deleted ${nginx_old} old nginx rotated log(s)."
         fi
     fi
+
+    # Rotate grin-wallet log if large (>10 MB)
+    local grin_log="/opt/office-tools/cmdgrinwallet/grin-wallet.log"
+    if [[ -f "$grin_log" ]]; then
+        local glog_size; glog_size=$(du -sm "$grin_log" 2>/dev/null | cut -f1)
+        if [[ "$glog_size" -ge 10 ]]; then
+            info "grin-wallet.log is ${glog_size} MB — truncating…"
+            truncate -s 0 "$grin_log"
+            success "grin-wallet.log cleared."
+        fi
+    fi
     press_enter
 }
 
@@ -1396,6 +1433,21 @@ _admin_purge_temp() {
         fi
     else
         echo -e "  ${DIM}File-share uploads dir not found — backend not installed.${RESET}"
+    fi
+    echo ""
+
+    # ── Grin watchdog log ──────────────────────────────────────────────────
+    local wdog_log="/opt/office-tools/data/grin-watchdog.log"
+    if [[ -f "$wdog_log" ]]; then
+        local wlog_size; wlog_size=$(du -sh "$wdog_log" 2>/dev/null | cut -f1)
+        echo -e "  ${BOLD}Grin watchdog log${RESET}  (${wdog_log})"
+        echo -e "  Size : ${wlog_size}"
+        echo -ne "  Truncate watchdog log? [y/N]: "; read -r _r; _r="${_r:-N}"
+        if [[ "${_r,,}" == "y" ]]; then
+            truncate -s 0 "$wdog_log"
+            success "Watchdog log cleared."
+            purged=true
+        fi
     fi
     echo ""
 

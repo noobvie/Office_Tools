@@ -1,10 +1,10 @@
 /**
  * Office Tools — Grin Server
  *
- * Donation endpoints:
- *   POST /api/donate/receive   — user sends a slate; we run grin-wallet receive → return response slatepack
- *   POST /api/donate/invoice   — we create an invoice for the user to pay → return invoice slatepack
- *   POST /api/donate/finalize  — user paid the invoice; we run grin-wallet finalize
+ * Donation endpoints (use wallet HTTP APIs — no subprocess, no file-lock conflict):
+ *   POST /api/donate/receive   — decode slatepack → Foreign API receive_tx → return response slatepack
+ *   POST /api/donate/invoice   — Owner API issue_invoice_tx → return invoice slatepack
+ *   POST /api/donate/finalize  — decode slatepack → Owner API finalize_tx → broadcast
  *
  * Tools API:
  *   POST/GET /api/tools/s   — URL shortener
@@ -16,26 +16,25 @@
 
 'use strict';
 require('dotenv').config();
-const express       = require('express');
-const cors          = require('cors');
-const { execFile }  = require('child_process');
-const { promisify } = require('util');
-const fs            = require('fs');
-const path          = require('path');
-const Database      = require('better-sqlite3');
-const multer        = require('multer');
+const express   = require('express');
+const cors      = require('cors');
+const fs        = require('fs');
+const path      = require('path');
+const crypto    = require('crypto');
+const Database  = require('better-sqlite3');
+const multer    = require('multer');
 
-const execFileAsync = promisify(execFile);
 const app  = express();
 const PORT = process.env.PORT || 3001;
 
 // ── Config ────────────────────────────────────────────────────
-const GRIN_WALLET_BIN      = process.env.GRIN_WALLET_BIN      || 'grin-wallet';
-const GRIN_WALLET_FALLBACK = process.env.GRIN_WALLET_FALLBACK || '/opt/grin/cmdwallet/mainnet/grin-wallet';
-// Passphrase — single source: .temp file, loaded at startup into GRIN_WALLET_PASS
-const PASS_FILE = process.env.GRIN_WALLET_PASS_FILE || '/opt/office-tools/data/.temp';
-let GRIN_WALLET_PASS = '';
 const CORS_ORIGINS = (process.env.CORS_ORIGINS || 'http://localhost:8080').split(',').map(s => s.trim());
+
+// ── Grin API config ───────────────────────────────────────────
+const FOREIGN_API_URL         = process.env.GRIN_FOREIGN_API            || 'http://127.0.0.1:3415/v2/foreign';
+const OWNER_API_URL           = process.env.GRIN_OWNER_API              || 'http://127.0.0.1:3420/v3/owner';
+const FOREIGN_SECRET_FILE     = process.env.GRIN_API_SECRET_FILE        || '/opt/office-tools/cmdgrinwallet/wallet_data/.api_secret';
+const OWNER_SECRET_FILE       = process.env.GRIN_OWNER_API_SECRET_FILE  || '/opt/office-tools/cmdgrinwallet/.owner_api_secret';
 
 // ── SQLite tools DB ───────────────────────────────────────────
 const TOOLS_DB_PATH = process.env.TOOLS_DB    || '/opt/office-tools/data/tools.db';
@@ -88,64 +87,149 @@ const upload = multer({
 app.use(cors({ origin: CORS_ORIGINS, methods: ['GET','POST','DELETE'], allowedHeaders: ['Content-Type'] }));
 app.use(express.json());
 
-// ── Grin wallet helpers ───────────────────────────────────────
-async function grinWallet(args) {
-  const baseArgs = GRIN_WALLET_PASS ? ['-p', GRIN_WALLET_PASS, ...args] : args;
-  const candidates = GRIN_WALLET_BIN !== GRIN_WALLET_FALLBACK
-    ? [GRIN_WALLET_BIN, GRIN_WALLET_FALLBACK]
-    : [GRIN_WALLET_BIN];
+// ── Grin API helpers ──────────────────────────────────────────
 
-  for (const bin of candidates) {
-    try {
-      const { stdout, stderr } = await execFileAsync(bin, baseArgs, {
-        timeout: 60000,
-        maxBuffer: 2 * 1024 * 1024,
-      });
-      return stdout + (stderr || '');
-    } catch (err) {
-      if (err.code === 'ENOENT') {
-        console.warn(`[grin-wallet] binary not found at "${bin}", trying next…`);
-        continue;
-      }
-      const out = (err.stdout || '') + (err.stderr || '');
-      throw new Error(`grin-wallet ${args[0]} failed: ${err.message}\n${out}`);
-    }
-  }
-
-  throw new Error(
-    `grin-wallet binary not found. Tried: ${candidates.join(', ')}. ` +
-    `Set GRIN_WALLET_BIN= or GRIN_WALLET_FALLBACK= in .env`
-  );
+function foreignAuthHeader() {
+  try {
+    const secret = fs.readFileSync(FOREIGN_SECRET_FILE, 'utf8').trim();
+    if (secret) return { Authorization: 'Basic ' + Buffer.from('grin:' + secret).toString('base64') };
+  } catch {}
+  return {};
 }
 
-function extractSlatepack(output) {
-  const m = output.match(/(BEGINSLATEPACK[\s\S]+?ENDSLATEPACK\.)/);
-  if (!m) throw new Error('No slatepack found in wallet output:\n' + output.slice(0, 500));
-  return m[1];
+function ownerAuthHeader() {
+  try {
+    const secret = fs.readFileSync(OWNER_SECRET_FILE, 'utf8').trim();
+    if (secret) return { Authorization: 'Basic ' + Buffer.from('grin:' + secret).toString('base64') };
+  } catch {}
+  return {};
+}
+
+/**
+ * Call the Foreign API (port 3415) — plain JSON-RPC, no encryption.
+ * Does NOT conflict with the wallet file lock.
+ */
+async function foreignApiCall(method, params = []) {
+  const res = await fetch(FOREIGN_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...foreignAuthHeader() },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+    signal: AbortSignal.timeout(30000),
+  });
+  const json = await res.json();
+  if (json.error) throw new Error(`Foreign API ${method}: ${json.error.message || JSON.stringify(json.error)}`);
+  if (json.result && json.result.Err) throw new Error(`Foreign API ${method}: ${JSON.stringify(json.result.Err)}`);
+  return json.result && json.result.Ok !== undefined ? json.result.Ok : json.result;
+}
+
+/**
+ * Open an Owner API v3 session — ECDH handshake + open_wallet.
+ * Returns { headers, sharedKey, token } for use with encryptedOwnerCall().
+ *
+ * Encryption scheme (per https://grincc.github.io/grin-wallet-api-tutorial/):
+ *   AES-256-GCM, 12-byte nonce, base64(ciphertext + 16-byte auth_tag)
+ *   Nonce is also used as the JSON-RPC id.
+ */
+async function ownerApiSession() {
+  const headers = { 'Content-Type': 'application/json', ...ownerAuthHeader() };
+
+  // Step 1 — ECDH handshake (unencrypted, plain JSON-RPC)
+  const ecdh = crypto.createECDH('secp256k1');
+  ecdh.generateKeys();
+  const ourPubKey = ecdh.getPublicKey('hex', 'compressed');
+
+  const initRes = await fetch(OWNER_API_URL, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'init_secure_api', params: { ecdh_pubkey: ourPubKey } }),
+    signal: AbortSignal.timeout(10000),
+  });
+  const initJson = await initRes.json();
+  if (initJson.error) throw new Error('init_secure_api: ' + (initJson.error.message || JSON.stringify(initJson.error)));
+
+  const serverPubKeyHex = initJson.result.Ok || initJson.result;
+  const sharedKey = ecdh.computeSecret(Buffer.from(serverPubKeyHex, 'hex')); // 32-byte secp256k1 x-coord
+
+  // Step 2 — open_wallet to get session token
+  const token = await encryptedOwnerCall(headers, sharedKey, 'open_wallet', { name: null, slatepack_secret: null });
+
+  return { headers, sharedKey, token };
+}
+
+/**
+ * Send one encrypted call to the Owner API v3.
+ * body_enc = base64(AES-256-GCM(inner_json) + auth_tag)
+ * nonce is also used as the JSON-RPC id.
+ */
+async function encryptedOwnerCall(headers, sharedKey, method, params) {
+  const nonce    = crypto.randomBytes(12);
+  const nonceHex = nonce.toString('hex');
+  const inner    = JSON.stringify({ jsonrpc: '2.0', id: nonceHex, method, params });
+
+  const cipher  = crypto.createCipheriv('aes-256-gcm', sharedKey, nonce);
+  const enc     = Buffer.concat([cipher.update(inner, 'utf8'), cipher.final()]);
+  const body_enc = Buffer.concat([enc, cipher.getAuthTag()]).toString('base64'); // base64, not hex
+
+  const encRes = await fetch(OWNER_API_URL, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ jsonrpc: '2.0', id: nonceHex, method: 'encrypted_request_v3', params: { nonce: nonceHex, body_enc } }),
+    signal: AbortSignal.timeout(30000),
+  });
+  const encJson = await encRes.json();
+  if (encJson.error) throw new Error(`encrypted_request_v3 (${method}): ${encJson.error.message || JSON.stringify(encJson.error)}`);
+
+  const { nonce: rNonce, body_enc: rBodyEnc } = encJson.result.Ok || encJson.result;
+  const rBuf     = Buffer.from(rBodyEnc, 'base64'); // base64, not hex
+  const decipher = crypto.createDecipheriv('aes-256-gcm', sharedKey, Buffer.from(rNonce, 'hex'));
+  decipher.setAuthTag(rBuf.slice(-16));
+  const plain  = Buffer.concat([decipher.update(rBuf.slice(0, -16)), decipher.final()]).toString('utf8');
+
+  const inner2 = JSON.parse(plain);
+  if (inner2.error) throw new Error(`Owner API ${method}: ${inner2.error.message || JSON.stringify(inner2.error)}`);
+  if (inner2.result && inner2.result.Err) throw new Error(`Owner API ${method}: ${JSON.stringify(inner2.result.Err)}`);
+  return inner2.result && inner2.result.Ok !== undefined ? inner2.result.Ok : inner2.result;
 }
 
 // ── Donation routes ───────────────────────────────────────────
 
 /**
  * POST /api/donate/receive
- * Option 2 — user ran `grin-wallet send -d <our_address> <amount>` and pastes the resulting slate.
- * We run `grin-wallet receive -i <slate>` and return our response slatepack.
- * User then runs `grin-wallet finalize` with our response.
+ * Method 2 — user ran `grin-wallet send -d <our_address> <amount>` and pastes the slatepack.
+ * Flow:
+ *   1. Owner API: slate_from_slatepack_message → decode to slate JSON
+ *   2. Foreign API: receive_tx(slate) → response slate JSON (no lock conflict)
+ *   3. Owner API: create_slatepack_message → encode response back to slatepack
+ * User then runs: grin-wallet finalize -i response.slatepack
  */
 app.post('/api/donate/receive', async (req, res) => {
   try {
     const { slatepack } = req.body;
     if (!slatepack?.trim()) return res.status(400).json({ error: 'slatepack required' });
 
-    const tmpIn = path.join(os.tmpdir(), `grin_donate_rcv_${Date.now()}.slatepack`);
-    fs.writeFileSync(tmpIn, slatepack.trim());
-    try {
-      const out = await grinWallet(['receive', '-i', tmpIn]);
-      const response = extractSlatepack(out);
-      res.json({ slatepack: response });
-    } finally {
-      fs.unlink(tmpIn, () => {});
-    }
+    // Open an Owner API session (ECDH + open_wallet token)
+    const session = await ownerApiSession();
+    const { headers, sharedKey, token } = session;
+
+    // 1. Decode incoming slatepack → slate JSON
+    const slate = await encryptedOwnerCall(headers, sharedKey, 'slate_from_slatepack_message', {
+      token,
+      secret_indices: [0],
+      message: slatepack.trim(),
+    });
+
+    // 2. Foreign API receive_tx — params: [slate, dest_acct_name, message]
+    const responseSlate = await foreignApiCall('receive_tx', [slate, null, null]);
+
+    // 3. Encode response slate → slatepack
+    const responseSlatepack = await encryptedOwnerCall(headers, sharedKey, 'create_slatepack_message', {
+      token,
+      sender_index: 0,
+      recipients: [],
+      slate: responseSlate,
+    });
+
+    res.json({ slatepack: responseSlatepack });
   } catch (err) {
     console.error('[donate/receive]', err.message);
     res.status(500).json({ error: err.message });
@@ -154,19 +238,41 @@ app.post('/api/donate/receive', async (req, res) => {
 
 /**
  * POST /api/donate/invoice
- * Option 3 step 1 — we create an invoice requesting `amount` GRIN payable by `address`.
+ * Method 3 step 1 — we create an invoice for `amount` GRIN directed to `address`.
  * Body: { amount: number (GRIN), address: string (user's Grin address) }
  * Returns the invoice slatepack for the user to pay with `grin-wallet pay`.
+ * Flow:
+ *   1. Owner API: issue_invoice_tx → invoice slate JSON
+ *   2. Owner API: create_slatepack_message → encode to slatepack
  */
 app.post('/api/donate/invoice', async (req, res) => {
   try {
     const { amount, address } = req.body;
     const amt = parseFloat(amount);
-    if (!amt || isNaN(amt) || amt <= 0) return res.status(400).json({ error: 'Valid amount required' });
+    if (!amt || isNaN(amt) || amt < 1) return res.status(400).json({ error: 'Amount must be at least 1 GRIN' });
     if (!address?.trim()) return res.status(400).json({ error: 'Grin address required' });
 
-    const out = await grinWallet(['invoice', '-d', address.trim(), String(amt)]);
-    const slatepack = extractSlatepack(out);
+    const { headers, sharedKey, token } = await ownerApiSession();
+
+    // 1. Create invoice — amount in nanogrin (1 GRIN = 1_000_000_000)
+    const slate = await encryptedOwnerCall(headers, sharedKey, 'issue_invoice_tx', {
+      token,
+      args: {
+        amount: String(Math.round(amt * 1_000_000_000)),
+        dest_acct_name: null,
+        target_slate_version: null,
+        address: address.trim(),
+      },
+    });
+
+    // 2. Encode to slatepack
+    const slatepack = await encryptedOwnerCall(headers, sharedKey, 'create_slatepack_message', {
+      token,
+      sender_index: 0,
+      recipients: [],
+      slate,
+    });
+
     res.json({ slatepack });
   } catch (err) {
     console.error('[donate/invoice]', err.message);
@@ -176,22 +282,29 @@ app.post('/api/donate/invoice', async (req, res) => {
 
 /**
  * POST /api/donate/finalize
- * Option 3 step 2 — user ran `grin-wallet pay` on our invoice and pastes their response.
- * We finalize and broadcast.
+ * Method 3 step 2 — user ran `grin-wallet pay` on our invoice and pastes their response slatepack.
+ * Flow:
+ *   1. Owner API: slate_from_slatepack_message → decode to slate JSON
+ *   2. Owner API: finalize_tx → finalize and broadcast
  */
 app.post('/api/donate/finalize', async (req, res) => {
   try {
     const { slatepack } = req.body;
     if (!slatepack?.trim()) return res.status(400).json({ error: 'slatepack required' });
 
-    const tmpFile = path.join(os.tmpdir(), `grin_donate_fin_${Date.now()}.slatepack`);
-    fs.writeFileSync(tmpFile, slatepack.trim());
-    try {
-      await grinWallet(['finalize', '-i', tmpFile]);
-      res.json({ success: true });
-    } finally {
-      fs.unlink(tmpFile, () => {});
-    }
+    const { headers, sharedKey, token } = await ownerApiSession();
+
+    // 1. Decode slatepack → slate JSON
+    const slate = await encryptedOwnerCall(headers, sharedKey, 'slate_from_slatepack_message', {
+      token,
+      secret_indices: [0],
+      message: slatepack.trim(),
+    });
+
+    // 2. Finalize and broadcast
+    await encryptedOwnerCall(headers, sharedKey, 'finalize_tx', { token, slate });
+
+    res.json({ success: true });
   } catch (err) {
     console.error('[donate/finalize]', err.message);
     res.status(500).json({ error: err.message });
@@ -315,32 +428,9 @@ app.get('/api/wallet/status', async (req, res) => {
 // ── Health ────────────────────────────────────────────────────
 app.get('/api/health', (_, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
-// ── Passphrase loading ────────────────────────────────────────
-// Single source of truth: PASS_FILE (/opt/office-tools/data/.temp)
-// Single source: PASS_FILE — loaded once at startup into GRIN_WALLET_PASS
-function loadPassphrase() {
-  if (!fs.existsSync(PASS_FILE)) {
-    console.log(`Passphrase file not found (${PASS_FILE}) — wallet assumed to have no passphrase.`);
-    return;
-  }
-  try {
-    const pass = fs.readFileSync(PASS_FILE, 'utf8').replace(/[\r\n]/g, '');
-    if (pass) {
-      GRIN_WALLET_PASS = pass;
-      console.log(`Grin wallet passphrase loaded from ${PASS_FILE}`);
-    } else {
-      console.log(`Passphrase file is empty — wallet assumed to have no passphrase.`);
-    }
-  } catch (e) {
-    console.error(`Failed to read passphrase file (${PASS_FILE}):`, e.message);
-    process.exit(1);
-  }
-}
-
 // ── Start ─────────────────────────────────────────────────────
-loadPassphrase();
 app.listen(PORT, () => {
   console.log(`Office Tools server running on port ${PORT}`);
-  console.log(`Grin wallet:  ${GRIN_WALLET_BIN} (fallback: ${GRIN_WALLET_FALLBACK})`);
-  console.log(`Passphrase:   ${GRIN_WALLET_PASS ? `loaded from ${PASS_FILE}` : 'none'}`);
+  console.log(`Foreign API:  ${FOREIGN_API_URL}`);
+  console.log(`Owner API:    ${OWNER_API_URL}`);
 });

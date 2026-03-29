@@ -45,7 +45,9 @@ SERVER_ENV="/opt/office-tools/server/.env"
 PASS_FILE="/opt/office-tools/data/.temp"
 SEED_FILE="/opt/office-tools/data/.wallet_seed.enc"
 LISTENER_SCRIPT="/opt/office-tools/data/grin-listen.sh"
-TMUX_SESSION="donate_grin_wallet"
+OWNER_SCRIPT="/opt/office-tools/data/grin-owner.sh"
+TMUX_SESSION="donate_grin_tor"
+TMUX_SESSION_OWNER="donate_grin_slatepack"
 GRIN_USER="grin"
 GRIN_GROUP="grin"
 
@@ -198,7 +200,7 @@ dark_background_color_scheme = true
 keybase_notify_ttl = 1440
 
 [logging]
-log_to_stdout = false
+log_to_stdout = true
 stdout_log_level = "Info"
 log_to_file = true
 file_log_level = "Info"
@@ -354,14 +356,18 @@ save_seed_backup() {
   log "To recover: openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 -in ${SEED_FILE}"
 }
 
-# ── Update server .env with wallet binary path ────────────────
+# ── Update server .env with Grin API paths ───────────────────
 update_server_env() {
   if [[ ! -f "$SERVER_ENV" ]]; then
     log "${SERVER_ENV} not found — skipping .env update (deploy Office Tools server to enable)."
     return
   fi
-  upsert_env "GRIN_WALLET_BIN" "$WALLET_BIN" "$SERVER_ENV"
-  # Passphrase is read directly from PASS_FILE at the hardcoded path — no .env entry needed
+  upsert_env "GRIN_FOREIGN_API"           "http://127.0.0.1:3415/v2/foreign"    "$SERVER_ENV"
+  upsert_env "GRIN_OWNER_API"             "http://127.0.0.1:3420/v3/owner"      "$SERVER_ENV"
+  upsert_env "GRIN_API_SECRET_FILE"       "${WALLET_DIR}/wallet_data/.api_secret" "$SERVER_ENV"
+  upsert_env "GRIN_OWNER_API_SECRET_FILE" "${WALLET_DIR}/.owner_api_secret"       "$SERVER_ENV"
+  upsert_env "GRIN_LISTEN_PORT"           "3415"                                 "$SERVER_ENV"
+  upsert_env "GRIN_LISTEN_HOST"           "127.0.0.1"                            "$SERVER_ENV"
   log "Updated ${SERVER_ENV}"
 }
 
@@ -450,9 +456,90 @@ wallet_stop() {
   fi
 }
 
+# ── Owner API session (donate_grin_slatepack) ─────────────────
+
+write_owner_script() {
+  mkdir -p "$(dirname "$OWNER_SCRIPT")"
+  if [[ -f "$PASS_FILE" ]]; then
+    cat > "$OWNER_SCRIPT" <<SCRIPT
+#!/bin/bash
+PASS=\$(tr -d '\r\n' < "${PASS_FILE}")
+cd "${WALLET_DIR}"
+exec ./grin-wallet -p "\$PASS" owner_api
+SCRIPT
+  else
+    cat > "$OWNER_SCRIPT" <<SCRIPT
+#!/bin/bash
+cd "${WALLET_DIR}"
+exec ./grin-wallet owner_api
+SCRIPT
+  fi
+  chmod 750 "$OWNER_SCRIPT"
+  chown "root:${GRIN_GROUP}" "$OWNER_SCRIPT"
+  log "Owner API script written: ${OWNER_SCRIPT}"
+}
+
+owner_is_running() {
+  tmux has-session -t "$TMUX_SESSION_OWNER" 2>/dev/null
+}
+
+owner_start() {
+  if [[ ! -x "$WALLET_BIN" ]]; then
+    err "grin-wallet binary not found. Run option 1 first."
+    return 1
+  fi
+  if owner_is_running; then
+    warn "Owner API is already running (tmux: ${TMUX_SESSION_OWNER})."
+    return
+  fi
+
+  # Kill any orphaned grin-wallet owner_api process
+  if pgrep -f "grin-wallet.*owner_api" &>/dev/null; then
+    warn "Killing orphaned grin-wallet owner_api process before starting…"
+    pkill -f "grin-wallet.*owner_api" 2>/dev/null || true
+    sleep 1
+  fi
+
+  write_owner_script
+
+  local wrapper; wrapper=$(mktemp /tmp/grin-owner-XXXXXX.sh)
+  cat > "$wrapper" <<WRAPPER
+#!/bin/bash
+bash "${OWNER_SCRIPT}"
+echo ""
+echo "=== grin-wallet owner_api exited (see error above) ==="
+read -r -p "Press Enter to close..."
+WRAPPER
+  chmod 700 "$wrapper"
+  chown "${GRIN_USER}:${GRIN_GROUP}" "$wrapper"
+
+  chown -R "${GRIN_USER}:${GRIN_GROUP}" "$WALLET_DIR"
+
+  tmux new-session -d -s "$TMUX_SESSION_OWNER" -x 220 -y 50 \
+    "su -s /bin/bash ${GRIN_USER} -c 'bash ${wrapper}'"
+  sleep 1
+  if tmux has-session -t "$TMUX_SESSION_OWNER" 2>/dev/null; then
+    log "Owner API started in tmux session: ${TMUX_SESSION_OWNER}"
+    log "Attach with: tmux attach -t ${TMUX_SESSION_OWNER}"
+  else
+    err "tmux session exited immediately — check: tmux attach -t ${TMUX_SESSION_OWNER}"
+  fi
+}
+
+owner_stop() {
+  if owner_is_running; then
+    pkill -f "grin-wallet.*owner_api" 2>/dev/null || true
+    sleep 1
+    tmux kill-session -t "$TMUX_SESSION_OWNER" 2>/dev/null || true
+    log "Owner API stopped."
+  else
+    warn "Owner API is not running."
+  fi
+}
+
 # ── Auto-start on reboot (cron @reboot) ───────────────────────
 reboot_autostart_enabled() {
-  crontab -l 2>/dev/null | grep -q "grin-listen.sh"
+  crontab -l 2>/dev/null | grep -qE "grin-listen\.sh|grin-owner\.sh"
 }
 
 # ── Watchdog cron (every 30 min — checks port 3415) ───────────
@@ -562,18 +649,21 @@ disable_watchdog() {
 
 enable_reboot_autostart() {
   write_listener_script
-
-  local cron_line="@reboot sleep 30 && tmux new-session -d -s ${TMUX_SESSION} -x 220 -y 50 \"su -s /bin/bash ${GRIN_USER} -c 'bash ${LISTENER_SCRIPT}'\" 2>/dev/null"
+  write_owner_script
 
   if reboot_autostart_enabled; then
     warn "Auto-start cron already set."
     return
   fi
 
-  # Append to root crontab
-  ( crontab -l 2>/dev/null; echo "$cron_line" ) | crontab -
+  # Two @reboot entries — TOR listener (port 3415) and Owner API (port 3420)
+  local cron_tor="@reboot sleep 30 && tmux new-session -d -s ${TMUX_SESSION} -x 220 -y 50 \"su -s /bin/bash ${GRIN_USER} -c 'bash ${LISTENER_SCRIPT}'\" 2>/dev/null # grin-listen.sh"
+  local cron_owner="@reboot sleep 35 && tmux new-session -d -s ${TMUX_SESSION_OWNER} -x 220 -y 50 \"su -s /bin/bash ${GRIN_USER} -c 'bash ${OWNER_SCRIPT}'\" 2>/dev/null # grin-owner.sh"
+
+  ( crontab -l 2>/dev/null; echo "$cron_tor"; echo "$cron_owner" ) | crontab -
   log "Auto-start on reboot enabled (root crontab @reboot)."
-  log "Cron entry: ${cron_line}"
+  log "TOR listener  cron: ${cron_tor}"
+  log "Owner API     cron: ${cron_owner}"
 }
 
 disable_reboot_autostart() {
@@ -581,7 +671,7 @@ disable_reboot_autostart() {
     warn "Auto-start cron not found."
     return
   fi
-  crontab -l 2>/dev/null | grep -v "grin-listen.sh" | crontab -
+  crontab -l 2>/dev/null | grep -v "grin-listen.sh" | grep -v "grin-owner.sh" | crontab -
   log "Auto-start on reboot disabled."
 }
 
@@ -646,14 +736,14 @@ option_integrate() {
       if [[ -n "$wallet_pass" ]]; then
         echo
         echo -e "  ${YEL}╔══════════════════════════════════════════════════════════╗${NC}"
-        echo -e "  ${YEL}║  ⚠  SECURITY WARNING — READ BEFORE SAVING               ║${NC}"
+        echo -e "  ${YEL}║  /!\  SECURITY WARNING — READ BEFORE SAVING              ║${NC}"
         echo -e "  ${YEL}║                                                          ║${NC}"
         echo -e "  ${YEL}║  Saving the passphrase allows auto-start on reboot       ║${NC}"
-        echo -e "  ${YEL}║  and remote start via the web interface.                 ║${NC}"
+        echo -e "  ${YEL}║  and auto-start if the grin-wallet crashes.              ║${NC}"
         echo -e "  ${YEL}║                                                          ║${NC}"
-        echo -e "  ${YEL}║  ⚠  It will be stored in PLAIN TEXT on this server.     ║${NC}"
-        echo -e "  ${YEL}║     Your hosting provider can read it.                  ║${NC}"
-        echo -e "  ${YEL}║     Anyone with root access can read it.                ║${NC}"
+        echo -e "  ${YEL}║  /!\  It will be stored in PLAIN TEXT on this server     ║${NC}"
+        echo -e "  ${YEL}║     Your hosting provider can read it.                   ║${NC}"
+        echo -e "  ${YEL}║     Anyone with root access can read it.                 ║${NC}"
         echo -e "  ${YEL}║                                                          ║${NC}"
         echo -e "  ${YEL}║  Recommendation: transfer funds to a personal wallet     ║${NC}"
         echo -e "  ${YEL}║  regularly — do not keep a large balance here.           ║${NC}"
@@ -748,44 +838,59 @@ option_manage_service() {
   while true; do
     echo
     if wallet_is_running; then
-      echo -e "  Listener   : ${GRN}RUNNING ✓${NC}  (tmux: ${TMUX_SESSION})"
+      echo -e "  TOR listener   : ${GRN}RUNNING ✓${NC}  (tmux: ${TMUX_SESSION})"
     else
-      echo -e "  Listener   : ${RED}STOPPED ✗${NC}"
+      echo -e "  TOR listener   : ${RED}STOPPED ✗${NC}  (port 3415 / grin-wallet listen)"
+    fi
+
+    if owner_is_running; then
+      echo -e "  Owner API      : ${GRN}RUNNING ✓${NC}  (tmux: ${TMUX_SESSION_OWNER})"
+    else
+      echo -e "  Owner API      : ${RED}STOPPED ✗${NC}  (port 3420 / grin-wallet owner_api)"
     fi
 
     if [[ -f "$PASS_FILE" ]]; then
-      echo -e "  Passphrase : ${GRN}saved${NC}  (${PASS_FILE})"
+      echo -e "  Passphrase     : ${GRN}saved${NC}  (${PASS_FILE})"
     else
-      echo -e "  Passphrase : ${YEL}not saved${NC}  (listener will fail if wallet has a passphrase)"
+      echo -e "  Passphrase     : ${YEL}not saved${NC}  (listeners will fail if wallet has a passphrase)"
     fi
 
     if reboot_autostart_enabled; then
-      echo -e "  Auto-start : ${GRN}enabled${NC}  (cron @reboot)"
+      echo -e "  Auto-start     : ${GRN}enabled${NC}  (cron @reboot)"
     else
-      echo -e "  Auto-start : ${YEL}disabled${NC}"
+      echo -e "  Auto-start     : ${YEL}disabled${NC}"
     fi
 
     if watchdog_enabled; then
-      echo -e "  Watchdog   : ${GRN}enabled${NC}  (cron every 30 min — port 3415)"
+      echo -e "  Watchdog       : ${GRN}enabled${NC}  (cron every 30 min — port 3415)"
     else
-      echo -e "  Watchdog   : ${YEL}disabled${NC}"
+      echo -e "  Watchdog       : ${YEL}disabled${NC}"
     fi
 
     echo
-    echo "  1) Start listener"
-    echo "  2) Stop listener"
-    echo "  3) Restart listener"
-    echo "  4) Attach to tmux session  (Ctrl-b d to detach)"
+    echo "  ── TOR listener (donate_grin_tor) ─────────────────────────"
+    echo "  1) Start TOR listener"
+    echo "  2) Stop TOR listener"
+    echo "  3) Restart TOR listener"
+    echo "  4) Attach to TOR listener tmux  (Ctrl-b d to detach)"
     echo "  5) View wallet log (last 60 lines)"
-    echo "  6) Re-save passphrase"
-    echo "  7) Enable auto-start on reboot  (cron @reboot)"
-    echo "  8) Disable auto-start on reboot"
-    echo "  9) Enable watchdog  (cron every 30 min — auto-restart if port 3415 down)"
-    echo " 10) Disable watchdog"
-    echo " 11) View watchdog log"
+    echo
+    echo "  ── Owner API (donate_grin_slatepack) ──────────────────────"
+    echo "  6) Start Owner API"
+    echo "  7) Stop Owner API"
+    echo "  8) Restart Owner API"
+    echo "  9) Attach to Owner API tmux  (Ctrl-b d to detach)"
+    echo
+    echo "  ── Settings ───────────────────────────────────────────────"
+    echo " 10) Re-save passphrase"
+    echo " 11) Enable auto-start on reboot  (cron @reboot)"
+    echo " 12) Disable auto-start on reboot"
+    echo " 13) Enable watchdog  (cron every 30 min — auto-restart if port 3415 down)"
+    echo " 14) Disable watchdog"
+    echo " 15) View watchdog log"
     echo "  0) Back"
     echo
-    read -r -p "Choice [0-11]: " svc_choice
+    read -r -p "Choice [0-15]: " svc_choice
 
     case "$svc_choice" in
       1) wallet_start ;;
@@ -798,7 +903,7 @@ option_manage_service() {
           log "Attaching to tmux session '${TMUX_SESSION}' — press Ctrl-b d to detach."
           tmux attach -t "$TMUX_SESSION"
         else
-          warn "Wallet listener is not running. Start it first (option 1)."
+          warn "TOR listener is not running. Start it first (option 1)."
         fi
         ;;
       5)
@@ -809,7 +914,20 @@ option_manage_service() {
           warn "Log file not found: ${logfile}"
         fi
         ;;
-      6)
+      6) owner_start ;;
+      7) owner_stop ;;
+      8) owner_stop; sleep 1; owner_start ;;
+      9)
+        if [[ -n "${TMUX:-}" ]]; then
+          warn "Already inside a tmux session. Run this script outside tmux to avoid nesting."
+        elif owner_is_running; then
+          log "Attaching to tmux session '${TMUX_SESSION_OWNER}' — press Ctrl-b d to detach."
+          tmux attach -t "$TMUX_SESSION_OWNER"
+        else
+          warn "Owner API is not running. Start it first (option 6)."
+        fi
+        ;;
+      10)
         rm -f "$PASS_FILE"
         local new_pass
         if new_pass=$(read_pass_confirmed); then
@@ -819,11 +937,11 @@ option_manage_service() {
           warn "Cancelled."
         fi
         ;;
-      7) enable_reboot_autostart ;;
-      8) disable_reboot_autostart ;;
-      9) enable_watchdog ;;
-      10) disable_watchdog ;;
-      11)
+      11) enable_reboot_autostart ;;
+      12) disable_reboot_autostart ;;
+      13) enable_watchdog ;;
+      14) disable_watchdog ;;
+      15)
         local wlog="/opt/office-tools/data/grin-watchdog.log"
         if [[ -f "$wlog" ]]; then
           tail -n 60 "$wlog"
@@ -867,15 +985,21 @@ print_status() {
   fi
 
   if wallet_is_running; then
-    echo -e "  Listener   : ${GRN}running${NC}  (tmux: ${TMUX_SESSION})"
+    echo -e "  TOR listener : ${GRN}running${NC}  (tmux: ${TMUX_SESSION})"
   else
-    echo -e "  Listener   : ${YEL}stopped${NC}"
+    echo -e "  TOR listener : ${YEL}stopped${NC}"
+  fi
+
+  if owner_is_running; then
+    echo -e "  Owner API    : ${GRN}running${NC}  (tmux: ${TMUX_SESSION_OWNER})"
+  else
+    echo -e "  Owner API    : ${YEL}stopped${NC}"
   fi
 
   if reboot_autostart_enabled; then
-    echo -e "  Auto-start : ${GRN}enabled${NC}  (cron @reboot)"
+    echo -e "  Auto-start   : ${GRN}enabled${NC}  (cron @reboot)"
   else
-    echo -e "  Auto-start : ${YEL}disabled${NC}"
+    echo -e "  Auto-start   : ${YEL}disabled${NC}"
   fi
 
   echo "  ─────────────────────────────────────────"

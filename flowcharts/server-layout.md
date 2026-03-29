@@ -40,7 +40,8 @@
 │       │   ├── tools.db              ← SQLite: short_urls, pastes, file_shares
 │       │   ├── uploads/              ← file share uploads
 │       │   ├── .temp                 ← grin-wallet passphrase (chmod 640, root:grin)
-│       │   ├── grin-listen.sh        ← wallet listener wrapper (written by deploy_grinwallet.sh)
+│       │   ├── grin-listen.sh        ← TOR listener wrapper  (tmux: donate_grin_tor)
+│       │   ├── grin-owner.sh         ← Owner API wrapper     (tmux: donate_grin_slatepack)
 │       │   └── grin-watchdog.sh      ← watchdog script (written by deploy_grinwallet.sh)
 │       │
 │       ├── cmdgrinwallet/            ← grin-wallet installation
@@ -115,7 +116,8 @@ managed by `deploy_grinwallet.sh` with an optional watchdog cron.
 | 80 | nginx (HTTP → HTTPS redirect) | Yes, public |
 | 443 | nginx (HTTPS) | Yes, public |
 | 3001 | Node.js payment server | No, localhost only |
-| 3415 | grin-wallet listen (tmux) | No, localhost only |
+| 3415 | grin-wallet Foreign API (tmux) | No, localhost only |
+| 3420 | grin-wallet Owner API (tmux) | No, localhost only |
 | 9000 | cobalt yt-server (optional) | No, localhost only |
 
 ---
@@ -123,15 +125,19 @@ managed by `deploy_grinwallet.sh` with an optional watchdog cron.
 ## .env file contents (backend/.env)
 
 ```
-# Grin wallet binary path
+# Grin wallet binary (legacy/fallback — donate routes now use APIs directly)
 GRIN_WALLET_BIN=/opt/office-tools/cmdgrinwallet/grin-wallet
 GRIN_WALLET_FALLBACK=/opt/grin/cmdwallet/mainnet/grin-wallet
 
-# Passphrase — one of:
-GRIN_WALLET_PASS_FILE=/opt/office-tools/data/.temp   # recommended
-# GRIN_WALLET_PASS=yourpassphrase                    # or plain env var
+# Passphrase — single source of truth
+GRIN_WALLET_PASS_FILE=/opt/office-tools/data/.temp
 
-# Grin wallet listener port (for status check)
+# Grin wallet APIs (Foreign API = receive_tx, Owner API = invoice/finalize)
+GRIN_FOREIGN_API=http://127.0.0.1:3415/v2/foreign
+GRIN_OWNER_API=http://127.0.0.1:3420/v2/owner
+GRIN_API_SECRET_FILE=/opt/office-tools/cmdgrinwallet/wallet_data/.api_secret
+
+# Port probe for /api/wallet/status badge
 GRIN_LISTEN_PORT=3415
 GRIN_LISTEN_HOST=127.0.0.1
 
@@ -168,9 +174,12 @@ PORT=3001
 ## Grin wallet cron entries (root crontab)
 
 ```
-# Auto-start wallet on reboot (set via deploy_grinwallet.sh option 2 → 7)
-@reboot sleep 30 && tmux new-session -d -s donate_grin_wallet ...
+# TOR listener auto-start on reboot  (option 2 → 11)
+@reboot sleep 30 && tmux new-session -d -s donate_grin_tor ... # grin-listen.sh
 
-# Watchdog — restart wallet if port 3415 down (set via option 2 → 9)
+# Owner API auto-start on reboot  (option 2 → 11, same toggle)
+@reboot sleep 35 && tmux new-session -d -s donate_grin_slatepack ... # grin-owner.sh
+
+# Watchdog — restart TOR listener if port 3415 down  (option 2 → 13)
 */30 * * * * bash /opt/office-tools/data/grin-watchdog.sh # grin-watchdog
 ```

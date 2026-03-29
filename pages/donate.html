@@ -124,7 +124,7 @@
 
 <main class="tool-main">
   <div class="tool-header">
-    <h1>❤️ Support Grin Fan</h1>
+    <h1>❤️ Support Admin with Grin Coin (^_^) </h1>
     <p>All tools are free. If they save you time, consider sending some Grin our way.<br>
        <a href="https://grin.mw" target="_blank" rel="noopener" style="color:var(--primary)">What is Grin?</a>
        — a private, lightweight, open-source cryptocurrency with no amounts visible on-chain.</p>
@@ -132,8 +132,8 @@
       <span id="walletStatus"><span class="ws-dot"></span> Checking wallet…</span>
     </div>
     <div id="walletOfflineNote" class="alert alert-danger mt-2" style="display:none;font-size:.85rem">
-      ⚠️ The Grin wallet service is currently offline. All three donation methods require the wallet to be running.
-      Please check back in one hour — the service restarts automatically.
+      ⚠️ The Grin wallet service is currently offline. Try slatepack or invoice methods.
+      Or check back in one hour — the service restarts automatically.
     </div>
   </div>
 
@@ -188,8 +188,8 @@
         <button class="amount-btn" data-amount="custom">Custom…</button>
       </div>
       <div id="rcvCustomWrap" style="display:none;margin-bottom:.75rem">
-        <input type="number" id="rcvCustomAmt" min="0.001" step="0.001"
-               placeholder="Amount in GRIN" style="max-width:200px">
+        <input type="number" id="rcvCustomAmt" min="1" step="1"
+               placeholder="Min 1 GRIN" style="max-width:200px">
       </div>
 
       <div class="step-label">Run in your terminal</div>
@@ -248,8 +248,8 @@
         <button class="amount-btn" data-amount="custom">Custom…</button>
       </div>
       <div id="customWrap" style="display:none;margin-bottom:.75rem">
-        <input type="number" id="customAmt" min="0.001" step="0.001"
-               placeholder="Amount in GRIN" style="max-width:200px">
+        <input type="number" id="customAmt" min="1" step="1"
+               placeholder="Min 1 GRIN" style="max-width:200px">
       </div>
 
       <div class="form-group mt-2">
@@ -372,7 +372,8 @@
       btn.classList.add('active');
       if (btn.dataset.amount === 'custom') {
         document.getElementById('rcvCustomWrap').style.display = '';
-        rcvAmount = parseFloat(document.getElementById('rcvCustomAmt').value) || null;
+        const v = parseFloat(document.getElementById('rcvCustomAmt').value);
+        rcvAmount = (v >= 1) ? v : null;
       } else {
         document.getElementById('rcvCustomWrap').style.display = 'none';
         rcvAmount = parseFloat(btn.dataset.amount);
@@ -382,7 +383,8 @@
     });
   });
   document.getElementById('rcvCustomAmt').addEventListener('input', () => {
-    rcvAmount = parseFloat(document.getElementById('rcvCustomAmt').value) || null;
+    const v = parseFloat(document.getElementById('rcvCustomAmt').value);
+    rcvAmount = (v >= 1) ? v : null;
     document.getElementById('sendCmd').textContent =
       `grin-wallet send -d ${GRIN_ADDR} ${rcvAmount ?? '<amount>'}`;
   });
@@ -424,7 +426,8 @@
       btn.classList.add('active');
       if (btn.dataset.amount === 'custom') {
         document.getElementById('customWrap').style.display = '';
-        selectedAmount = parseFloat(document.getElementById('customAmt').value) || null;
+        const v = parseFloat(document.getElementById('customAmt').value);
+        selectedAmount = (v >= 1) ? v : null;
       } else {
         document.getElementById('customWrap').style.display = 'none';
         selectedAmount = parseFloat(btn.dataset.amount);
@@ -434,7 +437,8 @@
   });
 
   document.getElementById('customAmt').addEventListener('input', () => {
-    selectedAmount = parseFloat(document.getElementById('customAmt').value) || null;
+    const v = parseFloat(document.getElementById('customAmt').value);
+    selectedAmount = (v >= 1) ? v : null;
     updateInvBtn();
   });
 
@@ -442,7 +446,7 @@
 
   function updateInvBtn() {
     const addr  = document.getElementById('invAddress').value.trim();
-    const valid = selectedAmount > 0 && addr.length > 5;
+    const valid = selectedAmount >= 1 && addr.length > 5;
     document.getElementById('invCreateBtn').disabled = !valid;
   }
 
