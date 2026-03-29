@@ -671,15 +671,15 @@ enable_donate_ratelimit() {
   # Write the limit_req_zone to a dedicated conf.d file (http context)
   cat > "$NGINX_RATE_CONF" <<'RCONF'
 # Grin donate rate limit — 20 req/min per IP, burst 3
+# (limit_req_status is set inside the location block to avoid duplicate-directive conflicts)
 limit_req_zone $binary_remote_addr zone=grin_donate:10m rate=20r/m;
-limit_req_status 429;
 RCONF
 
   # Insert a /pay-api/api/donate/ location block BEFORE /pay-api/ using awk.
   # The frontend calls /pay-api/api/donate/* (GRIN_SERVER_URL is rewritten to /pay-api by deploy.sh).
   # Wrapped in comment markers so disable_donate_ratelimit can remove it reliably.
   if ! grep -q "BEGIN grin-donate-ratelimit" "$NGINX_SITES_CONF" 2>/dev/null; then
-    if ! grep -q "location \^~ /pay-api/" "$NGINX_SITES_CONF" 2>/dev/null; then
+    if ! grep -qF "location ^~ /pay-api/" "$NGINX_SITES_CONF" 2>/dev/null; then
       warn "Could not find 'location ^~ /pay-api/' in ${NGINX_SITES_CONF}"
       warn "Is the office-tools nginx config at that path?"
       rm -f "$NGINX_RATE_CONF"
@@ -693,6 +693,7 @@ RCONF
     # BEGIN grin-donate-ratelimit
     location ^~ /pay-api/api/donate/ {
         limit_req zone=grin_donate burst=3 nodelay;
+        limit_req_status 429;
         proxy_pass            http://127.0.0.1:3001/api/donate/;
         proxy_http_version    1.1;
         proxy_set_header      Host              $host;
@@ -707,7 +708,7 @@ LOCBLOCK
     # Insert the block before the /pay-api/ location line using awk.
     # awk reads $host etc. from the file — it never interprets them as awk fields.
     awk -v blk="$_blk" '
-/location \^\~ \/pay-api\/ \{/ {
+/location \^~ \/pay-api\/ \{/ {
   while ((getline line < blk) > 0) print line
 }
 { print }' "$NGINX_SITES_CONF" > "${NGINX_SITES_CONF}.tmp" \
@@ -877,14 +878,14 @@ option_integrate() {
       if [[ -n "$wallet_pass" ]]; then
         echo
         echo -e "  ${YEL}╔══════════════════════════════════════════════════════════╗${NC}"
-        echo -e "  ${YEL}║  ⚠  SECURITY WARNING — READ BEFORE SAVING               ║${NC}"
+        echo -e "  ${YEL}║  /!\  SECURITY WARNING — READ BEFORE SAVING              ║${NC}"
         echo -e "  ${YEL}║                                                          ║${NC}"
         echo -e "  ${YEL}║  Saving the passphrase allows auto-start on reboot       ║${NC}"
         echo -e "  ${YEL}║  and remote start via the web interface.                 ║${NC}"
         echo -e "  ${YEL}║                                                          ║${NC}"
-        echo -e "  ${YEL}║  ⚠  It will be stored in PLAIN TEXT on this server.     ║${NC}"
-        echo -e "  ${YEL}║     Your hosting provider can read it.                  ║${NC}"
-        echo -e "  ${YEL}║     Anyone with root access can read it.                ║${NC}"
+        echo -e "  ${YEL}║  /!\  It will be stored in PLAIN TEXT on this server.    ║${NC}"
+        echo -e "  ${YEL}║     Your hosting provider can read it.                   ║${NC}"
+        echo -e "  ${YEL}║     Anyone with root access can read it.                 ║${NC}"
         echo -e "  ${YEL}║                                                          ║${NC}"
         echo -e "  ${YEL}║  Recommendation: transfer funds to a personal wallet     ║${NC}"
         echo -e "  ${YEL}║  regularly — do not keep a large balance here.           ║${NC}"
@@ -1064,11 +1065,11 @@ option_listener_settings() {
       1)
         echo
         echo -e "  ${YEL}╔══════════════════════════════════════════════════════════╗${NC}"
-        echo -e "  ${YEL}║  ⚠  Security Warning                                    ║${NC}"
-        echo -e "  ${YEL}║  The passphrase will be stored in PLAIN TEXT on disk.   ║${NC}"
-        echo -e "  ${YEL}║  Location: ${PASS_FILE}            ║${NC}"
-        echo -e "  ${YEL}║  Anyone with root access can read it.                   ║${NC}"
-        echo -e "  ${YEL}║  Keep your wallet balance low — transfer funds often.   ║${NC}"
+        echo -e "  ${YEL}║  /!\  Security Warning                                   ║${NC}"
+        echo -e "  ${YEL}║  The passphrase will be stored in PLAIN TEXT on disk.    ║${NC}"
+        echo -e "  ${YEL}║  Location: ${PASS_FILE}                                  ║${NC}"
+        echo -e "  ${YEL}║  Anyone with root access can read it.                    ║${NC}"
+        echo -e "  ${YEL}║  Keep your wallet balance low — transfer funds often.    ║${NC}"
         echo -e "  ${YEL}╚══════════════════════════════════════════════════════════╝${NC}"
         echo
         rm -f "$PASS_FILE"
