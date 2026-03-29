@@ -116,7 +116,10 @@
 
 <header class="site-header">
   <a href="../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
-  <span class="header-tool-name">Support Grin</span>
+  <span class="header-tool-name" style="display:inline-flex;align-items:center;gap:.35rem">
+    <svg viewBox="0 0 191 191" style="width:1.1em;height:1.1em;vertical-align:middle;flex-shrink:0" xmlns="http://www.w3.org/2000/svg"><circle cx="95.5" cy="95.5" r="95.5"/><circle fill="#FEF102" cx="95.3" cy="95.5" r="85.3"/><path d="M135.7,63.5c-2-4.6-3.9-13.6-9.1-15.6c-6.7-2.6-10.9,14.3-11.9,18.6h-1c-1.7-7.3-4-17.7-12-20c-3.7,15.6,3.9,32.5,11,46c7.6-3.6,11.3-15,12-23h1l8,24c6.4-1.8,8.7-8.2,11-14c5-12.4,9.2-27.7,6-41C141.1,41.2,138.2,55,135.7,63.5 M39.7,95.5c8.6-4.1,12.7-17.1,14-26h1c1,4.3,3.7,15.4,9.1,16.1c6.8,0.9,10.4-14.3,10.9-19.1h1c2.2,7.5,4.5,17.3,12,21c2.8-11.7-0.5-24.1-4.8-35c-1.1-2.8-3.3-10.4-7.2-10.4c-6.3,0-9.9,16.7-11,21.4h-1l-8-24C41.6,46.2,34,82,39.7,95.5 M24.7,107.5c10.4,45.6,58.6,71.4,102,52.1c15.8-7,28.3-19.5,35.5-35.1c1.9-4,5.5-11.4,3.4-16.7c-2.1-5.3-22.8,3.4-27.9,5.6c-0.7,0.3-1.2,1-1.4,1.8c-0.3,2.2,1.2,4.3,3.4,4.6c0.1,0,0.2,0,0.3,0l8.7,0.7c-15.7,30.4-58.1,43.8-88,19.5C54,134.6,48,128.2,44,120.5c-1.9-3.7-3.7-8.4-7-11C33.8,107.1,29,106.3,24.7,107.5L24.7,107.5z"/></svg>
+    Support Admin with Grin Coin (^_^)
+  </span>
   <div class="header-actions">
     <button class="theme-toggle" id="themeToggle"></button>
   </div>
@@ -124,7 +127,6 @@
 
 <main class="tool-main">
   <div class="tool-header">
-    <h1>❤️ Support Admin with Grin Coin (^_^) </h1>
     <p>All tools are free. If they save you time, consider sending some Grin our way.<br>
        <a href="https://grin.mw" target="_blank" rel="noopener" style="color:var(--primary)">What is Grin?</a>
        — a private, lightweight, open-source cryptocurrency with no amounts visible on-chain.</p>
@@ -215,18 +217,27 @@
       </p>
       <div class="step-label">Our Response Slatepack</div>
       <div class="slatepack-box" id="rcvSlate2"></div>
-      <button class="btn btn-ghost btn-sm mt-2" id="copyRcvResp">Copy Response</button>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem">
+        <button class="btn btn-ghost btn-sm" id="copyRcvResp">Copy Response</button>
+        <button class="btn btn-ghost btn-sm" id="downloadRcvResp">Download .slatepack</button>
+      </div>
 
       <div class="card mt-2" style="background:var(--bg-secondary)">
-        <div class="step-label">Run in your terminal</div>
+        <div class="step-label">Option A — finalize from your terminal</div>
         <div class="cmd-box">grin-wallet finalize -i response.slatepack</div>
+        <div class="step-label" style="margin-top:1rem">Option B — paste the response slatepack below and finalize here</div>
+        <textarea id="rcvFinalizeSlate" rows="5"
+          placeholder="BEGINSLATEPACK.&#10;…&#10;ENDSLATEPACK."
+          style="font-family:monospace;font-size:.78rem;margin-top:.35rem"></textarea>
+        <div id="rcvFinalizeError" class="alert alert-danger mt-2" style="display:none"></div>
+        <button class="btn btn-primary btn-sm mt-2" id="rcvFinalizeBtn">Finalize Here →</button>
       </div>
 
       <div class="card mt-2 thank-you" style="background:var(--primary-dim)">
         <div class="big-emoji">🙏</div>
         <h2 style="margin:.5rem 0">Almost there!</h2>
         <p style="color:var(--text-muted);font-size:.9rem">
-          Run the finalize command in your wallet to complete the donation. Thank you!
+          Finalize from your terminal or paste the slatepack above. Thank you!
         </p>
       </div>
     </div>
@@ -415,6 +426,41 @@
 
   document.getElementById('copyRcvResp').addEventListener('click', () => {
     copyText(document.getElementById('rcvSlate2').textContent, document.getElementById('copyRcvResp'));
+  });
+
+  document.getElementById('downloadRcvResp').addEventListener('click', () => {
+    const text = document.getElementById('rcvSlate2').textContent;
+    if (!text) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+    a.download = 'response.slatepack';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  document.getElementById('rcvFinalizeBtn').addEventListener('click', async () => {
+    const slatepack = document.getElementById('rcvFinalizeSlate').value.trim();
+    if (!slatepack) { alert('Paste the response slatepack first.'); return; }
+    const btn   = document.getElementById('rcvFinalizeBtn');
+    const errEl = document.getElementById('rcvFinalizeError');
+    btn.disabled = true; btn.textContent = 'Finalizing…'; errEl.style.display = 'none';
+    try {
+      const res  = await fetch(SERVER + '/api/donate/finalize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slatepack }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Server error');
+      document.getElementById('rcv-s2').querySelector('.thank-you .big-emoji').textContent = '✅';
+      document.getElementById('rcv-s2').querySelector('.thank-you h2').textContent = 'Thank you!';
+      document.getElementById('rcv-s2').querySelector('.thank-you p').textContent = 'Your donation has been broadcast to the Grin network. You\'re awesome!';
+      document.getElementById('rcvFinalizeSlate').style.display = 'none';
+      btn.style.display = 'none';
+    } catch (err) {
+      errEl.textContent = err.message; errEl.style.display = '';
+      btn.disabled = false; btn.textContent = 'Finalize Here →';
+    }
   });
 
   // ── Pane 3: Invoice ───────────────────────────────────────────

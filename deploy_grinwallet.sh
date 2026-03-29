@@ -11,10 +11,14 @@
 #    — Optionally save passphrase for auto-start (plain text)
 #    — Update server .env with wallet binary path
 #
-#  Option 2: Manage Wallet Listener (tmux)
-#    — Start / Stop / Restart grin-wallet listen in tmux
-#    — Attach to session · View logs · Re-save passphrase
-#    — Enable / disable auto-start on reboot (cron @reboot)
+#  Option 2: Manage Services (two tmux sessions)
+#    — donate_grin_tor     : grin-wallet listen     (Foreign API  :3415)
+#    — donate_grin_slatepack: grin-wallet owner_api (Owner API    :3420)
+#    — Start / Stop / Restart each session independently
+#    — View logs · Re-save passphrase
+#    — Enable / disable auto-start on reboot (cron @reboot, both sessions)
+#    — Watchdog cron (every 30 min, port 3415)
+#    — nginx rate limiting on /pay-api/api/donate/ (6 req/min per IP)
 #
 #  Wallet files live in:
 #    /opt/office-tools/cmdgrinwallet/
@@ -647,6 +651,55 @@ disable_watchdog() {
   log "Watchdog cron disabled."
 }
 
+# ── nginx donate rate limiting ────────────────────────────────
+NGINX_RATE_CONF="/etc/nginx/conf.d/grin-donate-ratelimit.conf"
+NGINX_SITES_CONF="/etc/nginx/sites-available/office-tools"
+# fallback for nginx without sites-available (e.g. CentOS)
+[[ ! -d /etc/nginx/sites-available ]] && NGINX_SITES_CONF="/etc/nginx/conf.d/office-tools.conf"
+
+donate_ratelimit_enabled() {
+  [[ -f "$NGINX_RATE_CONF" ]]
+}
+
+enable_donate_ratelimit() {
+  # Write the limit_req_zone to a dedicated conf.d file (http context)
+  cat > "$NGINX_RATE_CONF" <<'RCONF'
+# Grin donate rate limit — max 6 requests/min per IP, burst 3
+limit_req_zone $binary_remote_addr zone=grin_donate:10m rate=6r/m;
+limit_req_status 429;
+RCONF
+
+  # Insert a specific /pay-api/api/donate/ location block BEFORE /pay-api/ in the server config.
+  # The frontend calls  /pay-api/api/donate/*  (GRIN_SERVER_URL is rewritten to /pay-api by deploy.sh).
+  # ^~ /pay-api/api/donate/ is a longer prefix than ^~ /pay-api/ so nginx matches it first.
+  if ! grep -q "limit_req zone=grin_donate" "$NGINX_SITES_CONF" 2>/dev/null; then
+    sed -i "s|location \^~ /pay-api/ {|location ^~ /pay-api/api/donate/ {\n        limit_req zone=grin_donate burst=3 nodelay;\n        proxy_pass            http://127.0.0.1:3001/api/donate/;\n        proxy_http_version    1.1;\n        proxy_set_header      Host              \$host;\n        proxy_set_header      X-Real-IP         \$remote_addr;\n        proxy_set_header      X-Forwarded-For   \$proxy_add_x_forwarded_for;\n        proxy_set_header      X-Forwarded-Proto \$scheme;\n    }\n\n    location ^~ /pay-api/ {|g" "$NGINX_SITES_CONF"
+  fi
+
+  if nginx -t 2>/dev/null; then
+    systemctl reload nginx
+    log "Donate rate limiting enabled: 6 req/min per IP, burst 3."
+    log "Config: ${NGINX_RATE_CONF}"
+  else
+    warn "nginx config test failed — reverting."
+    disable_donate_ratelimit
+  fi
+}
+
+disable_donate_ratelimit() {
+  rm -f "$NGINX_RATE_CONF"
+  # Remove the /pay-api/api/donate/ block we inserted
+  if [[ -f "$NGINX_SITES_CONF" ]]; then
+    sed -i '/location \^~ \/pay-api\/api\/donate\//,/^    }/d' "$NGINX_SITES_CONF"
+  fi
+  if nginx -t 2>/dev/null; then
+    systemctl reload nginx
+    log "Donate rate limiting disabled."
+  else
+    warn "nginx config test failed after removal — check ${NGINX_SITES_CONF} manually."
+  fi
+}
+
 enable_reboot_autostart() {
   write_listener_script
   write_owner_script
@@ -886,9 +939,18 @@ option_manage_service() {
     echo " 11) Enable watchdog  (cron every 30 min — auto-restart if port 3415 down)"
     echo " 12) Disable watchdog"
     echo " 13) View watchdog log"
+    echo
+    echo "  ── nginx rate limiting ─────────────────────────────────────"
+    if donate_ratelimit_enabled; then
+      echo -e "  Rate limit     : ${GRN}enabled${NC}  (6 req/min on /pay-api/api/donate/)"
+    else
+      echo -e "  Rate limit     : ${YEL}disabled${NC}"
+    fi
+    echo " 14) Enable donate rate limit   (nginx 6 req/min on /pay-api/donate/)"
+    echo " 15) Disable donate rate limit"
     echo "  0) Back"
     echo
-    read -r -p "Choice [0-13]: " svc_choice
+    read -r -p "Choice [0-15]: " svc_choice
 
     case "$svc_choice" in
       1) wallet_start
@@ -939,6 +1001,8 @@ option_manage_service() {
           warn "Watchdog log not found: ${wlog}  (watchdog may not have run yet)"
         fi
         ;;
+      14) enable_donate_ratelimit ;;
+      15) disable_donate_ratelimit ;;
       0) break ;;
       *) warn "Invalid choice." ;;
     esac

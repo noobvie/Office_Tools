@@ -1,6 +1,6 @@
 # Office Tools
 
-69 free, browser-based utilities for everyday office, productivity, and AI development work.
+68 free, browser-based utilities for everyday office, productivity, and AI development work.
 No build step, no framework, no tracking — everything runs locally in your browser.
 
 **Live site:** [https://tools.grin.money/](https://tools.grin.money/)
@@ -151,7 +151,7 @@ Office_Tools/
 - **Frontend:** HTML / CSS / Vanilla JS — no framework, no build step
 - **Backend (optional):** Node.js + Express — Grin donations, URL shortener, Pastebin, File Share (SQLite)
 - **YouTube backend:** Node.js + yt-dlp + ffmpeg (systemd service, port 9000)
-- **Crypto donations:** Grin wallet via tmux listener (port 3415) + watchdog cron
+- **Crypto donations:** Grin wallet — two tmux sessions: `donate_grin_tor` (Foreign API :3415, `grin-wallet listen`) + `donate_grin_slatepack` (Owner API :3420, `grin-wallet owner_api`) + watchdog cron
 - **AI (browser-only):** `@xenova/transformers` Whisper-tiny (Speech→Text) · `@imgly/background-removal` (Photo Editor)
 
 The frontend works fully without the backend. The backend is only needed for URL Shortener, Pastebin, File Share, and Grin donations.
@@ -188,7 +188,12 @@ Supports **Debian · Ubuntu · AlmaLinux · Rocky Linux · CentOS Stream**.
 
 ## Grin Wallet Setup
 
-The Grin wallet listener runs in a **tmux session** (not systemd) managed by `deploy_grinwallet.sh`:
+Two tmux sessions are managed by `deploy_grinwallet.sh` — no systemd required:
+
+| Session | Command | Port | Purpose |
+|---------|---------|------|---------|
+| `donate_grin_tor` | `grin-wallet listen` | 3415 | Foreign API — TOR direct-send + `receive_tx` |
+| `donate_grin_slatepack` | `grin-wallet owner_api` | 3420 | Owner API — invoice, finalize, slatepack encode/decode |
 
 ```bash
 sudo bash deploy_grinwallet.sh
@@ -197,11 +202,17 @@ sudo bash deploy_grinwallet.sh
 | Option | What it does |
 |--------|-------------|
 | 1) Integrate Grin Wallet | Download binary · init or recover wallet · configure node · save passphrase |
-| 2) Manage Listener | Start/Stop/Restart tmux session · view logs · re-save passphrase |
-| 2 → 7) Auto-start on reboot | Adds `@reboot` cron entry to start the tmux session after boot |
-| 2 → 9) Watchdog cron | Checks port 3415 every 30 min · restarts listener if down · logs to `grin-watchdog.log` |
+| 2) Manage Services | Start/Stop/Restart both tmux sessions · view logs · re-save passphrase |
+| 2 → 9) Auto-start on reboot | Adds `@reboot` cron entries for both sessions |
+| 2 → 11) Watchdog cron | Checks port 3415 every 30 min · restarts TOR listener if down · logs to `grin-watchdog.log` |
+| 2 → 14) nginx rate limit | Enables 6 req/min per IP on `/pay-api/api/donate/*` (burst 3) |
 
-The donate page badge (`pages/donate.html`) checks port 3415 via the Node.js backend (`/api/wallet/status`). If the port is reachable the badge shows green; otherwise it shows offline with a "check back in one hour" message — the watchdog handles automatic recovery.
+**Donation methods on `pages/donate.html`:**
+- **Method 1 — TOR direct send:** sender runs `grin-wallet send` over TOR directly to the server's onion address. Requires TOR.
+- **Method 2 — Slatepack:** sender generates a slatepack, pastes it here; server calls `receive_tx` and returns a response slatepack for the sender to finalize. No TOR required.
+- **Method 3 — Invoice:** server issues an invoice slatepack; sender pays it with `grin-wallet pay`; server finalizes automatically. No TOR required.
+
+The donate page badge checks port 3415 via the Node.js backend (`/api/wallet/status`). The watchdog (option 11) handles automatic recovery if the TOR listener goes down.
 
 ---
 
