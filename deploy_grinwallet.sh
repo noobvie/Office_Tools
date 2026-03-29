@@ -237,6 +237,8 @@ select_node_url() {
     "https://api.grin.money"
     "https://api.grinily.com"
     "https://api.grinnode.org"
+    "https://main.gri.mw"
+    "https://grincoin.org"
   )
 
   echo "  Checking external node availability…" >&2
@@ -268,15 +270,15 @@ select_node_url() {
   else
     local_flag="${YEL}○ install it by Grin Node Toolkit${NC}"
   fi
-  printf "  4) %-36s %b\n" "Local node  127.0.0.1:3413" "$local_flag" >&2
+  printf "  6) %-36s %b\n" "Local node  127.0.0.1:3413" "$local_flag" >&2
   echo "  0) Back (return to main menu)" >&2
   echo >&2
 
   local choice
-  read -r -p "Choice [0-4]: " choice >&2
+  read -r -p "Choice [0-6]: " choice >&2
 
   case "$choice" in
-    1|2|3)
+    1|2|3|4|5)
       local selected_url="${ext_servers[$((choice-1))]}"
       local selected_status="${ext_statuses[$((choice-1))]}"
       if [[ "$selected_status" == "offline" ]]; then
@@ -290,7 +292,7 @@ select_node_url() {
       fi
       echo "$selected_url"
       ;;
-    4)
+    6)
       warn "Remember to install a local Grin node before starting the wallet listener." >&2
       echo "http://127.0.0.1:3413"
       ;;
