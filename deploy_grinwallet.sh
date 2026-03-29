@@ -872,41 +872,35 @@ option_manage_service() {
     echo "  1) Start TOR listener"
     echo "  2) Stop TOR listener"
     echo "  3) Restart TOR listener"
-    echo "  4) Attach to TOR listener tmux  (Ctrl-b d to detach)"
-    echo "  5) View wallet log (last 60 lines)"
+    echo "  4) View wallet log (last 60 lines)"
     echo
     echo "  ── Owner API (donate_grin_slatepack) ──────────────────────"
-    echo "  6) Start Owner API"
-    echo "  7) Stop Owner API"
-    echo "  8) Restart Owner API"
-    echo "  9) Attach to Owner API tmux  (Ctrl-b d to detach)"
+    echo "  5) Start Owner API"
+    echo "  6) Stop Owner API"
+    echo "  7) Restart Owner API"
     echo
     echo "  ── Settings ───────────────────────────────────────────────"
-    echo " 10) Re-save passphrase"
-    echo " 11) Enable auto-start on reboot  (cron @reboot)"
-    echo " 12) Disable auto-start on reboot"
-    echo " 13) Enable watchdog  (cron every 30 min — auto-restart if port 3415 down)"
-    echo " 14) Disable watchdog"
-    echo " 15) View watchdog log"
+    echo "  8) Re-save passphrase"
+    echo "  9) Enable auto-start on reboot  (cron @reboot)"
+    echo " 10) Disable auto-start on reboot"
+    echo " 11) Enable watchdog  (cron every 30 min — auto-restart if port 3415 down)"
+    echo " 12) Disable watchdog"
+    echo " 13) View watchdog log"
     echo "  0) Back"
     echo
-    read -r -p "Choice [0-15]: " svc_choice
+    read -r -p "Choice [0-13]: " svc_choice
 
     case "$svc_choice" in
-      1) wallet_start ;;
+      1) wallet_start
+         echo
+         warn "To view output run outside this script:  tmux attach -t ${TMUX_SESSION}"
+         ;;
       2) wallet_stop ;;
-      3) wallet_stop; sleep 1; wallet_start ;;
+      3) wallet_stop; sleep 1; wallet_start
+         echo
+         warn "To view output run outside this script:  tmux attach -t ${TMUX_SESSION}"
+         ;;
       4)
-        if [[ -n "${TMUX:-}" ]]; then
-          warn "Already inside a tmux session. Run this script outside tmux to avoid nesting."
-        elif wallet_is_running; then
-          log "Attaching to tmux session '${TMUX_SESSION}' — press Ctrl-b d to detach."
-          tmux attach -t "$TMUX_SESSION"
-        else
-          warn "TOR listener is not running. Start it first (option 1)."
-        fi
-        ;;
-      5)
         local logfile="${WALLET_DIR}/grin-wallet.log"
         if [[ -f "$logfile" ]]; then
           tail -n 60 "$logfile"
@@ -914,20 +908,16 @@ option_manage_service() {
           warn "Log file not found: ${logfile}"
         fi
         ;;
-      6) owner_start ;;
-      7) owner_stop ;;
-      8) owner_stop; sleep 1; owner_start ;;
-      9)
-        if [[ -n "${TMUX:-}" ]]; then
-          warn "Already inside a tmux session. Run this script outside tmux to avoid nesting."
-        elif owner_is_running; then
-          log "Attaching to tmux session '${TMUX_SESSION_OWNER}' — press Ctrl-b d to detach."
-          tmux attach -t "$TMUX_SESSION_OWNER"
-        else
-          warn "Owner API is not running. Start it first (option 6)."
-        fi
-        ;;
-      10)
+      5) owner_start
+         echo
+         warn "To view output run outside this script:  tmux attach -t ${TMUX_SESSION_OWNER}"
+         ;;
+      6) owner_stop ;;
+      7) owner_stop; sleep 1; owner_start
+         echo
+         warn "To view output run outside this script:  tmux attach -t ${TMUX_SESSION_OWNER}"
+         ;;
+      8)
         rm -f "$PASS_FILE"
         local new_pass
         if new_pass=$(read_pass_confirmed); then
@@ -937,11 +927,11 @@ option_manage_service() {
           warn "Cancelled."
         fi
         ;;
-      11) enable_reboot_autostart ;;
-      12) disable_reboot_autostart ;;
-      13) enable_watchdog ;;
-      14) disable_watchdog ;;
-      15)
+      9) enable_reboot_autostart ;;
+      10) disable_reboot_autostart ;;
+      11) enable_watchdog ;;
+      12) disable_watchdog ;;
+      13)
         local wlog="/opt/office-tools/data/grin-watchdog.log"
         if [[ -f "$wlog" ]]; then
           tail -n 60 "$wlog"

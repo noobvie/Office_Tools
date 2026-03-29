@@ -186,15 +186,19 @@ Note: badge only reflects donate_grin_tor (port 3415).
 | 1 | Start TOR listener  (`donate_grin_tor`) |
 | 2 | Stop TOR listener |
 | 3 | Restart TOR listener |
-| 4 | Attach to TOR listener tmux |
-| 5 | View wallet log |
-| 6 | Start Owner API  (`donate_grin_slatepack`) |
-| 7 | Stop Owner API |
-| 8 | Restart Owner API |
-| 9 | Attach to Owner API tmux |
-| 10 | Re-save passphrase |
-| 11 | Enable auto-start on reboot (both sessions) |
-| 12 | Disable auto-start on reboot |
-| 13 | Enable watchdog cron (port 3415, every 30 min) |
-| 14 | Disable watchdog |
-| 15 | View watchdog log |
+| 4 | View wallet log |
+| 5 | Start Owner API  (`donate_grin_slatepack`) |
+| 6 | Stop Owner API |
+| 7 | Restart Owner API |
+| 8 | Re-save passphrase |
+| 9 | Enable auto-start on reboot (both sessions) |
+| 10 | Disable auto-start on reboot |
+| 11 | Enable watchdog cron (port 3415, every 30 min) |
+| 12 | Disable watchdog |
+| 13 | View watchdog log |
+
+To view live tmux output, run **outside this script**:
+```bash
+tmux attach -t donate_grin_tor        # TOR listener
+tmux attach -t donate_grin_slatepack  # Owner API
+```
