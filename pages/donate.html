@@ -322,7 +322,7 @@
 
   // ── Populate static address fields ───────────────────────────
   document.getElementById('torAddress').textContent = GRIN_ADDR;
-  document.getElementById('sendCmd').textContent    = `grin-wallet send -d ${GRIN_ADDR} <amount>`;
+  document.getElementById('sendCmd').textContent    = `grin-wallet send -m -d ${GRIN_ADDR} <amount>`;
 
   // ── Wallet status badge ───────────────────────────────────────
   async function checkWalletStatus() {
@@ -379,14 +379,14 @@
         rcvAmount = parseFloat(btn.dataset.amount);
       }
       document.getElementById('sendCmd').textContent =
-        `grin-wallet send -d ${GRIN_ADDR} ${rcvAmount ?? '<amount>'}`;
+        `grin-wallet send -m -d ${GRIN_ADDR} ${rcvAmount ?? '<amount>'}`;
     });
   });
   document.getElementById('rcvCustomAmt').addEventListener('input', () => {
     const v = parseFloat(document.getElementById('rcvCustomAmt').value);
     rcvAmount = (v >= 1) ? v : null;
     document.getElementById('sendCmd').textContent =
-      `grin-wallet send -d ${GRIN_ADDR} ${rcvAmount ?? '<amount>'}`;
+      `grin-wallet send -m -d ${GRIN_ADDR} ${rcvAmount ?? '<amount>'}`;
   });
 
   // ── Pane 2: Receive ───────────────────────────────────────────

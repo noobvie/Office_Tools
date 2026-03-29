@@ -35,6 +35,16 @@ const FOREIGN_API_URL         = process.env.GRIN_FOREIGN_API            || 'http
 const OWNER_API_URL           = process.env.GRIN_OWNER_API              || 'http://127.0.0.1:3420/v3/owner';
 const FOREIGN_SECRET_FILE     = process.env.GRIN_API_SECRET_FILE        || '/opt/office-tools/cmdgrinwallet/wallet_data/.api_secret';
 const OWNER_SECRET_FILE       = process.env.GRIN_OWNER_API_SECRET_FILE  || '/opt/office-tools/cmdgrinwallet/.owner_api_secret';
+const PASS_FILE               = process.env.GRIN_WALLET_PASS_FILE       || '/opt/office-tools/data/.temp';
+
+// Read wallet passphrase once at startup — needed for open_wallet call
+function readWalletPass() {
+  try {
+    const p = fs.readFileSync(PASS_FILE, 'utf8').replace(/[\r\n]/g, '');
+    return p || '';
+  } catch { return ''; }
+}
+const WALLET_PASS = readWalletPass();
 
 // ── SQLite tools DB ───────────────────────────────────────────
 const TOOLS_DB_PATH = process.env.TOOLS_DB    || '/opt/office-tools/data/tools.db';
@@ -151,7 +161,7 @@ async function ownerApiSession() {
   const sharedKey = ecdh.computeSecret(Buffer.from(serverPubKeyHex, 'hex')); // 32-byte secp256k1 x-coord
 
   // Step 2 — open_wallet to get session token
-  const token = await encryptedOwnerCall(headers, sharedKey, 'open_wallet', { name: null, slatepack_secret: null });
+  const token = await encryptedOwnerCall(headers, sharedKey, 'open_wallet', { name: null, password: WALLET_PASS });
 
   return { headers, sharedKey, token };
 }
@@ -433,4 +443,5 @@ app.listen(PORT, () => {
   console.log(`Office Tools server running on port ${PORT}`);
   console.log(`Foreign API:  ${FOREIGN_API_URL}`);
   console.log(`Owner API:    ${OWNER_API_URL}`);
+  console.log(`Wallet pass:  ${WALLET_PASS ? `loaded from ${PASS_FILE}` : `not set (${PASS_FILE} missing or empty)`}`);
 });
