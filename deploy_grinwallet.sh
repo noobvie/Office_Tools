@@ -670,39 +670,81 @@ donate_ratelimit_enabled() {
 enable_donate_ratelimit() {
   # Write the limit_req_zone to a dedicated conf.d file (http context)
   cat > "$NGINX_RATE_CONF" <<'RCONF'
-# Grin donate rate limit — max 6 requests/min per IP, burst 3
+# Grin donate rate limit — 20 req/min per IP, burst 3
 limit_req_zone $binary_remote_addr zone=grin_donate:10m rate=20r/m;
 limit_req_status 429;
 RCONF
 
-  # Insert a specific /pay-api/api/donate/ location block BEFORE /pay-api/ in the server config.
-  # The frontend calls  /pay-api/api/donate/*  (GRIN_SERVER_URL is rewritten to /pay-api by deploy.sh).
-  # ^~ /pay-api/api/donate/ is a longer prefix than ^~ /pay-api/ so nginx matches it first.
-  if ! grep -q "limit_req zone=grin_donate" "$NGINX_SITES_CONF" 2>/dev/null; then
-    sed -i "s|location \^~ /pay-api/ {|location ^~ /pay-api/api/donate/ {\n        limit_req zone=grin_donate burst=3 nodelay;\n        proxy_pass            http://127.0.0.1:3001/api/donate/;\n        proxy_http_version    1.1;\n        proxy_set_header      Host              \$host;\n        proxy_set_header      X-Real-IP         \$remote_addr;\n        proxy_set_header      X-Forwarded-For   \$proxy_add_x_forwarded_for;\n        proxy_set_header      X-Forwarded-Proto \$scheme;\n    }\n\n    location ^~ /pay-api/ {|g" "$NGINX_SITES_CONF"
+  # Insert a /pay-api/api/donate/ location block BEFORE /pay-api/ using awk.
+  # The frontend calls /pay-api/api/donate/* (GRIN_SERVER_URL is rewritten to /pay-api by deploy.sh).
+  # Wrapped in comment markers so disable_donate_ratelimit can remove it reliably.
+  if ! grep -q "BEGIN grin-donate-ratelimit" "$NGINX_SITES_CONF" 2>/dev/null; then
+    if ! grep -q "location \^~ /pay-api/" "$NGINX_SITES_CONF" 2>/dev/null; then
+      warn "Could not find 'location ^~ /pay-api/' in ${NGINX_SITES_CONF}"
+      warn "Is the office-tools nginx config at that path?"
+      rm -f "$NGINX_RATE_CONF"
+      return 1
+    fi
+
+    # Write the block to a temp file using a single-quoted heredoc so that
+    # $host / $remote_addr etc. are NOT expanded by the shell.
+    local _blk; _blk=$(mktemp)
+    cat > "$_blk" <<'LOCBLOCK'
+    # BEGIN grin-donate-ratelimit
+    location ^~ /pay-api/api/donate/ {
+        limit_req zone=grin_donate burst=3 nodelay;
+        proxy_pass            http://127.0.0.1:3001/api/donate/;
+        proxy_http_version    1.1;
+        proxy_set_header      Host              $host;
+        proxy_set_header      X-Real-IP         $remote_addr;
+        proxy_set_header      X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header      X-Forwarded-Proto $scheme;
+    }
+    # END grin-donate-ratelimit
+
+LOCBLOCK
+
+    # Insert the block before the /pay-api/ location line using awk.
+    # awk reads $host etc. from the file — it never interprets them as awk fields.
+    awk -v blk="$_blk" '
+/location \^\~ \/pay-api\/ \{/ {
+  while ((getline line < blk) > 0) print line
+}
+{ print }' "$NGINX_SITES_CONF" > "${NGINX_SITES_CONF}.tmp" \
+      && mv "${NGINX_SITES_CONF}.tmp" "$NGINX_SITES_CONF"
+    rm -f "$_blk"
   fi
 
-  if nginx -t 2>/dev/null; then
+  local nginx_err
+  nginx_err=$(nginx -t 2>&1)
+  if echo "$nginx_err" | grep -q "successful"; then
     systemctl reload nginx
-    log "Donate rate limiting enabled: 6 req/min per IP, burst 3."
-    log "Config: ${NGINX_RATE_CONF}"
+    log "Donate rate limiting enabled: 20 req/min per IP, burst 3."
+    log "Zone config : ${NGINX_RATE_CONF}"
+    log "Site config : ${NGINX_SITES_CONF}"
   else
     warn "nginx config test failed — reverting."
+    echo "$nginx_err"
     disable_donate_ratelimit
   fi
 }
 
 disable_donate_ratelimit() {
   rm -f "$NGINX_RATE_CONF"
-  # Remove the /pay-api/api/donate/ block we inserted
+  # Remove the block between comment markers
   if [[ -f "$NGINX_SITES_CONF" ]]; then
-    sed -i '/location \^~ \/pay-api\/api\/donate\//,/^    }/d' "$NGINX_SITES_CONF"
+    sed -i '/# BEGIN grin-donate-ratelimit/,/# END grin-donate-ratelimit/d' "$NGINX_SITES_CONF"
+    # Remove any blank line left behind before the /pay-api/ block
+    sed -i '/^$/{ N; /^\n[[:space:]]*location/{ s/^\n//; }; }' "$NGINX_SITES_CONF"
   fi
-  if nginx -t 2>/dev/null; then
+  local nginx_err
+  nginx_err=$(nginx -t 2>&1)
+  if echo "$nginx_err" | grep -q "successful"; then
     systemctl reload nginx
     log "Donate rate limiting disabled."
   else
     warn "nginx config test failed after removal — check ${NGINX_SITES_CONF} manually."
+    echo "$nginx_err"
   fi
 }
 
