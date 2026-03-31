@@ -153,6 +153,7 @@ const OT_TOOLS = [
   { name: 'What Is My IP?',          path: 'my-ip',                 cat: '🌐 Network & Web',        icon: '🌐' },
   { name: 'IP Location Lookup',      path: 'ip-location',           cat: '🌐 Network & Web',        icon: '📍' },
   { name: 'Campaign URL Builder',    path: 'utm-builder',           cat: '🌐 Network & Web',        icon: '🔗' },
+  { name: 'Port Checker',            path: 'port-checker',          cat: '🌐 Network & Web',        icon: '🔌' },
   // 🖼️ Visual & Design
   { name: 'Screenshot Beautifier',   path: 'screenshot-beautifier', cat: '🖼️ Visual & Design',     icon: '🖼️' },
   { name: 'Contrast Checker',        path: 'contrast-checker',      cat: '🖼️ Visual & Design',     icon: '♿' },

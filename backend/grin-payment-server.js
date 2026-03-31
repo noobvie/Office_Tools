@@ -434,6 +434,29 @@ app.get('/api/wallet/status', async (req, res) => {
   }
 });
 
+// ── Port Checker — TCP connect probe ─────────────────────────
+const net = require('net');
+app.get('/api/portcheck', (req, res) => {
+  const host = String(req.query.host || '').trim();
+  const port = parseInt(req.query.port, 10);
+  if (!host || isNaN(port) || port < 1 || port > 65535) {
+    return res.status(400).json({ error: 'Invalid host or port' });
+  }
+  const TIMEOUT = 4000;
+  const socket  = new net.Socket();
+  let done = false;
+  function finish(open) {
+    if (done) return; done = true;
+    socket.destroy();
+    res.json({ host, port, open });
+  }
+  socket.setTimeout(TIMEOUT);
+  socket.once('connect', () => finish(true));
+  socket.once('timeout',  () => finish(false));
+  socket.once('error',    () => finish(false));
+  socket.connect(port, host);
+});
+
 // ── Health ────────────────────────────────────────────────────
 app.get('/api/health', (_, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 

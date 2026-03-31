@@ -1,6 +1,6 @@
 # Office Tools
 
-68 free, browser-based utilities for everyday office, productivity, and AI development work.
+69 free, browser-based utilities for everyday office, productivity, and AI development work.
 No build step, no framework, no tracking — everything runs locally in your browser.
 
 **Live site:** [https://tools.grin.money/](https://tools.grin.money/)
@@ -88,6 +88,7 @@ sudo bash Office_Tools/deploy.sh
 | IP Location Lookup | IPv4/IPv6/domain — country, city, ISP, ASN, VPN/proxy detection, map |
 | Campaign URL Builder | Build UTM-tagged URLs for Google Analytics with QR code |
 | CSR Decoder | Decode a CSR — subject, key size, SANs, fingerprints. Fully local |
+| Port Checker | Check if TCP ports are open on any host — common services presets (SSH, RDP, HTTP, MySQL…) + all Grin mainnet & testnet ports (3413–3420 / 13413–13420) |
 
 ### 🖼️ Media
 | Tool | Description |

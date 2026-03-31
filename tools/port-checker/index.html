@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Port Checker — Test If TCP Ports Are Open Online | Office Tools</title>
+  <meta name="description" content="Check if TCP ports are open on any IP address or hostname. Presets for common services (SSH, RDP, HTTP, HTTPS, MySQL, FTP) and all Grin mainnet & testnet ports. Free, no login required.">
+  <meta name="keywords" content="port checker, check if port is open, TCP port scanner, open port test, firewall port check, port scan online, is port open, check open ports, Grin node ports, Grin wallet ports, SSH port 22, RDP port 3389, HTTP port 80, HTTPS port 443, MySQL port 3306, FTP port 21, Grin mainnet ports, Grin testnet ports, network diagnostics, firewall test">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Port Checker — Test If TCP Ports Are Open Online">
+  <meta property="og:description" content="Check if TCP ports are open on any IP or hostname. Presets for SSH, RDP, HTTP, HTTPS, MySQL and all Grin mainnet & testnet ports. Free, no login.">
+  <meta property="og:url" content="https://tools.grin.money/tools/port-checker/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Port Checker — Test If TCP Ports Are Open Online">
+  <meta name="twitter:description" content="Check if TCP ports are open on any IP or hostname. Presets for common services and all Grin mainnet & testnet ports. Free, no login.">
+  <link rel="canonical" href="https://tools.grin.money/tools/port-checker/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Port Checker","description":"Check if TCP ports are open on any IP address or hostname. Presets for common services (SSH, RDP, HTTP, HTTPS, MySQL, FTP) and all Grin mainnet & testnet ports.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/port-checker/"}</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .pc-host-row {
+      display: flex;
+      gap: .6rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .pc-host-row input[type="text"] {
+      flex: 1;
+      min-width: 180px;
+      font-size: 1rem;
+      padding: .55rem .85rem;
+      border-radius: var(--radius);
+      border: 1.5px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text);
+      outline: none;
+      transition: border-color var(--transition);
+    }
+    .pc-host-row input[type="text"]:focus { border-color: var(--primary); }
+
+    .preset-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .45rem;
+      margin-top: .75rem;
+    }
+    .preset-btn {
+      padding: .3rem .9rem;
+      border-radius: 50px;
+      border: 1.5px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      font-size: .8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition);
+      white-space: nowrap;
+    }
+    .preset-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .preset-btn.grin-main { border-color: #f0a500; color: #f0a500; }
+    .preset-btn.grin-main:hover { background: rgba(240,165,0,.1); }
+    .preset-btn.grin-test { border-color: #4caf8e; color: #4caf8e; }
+    .preset-btn.grin-test:hover { background: rgba(76,175,142,.1); }
+    .preset-btn.grin-all { border-color: var(--primary); color: var(--primary); font-weight: 700; }
+    .preset-btn.grin-all:hover { background: var(--primary-dim, color-mix(in srgb, var(--primary) 12%, transparent)); }
+    .preset-btn.clear-btn { border-color: var(--danger, #e05260); color: var(--danger, #e05260); }
+    .preset-btn.clear-btn:hover { background: rgba(224,82,96,.08); }
+
+    .port-groups {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: .75rem;
+    }
+    @media (max-width: 600px) { .port-groups { grid-template-columns: 1fr; } }
+
+    .port-group {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .75rem;
+    }
+    .port-group-title {
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--text-muted);
+      margin-bottom: .55rem;
+    }
+    .port-group-title.grin-main-label { color: #f0a500; }
+    .port-group-title.grin-test-label { color: #4caf8e; }
+
+    .port-item {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .22rem 0;
+      cursor: pointer;
+      font-size: .88rem;
+    }
+    .port-item input[type="checkbox"] {
+      accent-color: var(--primary);
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .port-item .port-num {
+      font-family: 'Courier New', monospace;
+      font-weight: 700;
+      font-size: .85rem;
+      min-width: 52px;
+      color: var(--primary);
+    }
+    .port-item .port-svc {
+      color: var(--text-muted);
+      font-size: .82rem;
+    }
+
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      flex-wrap: wrap;
+      margin-top: .9rem;
+    }
+    .check-row .btn { min-width: 140px; }
+
+    .progress-wrap {
+      display: none;
+      flex: 1;
+      min-width: 140px;
+    }
+    .progress-wrap.visible { display: block; }
+    .progress-bar-track {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      height: 10px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--primary);
+      border-radius: 50px;
+      transition: width .2s ease;
+      width: 0%;
+    }
+    .progress-label {
+      font-size: .75rem;
+      color: var(--text-muted);
+      margin-top: .25rem;
+      text-align: right;
+    }
+
+    #resultsSection { display: none; margin-top: 1.25rem; }
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .88rem;
+    }
+    .results-table th {
+      text-align: left;
+      padding: .45rem .65rem;
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--text-muted);
+      border-bottom: 2px solid var(--border);
+    }
+    .results-table td {
+      padding: .42rem .65rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .results-table tr:last-child td { border-bottom: none; }
+    .results-table .port-col { font-family: 'Courier New', monospace; font-weight: 700; color: var(--primary); }
+    .results-table .svc-col  { color: var(--text-muted); font-size: .82rem; }
+    .status-open    { color: #4caf8e; font-weight: 700; }
+    .status-closed  { color: var(--danger, #e05260); font-weight: 700; }
+    .status-pending { color: var(--text-muted); }
+
+    .result-summary {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      padding: .6rem 0 .3rem;
+      font-size: .84rem;
+    }
+    .sum-open   { color: #4caf8e; font-weight: 700; }
+    .sum-closed { color: var(--danger, #e05260); font-weight: 700; }
+    .sum-pending { color: var(--text-muted); }
+
+    .note-box {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--primary);
+      border-radius: var(--radius);
+      padding: .65rem .9rem;
+      font-size: .82rem;
+      color: var(--text-muted);
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo">← Office Tools</a>
+  <div style="flex:1"></div>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <div class="tool-header-icon">🔌</div>
+    <div>
+      <h1 class="tool-title">Port Checker</h1>
+      <p class="tool-desc">Test if TCP ports are open on any IP address or hostname. Checks are performed server-side, reflecting the server's network perspective.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <!-- Host input -->
+    <div class="field-label">Host (IP address or hostname)</div>
+    <div class="pc-host-row">
+      <input type="text" id="hostInput" placeholder="e.g. 192.168.1.1 or example.com" autocomplete="off" spellcheck="false">
+    </div>
+
+    <!-- Presets -->
+    <div class="field-label" style="margin-top:1rem">Port Presets</div>
+    <div class="preset-row">
+      <button class="preset-btn" onclick="selectCommon()">⚙️ Common Services</button>
+      <button class="preset-btn grin-main" onclick="selectMainnet()">🟡 Grin Mainnet</button>
+      <button class="preset-btn grin-test" onclick="selectTestnet()">🟢 Grin Testnet</button>
+      <button class="preset-btn grin-all" onclick="selectAllGrin()">⚡ All Grin Ports</button>
+      <button class="preset-btn clear-btn" onclick="clearAll()">✕ Clear All</button>
+    </div>
+
+    <!-- Port selection grid -->
+    <div class="field-label" style="margin-top:1rem">Select Ports to Check</div>
+    <div class="port-groups">
+
+      <!-- Common services -->
+      <div class="port-group">
+        <div class="port-group-title">Common Services</div>
+        <label class="port-item"><input type="checkbox" class="port-cb common" value="21">   <span class="port-num">21</span>   <span class="port-svc">FTP</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb common" value="22">   <span class="port-num">22</span>   <span class="port-svc">SSH</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb common" value="25">   <span class="port-num">25</span>   <span class="port-svc">SMTP</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb common" value="53">   <span class="port-num">53</span>   <span class="port-svc">DNS</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb common" value="80">   <span class="port-num">80</span>   <span class="port-svc">HTTP</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb common" value="110">  <span class="port-num">110</span>  <span class="port-svc">POP3</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb common" value="143">  <span class="port-num">143</span>  <span class="port-svc">IMAP</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb common" value="443">  <span class="port-num">443</span>  <span class="port-svc">HTTPS</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb common" value="445">  <span class="port-num">445</span>  <span class="port-svc">SMB</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb common" value="3306"> <span class="port-num">3306</span> <span class="port-svc">MySQL</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb common" value="3389"> <span class="port-num">3389</span> <span class="port-svc">RDP / WTS</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb common" value="5432"> <span class="port-num">5432</span> <span class="port-svc">PostgreSQL</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb common" value="5900"> <span class="port-num">5900</span> <span class="port-svc">VNC</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb common" value="6379"> <span class="port-num">6379</span> <span class="port-svc">Redis</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb common" value="8080"> <span class="port-num">8080</span> <span class="port-svc">HTTP Alt</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb common" value="8443"> <span class="port-num">8443</span> <span class="port-svc">HTTPS Alt</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb common" value="27017"><span class="port-num">27017</span><span class="port-svc">MongoDB</span></label>
+      </div>
+
+      <!-- Grin ports -->
+      <div class="port-group">
+        <div class="port-group-title grin-main-label">🟡 Grin Mainnet</div>
+        <label class="port-item"><input type="checkbox" class="port-cb grin mainnet" value="3413"><span class="port-num">3413</span><span class="port-svc">Node HTTP API</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb grin mainnet" value="3414"><span class="port-num">3414</span><span class="port-svc">Node P2P</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb grin mainnet" value="3415"><span class="port-num">3415</span><span class="port-svc">Wallet Foreign API</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb grin mainnet" value="3416"><span class="port-num">3416</span><span class="port-svc">Stratum Mining</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb grin mainnet" value="3420"><span class="port-num">3420</span><span class="port-svc">Wallet Owner API</span></label>
+
+        <div class="port-group-title grin-test-label" style="margin-top:.85rem">🟢 Grin Testnet</div>
+        <label class="port-item"><input type="checkbox" class="port-cb grin testnet" value="13413"><span class="port-num">13413</span><span class="port-svc">Node HTTP API</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb grin testnet" value="13414"><span class="port-num">13414</span><span class="port-svc">Node P2P</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb grin testnet" value="13415"><span class="port-num">13415</span><span class="port-svc">Wallet Foreign API</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb grin testnet" value="13416"><span class="port-num">13416</span><span class="port-svc">Stratum Mining</span></label>
+        <label class="port-item"><input type="checkbox" class="port-cb grin testnet" value="13420"><span class="port-num">13420</span><span class="port-svc">Wallet Owner API</span></label>
+      </div>
+
+    </div><!-- /port-groups -->
+
+    <!-- Action row -->
+    <div class="check-row">
+      <button class="btn btn-primary" id="checkBtn" onclick="runChecks()">🔍 Check Selected Ports</button>
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill"></div></div>
+        <div class="progress-label" id="progressLabel"></div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="resultsSection">
+      <div class="result-summary" id="resultSummary"></div>
+      <div class="table-wrap">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th>Port</th>
+              <th>Service</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="note-box">
+      ℹ️ Checks are performed via a server-side TCP probe. Results reflect what the server can reach — not your local network. A <strong>closed</strong> result may mean the port is firewalled or the service is not running.
+    </div>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+/* ── Port service name lookup ── */
+const PORT_NAMES = {
+  21: 'FTP', 22: 'SSH', 25: 'SMTP', 53: 'DNS', 80: 'HTTP',
+  110: 'POP3', 143: 'IMAP', 443: 'HTTPS', 445: 'SMB',
+  3306: 'MySQL', 3389: 'RDP / WTS', 5432: 'PostgreSQL',
+  5900: 'VNC', 6379: 'Redis', 8080: 'HTTP Alt', 8443: 'HTTPS Alt',
+  27017: 'MongoDB',
+  3413: 'Grin Node HTTP API', 3414: 'Grin Node P2P',
+  3415: 'Grin Wallet Foreign API', 3416: 'Grin Stratum Mining',
+  3420: 'Grin Wallet Owner API',
+  13413: 'Grin Testnet Node HTTP API', 13414: 'Grin Testnet Node P2P',
+  13415: 'Grin Testnet Wallet Foreign API', 13416: 'Grin Testnet Stratum Mining',
+  13420: 'Grin Testnet Wallet Owner API',
+};
+
+/* ── Preset selectors ── */
+function selectCommon() {
+  document.querySelectorAll('.port-cb.common').forEach(cb => cb.checked = true);
+}
+function selectMainnet() {
+  document.querySelectorAll('.port-cb.mainnet').forEach(cb => cb.checked = true);
+}
+function selectTestnet() {
+  document.querySelectorAll('.port-cb.testnet').forEach(cb => cb.checked = true);
+}
+function selectAllGrin() {
+  document.querySelectorAll('.port-cb.grin').forEach(cb => cb.checked = true);
+}
+function clearAll() {
+  document.querySelectorAll('.port-cb').forEach(cb => cb.checked = false);
+  document.getElementById('resultsSection').style.display = 'none';
+}
+
+/* ── Run checks ── */
+async function runChecks() {
+  const host = document.getElementById('hostInput').value.trim();
+  if (!host) {
+    document.getElementById('hostInput').focus();
+    document.getElementById('hostInput').style.borderColor = 'var(--danger, #e05260)';
+    setTimeout(() => document.getElementById('hostInput').style.borderColor = '', 1500);
+    return;
+  }
+
+  const checked = [...document.querySelectorAll('.port-cb:checked')];
+  if (!checked.length) return;
+
+  const ports = checked.map(cb => parseInt(cb.value, 10)).sort((a, b) => a - b);
+
+  // Setup UI
+  const btn = document.getElementById('checkBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Checking…';
+
+  const progressWrap = document.getElementById('progressWrap');
+  const progressFill = document.getElementById('progressFill');
+  const progressLabel = document.getElementById('progressLabel');
+  progressWrap.classList.add('visible');
+  progressFill.style.width = '0%';
+
+  const resultsSection = document.getElementById('resultsSection');
+  const tbody = document.getElementById('resultsBody');
+  const summary = document.getElementById('resultSummary');
+  resultsSection.style.display = 'block';
+
+  // Seed table rows as pending
+  tbody.innerHTML = '';
+  for (const port of ports) {
+    const tr = document.createElement('tr');
+    tr.id = 'row-' + port;
+    tr.innerHTML = `
+      <td class="port-col">${port}</td>
+      <td class="svc-col">${PORT_NAMES[port] || '—'}</td>
+      <td class="status-pending" id="st-${port}">⏳ checking…</td>
+    `;
+    tbody.appendChild(tr);
+  }
+  summary.innerHTML = `<span class="sum-pending">Checking ${ports.length} port${ports.length > 1 ? 's' : ''}…</span>`;
+
+  const serverBase = (window.OT_CONFIG && OT_CONFIG.GRIN_SERVER_URL) || '';
+  let openCount = 0, closedCount = 0;
+
+  for (let i = 0; i < ports.length; i++) {
+    const port = ports[i];
+    const stEl = document.getElementById('st-' + port);
+
+    try {
+      const url = `${serverBase}/api/portcheck?host=${encodeURIComponent(host)}&port=${port}`;
+      const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!resp.ok) throw new Error('server error');
+      const data = await resp.json();
+      if (data.open) {
+        stEl.className = 'status-open';
+        stEl.textContent = '✅ Open';
+        openCount++;
+      } else {
+        stEl.className = 'status-closed';
+        stEl.textContent = '❌ Closed';
+        closedCount++;
+      }
+    } catch (e) {
+      stEl.className = 'status-closed';
+      stEl.textContent = '⏱ Timeout / Error';
+      closedCount++;
+    }
+
+    const pct = Math.round(((i + 1) / ports.length) * 100);
+    progressFill.style.width = pct + '%';
+    progressLabel.textContent = `${i + 1} / ${ports.length}`;
+  }
+
+  // Final summary
+  summary.innerHTML = `
+    <span class="sum-open">✅ Open: ${openCount}</span>
+    <span class="sum-closed">❌ Closed / Filtered: ${closedCount}</span>
+    <span class="sum-pending">Host: <strong>${escHtml(host)}</strong></span>
+  `;
+
+  btn.disabled = false;
+  btn.textContent = '🔍 Check Selected Ports';
+  setTimeout(() => {
+    progressWrap.classList.remove('visible');
+    progressFill.style.width = '0%';
+  }, 1500);
+}
+
+/* Enter key on host input triggers check */
+document.getElementById('hostInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runChecks();
+});
+</script>
+</body>
+</html>
