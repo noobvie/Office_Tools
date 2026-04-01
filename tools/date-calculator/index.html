@@ -319,7 +319,7 @@
 
     <!-- ── Duration Adder ──────────────────────────────────── -->
     <div class="tab-pane" id="durTab">
-      <p class="hint-text" style="margin-bottom:.75rem">Add or subtract multiple durations. Format: <code>1h30m</code>, <code>45m</code>, <code>2h</code>, <code>90s</code>, or <code>HH:MM:SS</code>.</p>
+      <p class="hint-text" style="margin-bottom:.75rem">Add or subtract multiple durations. Format: <code>1h30m</code>, <code>1h30</code>, <code>45m</code>, <code>2h</code>, <code>90s</code>, or <code>HH:MM:SS</code>.</p>
       <div id="durList"></div>
       <div style="display:flex;gap:.5rem;margin-top:.35rem">
         <button class="btn btn-secondary" id="durAddEntry">+ Add Duration</button>
@@ -624,25 +624,25 @@ function parseDuration(str) {
   // Returns total seconds or null
   str = str.trim();
   if (!str) return null;
+  // HH:MM or HH:MM:SS
   const hmsMatch = str.match(/^(\d+):(\d{1,2})(?::(\d{1,2}))?$/);
   if (hmsMatch) {
     return parseInt(hmsMatch[1]) * 3600 + parseInt(hmsMatch[2]) * 60 + parseInt(hmsMatch[3] || 0);
   }
-  let total = 0;
-  const hm = str.match(/(\d+(?:\.\d+)?)\s*h/i);
-  const mm = str.match(/(\d+(?:\.\d+)?)\s*m(?!s)/i);
-  const sm = str.match(/(\d+(?:\.\d+)?)\s*s/i);
-  const dm = str.match(/(\d+(?:\.\d+)?)\s*d/i);
+  // Normalize naked minutes after 'h': "1h30" → "1h30m", but leave "1h30m" alone
+  const s = str.replace(/(\d)\s*h\s*(\d+)(?!\s*m)/gi, '$1h$2m');
+  const hm = s.match(/(\d+(?:\.\d+)?)\s*h/i);
+  const mm = s.match(/(\d+(?:\.\d+)?)\s*m(?!s)/i);
+  const sm = s.match(/(\d+(?:\.\d+)?)\s*s/i);
+  const dm = s.match(/(\d+(?:\.\d+)?)\s*d/i);
   if (!hm && !mm && !sm && !dm) {
-    // bare number = seconds
     const n = parseFloat(str);
     return isNaN(n) ? null : n;
   }
-  total += (dm ? parseFloat(dm[1]) * 86400 : 0)
-         + (hm ? parseFloat(hm[1]) * 3600  : 0)
-         + (mm ? parseFloat(mm[1]) * 60    : 0)
-         + (sm ? parseFloat(sm[1])          : 0);
-  return total;
+  return (dm ? parseFloat(dm[1]) * 86400 : 0)
+       + (hm ? parseFloat(hm[1]) * 3600  : 0)
+       + (mm ? parseFloat(mm[1]) * 60    : 0)
+       + (sm ? parseFloat(sm[1])          : 0);
 }
 
 document.getElementById('durCalcBtn').addEventListener('click', () => {
