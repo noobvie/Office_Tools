@@ -470,6 +470,302 @@ app.get('/api/portcheck', (req, res) => {
 // ── Health ────────────────────────────────────────────────────
 app.get('/api/health', (_, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
+// ── Domain Checker API ────────────────────────────────────────
+//
+//   GET  /api/domain/whois?domain=      raw WHOIS + parsed fields
+//   GET  /api/domain/rdap?domain=       RDAP lookup (registrar, dates, nameservers)
+//   GET  /api/domain/dns?domain=&type=  DNS-over-HTTPS proxy (A/AAAA/MX/NS/TXT/CNAME/SOA/CAA)
+//   GET  /api/domain/availability?domain=  check base name across 8 common TLDs
+//   POST /api/domain/ai-suggest         { keyword } → AI domain name suggestions (Gemini Flash)
+//
+// Rate limit: 15 req/min per IP. In-memory cache: 1 h TTL.
+// Requires: npm install whois   (already in package.json)
+// Optional env vars: GEMINI_API_KEY (AI suggest), VIEWDNS_API_KEY / WHOXY_API_KEY (history)
+
+const whoisPkg   = require('whois');
+const { promisify } = require('util');
+const whoisLookup  = promisify(whoisPkg.lookup);
+
+// Per-IP rate limiter (domain routes only)
+const _domainRateMap = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _domainRateMap) { if (now > v.resetAt) _domainRateMap.delete(k); }
+}, 300_000);
+
+function _domainAllow(ip) {
+  const now = Date.now();
+  let e = _domainRateMap.get(ip);
+  if (!e || now > e.resetAt) e = { count: 0, resetAt: now + 60_000 };
+  e.count++;
+  _domainRateMap.set(ip, e);
+  return e.count <= 15;
+}
+
+function domainRLMiddleware(req, res, next) {
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+  if (!_domainAllow(ip)) return res.status(429).json({ error: 'Rate limit: 15 requests/minute. Please wait.' });
+  next();
+}
+
+// In-memory result cache (1 h TTL)
+const _domCache = new Map();
+const _DOM_TTL  = 3_600_000;
+function dcGet(k) {
+  const e = _domCache.get(k);
+  if (!e) return null;
+  if (Date.now() - e.ts > _DOM_TTL) { _domCache.delete(k); return null; }
+  return e.d;
+}
+function dcSet(k, d) { _domCache.set(k, { d, ts: Date.now() }); }
+
+// Validate a domain name label (no scheme, no path, no port)
+function validDomain(d) {
+  if (!d || d.length > 253) return false;
+  return /^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/.test(d);
+}
+
+// Parse the most useful fields out of raw WHOIS text
+function parseWhoisText(raw) {
+  function pick(...labels) {
+    for (const l of labels) {
+      const m = raw.match(new RegExp('^' + l + ':\\s*(.+)$', 'im'));
+      if (m) return m[1].trim();
+    }
+    return null;
+  }
+  const ns = [...raw.matchAll(/^(?:Name Server|nserver):\s*(.+)$/gim)]
+    .map(m => m[1].trim().toLowerCase().replace(/\.$/, ''))
+    .filter(Boolean);
+  return {
+    registrar:  pick('Registrar', 'Registrar Name', 'registrar'),
+    created:    pick('Creation Date', 'Created Date', 'Domain Registration Date', 'created', 'Registered On', 'registration'),
+    updated:    pick('Updated Date', 'Last Updated On', 'Last Modified', 'updated', 'last-update'),
+    expires:    pick('Registry Expiry Date', 'Expiration Date', 'Expiry Date', 'expires', 'Registrar Registration Expiration Date', 'paid-till'),
+    status:     pick('Domain Status', 'Status', 'status'),
+    dnssec:     pick('DNSSEC', 'dnssec'),
+    registrant: pick('Registrant Name', 'Registrant Organization', 'Registrant'),
+    nameservers: [...new Set(ns)],
+  };
+}
+
+// GET /api/domain/whois
+app.get('/api/domain/whois', domainRLMiddleware, async (req, res) => {
+  const domain = String(req.query.domain || '').trim().toLowerCase().replace(/^www\./, '');
+  if (!validDomain(domain)) return res.status(400).json({ error: 'Invalid domain name' });
+
+  const ck = 'whois:' + domain;
+  const cached = dcGet(ck);
+  if (cached) return res.json({ ...cached, cached: true });
+
+  try {
+    const raw    = await whoisLookup(domain, { timeout: 12000 });
+    const parsed = parseWhoisText(raw);
+    const data   = { domain, raw, parsed };
+    dcSet(ck, data);
+    res.json(data);
+  } catch (err) {
+    console.error('[domain/whois]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/domain/rdap
+app.get('/api/domain/rdap', domainRLMiddleware, async (req, res) => {
+  const domain = String(req.query.domain || '').trim().toLowerCase().replace(/^www\./, '');
+  if (!validDomain(domain)) return res.status(400).json({ error: 'Invalid domain name' });
+
+  const ck = 'rdap:' + domain;
+  const cached = dcGet(ck);
+  if (cached) return res.json({ ...cached, cached: true });
+
+  try {
+    const r = await fetch(`https://rdap.org/domain/${encodeURIComponent(domain)}`, {
+      headers: { Accept: 'application/rdap+json' },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (r.status === 404) {
+      const data = { domain, found: false };
+      dcSet(ck, data);
+      return res.json(data);
+    }
+    if (!r.ok) return res.status(r.status).json({ error: `RDAP returned HTTP ${r.status}` });
+
+    const raw = await r.json();
+
+    // Normalize events → { registration, 'last changed', expiration }
+    const events = {};
+    for (const e of (raw.events || [])) events[e.eventAction] = e.eventDate;
+
+    // Extract registrar name from entities
+    const regEntity = (raw.entities || []).find(e => (e.roles || []).includes('registrar'));
+    const regName   = regEntity?.vcardArray?.[1]?.find(f => f[0] === 'fn')?.[3]
+                   || regEntity?.handle || null;
+
+    const data = {
+      domain,
+      found:       true,
+      status:      raw.status || [],
+      created:     events['registration']   || null,
+      updated:     events['last changed']   || null,
+      expires:     events['expiration']     || null,
+      registrar:   regName,
+      nameservers: (raw.nameservers || []).map(ns => ns.ldhName?.toLowerCase()).filter(Boolean),
+      dnssec:      raw.secureDNS?.delegationSigned ? 'Signed' : 'Unsigned',
+      raw,
+    };
+    dcSet(ck, data);
+    res.json(data);
+  } catch (err) {
+    console.error('[domain/rdap]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/domain/dns
+const _DNS_ALLOWED_TYPES = new Set(['A','AAAA','MX','NS','TXT','CNAME','SOA','CAA']);
+
+app.get('/api/domain/dns', domainRLMiddleware, async (req, res) => {
+  const domain = String(req.query.domain || '').trim().toLowerCase().replace(/^www\./, '');
+  const type   = String(req.query.type   || 'A').toUpperCase();
+  if (!validDomain(domain)) return res.status(400).json({ error: 'Invalid domain name' });
+  if (!_DNS_ALLOWED_TYPES.has(type)) return res.status(400).json({ error: 'Unsupported record type' });
+
+  const ck = `dns:${domain}:${type}`;
+  const cached = dcGet(ck);
+  if (cached) return res.json({ ...cached, cached: true });
+
+  try {
+    const r = await fetch(
+      `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=${encodeURIComponent(type)}`,
+      { headers: { Accept: 'application/dns-json' }, signal: AbortSignal.timeout(8000) }
+    );
+    if (!r.ok) return res.status(r.status).json({ error: `DNS query failed: ${r.status}` });
+    const data = await r.json();
+    dcSet(ck, data);
+    res.json(data);
+  } catch (err) {
+    console.error('[domain/dns]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/domain/availability?domain=mybrand  (strip TLD if user includes one)
+const _AVAIL_TLDS = ['.com', '.net', '.org', '.io', '.co', '.app', '.dev', '.info'];
+
+app.get('/api/domain/availability', domainRLMiddleware, async (req, res) => {
+  let base = String(req.query.domain || '').trim().toLowerCase().replace(/^www\./, '');
+  // Strip TLD so user can pass either "example" or "example.com"
+  const dot = base.lastIndexOf('.');
+  if (dot > 0) base = base.slice(0, dot);
+  if (!base || !/^[a-z0-9][a-z0-9-]*$/.test(base) || base.length > 63) {
+    return res.status(400).json({ error: 'Invalid domain base name' });
+  }
+
+  async function checkOne(domain) {
+    const ck = 'avail:' + domain;
+    const cached = dcGet(ck);
+    if (cached) return cached;
+
+    // Try RDAP: 404 = not found in registry = available
+    try {
+      const r = await fetch(`https://rdap.org/domain/${encodeURIComponent(domain)}`, {
+        headers: { Accept: 'application/rdap+json' },
+        signal: AbortSignal.timeout(7000),
+      });
+      const result = { domain, available: r.status === 404, method: 'rdap' };
+      dcSet(ck, result);
+      return result;
+    } catch { /* fall through to DNS */ }
+
+    // Fallback: no NS records in DNS → likely available
+    try {
+      const r2 = await fetch(
+        `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=NS`,
+        { headers: { Accept: 'application/dns-json' }, signal: AbortSignal.timeout(5000) }
+      );
+      const dns = await r2.json();
+      const result = { domain, available: !(dns.Answer && dns.Answer.length > 0), method: 'dns' };
+      dcSet(ck, result);
+      return result;
+    } catch {
+      return { domain, available: null, error: 'Check failed' };
+    }
+  }
+
+  try {
+    const results = await Promise.all(_AVAIL_TLDS.map(tld => checkOne(base + tld)));
+    res.json({ base, results });
+  } catch (err) {
+    console.error('[domain/availability]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/domain/ai-suggest  { keyword: string, context?: string }
+const _GEMINI_KEY = process.env.GEMINI_API_KEY || '';
+
+app.post('/api/domain/ai-suggest', domainRLMiddleware, async (req, res) => {
+  if (!_GEMINI_KEY) {
+    return res.status(503).json({ error: 'AI suggestions not configured (GEMINI_API_KEY missing in .env)' });
+  }
+  const keyword = String(req.body.keyword || '').trim().slice(0, 100);
+  const context = String(req.body.context || '').trim().slice(0, 300);
+  if (!keyword) return res.status(400).json({ error: 'keyword is required' });
+
+  const prompt = `Suggest 12 creative, brandable domain names for a project or business related to: "${keyword}"${context ? '. Extra context: ' + context : ''}.
+
+Rules:
+- Mix short names (6-12 chars) and longer descriptive names
+- Suggest real TLD variants (.com .io .app .co .net .dev etc.)
+- No hyphens, no leading numbers, use real words or clever portmanteaus
+- Include the TLD in each suggestion (e.g. "brandname.io")
+- Return ONLY a raw JSON array of strings — no markdown, no explanation.
+Example: ["example.com","coolapp.io","mybrand.co"]`;
+
+  try {
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${_GEMINI_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: 400, temperature: 0.85 },
+        }),
+        signal: AbortSignal.timeout(15000),
+      }
+    );
+    if (!r.ok) {
+      const errBody = await r.json().catch(() => ({}));
+      return res.status(r.status).json({ error: errBody.error?.message || `Gemini API error ${r.status}` });
+    }
+    const data = await r.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    const match = text.match(/\[[\s\S]*?\]/);
+    if (!match) return res.status(500).json({ error: 'Could not parse AI response', raw: text });
+
+    let suggestions;
+    try {
+      suggestions = JSON.parse(match[0]);
+      if (!Array.isArray(suggestions)) throw new Error('not array');
+      suggestions = suggestions
+        .map(s => String(s).trim().toLowerCase())
+        .filter(s => /^[a-z0-9][a-z0-9-]*\.[a-z]{2,}$/.test(s))
+        .slice(0, 15);
+    } catch {
+      return res.status(500).json({ error: 'Could not parse AI suggestions', raw: text });
+    }
+
+    res.json({ keyword, suggestions });
+  } catch (err) {
+    console.error('[domain/ai-suggest]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Start ─────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`Office Tools server running on port ${PORT}`);

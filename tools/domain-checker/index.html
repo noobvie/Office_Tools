@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Domain Checker — WHOIS, DNS, Availability &amp; AI Name Suggestions</title>
+  <meta name="description" content="Free domain checker: look up WHOIS registration info, expiry dates, DNS records, check availability across .com .net .org .io .app and get AI-powered domain name suggestions. No login required.">
+  <meta name="keywords" content="domain checker, WHOIS lookup, domain availability, DNS records, domain expiry, domain registration, domain name generator, AI domain suggestions, domain info, RDAP lookup">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Domain Checker — WHOIS, DNS, Availability &amp; AI Name Suggestions">
+  <meta property="og:description" content="Look up WHOIS, expiry dates, DNS records, check availability across 8 TLDs, and get AI domain name suggestions. Free, no login.">
+  <meta property="og:url" content="https://tools.grin.money/tools/domain-checker/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Domain Checker — WHOIS, DNS, Availability &amp; AI Suggestions">
+  <meta name="twitter:description" content="WHOIS lookup, DNS records, availability check across .com .net .org .io .app .dev, and AI domain name generator. Free, no login.">
+  <link rel="canonical" href="https://tools.grin.money/tools/domain-checker/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Domain Checker","description":"Free domain checker: WHOIS lookup, DNS records, availability across 8 TLDs, and AI-powered domain name suggestions.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/domain-checker/"}</script>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    /* ── Tab bar ── */
+    .tab-bar {
+      display: flex; gap: .35rem; flex-wrap: wrap; margin-top: .9rem;
+      border-bottom: 1.5px solid var(--border); padding-bottom: .5rem;
+    }
+    .tab-btn {
+      padding: .35rem .9rem; border-radius: var(--radius) var(--radius) 0 0;
+      border: 1.5px solid transparent; background: transparent;
+      color: var(--text-muted); font-size: .82rem; font-weight: 600;
+      cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .tab-btn:hover  { color: var(--primary); border-color: var(--border); }
+    .tab-btn.active { color: var(--primary); border-color: var(--border); border-bottom-color: var(--bg-card); background: var(--bg-card); }
+
+    /* ── Panels ── */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Lookup bar ── */
+    .lookup-bar { display: flex; gap: .5rem; }
+    .lookup-bar input {
+      flex: 1; padding: .65rem 1rem;
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-card); color: var(--text);
+      font-size: .95rem; font-family: 'Courier New', monospace;
+      outline: none; transition: border-color .15s;
+    }
+    .lookup-bar input:focus { border-color: var(--primary); }
+
+    /* ── Domain hero ── */
+    .dom-hero {
+      text-align: center; padding: 1.25rem 1rem .75rem;
+    }
+    .dom-hero .dom-name {
+      font-size: 1.9rem; font-weight: 900;
+      font-family: 'Courier New', monospace;
+      color: var(--primary); letter-spacing: .03em; word-break: break-all;
+      margin: .2rem 0;
+    }
+    .dom-hero .dom-sub { font-size: .82rem; color: var(--text-muted); }
+
+    /* ── Status badges ── */
+    .status-badges { display: flex; flex-wrap: wrap; gap: .35rem; justify-content: center; margin-top: .6rem; }
+    .sbadge {
+      display: inline-block; border-radius: 20px;
+      padding: .18rem .65rem; font-size: .72rem; font-weight: 700;
+    }
+    .sbadge-ok      { background: #d1fae5; color: #059669; }
+    .sbadge-warn    { background: #fef3c7; color: #d97706; }
+    .sbadge-danger  { background: #fee2e2; color: #dc2626; }
+    .sbadge-neutral { background: var(--primary-dim); color: var(--primary); }
+    [data-theme="dark"] .sbadge-ok     { background: #064e3b; color: #6ee7b7; }
+    [data-theme="dark"] .sbadge-warn   { background: #451a03; color: #fcd34d; }
+    [data-theme="dark"] .sbadge-danger { background: #450a0a; color: #fca5a5; }
+    [data-theme="matrix"] .sbadge-ok, [data-theme="matrix"] .sbadge-warn,
+    [data-theme="matrix"] .sbadge-danger, [data-theme="matrix"] .sbadge-neutral {
+      background: var(--primary-dim); color: var(--primary);
+    }
+
+    /* ── Info grid ── */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: .6rem; margin-top: .75rem;
+    }
+    .info-cell {
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .7rem .85rem;
+      display: flex; flex-direction: column; gap: .15rem;
+    }
+    .info-cell .ic-label {
+      font-size: .68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .06em; color: var(--text-muted);
+    }
+    .info-cell .ic-val {
+      font-size: .86rem; font-weight: 700; color: var(--text); word-break: break-word;
+    }
+    .info-cell .ic-val.mono { font-family: 'Courier New', monospace; font-size: .8rem; }
+    .ic-copy-btn {
+      background: none; border: none; cursor: pointer;
+      font-size: .7rem; color: var(--primary);
+      padding: 0; text-align: left; margin-top: .2rem;
+      opacity: 0; transition: opacity .15s;
+    }
+    .info-cell:hover .ic-copy-btn { opacity: 1; }
+
+    /* ── NS list ── */
+    .ns-list { display: flex; flex-direction: column; gap: .3rem; margin-top: .75rem; }
+    .ns-item {
+      font-family: 'Courier New', monospace; font-size: .82rem;
+      padding: .35rem .7rem; background: var(--bg-secondary);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--text);
+    }
+
+    /* ── Raw WHOIS box ── */
+    .whois-raw {
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .75rem 1rem; margin-top: .75rem;
+      font-family: 'Courier New', monospace; font-size: .75rem;
+      color: var(--text-muted); white-space: pre-wrap; word-break: break-word;
+      max-height: 280px; overflow-y: auto; line-height: 1.5;
+    }
+
+    /* ── DNS records table ── */
+    .dns-type-bar {
+      display: flex; gap: .3rem; flex-wrap: wrap; margin-bottom: .75rem;
+    }
+    .dns-type-btn {
+      padding: .25rem .65rem; border-radius: var(--radius);
+      border: 1.5px solid var(--border); background: transparent;
+      color: var(--text-muted); font-size: .77rem; font-weight: 700;
+      cursor: pointer; transition: all .12s;
+    }
+    .dns-type-btn:hover  { border-color: var(--primary); color: var(--primary); }
+    .dns-type-btn.active { border-color: var(--primary); color: var(--primary); background: var(--primary-dim); }
+    .dns-table { width: 100%; border-collapse: collapse; margin-top: .1rem; font-size: .82rem; }
+    .dns-table th {
+      text-align: left; padding: .4rem .6rem;
+      font-size: .68rem; text-transform: uppercase; letter-spacing: .05em;
+      color: var(--text-muted); border-bottom: 1.5px solid var(--border);
+    }
+    .dns-table td {
+      padding: .45rem .6rem; border-bottom: 1px solid var(--border);
+      font-family: 'Courier New', monospace; word-break: break-all; color: var(--text);
+    }
+    .dns-table tr:last-child td { border-bottom: none; }
+    .dns-table tr:hover td { background: var(--bg-secondary); }
+
+    /* ── Availability grid ── */
+    .avail-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: .55rem; margin-top: .5rem;
+    }
+    .avail-card {
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      padding: .65rem .9rem; display: flex; align-items: center; gap: .55rem;
+    }
+    .avail-card.available   { border-color: #059669; background: #d1fae510; }
+    .avail-card.taken       { border-color: var(--border); opacity: .7; }
+    .avail-card.unknown     { border-color: var(--border); opacity: .6; }
+    [data-theme="dark"] .avail-card.available { background: #06160f; border-color: #6ee7b7; }
+    .avail-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .avail-dot.green  { background: #059669; }
+    .avail-dot.red    { background: #dc2626; }
+    .avail-dot.gray   { background: var(--text-muted); }
+    .avail-name { font-family: 'Courier New', monospace; font-size: .85rem; font-weight: 700; flex: 1; }
+    .avail-status { font-size: .72rem; font-weight: 700; }
+    .avail-status.green { color: #059669; }
+    .avail-status.red   { color: #dc2626; }
+    .avail-status.gray  { color: var(--text-muted); }
+
+    /* ── AI suggestions ── */
+    .ai-input-row { display: flex; gap: .5rem; margin-bottom: .75rem; }
+    .ai-input-row input {
+      flex: 1; padding: .6rem .9rem;
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-card); color: var(--text); font-size: .9rem; outline: none;
+      transition: border-color .15s;
+    }
+    .ai-input-row input:focus { border-color: var(--primary); }
+    .ai-context-row { margin-bottom: .75rem; }
+    .ai-context-row input {
+      width: 100%; padding: .55rem .9rem;
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-card); color: var(--text); font-size: .84rem; outline: none;
+      transition: border-color .15s; box-sizing: border-box;
+    }
+    .ai-context-row input:focus { border-color: var(--primary); }
+    .ai-suggestions {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: .45rem; margin-top: .5rem;
+    }
+    .ai-sugg-item {
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      padding: .55rem .8rem; display: flex; align-items: center; justify-content: space-between;
+      gap: .5rem; cursor: pointer; transition: border-color .12s, background .12s;
+    }
+    .ai-sugg-item:hover { border-color: var(--primary); background: var(--primary-dim); }
+    .ai-sugg-name { font-family: 'Courier New', monospace; font-size: .85rem; font-weight: 700; }
+    .ai-sugg-check { font-size: .72rem; color: var(--primary); font-weight: 700; opacity: 0; transition: opacity .12s; }
+    .ai-sugg-item:hover .ai-sugg-check { opacity: 1; }
+
+    /* ── History ── */
+    .history-list { display: flex; flex-direction: column; gap: .3rem; margin-top: .5rem; }
+    .history-item {
+      display: flex; align-items: center; gap: .5rem; padding: .4rem .65rem;
+      background: var(--bg-secondary); border-radius: var(--radius);
+      cursor: pointer; font-size: .83rem;
+      border: 1px solid transparent; transition: border-color .12s;
+    }
+    .history-item:hover { border-color: var(--primary); color: var(--primary); }
+    .history-icon  { font-size: 1rem; flex-shrink: 0; }
+    .history-name  { font-family: 'Courier New', monospace; font-weight: 700; flex-shrink: 0; }
+    .history-info  { flex: 1; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .78rem; }
+    .history-del   { background: none; border: none; cursor: pointer; color: var(--danger); font-size: .9rem; padding: 0 .15rem; opacity: 0; }
+    .history-item:hover .history-del { opacity: 1; }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 26px; height: 26px;
+      border: 3px solid var(--border); border-top-color: var(--primary);
+      border-radius: 50%; animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error ── */
+    .lookup-error {
+      background: var(--danger-dim); color: var(--danger);
+      border-radius: var(--radius); padding: .75rem 1rem;
+      font-size: .88rem; font-weight: 600; margin-top: .75rem;
+    }
+    .info-notice {
+      background: var(--primary-dim); color: var(--primary);
+      border-radius: var(--radius); padding: .6rem .9rem;
+      font-size: .82rem; margin-bottom: .75rem;
+    }
+
+    @media (max-width: 480px) {
+      .dom-hero .dom-name { font-size: 1.4rem; }
+      .avail-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Domain Checker</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🌐 Domain Checker</h1>
+    <p>WHOIS lookup, DNS records, availability across 8 TLDs, and AI-powered domain name suggestions.</p>
+  </div>
+
+  <!-- ── Input card ── -->
+  <div class="card">
+    <div class="lookup-bar">
+      <input type="text" id="domainInput"
+        placeholder="Enter domain (e.g. example.com)"
+        autocomplete="off" spellcheck="false">
+      <button class="btn btn-primary" id="lookupBtn">Lookup</button>
+    </div>
+    <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.55rem">
+      <button class="btn btn-ghost btn-sm" data-example="google.com">google.com</button>
+      <button class="btn btn-ghost btn-sm" data-example="github.com">github.com</button>
+      <button class="btn btn-ghost btn-sm" data-example="grin.money">grin.money</button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tab-bar" id="tabBar">
+      <button class="tab-btn active" data-tab="whois">📋 WHOIS / RDAP</button>
+      <button class="tab-btn" data-tab="dns">🔎 DNS Records</button>
+      <button class="tab-btn" data-tab="avail">✅ Availability</button>
+      <button class="tab-btn" data-tab="ai">✨ AI Suggest</button>
+    </div>
+  </div>
+
+  <!-- ── WHOIS / RDAP panel ── -->
+  <div class="tab-panel active" id="panel-whois">
+    <div id="whoisResult"></div>
+  </div>
+
+  <!-- ── DNS Records panel ── -->
+  <div class="tab-panel" id="panel-dns">
+    <div class="card mt-2" id="dnsCard" style="display:none">
+      <div class="dns-type-bar" id="dnsTypeBar">
+        <button class="dns-type-btn active" data-type="A">A</button>
+        <button class="dns-type-btn" data-type="AAAA">AAAA</button>
+        <button class="dns-type-btn" data-type="MX">MX</button>
+        <button class="dns-type-btn" data-type="NS">NS</button>
+        <button class="dns-type-btn" data-type="TXT">TXT</button>
+        <button class="dns-type-btn" data-type="CNAME">CNAME</button>
+        <button class="dns-type-btn" data-type="SOA">SOA</button>
+        <button class="dns-type-btn" data-type="CAA">CAA</button>
+      </div>
+      <div id="dnsResult"></div>
+    </div>
+    <div id="dnsPlaceholder" class="card mt-2" style="color:var(--text-muted);font-size:.88rem;padding:1.5rem;text-align:center">
+      Enter a domain above and click <strong>Lookup</strong> to query DNS records.
+    </div>
+  </div>
+
+  <!-- ── Availability panel ── -->
+  <div class="tab-panel" id="panel-avail">
+    <div id="availResult"></div>
+    <div id="availPlaceholder" class="card mt-2" style="color:var(--text-muted);font-size:.88rem;padding:1.5rem;text-align:center">
+      Enter a domain or keyword above and click <strong>Lookup</strong> to check availability across 8 TLDs.
+    </div>
+  </div>
+
+  <!-- ── AI Suggest panel ── -->
+  <div class="tab-panel" id="panel-ai">
+    <div class="card mt-2">
+      <p style="font-size:.86rem;color:var(--text-muted);margin-bottom:.75rem">
+        Enter a keyword or describe your project — AI will suggest creative, brandable domain names.
+      </p>
+      <div class="ai-input-row">
+        <input type="text" id="aiKeyword" placeholder="Keyword (e.g. fintech, recipe blog, pet shop…)" maxlength="100">
+        <button class="btn btn-primary" id="aiSuggestBtn">Suggest</button>
+      </div>
+      <div class="ai-context-row">
+        <input type="text" id="aiContext" placeholder="Optional: extra context (e.g. B2B SaaS, e-commerce for books)" maxlength="300">
+      </div>
+      <div id="aiResult"></div>
+    </div>
+  </div>
+
+  <!-- ── Recent Lookups ── -->
+  <div class="card mt-2" id="historyCard" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+      <strong style="font-size:.88rem">Recent Lookups</strong>
+      <button class="btn btn-ghost btn-sm" id="clearHistoryBtn">Clear</button>
+    </div>
+    <div class="history-list" id="historyList"></div>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+'use strict';
+
+const API = window.OT_CONFIG?.GRIN_SERVER_URL || 'http://localhost:3001';
+
+// ── Escape helpers ────────────────────────────────────────────
+function escAttr(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
+
+// ── History ───────────────────────────────────────────────────
+const HIST_KEY = 'ot-domain-history';
+function loadHistory() { try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch { return []; } }
+function saveHistory(h) { try { localStorage.setItem(HIST_KEY, JSON.stringify(h.slice(0, 20))); } catch {} }
+
+function addHistory(domain, info) {
+  let h = loadHistory().filter(x => x.domain !== domain);
+  h.unshift({ domain, info });
+  saveHistory(h);
+  renderHistory();
+}
+
+function renderHistory() {
+  const h    = loadHistory();
+  const card = document.getElementById('historyCard');
+  const list = document.getElementById('historyList');
+  if (!h.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  list.innerHTML = h.map((item, i) => `
+    <div class="history-item" data-domain="${escAttr(item.domain)}">
+      <span class="history-icon">🌐</span>
+      <span class="history-name">${escHtml(item.domain)}</span>
+      <span class="history-info">${escHtml(item.info || '')}</span>
+      <button class="history-del" data-i="${i}" title="Remove">&#10005;</button>
+    </div>`).join('');
+
+  list.querySelectorAll('.history-item').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.classList.contains('history-del')) return;
+      document.getElementById('domainInput').value = el.dataset.domain;
+      runLookup(el.dataset.domain);
+    });
+  });
+  list.querySelectorAll('.history-del').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const arr = loadHistory(); arr.splice(+btn.dataset.i, 1);
+      saveHistory(arr); renderHistory();
+    });
+  });
+}
+
+// ── Tab switching ─────────────────────────────────────────────
+let activeTab = 'whois';
+document.getElementById('tabBar').addEventListener('click', e => {
+  const btn = e.target.closest('.tab-btn');
+  if (!btn) return;
+  activeTab = btn.dataset.tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + activeTab));
+});
+
+// ── Spinner helper ────────────────────────────────────────────
+function spinnerHtml(msg) {
+  return `<div class="card mt-2" style="display:flex;flex-direction:column;align-items:center;gap:.75rem;padding:2rem">
+    <div class="spinner"></div>
+    <span style="font-size:.85rem;color:var(--text-muted)">${escHtml(msg)}</span>
+  </div>`;
+}
+
+function errorHtml(msg) {
+  return `<div class="lookup-error mt-2">&#10007; ${escHtml(msg)}</div>`;
+}
+
+// ── Info cell helper ──────────────────────────────────────────
+function cell(label, val, mono = false) {
+  if (!val) return `
+    <div class="info-cell">
+      <span class="ic-label">${label}</span>
+      <span class="ic-val" style="color:var(--text-muted);font-style:italic;font-weight:400">—</span>
+    </div>`;
+  return `
+    <div class="info-cell">
+      <span class="ic-label">${label}</span>
+      <span class="ic-val${mono ? ' mono' : ''}">${escHtml(val)}</span>
+      <button class="ic-copy-btn" data-val="${escAttr(val)}">Copy</button>
+    </div>`;
+}
+
+function bindCopyBtns(container) {
+  container.querySelectorAll('.ic-copy-btn').forEach(btn => {
+    btn.addEventListener('click', function() { copyText(this.dataset.val, this); });
+  });
+}
+
+// ── Format date string ────────────────────────────────────────
+function fmtDate(d) {
+  if (!d) return null;
+  try {
+    const dt = new Date(d);
+    if (isNaN(dt)) return d;
+    const diff = dt - Date.now();
+    const abs  = Math.abs(diff);
+    const days = Math.round(abs / 86400000);
+    let rel = '';
+    if      (abs < 86400000)    rel = diff < 0 ? 'yesterday' : 'today';
+    else if (days < 30)         rel = `${days}d ${diff < 0 ? 'ago' : 'left'}`;
+    else if (days < 365)        rel = `${Math.round(days/30)}mo ${diff < 0 ? 'ago' : 'left'}`;
+    else                        rel = `${(days/365).toFixed(1)}yr ${diff < 0 ? 'ago' : 'left'}`;
+    return `${dt.toISOString().slice(0, 10)} (${rel})`;
+  } catch { return d; }
+}
+
+// ── WHOIS / RDAP Lookup ───────────────────────────────────────
+let currentDomain = '';
+
+async function lookupWhois(domain) {
+  const out = document.getElementById('whoisResult');
+  out.innerHTML = spinnerHtml(`Looking up ${domain}…`);
+
+  try {
+    // Try RDAP first — structured data
+    const rdapRes = await fetch(`${API}/api/domain/rdap?domain=${encodeURIComponent(domain)}`);
+    const rdap    = await rdapRes.json();
+
+    if (rdap.error) throw new Error(rdap.error);
+
+    if (!rdap.found) {
+      // Domain not in RDAP registry — try raw WHOIS
+      const whoisRes = await fetch(`${API}/api/domain/whois?domain=${encodeURIComponent(domain)}`);
+      const whois    = await whoisRes.json();
+      if (whois.error) throw new Error(whois.error);
+      renderWhoisOnly(domain, whois);
+      return;
+    }
+
+    renderRdap(domain, rdap);
+  } catch (err) {
+    out.innerHTML = errorHtml(err.message);
+  }
+}
+
+function renderRdap(domain, rdap) {
+  const out = document.getElementById('whoisResult');
+
+  const expires = rdap.expires;
+  let expBadge = '';
+  if (expires) {
+    const daysLeft = (new Date(expires) - Date.now()) / 86400000;
+    if      (daysLeft < 0)   expBadge = '<span class="sbadge sbadge-danger">Expired</span>';
+    else if (daysLeft < 30)  expBadge = '<span class="sbadge sbadge-danger">Expires &lt;30d</span>';
+    else if (daysLeft < 90)  expBadge = '<span class="sbadge sbadge-warn">Expires &lt;90d</span>';
+    else                     expBadge = '<span class="sbadge sbadge-ok">Active</span>';
+  }
+
+  const statusBadges = (rdap.status || []).slice(0, 4).map(s => {
+    const cls = s.toLowerCase().includes('lock') ? 'sbadge-neutral' : 'sbadge-ok';
+    return `<span class="sbadge ${cls}">${escHtml(s.replace('client', '').replace('server', '').trim())}</span>`;
+  }).join('');
+
+  const nsList = rdap.nameservers?.length
+    ? `<div class="ns-list">${rdap.nameservers.map(ns => `<div class="ns-item">${escHtml(ns)}</div>`).join('')}</div>`
+    : '';
+
+  out.innerHTML = `
+    <div class="card mt-2">
+      <div class="dom-hero">
+        <div class="dom-name">${escHtml(domain)}</div>
+        <div class="dom-sub">RDAP lookup · ${rdap.cached ? 'cached' : 'live'}</div>
+        <div class="status-badges">${expBadge} ${statusBadges}</div>
+      </div>
+
+      <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin:.5rem 0 .25rem">
+        <button class="btn btn-primary btn-sm" id="copyWhoisBtn">Copy Details</button>
+      </div>
+
+      <div class="info-grid">
+        ${cell('Registrar',   rdap.registrar)}
+        ${cell('Created',     fmtDate(rdap.created))}
+        ${cell('Updated',     fmtDate(rdap.updated))}
+        ${cell('Expires',     fmtDate(rdap.expires))}
+        ${cell('DNSSEC',      rdap.dnssec)}
+        ${cell('Status',      (rdap.status || []).join(', '))}
+      </div>
+
+      ${rdap.nameservers?.length ? `
+        <div style="margin-top:.75rem">
+          <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:.4rem">Nameservers</div>
+          ${nsList}
+        </div>` : ''}
+
+      <p class="text-muted mt-2" style="font-size:.75rem">
+        Data via <a href="https://rdap.org" target="_blank" rel="noopener" style="color:var(--primary)">rdap.org</a>.
+        Registrant contact info is redacted per GDPR / ICANN policy.
+      </p>
+    </div>`;
+
+  document.getElementById('copyWhoisBtn').addEventListener('click', function() {
+    const text = [
+      `Domain:     ${domain}`,
+      `Registrar:  ${rdap.registrar || '—'}`,
+      `Created:    ${rdap.created || '—'}`,
+      `Updated:    ${rdap.updated || '—'}`,
+      `Expires:    ${rdap.expires || '—'}`,
+      `DNSSEC:     ${rdap.dnssec || '—'}`,
+      `Status:     ${(rdap.status || []).join(', ') || '—'}`,
+      `Nameservers: ${(rdap.nameservers || []).join(', ') || '—'}`,
+    ].join('\n');
+    copyText(text, this);
+  });
+
+  bindCopyBtns(out);
+  addHistory(domain, rdap.registrar || (rdap.status?.[0] || ''));
+}
+
+function renderWhoisOnly(domain, whois) {
+  const out = document.getElementById('whoisResult');
+  const p   = whois.parsed || {};
+
+  out.innerHTML = `
+    <div class="card mt-2">
+      <div class="dom-hero">
+        <div class="dom-name">${escHtml(domain)}</div>
+        <div class="dom-sub">WHOIS lookup · ${whois.cached ? 'cached' : 'live'}</div>
+        <div class="status-badges"><span class="sbadge sbadge-neutral">${escHtml(p.status || 'WHOIS only')}</span></div>
+      </div>
+
+      <div class="info-grid">
+        ${cell('Registrar',   p.registrar)}
+        ${cell('Registrant',  p.registrant)}
+        ${cell('Created',     fmtDate(p.created))}
+        ${cell('Updated',     fmtDate(p.updated))}
+        ${cell('Expires',     fmtDate(p.expires))}
+        ${cell('DNSSEC',      p.dnssec)}
+      </div>
+
+      ${p.nameservers?.length ? `
+        <div style="margin-top:.75rem">
+          <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:.4rem">Nameservers</div>
+          <div class="ns-list">${p.nameservers.map(ns => `<div class="ns-item">${escHtml(ns)}</div>`).join('')}</div>
+        </div>` : ''}
+
+      <div style="margin-top:.75rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem">
+          <span style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted)">Raw WHOIS</span>
+          <button class="btn btn-ghost btn-sm" id="copyRawBtn">Copy</button>
+        </div>
+        <pre class="whois-raw" id="whoisRaw">${escHtml(whois.raw || '')}</pre>
+      </div>
+    </div>`;
+
+  document.getElementById('copyRawBtn').addEventListener('click', function() {
+    copyText(whois.raw || '', this);
+  });
+
+  bindCopyBtns(out);
+  addHistory(domain, p.registrar || p.status || 'WHOIS');
+}
+
+// ── DNS Lookup ────────────────────────────────────────────────
+let currentDnsType = 'A';
+let dnsDomain = '';
+
+async function lookupDns(domain, type) {
+  dnsDomain = domain;
+  currentDnsType = type;
+
+  document.getElementById('dnsCard').style.display = '';
+  document.getElementById('dnsPlaceholder').style.display = 'none';
+  document.querySelectorAll('.dns-type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+
+  const out = document.getElementById('dnsResult');
+  out.innerHTML = `<div style="display:flex;align-items:center;gap:.6rem;padding:.5rem 0"><div class="spinner"></div><span style="font-size:.83rem;color:var(--text-muted)">Querying ${escHtml(type)} records…</span></div>`;
+
+  try {
+    const res  = await fetch(`${API}/api/domain/dns?domain=${encodeURIComponent(domain)}&type=${encodeURIComponent(type)}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderDns(data, type);
+  } catch (err) {
+    out.innerHTML = errorHtml(err.message);
+  }
+}
+
+function renderDns(data, type) {
+  const out = document.getElementById('dnsResult');
+  const answers = data.Answer || [];
+
+  if (!answers.length) {
+    out.innerHTML = `<p style="color:var(--text-muted);font-size:.85rem;padding:.5rem 0">No ${escHtml(type)} records found.</p>`;
+    return;
+  }
+
+  const rcodes = { 0:'NOERROR', 1:'FORMERR', 2:'SERVFAIL', 3:'NXDOMAIN', 4:'NOTIMP', 5:'REFUSED' };
+  const header = data.Status !== undefined
+    ? `<div style="font-size:.74rem;color:var(--text-muted);margin-bottom:.5rem">Status: <strong>${rcodes[data.Status] || data.Status}</strong> · ${answers.length} record${answers.length !== 1 ? 's' : ''}${data.cached ? ' · cached' : ''}</div>`
+    : '';
+
+  out.innerHTML = header + `
+    <table class="dns-table">
+      <thead><tr><th>Name</th><th>Type</th><th>TTL</th><th>Data</th></tr></thead>
+      <tbody>
+        ${answers.map(a => {
+          const types = {1:'A',2:'NS',5:'CNAME',6:'SOA',15:'MX',16:'TXT',28:'AAAA',257:'CAA'};
+          const typeName = types[a.type] || String(a.type);
+          return `<tr>
+            <td>${escHtml(a.name)}</td>
+            <td><strong>${escHtml(typeName)}</strong></td>
+            <td>${escHtml(String(a.TTL))}s</td>
+            <td>${escHtml(a.data)}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+// ── Availability Check ────────────────────────────────────────
+async function checkAvailability(domain) {
+  const out  = document.getElementById('availResult');
+  const ph   = document.getElementById('availPlaceholder');
+  ph.style.display = 'none';
+  out.innerHTML = spinnerHtml(`Checking availability…`);
+
+  try {
+    const res  = await fetch(`${API}/api/domain/availability?domain=${encodeURIComponent(domain)}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderAvailability(data);
+  } catch (err) {
+    out.innerHTML = errorHtml(err.message);
+  }
+}
+
+function renderAvailability(data) {
+  const out = document.getElementById('availResult');
+  const available = data.results.filter(r => r.available === true).length;
+
+  out.innerHTML = `
+    <div class="card mt-2">
+      <div style="margin-bottom:.6rem">
+        <strong style="font-size:.95rem;font-family:'Courier New',monospace">${escHtml(data.base)}</strong>
+        <span style="font-size:.8rem;color:var(--text-muted);margin-left:.5rem">${available} of ${data.results.length} TLDs available</span>
+      </div>
+      <div class="avail-grid">
+        ${data.results.map(r => {
+          const cls   = r.available === true ? 'available' : r.available === false ? 'taken' : 'unknown';
+          const dot   = r.available === true ? 'green' : r.available === false ? 'red' : 'gray';
+          const label = r.available === true ? 'Available' : r.available === false ? 'Taken' : 'Unknown';
+          const lcls  = dot;
+          return `<div class="avail-card ${cls}">
+            <div class="avail-dot ${dot}"></div>
+            <span class="avail-name">${escHtml(r.domain)}</span>
+            <span class="avail-status ${lcls}">${label}</span>
+          </div>`;
+        }).join('')}
+      </div>
+      <p class="text-muted mt-2" style="font-size:.75rem">
+        ⚠️ Availability via RDAP/DNS is approximate. Always confirm with a registrar before purchasing.
+      </p>
+    </div>`;
+}
+
+// ── AI Suggestions ────────────────────────────────────────────
+async function aiSuggest() {
+  const keyword = document.getElementById('aiKeyword').value.trim();
+  const context = document.getElementById('aiContext').value.trim();
+  if (!keyword) {
+    document.getElementById('aiResult').innerHTML = errorHtml('Please enter a keyword first.');
+    return;
+  }
+
+  const out = document.getElementById('aiResult');
+  out.innerHTML = spinnerHtml('Generating domain suggestions…');
+  document.getElementById('aiSuggestBtn').disabled = true;
+
+  try {
+    const res = await fetch(`${API}/api/domain/ai-suggest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keyword, context }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderAiSuggestions(data);
+  } catch (err) {
+    out.innerHTML = errorHtml(err.message);
+  } finally {
+    document.getElementById('aiSuggestBtn').disabled = false;
+  }
+}
+
+function renderAiSuggestions(data) {
+  const out = document.getElementById('aiResult');
+  out.innerHTML = `
+    <div class="info-notice">&#10024; ${data.suggestions.length} suggestions for <strong>${escHtml(data.keyword)}</strong> — click any to check availability</div>
+    <div class="ai-suggestions">
+      ${data.suggestions.map(s => `
+        <div class="ai-sugg-item" data-domain="${escAttr(s)}">
+          <span class="ai-sugg-name">${escHtml(s)}</span>
+          <span class="ai-sugg-check">Check ›</span>
+        </div>`).join('')}
+    </div>`;
+
+  out.querySelectorAll('.ai-sugg-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const d = el.dataset.domain;
+      document.getElementById('domainInput').value = d;
+      // Switch to availability tab
+      activeTab = 'avail';
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'avail'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-avail'));
+      checkAvailability(d);
+    });
+  });
+}
+
+// ── Main lookup (triggers WHOIS + DNS + availability in parallel) ─
+async function runLookup(domain) {
+  domain = domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+  if (!domain) return;
+  document.getElementById('domainInput').value = domain;
+  currentDomain = domain;
+
+  // Always run all three in background; user sees the active tab
+  lookupWhois(domain);
+  lookupDns(domain, currentDnsType);
+  checkAvailability(domain);
+}
+
+// ── UI wiring ─────────────────────────────────────────────────
+document.getElementById('lookupBtn').addEventListener('click', () => {
+  runLookup(document.getElementById('domainInput').value);
+});
+
+document.getElementById('domainInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runLookup(document.getElementById('domainInput').value);
+});
+
+document.querySelectorAll('[data-example]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('domainInput').value = btn.dataset.example;
+    runLookup(btn.dataset.example);
+  });
+});
+
+// DNS type buttons
+document.getElementById('dnsTypeBar').addEventListener('click', e => {
+  const btn = e.target.closest('.dns-type-btn');
+  if (!btn || !currentDomain) return;
+  lookupDns(currentDomain, btn.dataset.type);
+});
+
+// AI suggest button
+document.getElementById('aiSuggestBtn').addEventListener('click', aiSuggest);
+document.getElementById('aiKeyword').addEventListener('keydown', e => {
+  if (e.key === 'Enter') aiSuggest();
+});
+
+// Clear history
+document.getElementById('clearHistoryBtn').addEventListener('click', () => {
+  localStorage.removeItem(HIST_KEY); renderHistory();
+});
+
+// Init
+renderHistory();
+initThemeToggle();
+</script>
+</body>
+</html>
