@@ -18,7 +18,7 @@ sudo bash Office_Tools/deploy.sh
 | Tool | Description |
 |------|-------------|
 | Pomodoro Timer | 25-min focus cycles with breaks, session counter and desktop notifications |
-| Date Calculator | Date difference, add/subtract days, age calculator, countdown to any date |
+| Date & Time Calculator | Date difference, add/subtract days, age, countdown, time unit converter, Excel serial↔datetime, decimal hours↔HH:MM:SS, duration adder |
 | World Calendar | Gregorian, Chinese Lunar (农历), and Islamic Hijri calendars side by side |
 | Stopwatch & Timer | Stopwatch with lap times and countdown timer with alarm |
 | Time Zone Converter | Convert times between time zones — world clock for 40+ cities |

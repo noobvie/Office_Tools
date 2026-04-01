@@ -434,8 +434,18 @@ app.get('/api/wallet/status', async (req, res) => {
   }
 });
 
-// ── Port Checker — TCP connect probe ─────────────────────────
+// ── Port Checker — DNS resolve + TCP connect probe ───────────
 const net = require('net');
+const dns = require('dns');
+
+app.get('/api/resolve', (req, res) => {
+  const host = String(req.query.host || '').trim();
+  if (!host) return res.status(400).json({ error: 'Missing host' });
+  dns.lookup(host, (err, address) => {
+    if (err) return res.json({ host, ip: null });
+    res.json({ host, ip: address });
+  });
+});
 app.get('/api/portcheck', (req, res) => {
   const host = String(req.query.host || '').trim();
   const port = parseInt(req.query.port, 10);
