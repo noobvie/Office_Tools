@@ -99,7 +99,7 @@ function escHtml(s) {
 const OT_TOOLS = [
   // ⏱️ Productivity & Time
   { name: 'Pomodoro Timer',          path: 'pomodoro',              cat: '⏱️ Productivity & Time', icon: '🍅' },
-  { name: 'Date Calculator',         path: 'date-calculator',       cat: '⏱️ Productivity & Time', icon: '📅' },
+  { name: 'Date & Time Calculator',  path: 'date-calculator',       cat: '⏱️ Productivity & Time', icon: '📅' },
   { name: 'World Calendar',          path: 'calendar',              cat: '⏱️ Productivity & Time', icon: '🗓️' },
   { name: 'Stopwatch & Timer',       path: 'timer',                 cat: '⏱️ Productivity & Time', icon: '⏱️' },
   { name: 'Time Zone Converter',     path: 'timezone',              cat: '⏱️ Productivity & Time', icon: '🌐' },
@@ -153,6 +153,8 @@ const OT_TOOLS = [
   { name: 'What Is My IP?',          path: 'my-ip',                 cat: '🌐 Network & Web',        icon: '🌐' },
   { name: 'IP Location Lookup',      path: 'ip-location',           cat: '🌐 Network & Web',        icon: '📍' },
   { name: 'Campaign URL Builder',    path: 'utm-builder',           cat: '🌐 Network & Web',        icon: '🔗' },
+  { name: 'Port Checker',            path: 'port-checker',          cat: '🌐 Network & Web',        icon: '🔌' },
+  { name: 'Domain Checker',         path: 'domain-checker',        cat: '🌐 Network & Web',        icon: '🌐' },
   // 🖼️ Visual & Design
   { name: 'Screenshot Beautifier',   path: 'screenshot-beautifier', cat: '🖼️ Visual & Design',     icon: '🖼️' },
   { name: 'Contrast Checker',        path: 'contrast-checker',      cat: '🖼️ Visual & Design',     icon: '♿' },

@@ -3,21 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Office Tools — 68 Free Browser-Based Utilities, No Login Required</title>
-  <meta name="description" content="68 free browser-based tools for everyday work: password generator, PDF merger, URL shortener, JSON editor, Base64 converter, QR code generator, YouTube downloader, file compressor, speech to text, photo editor, and more. No login, no tracking — everything runs locally.">
-  <meta name="keywords" content="free online tools, browser tools no login, password generator, PDF merger online, JSON editor, QR code generator, URL encoder decoder, Base64 converter, word counter, UUID generator, hash generator, color converter, currency converter, typing speed test, markdown editor, text diff, free productivity tools, privacy tools, no tracking tools">
+  <title>Office Tools — 70 Free Browser-Based Utilities, No Login Required</title>
+  <meta name="description" content="70 free browser-based tools for everyday work: password generator, PDF merger, URL shortener, JSON editor, Base64 converter, QR code generator, domain checker, YouTube downloader, file compressor, port checker, speech to text, photo editor, and more. No login, no tracking — everything runs locally.">
+  <meta name="keywords" content="free online tools, browser tools no login, password generator, PDF merger online, JSON editor, QR code generator, URL encoder decoder, Base64 converter, word counter, UUID generator, hash generator, color converter, currency converter, typing speed test, markdown editor, text diff, domain checker, WHOIS lookup, free productivity tools, privacy tools, no tracking tools">
   <meta name="robots" content="index, follow">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Office Tools">
-  <meta property="og:title" content="Office Tools — 68 Free Browser-Based Utilities, No Login Required">
-  <meta property="og:description" content="68 free browser-based tools: password generator, PDF tools, URL shortener, JSON editor, QR code generator, file compressor, speech to text, photo editor, and more. No login, no tracking — everything runs in your browser.">
+  <meta property="og:title" content="Office Tools — 70 Free Browser-Based Utilities, No Login Required">
+  <meta property="og:description" content="70 free browser-based tools: password generator, PDF tools, URL shortener, JSON editor, QR code generator, domain checker, file compressor, port checker, speech to text, photo editor, and more. No login, no tracking — everything runs in your browser.">
   <meta property="og:url" content="https://tools.grin.money/">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Office Tools — 68 Free Browser-Based Utilities">
-  <meta name="twitter:description" content="68 free tools: password generator, PDF merger, JSON editor, file compressor, QR code maker, speech to text, photo editor and more. No login. No tracking. 100% browser-based.">
+  <meta name="twitter:title" content="Office Tools — 70 Free Browser-Based Utilities">
+  <meta name="twitter:description" content="70 free tools: password generator, PDF merger, JSON editor, domain checker, port checker, file compressor, QR code maker, speech to text, photo editor and more. No login. No tracking. 100% browser-based.">
   <link rel="canonical" href="https://tools.grin.money/">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Office Tools","url":"https://tools.grin.money/","description":"68 free browser-based utilities for everyday office and productivity work. No login, no tracking — everything runs locally.","potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://tools.grin.money/?q={search_term_string}"},"query-input":"required name=search_term_string"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Office Tools","url":"https://tools.grin.money/","description":"70 free browser-based utilities for everyday office and productivity work. No login, no tracking — everything runs locally.","potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://tools.grin.money/?q={search_term_string}"},"query-input":"required name=search_term_string"}}</script>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <script src="js/theme-init.js"></script>
   <link rel="stylesheet" href="css/style.css">
   <style>
     /* ── Category filter chips ── */
@@ -51,6 +52,25 @@
 
     #noResults { display: none; text-align: center; padding: 3rem; color: var(--text-muted); }
     #noResults .big { font-size: 2.5rem; }
+
+    /* ── Tool keyword tags ── */
+    .tool-card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .3rem;
+      margin-top: .6rem;
+      padding-top: .5rem;
+      border-top: 1px solid var(--border);
+    }
+    .tool-tag {
+      font-size: .65rem;
+      padding: .12rem .48rem;
+      border-radius: 50px;
+      background: color-mix(in srgb, var(--text-muted) 10%, transparent);
+      color: var(--text-muted);
+      white-space: nowrap;
+      line-height: 1.6;
+    }
   </style>
 </head>
 <body>
@@ -70,7 +90,7 @@
 
 <section class="hero">
   <h1>Free <span>Online Tools</span> for Everyday Work</h1>
-  <p>68 browser-based utilities — no login, no tracking, no install.</p>
+  <p>70 browser-based utilities — no login, no tracking, no install, no ads, open-source platform. Built by pro-privacy Grin crypto member.</p>
 </section>
 <input type="text" id="searchInput" style="display:none" autocomplete="off">
 
@@ -99,10 +119,10 @@
         <div class="tool-card-name">Pomodoro Timer</div>
         <div class="tool-card-desc">Focus timer with 25-min work intervals, short and long breaks, session counter.</div>
       </a>
-      <a href="tools/date-calculator/index.html" class="tool-card" data-keywords="date calculator, date difference, age calculator, days between dates, countdown, add days, date math" data-name="Date Calculator difference age countdown add subtract">
+      <a href="tools/date-calculator/index.html" class="tool-card" data-keywords="date time calculator, date difference, age calculator, days between dates, countdown, add days, time unit converter, seconds minutes hours, Excel time serial, decimal hours HH:MM, duration adder" data-name="Date Time Calculator difference age countdown add subtract time units Excel serial decimal hours duration">
         <div class="tool-card-icon">📅</div>
-        <div class="tool-card-name">Date Calculator</div>
-        <div class="tool-card-desc">Date difference, add/subtract days, age calculator and countdown to any date.</div>
+        <div class="tool-card-name">Date &amp; Time Calculator</div>
+        <div class="tool-card-desc">Date difference, age, countdown, time unit converter, Excel serial↔datetime, decimal hours, and duration adder.</div>
       </a>
       <a href="tools/calendar/index.html" class="tool-card" data-keywords="world calendar, chinese lunar calendar, islamic hijri calendar, gregorian converter" data-name="World Calendar Gregorian Chinese Lunar Islamic Hijri 农历 calendar converter">
         <div class="tool-card-icon">🗓️</div>
@@ -126,12 +146,12 @@
   <section class="category-section" data-category="Generators">
     <div class="category-title">✨ Generators</div>
     <div class="tools-grid">
-      <a href="tools/password-generator/index.html" class="tool-card" data-keywords="password generator, secure random password, strong password maker, memorable passphrase, special characters" data-name="Password Generator secure random strong">
+      <a href="tools/password-generator/index.html" class="tool-card" data-keywords="password generator, secure random password, strong password maker, memorable passphrase, special characters, create password, random password, generate password, safe password, passphrase generator, password creator" data-name="Password Generator secure random strong">
         <div class="tool-card-icon">🔐</div>
         <div class="tool-card-name">Password Generator</div>
         <div class="tool-card-desc">Generate secure random passwords with custom length and character options.</div>
       </a>
-      <a href="tools/qr-generator/index.html" class="tool-card" data-name="QR Code Barcode Generator URL WiFi vCard email SMS location logo frame scan code128 code39 EAN-13 UPC ITF download PNG SVG">
+      <a href="tools/qr-generator/index.html" class="tool-card" data-keywords="qr code generator, make qr code, create qr, barcode maker, barcode generator, wifi qr, vcard qr, url qr code, digital business card, code128 barcode, ean-13 barcode, upc barcode, scan qr, qr download, qr png svg" data-name="QR Code Barcode Generator URL WiFi vCard email SMS location logo frame scan code128 code39 EAN-13 UPC ITF download PNG SVG">
         <div class="tool-card-icon">📱</div>
         <div class="tool-card-name">QR &amp; Barcode Generator</div>
         <div class="tool-card-desc">Generate QR codes with logo &amp; frame text, or barcodes (Code 128, EAN-13, UPC-A). URL, WiFi, vCard, Email, SMS and more.</div>
@@ -168,7 +188,7 @@
   <section class="category-section" data-category="PDF &amp; Text">
     <div class="category-title">📝 PDF &amp; Text</div>
     <div class="tools-grid">
-      <a href="tools/pdf-toolkit/index.html" class="tool-card" data-keywords="PDF merger, merge PDF, split PDF, extract PDF pages, reorder pages, compress PDF, reduce size, combine PDF" data-name="PDF Toolkit merge split combine extract reorder pages drag drop">
+      <a href="tools/pdf-toolkit/index.html" class="tool-card" data-keywords="PDF merger, merge PDF, split PDF, extract PDF pages, reorder pages, compress PDF, reduce size, combine PDF, join PDF, PDF combiner, PDF splitter, PDF editor, rotate PDF, delete PDF pages, rearrange PDF" data-name="PDF Toolkit merge split combine extract reorder pages drag drop">
         <div class="tool-card-icon">📑</div>
         <div class="tool-card-name">PDF Toolkit</div>
         <div class="tool-card-desc">Merge multiple PDFs, extract page ranges, split into individual files, or reorder pages with drag-and-drop thumbnails.</div>
@@ -319,7 +339,7 @@
         <div class="tool-card-name">SQL Formatter</div>
         <div class="tool-card-desc">Beautify and minify SQL queries. Uppercase keywords, configurable indent, comma style. Runs locally.</div>
       </a>
-      <a href="tools/file-compressor/index.html" class="tool-card" data-keywords="zip files online, extract zip browser, compress zip, online zip tool, zip extractor, zip archive" data-name="File Compressor Extractor ZIP archive compress decompress create extract browser no upload">
+      <a href="tools/file-compressor/index.html" class="tool-card" data-keywords="zip files online, extract zip browser, compress zip, online zip tool, zip extractor, zip archive, compress files, archive files, make zip, unzip files, decompress, pack files, zipping, zipped" data-name="File Compressor Extractor ZIP archive compress decompress create extract browser no upload">
         <div class="tool-card-icon">🗜️</div>
         <div class="tool-card-name">File Compressor</div>
         <div class="tool-card-desc">Create ZIP archives from any files, or extract ZIP contents — 100% in your browser. No upload, no server, fully private.</div>
@@ -371,6 +391,16 @@
         <div class="tool-card-name">CSR Decoder</div>
         <div class="tool-card-desc">Decode a Certificate Signing Request — subject, key size, SANs, signature algorithm, fingerprints. Fully local.</div>
       </a>
+      <a href="tools/port-checker/index.html" class="tool-card" data-keywords="port checker, check if port is open, TCP port scanner, open port test, firewall port check, port scan online, is port open, SSH port 22, RDP port 3389, HTTP port 80, HTTPS port 443, MySQL port 3306, Grin node ports, Grin wallet ports, Grin mainnet testnet, network diagnostics" data-name="Port Checker TCP open port test firewall SSH RDP HTTP HTTPS MySQL FTP Grin mainnet testnet">
+        <div class="tool-card-icon">🔌</div>
+        <div class="tool-card-name">Port Checker</div>
+        <div class="tool-card-desc">Check if TCP ports are open on any host. Presets for common services (SSH, RDP, HTTP, HTTPS…) and all Grin mainnet &amp; testnet ports.</div>
+      </a>
+      <a href="tools/domain-checker/index.html" class="tool-card" data-keywords="domain checker, WHOIS lookup, domain availability, DNS records, domain expiry, domain registration, domain name generator, AI domain suggestions, RDAP lookup, check domain name, domain info" data-name="Domain Checker WHOIS RDAP DNS records availability AI domain name suggestions expiry registrar">
+        <div class="tool-card-icon">🌐</div>
+        <div class="tool-card-name">Domain Checker</div>
+        <div class="tool-card-desc">WHOIS / RDAP lookup, DNS records, availability across 8 TLDs (.com .net .org .io .app…), and AI-powered domain name suggestions.</div>
+      </a>
     </div>
   </section>
 
@@ -378,7 +408,7 @@
   <section class="category-section" data-category="Media">
     <div class="category-title">🖼️ Media</div>
     <div class="tools-grid">
-      <a href="tools/image-converter/index.html" class="tool-card" data-keywords="image converter, HEIC to JPG, HEIF to PNG, compress image, resize image, convert WebP, photo format" data-name="Image Converter HEIC HEIF iPhone JPG PNG WebP BMP compress resize convert">
+      <a href="tools/image-converter/index.html" class="tool-card" data-keywords="image converter, HEIC to JPG, HEIF to PNG, compress image, resize image, convert WebP, photo format, PNG to JPG, JPG to PNG, convert image, reduce image size, shrink image, image compressor, photo converter, change image format" data-name="Image Converter HEIC HEIF iPhone JPG PNG WebP BMP compress resize convert">
         <div class="tool-card-icon">🖼️</div>
         <div class="tool-card-name">Image Converter</div>
         <div class="tool-card-desc">Convert HEIC/HEIF (iPhone) to JPG or PNG, compress images with quality slider, and resize with aspect-ratio lock.</div>
@@ -408,7 +438,7 @@
         <div class="tool-card-name">Character Map</div>
         <div class="tool-card-desc">Browse and copy special characters, symbols, arrows, math, currency, Greek, and emoji. Click to copy.</div>
       </a>
-      <a href="tools/yt-downloader/index.html" class="tool-card" data-keywords="youtube downloader, youtube to mp3 mp4, download youtube video, youtube converter, save video, playlist" data-name="YouTube Downloader mp3 mp4 audio video playlist download yt">
+      <a href="tools/yt-downloader/index.html" class="tool-card" data-keywords="youtube downloader, youtube to mp3 mp4, download youtube video, youtube converter, save video, playlist, yt downloader, yt-dlp, download mp3, download mp4, youtube audio, youtube to audio, save youtube video, video downloader, audio downloader" data-name="YouTube Downloader mp3 mp4 audio video playlist download yt">
         <div class="tool-card-icon">📥</div>
         <div class="tool-card-name">YouTube Downloader</div>
         <div class="tool-card-desc">Download YouTube videos as MP4 or audio as MP3. Supports full playlists with batch download.</div>
@@ -418,7 +448,7 @@
         <div class="tool-card-name">Speech &amp; Voice</div>
         <div class="tool-card-desc">Transcribe mic or audio files to text, or convert text to speech. English, French, Spanish. No upload — 100% browser-based.</div>
       </a>
-      <a href="tools/photo-editor/index.html" class="tool-card" data-keywords="remove background free, background remover AI, add text to photo, resize passport social media image, recolor crop" data-name="Photo Editor remove background add text color adjust brightness contrast saturation recolor image">
+      <a href="tools/photo-editor/index.html" class="tool-card" data-keywords="remove background free, background remover AI, add text to photo, resize passport social media image, recolor crop, photo editor online, edit photo, background eraser, transparent background, image background remove, photo background removal, passport photo, photo crop" data-name="Photo Editor remove background add text color adjust brightness contrast saturation recolor image">
         <div class="tool-card-icon">🖼️</div>
         <div class="tool-card-name">Photo Editor</div>
         <div class="tool-card-desc">Remove backgrounds, adjust colors, add text, and replace colors in photos — entirely in your browser. No upload needed.</div>
@@ -552,9 +582,13 @@
     const catFilter = q ? 'all' : activeCat;
     let visible = 0;
 
+    // Split query into individual tokens so "zip file" matches cards containing
+    // both "zip" and "file" anywhere in their text/keywords.
+    const terms = q ? q.split(/\s+/).filter(Boolean) : [];
+
     document.querySelectorAll('.tool-card').forEach(card => {
       const text = ((card.dataset.name || '') + ' ' + (card.dataset.keywords || '') + ' ' + card.textContent).toLowerCase();
-      const matchSearch = !q || text.includes(q);
+      const matchSearch = terms.length === 0 || terms.every(t => text.includes(t));
       card.style.display = matchSearch ? '' : 'none';
       if (matchSearch && !card.classList.contains('coming-soon')) visible++;
     });
@@ -576,6 +610,105 @@
   searchInput.addEventListener('input', () => {
     if (headerSearch.value !== searchInput.value) headerSearch.value = searchInput.value;
     applyFilters();
+  });
+
+  // ── Keyword tags per tool card ────────────────────────────
+  const CARD_TAGS = {
+    // Productivity & Time
+    'tools/pomodoro/index.html':           ['focus timer','25 min work','break timer','study timer','Pomodoro'],
+    'tools/date-calculator/index.html':    ['date difference','age calculator','countdown','time converter','Excel date'],
+    'tools/calendar/index.html':           ['lunar calendar','Islamic Hijri','Gregorian','农历','calendar converter'],
+    'tools/timer/index.html':              ['stopwatch','countdown alarm','lap times','interval timer','centiseconds'],
+    'tools/timezone/index.html':           ['world clock','UTC GMT offset','meeting planner','time difference','remote teams'],
+    // Generators
+    'tools/password-generator/index.html': ['random password','strong password','passphrase','create password','secure'],
+    'tools/qr-generator/index.html':       ['make QR code','barcode maker','WiFi QR','vCard QR','download PNG SVG'],
+    'tools/uuid-generator/index.html':     ['UUID v4 v7','GUID','bulk UUID','random ID','unique identifier'],
+    'tools/random-number/index.html':      ['random integer','dice roller','bulk random','no duplicates','number range'],
+    'tools/lorem-ipsum/index.html':        ['placeholder text','dummy text','lipsum','paragraphs & sentences','fake text'],
+    'tools/fake-data/index.html':          ['test data','mock data','random names','fake emails','CSV JSON export'],
+    'tools/wheel-of-names/index.html':     ['random picker','spinning wheel','winner picker','raffle','lucky draw'],
+    // PDF & Text
+    'tools/pdf-toolkit/index.html':        ['merge PDF','split PDF','compress PDF','extract pages','reorder pages'],
+    'tools/pdf-to-text/index.html':        ['extract text PDF','PDF to Word','PDF to TXT','copy PDF text','PDF reader'],
+    'tools/word-counter/index.html':       ['character count','reading time','sentence counter','keyword density','word count'],
+    'tools/markdown-editor/index.html':    ['live preview','markdown to HTML','GFM editor','export HTML','markdown renderer'],
+    'tools/text-diff/index.html':          ['compare text','diff checker','code diff','highlight changes','side by side'],
+    'tools/typing-speed/index.html':       ['WPM test','typing accuracy','words per minute','keyboard speed','touch typing'],
+    'tools/text-case/index.html':          ['UPPERCASE','camelCase','snake_case','kebab-case','title case'],
+    'tools/notepad/index.html':            ['auto-save notes','scratch pad','browser notes','quick notes','no login'],
+    // Encoding & Crypto
+    'tools/base64-converter/index.html':   ['encode Base64','decode Base64','file to Base64','Base64 image','text encode'],
+    'tools/url-encoder/index.html':        ['percent encode','URL escape','decode URL','URL encoding','URL unescape'],
+    'tools/unix-timestamp/index.html':     ['epoch converter','timestamp to date','current epoch','date to unix','epoch time'],
+    'tools/hash-generator/index.html':     ['SHA-256','SHA-512','HMAC','file checksum','crypto hash'],
+    'tools/html-entities/index.html':      ['escape HTML','HTML encode','special characters','HTML decode','amp lt gt'],
+    'tools/jwt-decoder/index.html':        ['JSON web token','decode JWT','JWT payload','token claims','auth token'],
+    'tools/base-converter/index.html':     ['binary to decimal','hexadecimal','octal','bin to hex','number base'],
+    // Calculators
+    'tools/percentage-calculator/index.html': ['percent of number','percentage change','calculate percent','increase decrease','ratio'],
+    'tools/aspect-ratio/index.html':       ['16:9 ratio','image ratio','resize calculator','video resolution','dimension'],
+    'tools/unit-converter/index.html':     ['km to miles','kg to lbs','Celsius Fahrenheit','metric imperial','length weight'],
+    'tools/loan-calculator/index.html':    ['mortgage payment','monthly payment','amortization','interest rate','EMI'],
+    'tools/tip-calculator/index.html':     ['split bill','restaurant tip','gratuity','per person','bill splitter'],
+    'tools/number-words/index.html':       ['spell out number','check writing','invoice amount','number in words','legal amount'],
+    // Development
+    'tools/json-editor/index.html':        ['format JSON','validate JSON','minify JSON','pretty print','JSON tree view'],
+    'tools/csv-json/index.html':           ['CSV to JSON','JSON to CSV','parse CSV','spreadsheet convert','data format'],
+    'tools/crontab/index.html':            ['cron expression','cron to English','Linux cron','cron parser','schedule task'],
+    'tools/regex-tester/index.html':       ['regular expression','regex debugger','live match','capture groups','regex flags'],
+    'tools/sql-formatter/index.html':      ['format SQL','SQL beautifier','pretty print SQL','SQL minifier','query formatter'],
+    'tools/file-compressor/index.html':    ['compress files','extract ZIP','make ZIP','ZIP archive','no upload'],
+    'tools/ai-token-counter/index.html':   ['GPT tokens','Claude tokens','token estimate','API cost','context window'],
+    'tools/ai-prompt-template/index.html': ['AI prompt','prompt variables','prompt engineering','ChatGPT prompt','reusable prompt'],
+    'tools/ai-json-schema/index.html':     ['JSON schema','OpenAI function','Anthropic tool use','schema generator','auto-generate'],
+    // Network & Security
+    'tools/currency/index.html':           ['exchange rate','bitcoin BTC','crypto convert','forex','USD EUR GBP'],
+    'tools/my-ip/index.html':              ['public IP','find my IP','IPv4 IPv6','ISP lookup','my IP address'],
+    'tools/ip-location/index.html':        ['IP geolocation','IP to country','trace IP','ASN lookup','VPN detection'],
+    'tools/utm-builder/index.html':        ['UTM parameters','Google Analytics','campaign tracking','UTM generator','marketing URL'],
+    'tools/csr-decoder/index.html':        ['SSL certificate','CSR decode','PEM decoder','X.509','SAN certificate'],
+    'tools/port-checker/index.html':       ['check open port','TCP port scan','firewall test','SSH RDP port','port scanner'],
+    'tools/domain-checker/index.html':     ['WHOIS lookup','domain availability','DNS records','domain expiry','RDAP'],
+    // Media
+    'tools/image-converter/index.html':    ['HEIC to JPG','compress image','resize image','PNG to JPG','convert WebP'],
+    'tools/color-converter/index.html':    ['HEX to RGB','RGB to HSL','CMYK','color picker','CSS color'],
+    'tools/contrast-checker/index.html':   ['WCAG contrast','AA AAA','accessibility','color ratio','a11y'],
+    'tools/palette-extractor/index.html':  ['extract colors','dominant colors','image palette','HEX from photo','CSS variables'],
+    'tools/screenshot-beautifier/index.html': ['screenshot frame','gradient background','shadow padding','professional screenshot','download PNG'],
+    'tools/char-map/index.html':           ['special symbols','copy characters','unicode','arrow symbols','emoji picker'],
+    'tools/yt-downloader/index.html':      ['download MP4','YouTube to MP3','save video','video downloader','playlist download'],
+    'tools/speech-voice/index.html':       ['speech to text','transcribe audio','text to speech','voice recorder','microphone'],
+    'tools/photo-editor/index.html':       ['remove background','add text to photo','background eraser','passport photo','recolor image'],
+    // Share
+    'tools/url-shortener/index.html':      ['short link','custom alias','shorten URL','tiny URL','link expiry'],
+    'tools/pastebin/index.html':           ['share code','code snippet','private paste','burn after read','syntax highlight'],
+    'tools/file-share/index.html':         ['share ZIP','upload file','temp file hosting','file transfer','download link'],
+    // Relax
+    'tools/2048/index.html':               ['merge tiles','number puzzle','slide game','brain game','office break'],
+    'tools/sudoku/index.html':             ['9×9 puzzle','easy medium hard','number grid','pencil mode','sudoku solver'],
+    'tools/gomoku/index.html':             ['five in a row','strategy game','board game','vs AI','gobang'],
+    'tools/memory/index.html':             ['flip cards','matching pairs','emoji game','concentration','brain training'],
+    'tools/chess/index.html':              ['chess vs AI','two player chess','castling','strategy game','board game'],
+    'tools/simon-says/index.html':         ['color sequence','memory game','brain training','sound game','pattern repeat'],
+    'tools/number-memory/index.html':      ['digit span','memory test','cognitive test','number recall','brain training'],
+    'tools/visual-memory/index.html':      ['pattern memory','grid game','spatial memory','brain training','cognitive test'],
+    'tools/word-memory/index.html':        ['word recall','vocabulary test','recognition game','brain training','word list'],
+  };
+
+  document.querySelectorAll('.tool-card').forEach(card => {
+    const href = card.getAttribute('href');
+    const tags = CARD_TAGS[href];
+    if (!tags) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'tool-card-tags';
+    tags.forEach(tag => {
+      const span = document.createElement('span');
+      span.className = 'tool-tag';
+      span.textContent = tag;
+      wrap.appendChild(span);
+    });
+    card.appendChild(wrap);
   });
 </script>
 </body>

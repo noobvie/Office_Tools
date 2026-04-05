@@ -1,6 +1,6 @@
 # Office Tools
 
-68 free, browser-based utilities for everyday office, productivity, and AI development work.
+70 free, browser-based utilities for everyday office, productivity, and AI development work.
 No build step, no framework, no tracking — everything runs locally in your browser.
 
 **Live site:** [https://tools.grin.money/](https://tools.grin.money/)
@@ -18,7 +18,7 @@ sudo bash Office_Tools/deploy.sh
 | Tool | Description |
 |------|-------------|
 | Pomodoro Timer | 25-min focus cycles with breaks, session counter and desktop notifications |
-| Date Calculator | Date difference, add/subtract days, age calculator, countdown to any date |
+| Date & Time Calculator | Date difference, add/subtract days, age, countdown, time unit converter, Excel serial↔datetime, decimal hours↔HH:MM:SS, duration adder |
 | World Calendar | Gregorian, Chinese Lunar (农历), and Islamic Hijri calendars side by side |
 | Stopwatch & Timer | Stopwatch with lap times and countdown timer with alarm |
 | Time Zone Converter | Convert times between time zones — world clock for 40+ cities |
@@ -88,6 +88,8 @@ sudo bash Office_Tools/deploy.sh
 | IP Location Lookup | IPv4/IPv6/domain — country, city, ISP, ASN, VPN/proxy detection, map |
 | Campaign URL Builder | Build UTM-tagged URLs for Google Analytics with QR code |
 | CSR Decoder | Decode a CSR — subject, key size, SANs, fingerprints. Fully local |
+| Port Checker | Check if TCP ports are open on any host — common services presets (SSH, RDP, HTTP, MySQL…) + all Grin mainnet & testnet ports (3413–3420 / 13413–13420) |
+| Domain Checker | WHOIS / RDAP lookup, DNS records, availability across 8 TLDs (.com .net .org .io .app .dev…), and AI-powered domain name suggestions |
 
 ### 🖼️ Media
 | Tool | Description |

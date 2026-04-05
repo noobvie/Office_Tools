@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>File Compressor &amp; Extractor — Free ZIP Tool, No Upload | Office Tools</title>
   <meta name="description" content="Compress files into a ZIP archive or extract any ZIP — entirely in your browser. No file upload, no server, 100% private. Works offline.">
-  <meta name="keywords" content="file compressor online, zip files online, extract zip browser, compress zip no upload, online zip tool, free zip extractor, zip archive creator, browser zip tool, client-side zip, compress without software">
+  <meta name="keywords" content="file compressor online, zip files online, extract zip browser, compress zip no upload, online zip tool, free zip extractor, zip archive creator, browser zip tool, client-side zip, compress without software, password protected zip, encrypt zip online, extract zip file with password, decrypt zip file browser, zip aes encryption, open password protected zip">
   <meta name="robots" content="index, follow">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Office Tools">
@@ -16,8 +16,9 @@
   <meta name="twitter:title" content="File Compressor &amp; Extractor — Free, No Upload">
   <meta name="twitter:description" content="Compress files to ZIP or extract ZIP archives in your browser. No upload, no server, 100% private.">
   <link rel="canonical" href="https://tools.grin.money/tools/file-compressor/">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"File Compressor & Extractor","description":"Compress files into ZIP archives or extract any ZIP file entirely in your browser. No upload, no server — your files stay on your device.","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/file-compressor/","featureList":["Create ZIP archives from multiple files","Extract ZIP contents in browser","No file upload required","100% client-side processing","Works offline"]}</script>
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Does this tool upload my files to a server?","acceptedAnswer":{"@type":"Answer","text":"No. All compression and extraction happens entirely in your browser using JavaScript. Your files never leave your device."}},{"@type":"Question","name":"What file formats are supported?","acceptedAnswer":{"@type":"Answer","text":"You can create ZIP archives from any file type, and extract ZIP files. The tool uses JSZip which supports the standard ZIP format (DEFLATE compression)."}},{"@type":"Question","name":"Is there a file size limit?","acceptedAnswer":{"@type":"Answer","text":"There is no hard limit, but browser memory constrains large operations. We recommend keeping total file size under 200 MB for reliable performance."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"File Compressor & Extractor","description":"Compress files into ZIP archives or extract any ZIP file entirely in your browser. No upload, no server — your files stay on your device.","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/file-compressor/","featureList":["Create ZIP archives from multiple files","Extract ZIP contents in browser","Password-protected ZIP support (AES-256)","Decrypt password-protected ZIP files","No file upload required","100% client-side processing","Works offline"]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Does this tool upload my files to a server?","acceptedAnswer":{"@type":"Answer","text":"No. All compression and extraction happens entirely in your browser using JavaScript. Your files never leave your device."}},{"@type":"Question","name":"What file formats are supported?","acceptedAnswer":{"@type":"Answer","text":"You can create ZIP archives from any file type, and extract ZIP files. The tool supports standard ZIP format with optional AES-256 password encryption."}},{"@type":"Question","name":"Is there a file size limit?","acceptedAnswer":{"@type":"Answer","text":"There is no hard limit, but browser memory constrains large operations. We recommend keeping total file size under 200 MB for reliable performance."}},{"@type":"Question","name":"Can I extract a password-protected ZIP file?","acceptedAnswer":{"@type":"Answer","text":"Yes. This tool can decrypt and extract ZIP files protected with AES-256 or ZipCrypto passwords. Simply drop the ZIP, enter the password when prompted, and download your files. The password never leaves your browser."}},{"@type":"Question","name":"How do I create a password-protected ZIP?","acceptedAnswer":{"@type":"Answer","text":"Add your files, fill in the optional Password field, then click Create ZIP. The archive will be encrypted with AES-256, compatible with 7-Zip, WinRAR, and Windows."}}]}</script>
+  <script src="../../js/theme-init.js"></script>
   <link rel="stylesheet" href="../../css/style.css">
   <style>
     /* ── Tabs ── */
@@ -128,6 +129,16 @@
       display: none;
     }
 
+    /* ── Password field ── */
+    .pwd-wrap {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      flex: 1;
+      min-width: 200px;
+    }
+    .pwd-wrap input { flex: 1; min-width: 0; }
+
     /* ── Extract file list ── */
     .ext-header {
       display: flex;
@@ -205,6 +216,15 @@
         </label>
       </div>
 
+      <!-- Password option (optional) -->
+      <div class="options-row" id="compPasswordRow" style="display:none">
+        <label style="white-space:nowrap">🔐 Password <span style="font-weight:400;font-size:.78rem">(optional)</span>:</label>
+        <div class="pwd-wrap">
+          <input type="password" id="compPassword" placeholder="Leave blank for no encryption">
+          <button type="button" id="compPwdToggle" class="btn btn-secondary btn-sm">Show</button>
+        </div>
+      </div>
+
       <!-- Actions -->
       <div class="flex-between mt-1" id="compActions" style="display:none">
         <button class="btn btn-secondary" id="compClear">✕ Clear all</button>
@@ -218,7 +238,8 @@
     <div class="card mt-2" style="font-size:.82rem;color:var(--text-muted);line-height:1.7">
       <strong style="color:var(--text)">ℹ How it works</strong><br>
       Select any files — they are bundled into a <code>.zip</code> archive using
-      <strong>DEFLATE</strong> compression entirely in your browser via JSZip.
+      <strong>DEFLATE</strong> compression entirely in your browser.
+      Optionally set a password for <strong>AES-256</strong> encryption — compatible with 7-Zip, WinRAR, and Windows.
       The archive is generated in memory and downloaded directly — no upload, no server, no account.
       <br><br>
       <strong>Tip:</strong> For files already compressed (JPG, MP4, MP3, PDF) uncheck
@@ -239,6 +260,18 @@
 
       <div class="status-bar" id="extStatus"></div>
 
+      <!-- Password prompt — shown automatically for encrypted ZIPs -->
+      <div id="extPasswordRow" style="display:none">
+        <div class="options-row" style="margin-top:.25rem">
+          <label style="white-space:nowrap">🔐 Password:</label>
+          <div class="pwd-wrap">
+            <input type="password" id="extPassword" placeholder="Enter ZIP password">
+            <button type="button" id="extPwdToggle" class="btn btn-secondary btn-sm">Show</button>
+          </div>
+          <button class="btn btn-primary btn-sm" id="extUnlock">🔓 Unlock</button>
+        </div>
+      </div>
+
       <!-- Results -->
       <div id="extResults" style="display:none">
         <div class="ext-header mt-1">
@@ -255,7 +288,9 @@
     <div class="card mt-2" style="font-size:.82rem;color:var(--text-muted);line-height:1.7">
       <strong style="color:var(--text)">ℹ Supported formats</strong><br>
       This tool extracts standard <strong>ZIP</strong> archives (including those created by Windows, macOS,
-      Linux, 7-Zip, WinRAR, and this tool). Password-protected ZIP files are not supported.
+      Linux, 7-Zip, WinRAR, and this tool). Password-protected ZIP files using <strong>AES-256</strong> and
+      <strong>ZipCrypto</strong> encryption are fully supported — just drop the file and enter the password
+      when prompted. The password never leaves your browser.
       For other formats (.rar, .7z, .tar.gz), use a desktop application like
       <a href="https://www.7-zip.org" target="_blank" rel="noopener" style="color:var(--primary)">7-Zip</a> (free).
     </div>
@@ -263,12 +298,16 @@
 
 </main>
 
-<!-- JSZip via CDN -->
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<!-- zip.js via CDN (replaces JSZip — adds AES-256 password support) -->
+<script src="https://cdn.jsdelivr.net/npm/@zip.js/zip.js@2/dist/zip.min.js"></script>
 <script src="../../js/config.js"></script>
 <script src="../../js/common.js"></script>
 <script>
   initThemeToggle('themeToggle');
+
+  /* ── zip.js setup ─────────────────────────────────── */
+  const { ZipWriter, ZipReader, BlobWriter, BlobReader } = zip;
+  zip.configure({ useWebWorkers: false });
 
   /* ── Tab switching ─────────────────────────────────── */
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -283,18 +322,21 @@
   /* ═══════════════════════════════════════════════════════
      COMPRESS
   ═══════════════════════════════════════════════════════ */
-  const SIZE_WARN_BYTES = 200 * 1024 * 1024; // 200 MB
-  let compFiles = []; // Array of File objects
+  const SIZE_WARN_BYTES = 200 * 1024 * 1024;
+  let compFiles = [];
 
-  const compDrop      = document.getElementById('compDrop');
-  const compFileInput = document.getElementById('compFileInput');
-  const compFileList  = document.getElementById('compFileList');
-  const compSizeWarn  = document.getElementById('compSizeWarn');
-  const compOptions   = document.getElementById('compOptions');
-  const compActions   = document.getElementById('compActions');
-  const compStatus    = document.getElementById('compStatus');
-  const compFilename  = document.getElementById('compFilename');
-  const compCompress  = document.getElementById('compCompress');
+  const compDrop        = document.getElementById('compDrop');
+  const compFileInput   = document.getElementById('compFileInput');
+  const compFileList    = document.getElementById('compFileList');
+  const compSizeWarn    = document.getElementById('compSizeWarn');
+  const compOptions     = document.getElementById('compOptions');
+  const compPasswordRow = document.getElementById('compPasswordRow');
+  const compActions     = document.getElementById('compActions');
+  const compStatus      = document.getElementById('compStatus');
+  const compFilename    = document.getElementById('compFilename');
+  const compCompress    = document.getElementById('compCompress');
+  const compPassword    = document.getElementById('compPassword');
+  const compPwdToggle   = document.getElementById('compPwdToggle');
 
   function fmtSize(bytes) {
     if (bytes < 1024) return bytes + ' B';
@@ -306,6 +348,7 @@
     compFileList.innerHTML = '';
     if (!compFiles.length) {
       compOptions.style.display = 'none';
+      compPasswordRow.style.display = 'none';
       compActions.style.display = 'none';
       compSizeWarn.style.display = 'none';
       return;
@@ -313,6 +356,7 @@
     const total = compFiles.reduce((s, f) => s + f.size, 0);
     compSizeWarn.style.display = total > SIZE_WARN_BYTES ? '' : 'none';
     compOptions.style.display = '';
+    compPasswordRow.style.display = '';
     compActions.style.display = '';
 
     compFiles.forEach((f, i) => {
@@ -343,6 +387,13 @@
     compStatus.className = 'status-bar';
   }
 
+  // Password show/hide
+  compPwdToggle.addEventListener('click', () => {
+    const hidden = compPassword.type === 'password';
+    compPassword.type = hidden ? 'text' : 'password';
+    compPwdToggle.textContent = hidden ? 'Hide' : 'Show';
+  });
+
   // Drop zone
   compDrop.addEventListener('click', () => compFileInput.click());
   compFileInput.addEventListener('change', e => addCompFiles(e.target.files));
@@ -358,6 +409,7 @@
   document.getElementById('compClear').addEventListener('click', () => {
     compFiles = [];
     compFileInput.value = '';
+    compPassword.value = '';
     renderCompList();
     compStatus.textContent = '';
     compStatus.className = 'status-bar';
@@ -371,29 +423,26 @@
     compStatus.textContent = '⏳ Building archive…';
     compStatus.className = 'status-bar';
 
-    try {
-      const zip = new JSZip();
-      const useCompression = compCompress.checked;
+    const password = compPassword.value.trim() || undefined;
+    const useCompression = compCompress.checked;
 
-      for (const f of compFiles) {
-        const data = await f.arrayBuffer();
-        zip.file(f.name, data, {
-          compression: useCompression ? 'DEFLATE' : 'STORE',
-          compressionOptions: useCompression ? { level: 6 } : undefined
+    try {
+      const blobWriter = new BlobWriter('application/zip');
+      const zipWriter = new ZipWriter(blobWriter, password
+        ? { password, encryptionStrength: 3 }
+        : {});
+
+      for (let i = 0; i < compFiles.length; i++) {
+        const f = compFiles[i];
+        compStatus.textContent = `⏳ Adding ${f.name}… (${i + 1}/${compFiles.length})`;
+        await zipWriter.add(f.name, new BlobReader(f), {
+          level: useCompression ? 6 : 0
         });
       }
 
-      compStatus.textContent = '⏳ Generating ZIP…';
-      const blob = await zip.generateAsync({
-        type: 'blob',
-        compression: useCompression ? 'DEFLATE' : 'STORE',
-        compressionOptions: useCompression ? { level: 6 } : undefined,
-        streamFiles: true
-      }, meta => {
-        compStatus.textContent = `⏳ Compressing… ${meta.percent.toFixed(0)}%`;
-      });
+      compStatus.textContent = '⏳ Finalizing…';
+      const blob = await zipWriter.close();
 
-      // Ensure .zip extension
       let name = compFilename.value.trim() || 'archive';
       if (!name.toLowerCase().endsWith('.zip')) name += '.zip';
 
@@ -402,7 +451,8 @@
       a.href = url; a.download = name; a.click();
       URL.revokeObjectURL(url);
 
-      compStatus.textContent = `✅ Done — ${name} (${fmtSize(blob.size)})`;
+      const pwdNote = password ? ' · 🔐 AES-256 encrypted' : '';
+      compStatus.textContent = `✅ Done — ${name} (${fmtSize(blob.size)})${pwdNote}`;
       compStatus.className = 'status-bar ok';
     } catch (err) {
       compStatus.textContent = '❌ Error: ' + err.message;
@@ -415,80 +465,146 @@
   /* ═══════════════════════════════════════════════════════
      EXTRACT
   ═══════════════════════════════════════════════════════ */
-  const extDrop      = document.getElementById('extDrop');
-  const extFileInput = document.getElementById('extFileInput');
-  const extStatus    = document.getElementById('extStatus');
-  const extResults   = document.getElementById('extResults');
-  const extFileList  = document.getElementById('extFileList');
-  const extTitle     = document.getElementById('extTitle');
-  let extractedZip   = null;
+  const extDrop        = document.getElementById('extDrop');
+  const extFileInput   = document.getElementById('extFileInput');
+  const extStatus      = document.getElementById('extStatus');
+  const extResults     = document.getElementById('extResults');
+  const extFileList    = document.getElementById('extFileList');
+  const extTitle       = document.getElementById('extTitle');
+  const extPasswordRow = document.getElementById('extPasswordRow');
+  const extPassword    = document.getElementById('extPassword');
+  const extPwdToggle   = document.getElementById('extPwdToggle');
+
+  let currentExtBlob        = null;
+  let currentExtFilename    = '';
+  let currentExtPassword    = null;
+  let currentExtIsEncrypted = false;
+
+  // Password show/hide
+  extPwdToggle.addEventListener('click', () => {
+    const hidden = extPassword.type === 'password';
+    extPassword.type = hidden ? 'text' : 'password';
+    extPwdToggle.textContent = hidden ? 'Hide' : 'Show';
+  });
+
+  // Unlock button
+  document.getElementById('extUnlock').addEventListener('click', () => {
+    const pwd = extPassword.value;
+    if (!pwd) { extPassword.focus(); return; }
+    loadZipFromBlob(currentExtBlob, currentExtFilename, pwd);
+  });
+
+  extPassword.addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('extUnlock').click();
+  });
 
   async function loadZip(file) {
     extStatus.textContent = `⏳ Reading ${file.name}…`;
     extStatus.className = 'status-bar';
     extResults.style.display = 'none';
     extFileList.innerHTML = '';
+    extPasswordRow.style.display = 'none';
+    extPassword.value = '';
+    currentExtFilename = file.name;
 
     try {
-      const data = await file.arrayBuffer();
-      const zip = await JSZip.loadAsync(data);
-      extractedZip = zip;
+      currentExtBlob = new Blob([await file.arrayBuffer()]);
+      await loadZipFromBlob(currentExtBlob, file.name, null);
+    } catch (err) {
+      extStatus.textContent = '❌ Could not read file: ' + err.message;
+      extStatus.className = 'status-bar err';
+    }
+  }
 
-      const entries = [];
-      zip.forEach((path, entry) => {
-        if (!entry.dir) entries.push({ path, entry });
-      });
+  async function loadZipFromBlob(blob, filename, password) {
+    extStatus.textContent = '⏳ Parsing archive…';
+    extStatus.className = 'status-bar';
+    extResults.style.display = 'none';
+    extFileList.innerHTML = '';
 
-      if (!entries.length) {
+    try {
+      // Read central directory (no password needed for metadata)
+      const metaReader = new ZipReader(new BlobReader(blob));
+      let allEntries;
+      try {
+        allEntries = await metaReader.getEntries();
+      } finally {
+        await metaReader.close();
+      }
+
+      const fileEntries = allEntries.filter(e => !e.directory);
+      currentExtIsEncrypted = allEntries.some(e => e.encrypted);
+
+      if (!fileEntries.length) {
         extStatus.textContent = '⚠ Archive is empty or contains only folders.';
         extStatus.className = 'status-bar err';
         return;
       }
 
-      // Sort folders first, then by path
-      entries.sort((a, b) => a.path.localeCompare(b.path));
+      if (currentExtIsEncrypted && !password) {
+        extPasswordRow.style.display = '';
+        extStatus.textContent = '🔐 This archive is password-protected. Enter the password above.';
+        extStatus.className = 'status-bar';
+        return;
+      }
 
-      extTitle.textContent = `${file.name} — ${entries.length} file${entries.length !== 1 ? 's' : ''}`;
+      currentExtPassword = password || null;
+      fileEntries.sort((a, b) => a.filename.localeCompare(b.filename));
 
-      entries.forEach(({ path, entry }) => {
-        const row = document.createElement('div');
-        row.className = 'ext-file-row';
+      extTitle.textContent = `${filename} — ${fileEntries.length} file${fileEntries.length !== 1 ? 's' : ''}`;
+
+      fileEntries.forEach(entry => {
+        const path = entry.filename;
         const parts = path.split('/');
         const fname = parts.pop();
         const folder = parts.join('/');
+        const row = document.createElement('div');
+        row.className = 'ext-file-row';
         row.innerHTML = `
           <span class="ext-file-name" title="${path}">
             ${folder ? `<span style="color:var(--text-muted);font-size:.75rem">${folder}/</span>` : ''}${fname}
           </span>
-          <span class="ext-file-size" id="size-${CSS.escape(path)}">…</span>
+          <span class="ext-file-size">${fmtSize(entry.uncompressedSize)}</span>
           <button class="fr-dl" data-path="${path}">⬇ Save</button>`;
         extFileList.appendChild(row);
-
-        // Load size lazily
-        entry.async('arraybuffer').then(buf => {
-          const el = document.getElementById('size-' + CSS.escape(path));
-          if (el) el.textContent = fmtSize(buf.byteLength);
-        }).catch(() => {});
       });
 
-      // Wire individual download buttons
       extFileList.querySelectorAll('.fr-dl').forEach(btn => {
         btn.addEventListener('click', () => dlEntry(btn.dataset.path));
       });
 
-      extStatus.textContent = '';
-      extStatus.className = 'status-bar';
+      extPasswordRow.style.display = 'none';
+      extStatus.textContent = currentExtIsEncrypted ? '🔐 Encrypted archive unlocked.' : '';
+      extStatus.className = currentExtIsEncrypted ? 'status-bar ok' : 'status-bar';
       extResults.style.display = '';
+
     } catch (err) {
-      extStatus.textContent = '❌ ' + (err.message.includes('password') ? 'Password-protected ZIPs are not supported.' : 'Could not read ZIP: ' + err.message);
+      const msg = (err.message || '').toLowerCase();
+      const isPasswordError = currentExtIsEncrypted &&
+        (msg.includes('password') || msg.includes('decrypt') || msg.includes('abort') || msg.includes('bad'));
+      extStatus.textContent = isPasswordError
+        ? '❌ Wrong password. Please try again.'
+        : '❌ Could not read ZIP: ' + err.message;
       extStatus.className = 'status-bar err';
+      if (isPasswordError) {
+        extPasswordRow.style.display = '';
+        extPassword.value = '';
+        extPassword.focus();
+      }
     }
   }
 
   async function dlEntry(path) {
     try {
-      const buf = await extractedZip.file(path).async('arraybuffer');
-      const blob = new Blob([buf]);
+      const readerOpts = currentExtPassword ? { password: currentExtPassword } : {};
+      const zipReader = new ZipReader(new BlobReader(currentExtBlob), readerOpts);
+      const entries = await zipReader.getEntries();
+      const entry = entries.find(e => e.filename === path);
+      if (!entry) throw new Error('File not found in archive.');
+      const blob = await entry.getData(new BlobWriter(),
+        currentExtPassword ? { password: currentExtPassword } : {});
+      await zipReader.close();
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -496,40 +612,44 @@
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      alert('Could not extract file: ' + err.message);
+      const msg = (err.message || '').toLowerCase();
+      const isPasswordError = currentExtIsEncrypted &&
+        (msg.includes('password') || msg.includes('decrypt') || msg.includes('abort') || msg.includes('bad'));
+      if (isPasswordError) {
+        currentExtPassword = null;
+        extResults.style.display = 'none';
+        extPasswordRow.style.display = '';
+        extPassword.value = '';
+        extPassword.focus();
+        extStatus.textContent = '❌ Wrong password. Please re-enter and unlock.';
+        extStatus.className = 'status-bar err';
+      } else {
+        alert('Could not extract: ' + err.message);
+      }
     }
   }
 
-  document.getElementById('extDownloadAll').addEventListener('click', async () => {
-    if (!extractedZip) return;
-    const btn = document.getElementById('extDownloadAll');
-    btn.disabled = true;
-    extStatus.textContent = '⏳ Preparing download…';
-    extStatus.className = 'status-bar';
-
-    try {
-      const blob = await extractedZip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = extTitle.textContent.split(' —')[0];
-      a.click();
-      URL.revokeObjectURL(url);
-      extStatus.textContent = '✅ Download started.';
-      extStatus.className = 'status-bar ok';
-    } catch (err) {
-      extStatus.textContent = '❌ ' + err.message;
-      extStatus.className = 'status-bar err';
-    } finally {
-      btn.disabled = false;
-    }
+  // Download All — re-download the original archive directly
+  document.getElementById('extDownloadAll').addEventListener('click', () => {
+    if (!currentExtBlob || !currentExtFilename) return;
+    const url = URL.createObjectURL(currentExtBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = currentExtFilename;
+    a.click();
+    URL.revokeObjectURL(url);
   });
 
   document.getElementById('extClear').addEventListener('click', () => {
-    extractedZip = null;
+    currentExtBlob = null;
+    currentExtPassword = null;
+    currentExtIsEncrypted = false;
+    currentExtFilename = '';
     extFileInput.value = '';
     extFileList.innerHTML = '';
     extResults.style.display = 'none';
+    extPasswordRow.style.display = 'none';
+    extPassword.value = '';
     extStatus.textContent = '';
     extStatus.className = 'status-bar';
   });

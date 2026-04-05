@@ -3,20 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Date Calculator — Office Tools</title>
-  <meta name="description" content="Calculate the difference between two dates, add or subtract days from a date, compute your exact age in years/months/days, or count down to any future event. Free, instant, no login.">
-  <meta name="keywords" content="date calculator, date difference, age calculator, days between dates, countdown calculator, add days to date, date math online">
+  <title>Date &amp; Time Calculator — Office Tools</title>
+  <meta name="description" content="All-in-one date and time calculator: date difference, add/subtract days, age calculator, countdown, time unit converter (seconds to minutes to hours), Excel serial number to date/time, decimal hours to HH:MM:SS, and duration adder. Free, no login.">
+  <meta name="keywords" content="date calculator, date difference, age calculator, days between dates, countdown calculator, add days to date, time unit converter, seconds to minutes, minutes to hours, Excel time number, Excel serial date, decimal hours to time, HH:MM to decimal, duration calculator, time to decimal, timesheet calculator">
   <meta name="robots" content="index, follow">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Office Tools">
-  <meta property="og:title" content="Free Date Calculator — Date Difference, Age &amp; Countdown">
-  <meta property="og:description" content="Calculate the difference between two dates, add or subtract days from a date, compute your exact age in years/months/days, or count down to any future event. Free, instant, no login.">
+  <meta property="og:title" content="Date &amp; Time Calculator — Difference, Age, Countdown, Unit Converter &amp; More">
+  <meta property="og:description" content="All-in-one date and time calculator: date difference, age, countdown, time unit conversion, Excel time conversion, decimal hours, and duration adder. Free, no login.">
   <meta property="og:url" content="https://tools.grin.money/tools/date-calculator/">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Free Date Calculator — Date Difference, Age &amp; Countdown">
-  <meta name="twitter:description" content="Calculate the difference between two dates, add or subtract days from a date, compute your exact age in years/months/days, or count down to any future event. Free, instant, no login.">
+  <meta name="twitter:title" content="Date &amp; Time Calculator — Difference, Age, Countdown, Unit Converter &amp; More">
+  <meta name="twitter:description" content="All-in-one date and time tool: date difference, age, countdown, time unit converter, Excel serial number to datetime, decimal hours, and duration adder. Free, no login.">
   <link rel="canonical" href="https://tools.grin.money/tools/date-calculator/">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Date Calculator","description":"Calculate the difference between two dates, add or subtract days from a date, compute your exact age in years/months/days, or count down to any future event. Free, instant, no login.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/date-calculator/"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Date & Time Calculator","description":"All-in-one date and time calculator: date difference, add/subtract days, age calculator, countdown, time unit converter, Excel serial date/time conversion, decimal hours, and duration adder.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/date-calculator/"}</script>
+  <script src="../../js/theme-init.js"></script>
   <link rel="stylesheet" href="../../css/style.css">
   <style>
     .result-block {
@@ -47,13 +48,114 @@
     }
     .result-mini .val { font-weight: 800; color: var(--primary); font-size: 1.1rem; }
     .result-mini .lbl { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+
+    /* ── Time Unit Converter ── */
+    .tu-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: .65rem;
+      margin-top: .5rem;
+    }
+    .tu-field { display: flex; flex-direction: column; gap: .25rem; }
+    .tu-field label { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+    .tu-field input {
+      padding: .45rem .7rem;
+      border-radius: var(--radius);
+      border: 1.5px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text);
+      font-size: .92rem;
+      font-family: 'Courier New', monospace;
+      outline: none;
+      transition: border-color var(--transition);
+    }
+    .tu-field input:focus { border-color: var(--primary); }
+
+    /* ── Excel Time ── */
+    .excel-result {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      margin-top: .75rem;
+    }
+    .excel-result .er-row {
+      display: flex;
+      gap: .5rem;
+      align-items: baseline;
+      padding: .25rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: .9rem;
+    }
+    .excel-result .er-row:last-child { border-bottom: none; }
+    .excel-result .er-lbl { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); min-width: 80px; }
+    .excel-result .er-val { font-family: 'Courier New', monospace; font-weight: 700; color: var(--primary); }
+
+    /* ── Decimal Time ── */
+    .dec-dir { display: flex; gap: .5rem; margin-bottom: .75rem; flex-wrap: wrap; }
+    .dec-dir label { display: flex; align-items: center; gap: .35rem; font-size: .88rem; cursor: pointer; }
+    .dec-output {
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      padding: .85rem 1rem;
+      font-family: 'Courier New', monospace;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-top: .75rem;
+      word-break: break-all;
+    }
+    .dec-sub { font-size: .8rem; color: var(--text-muted); margin-top: .35rem; font-family: inherit; font-weight: 400; }
+
+    /* ── Duration Adder ── */
+    .dur-entry {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      margin-bottom: .45rem;
+      flex-wrap: wrap;
+    }
+    .dur-entry input[type="text"] {
+      flex: 1;
+      min-width: 120px;
+      padding: .4rem .7rem;
+      border-radius: var(--radius);
+      border: 1.5px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text);
+      font-size: .9rem;
+      outline: none;
+    }
+    .dur-entry input:focus { border-color: var(--primary); }
+    .dur-entry select {
+      padding: .4rem .5rem;
+      border-radius: var(--radius);
+      border: 1.5px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text);
+      font-size: .88rem;
+      cursor: pointer;
+    }
+    .dur-sign { font-weight: 700; font-size: 1rem; color: var(--text-muted); }
+    .dur-remove { background: none; border: none; cursor: pointer; color: var(--danger, #e05260); font-size: 1rem; padding: .15rem .3rem; }
+    .dur-remove:hover { opacity: .7; }
+    .dur-result {
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      padding: 1rem;
+      margin-top: .75rem;
+    }
+    .dur-result .dr-total { font-size: 1.7rem; font-weight: 800; color: var(--primary); font-family: 'Courier New', monospace; }
+    .dur-result .dr-breakdown { font-size: .82rem; color: var(--text-muted); margin-top: .3rem; }
+
+    .hint-text { font-size: .78rem; color: var(--text-muted); margin-top: .35rem; }
   </style>
 </head>
 <body>
 
 <header class="site-header">
   <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
-  <span class="header-tool-name">Date Calculator</span>
+  <span class="header-tool-name">Date &amp; Time Calculator</span>
   <div class="header-actions">
     <button class="theme-toggle" id="themeToggle"></button>
   </div>
@@ -61,19 +163,23 @@
 
 <main class="tool-main">
   <div class="tool-header">
-    <h1>📅 Date Calculator</h1>
-    <p>Calculate date differences, add or subtract days, compute age, and count down to any date.</p>
+    <h1>📅 Date &amp; Time Calculator</h1>
+    <p>Date difference, age, countdown, time unit conversion, Excel serial time, decimal hours, and duration adder.</p>
   </div>
 
   <div class="card" data-tabs>
-    <div class="tabs">
+    <div class="tabs" style="flex-wrap:wrap">
       <button class="tab-btn active" data-tab="diffTab">Difference</button>
       <button class="tab-btn" data-tab="addTab">Add / Subtract</button>
       <button class="tab-btn" data-tab="ageTab">Age</button>
       <button class="tab-btn" data-tab="countTab">Countdown</button>
+      <button class="tab-btn" data-tab="unitsTab">Time Units</button>
+      <button class="tab-btn" data-tab="excelTab">Excel Time</button>
+      <button class="tab-btn" data-tab="decTab">Decimal ↔ HH:MM</button>
+      <button class="tab-btn" data-tab="durTab">Duration Adder</button>
     </div>
 
-    <!-- Difference -->
+    <!-- ── Difference ───────────────────────────────────────── -->
     <div class="tab-pane active" id="diffTab">
       <div class="form-row">
         <div class="form-group"><label>Start Date</label><input type="date" id="diffStart"></div>
@@ -95,7 +201,7 @@
       </div>
     </div>
 
-    <!-- Add / Subtract -->
+    <!-- ── Add / Subtract ──────────────────────────────────── -->
     <div class="tab-pane" id="addTab">
       <div class="form-group"><label>Start Date</label><input type="date" id="addStart"></div>
       <div class="form-row">
@@ -113,7 +219,7 @@
       </div>
     </div>
 
-    <!-- Age -->
+    <!-- ── Age ─────────────────────────────────────────────── -->
     <div class="tab-pane" id="ageTab">
       <div class="form-group"><label>Date of Birth</label><input type="date" id="ageBirth"></div>
       <div class="form-group"><label>Age as of</label><input type="date" id="ageAsOf"></div>
@@ -131,7 +237,7 @@
       </div>
     </div>
 
-    <!-- Countdown -->
+    <!-- ── Countdown ───────────────────────────────────────── -->
     <div class="tab-pane" id="countTab">
       <div class="form-group"><label>Target Date</label><input type="date" id="countTarget"></div>
       <div class="form-group"><label>Event Name (optional)</label><input type="text" id="countName" placeholder="e.g. Project Deadline"></div>
@@ -147,39 +253,119 @@
         <div id="countPast" class="alert alert-info hidden mt-2"></div>
       </div>
     </div>
-  </div>
+
+    <!-- ── Time Units ──────────────────────────────────────── -->
+    <div class="tab-pane" id="unitsTab">
+      <p class="hint-text" style="margin-bottom:.75rem">Type a value in any field — all others update instantly.</p>
+      <div class="tu-grid" id="tuGrid"></div>
+    </div>
+
+    <!-- ── Excel Time ──────────────────────────────────────── -->
+    <div class="tab-pane" id="excelTab">
+      <div class="tabs" style="margin-bottom:.75rem" data-tabs>
+        <button class="tab-btn active" data-tab="excelToDate">Serial → Date/Time</button>
+        <button class="tab-btn" data-tab="dateToExcel">Date/Time → Serial</button>
+      </div>
+
+      <!-- Serial → Date/Time -->
+      <div class="tab-pane active" id="excelToDate">
+        <div class="form-group">
+          <label>Excel Serial Number</label>
+          <input type="number" id="excelSerial" placeholder="e.g. 45292.75" step="any" style="font-family:'Courier New',monospace">
+        </div>
+        <p class="hint-text">Integer part = date (days since Jan 0 1900). Fractional part = time of day (0.5 = 12:00:00).</p>
+        <button class="btn btn-primary" id="excelConvertBtn">Convert</button>
+        <div class="excel-result hidden" id="excelResult">
+          <div class="er-row"><span class="er-lbl">Date</span><span class="er-val" id="excelDate">—</span></div>
+          <div class="er-row"><span class="er-lbl">Time</span><span class="er-val" id="excelTime">—</span></div>
+          <div class="er-row"><span class="er-lbl">DateTime</span><span class="er-val" id="excelDateTime">—</span></div>
+          <div class="er-row"><span class="er-lbl">Day of week</span><span class="er-val" id="excelDow">—</span></div>
+          <div class="er-row"><span class="er-lbl">Unix (s)</span><span class="er-val" id="excelUnix">—</span></div>
+        </div>
+      </div>
+
+      <!-- Date/Time → Serial -->
+      <div class="tab-pane" id="dateToExcel">
+        <div class="form-row">
+          <div class="form-group"><label>Date</label><input type="date" id="d2eDate"></div>
+          <div class="form-group"><label>Time</label><input type="time" id="d2eTime" value="00:00" step="1"></div>
+        </div>
+        <button class="btn btn-primary" id="d2eBtn">Get Excel Serial</button>
+        <div class="excel-result hidden" id="d2eResult">
+          <div class="er-row"><span class="er-lbl">Serial</span><span class="er-val" id="d2eSerial">—</span></div>
+          <div class="er-row"><span class="er-lbl">Date only</span><span class="er-val" id="d2eDateOnly">—</span></div>
+          <div class="er-row"><span class="er-lbl">Time only</span><span class="er-val" id="d2eTimeOnly">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Decimal ↔ HH:MM:SS ──────────────────────────────── -->
+    <div class="tab-pane" id="decTab">
+      <p class="hint-text" style="margin-bottom:.75rem">Convert between decimal hours (e.g. 1.5 h) and HH:MM:SS (1:30:00). Useful for timesheets and billing.</p>
+      <div class="dec-dir">
+        <label><input type="radio" name="decDir" value="toHMS" checked> Decimal → HH:MM:SS</label>
+        <label><input type="radio" name="decDir" value="toDec"> HH:MM:SS → Decimal</label>
+      </div>
+      <div id="decInputDec" class="form-group">
+        <label>Decimal Hours</label>
+        <input type="number" id="decDecInput" placeholder="e.g. 1.75" step="any" min="0">
+      </div>
+      <div id="decInputHMS" class="form-group hidden">
+        <label>HH:MM:SS</label>
+        <input type="text" id="decHMSInput" placeholder="e.g. 1:45:00">
+      </div>
+      <button class="btn btn-primary" id="decConvertBtn">Convert</button>
+      <div class="dec-output hidden" id="decOutput"></div>
+    </div>
+
+    <!-- ── Duration Adder ──────────────────────────────────── -->
+    <div class="tab-pane" id="durTab">
+      <p class="hint-text" style="margin-bottom:.75rem">Add or subtract multiple durations. Format: <code>1h30m</code>, <code>1h30</code>, <code>45m</code>, <code>2h</code>, <code>90s</code>, or <code>HH:MM:SS</code>.</p>
+      <div id="durList"></div>
+      <div style="display:flex;gap:.5rem;margin-top:.35rem">
+        <button class="btn btn-secondary" id="durAddEntry">+ Add Duration</button>
+        <button class="btn btn-primary" id="durCalcBtn">Calculate Total</button>
+      </div>
+      <div class="dur-result hidden" id="durResult">
+        <div class="dr-total" id="durTotal">—</div>
+        <div class="dr-breakdown" id="durBreakdown"></div>
+      </div>
+    </div>
+
+  </div><!-- /card -->
 </main>
 
 <script src="../../js/common.js"></script>
 <script>
-const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+/* ── Shared ── */
+const DAYS_OF_WEEK = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const today = new Date().toISOString().split('T')[0];
 document.getElementById('diffStart').value = today;
-document.getElementById('diffEnd').value = today;
-document.getElementById('addStart').value = today;
-document.getElementById('ageAsOf').value = today;
+document.getElementById('diffEnd').value   = today;
+document.getElementById('addStart').value  = today;
+document.getElementById('ageAsOf').value   = today;
 document.getElementById('countTarget').value = today;
+document.getElementById('d2eDate').value   = today;
 
-// Difference
+/* ═══════════════════════════════════════════
+   DIFFERENCE
+═══════════════════════════════════════════ */
 document.getElementById('diffBtn').addEventListener('click', () => {
   const a = new Date(document.getElementById('diffStart').value);
   const b = new Date(document.getElementById('diffEnd').value);
   if (isNaN(a) || isNaN(b)) return;
   const msPerDay = 86400000;
-  const totalMs = Math.abs(b - a);
-  const days = Math.floor(totalMs / msPerDay);
-  document.getElementById('diffDays').textContent = fmt(days);
-  document.getElementById('diffWeeks').textContent = fmt((days / 7).toFixed(1));
+  const totalMs  = Math.abs(b - a);
+  const days     = Math.floor(totalMs / msPerDay);
+  document.getElementById('diffDays').textContent   = fmt(days);
+  document.getElementById('diffWeeks').textContent  = fmt((days / 7).toFixed(1));
   document.getElementById('diffMonths').textContent = fmt((days / 30.44).toFixed(1));
-  document.getElementById('diffHours').textContent = fmt(Math.floor(totalMs / 3600000));
-  document.getElementById('diffMins').textContent = fmt(Math.floor(totalMs / 60000));
-  document.getElementById('diffSecs').textContent = fmt(Math.floor(totalMs / 1000));
-  // Workdays
+  document.getElementById('diffHours').textContent  = fmt(Math.floor(totalMs / 3600000));
+  document.getElementById('diffMins').textContent   = fmt(Math.floor(totalMs / 60000));
+  document.getElementById('diffSecs').textContent   = fmt(Math.floor(totalMs / 1000));
   let workdays = 0;
   const start = a < b ? new Date(a) : new Date(b);
   const end   = a < b ? new Date(b) : new Date(a);
-  // Use UTC methods: date inputs parse as UTC midnight, getDay() would return
-  // the previous day's weekday in UTC-1…UTC-12 timezones (Americas etc.).
   for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
     if (d.getUTCDay() !== 0 && d.getUTCDay() !== 6) workdays++;
   }
@@ -187,43 +373,47 @@ document.getElementById('diffBtn').addEventListener('click', () => {
   document.getElementById('diffResult').classList.remove('hidden');
 });
 
-// Add/Subtract
+/* ═══════════════════════════════════════════
+   ADD / SUBTRACT
+═══════════════════════════════════════════ */
 function doAddSub(sign) {
   const d = new Date(document.getElementById('addStart').value);
   if (isNaN(d)) return;
-  d.setFullYear(d.getFullYear() + sign * parseInt(document.getElementById('addYears').value || 0));
-  d.setMonth(d.getMonth() + sign * parseInt(document.getElementById('addMonths').value || 0));
-  d.setDate(d.getDate() + sign * parseInt(document.getElementById('addDays').value || 0));
+  d.setFullYear(d.getFullYear() + sign * parseInt(document.getElementById('addYears').value  || 0));
+  d.setMonth(d.getMonth()       + sign * parseInt(document.getElementById('addMonths').value || 0));
+  d.setDate(d.getDate()         + sign * parseInt(document.getElementById('addDays').value   || 0));
   document.getElementById('addResultDate').textContent = d.toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'});
-  document.getElementById('addResultDow').textContent = DAYS[d.getDay()] + ' · ' + d.toISOString().split('T')[0];
+  document.getElementById('addResultDow').textContent  = DAYS_OF_WEEK[d.getDay()] + ' · ' + d.toISOString().split('T')[0];
   document.getElementById('addResult').classList.remove('hidden');
 }
 document.getElementById('addBtn').addEventListener('click', () => doAddSub(1));
 document.getElementById('subBtn').addEventListener('click', () => doAddSub(-1));
 
-// Age
+/* ═══════════════════════════════════════════
+   AGE
+═══════════════════════════════════════════ */
 document.getElementById('ageBtn').addEventListener('click', () => {
   const birth = new Date(document.getElementById('ageBirth').value);
   const asOf  = new Date(document.getElementById('ageAsOf').value);
   if (isNaN(birth) || isNaN(asOf)) return;
   let y = asOf.getFullYear() - birth.getFullYear();
-  let m = asOf.getMonth() - birth.getMonth();
-  let d = asOf.getDate() - birth.getDate();
+  let m = asOf.getMonth()    - birth.getMonth();
+  let d = asOf.getDate()     - birth.getDate();
   if (d < 0) { m--; d += new Date(asOf.getFullYear(), asOf.getMonth(), 0).getDate(); }
   if (m < 0) { y--; m += 12; }
-  document.getElementById('ageYears').textContent = y;
-  document.getElementById('ageMonths').textContent = m;
-  document.getElementById('ageDays2').textContent = d;
+  document.getElementById('ageYears').textContent     = y;
+  document.getElementById('ageMonths').textContent    = m;
+  document.getElementById('ageDays2').textContent     = d;
   document.getElementById('ageTotalDays').textContent = fmt(Math.floor((asOf - birth) / 86400000));
-  // Next birthday
   const nextBd = new Date(asOf.getFullYear(), birth.getMonth(), birth.getDate());
   if (nextBd <= asOf) nextBd.setFullYear(nextBd.getFullYear() + 1);
-  const daysToNextBd = Math.ceil((nextBd - asOf) / 86400000);
-  document.getElementById('ageNextBd').textContent = daysToNextBd + ' days';
+  document.getElementById('ageNextBd').textContent = Math.ceil((nextBd - asOf) / 86400000) + ' days';
   document.getElementById('ageResult').classList.remove('hidden');
 });
 
-// Countdown
+/* ═══════════════════════════════════════════
+   COUNTDOWN
+═══════════════════════════════════════════ */
 let countdownInterval = null;
 document.getElementById('countBtn').addEventListener('click', () => {
   if (countdownInterval) clearInterval(countdownInterval);
@@ -233,8 +423,7 @@ document.getElementById('countBtn').addEventListener('click', () => {
   document.getElementById('countEventName').textContent = name || 'Countdown';
   document.getElementById('countResult').classList.remove('hidden');
   function tick() {
-    const now = new Date();
-    const diff = target - now;
+    const diff = target - new Date();
     const past = document.getElementById('countPast');
     if (diff <= 0) {
       past.classList.remove('hidden');
@@ -244,13 +433,249 @@ document.getElementById('countBtn').addEventListener('click', () => {
       return;
     }
     past.classList.add('hidden');
-    document.getElementById('cdDays').textContent = Math.floor(diff / 86400000);
+    document.getElementById('cdDays').textContent  = Math.floor(diff / 86400000);
     document.getElementById('cdHours').textContent = Math.floor((diff % 86400000) / 3600000);
-    document.getElementById('cdMins').textContent = Math.floor((diff % 3600000) / 60000);
-    document.getElementById('cdSecs').textContent = Math.floor((diff % 60000) / 1000);
+    document.getElementById('cdMins').textContent  = Math.floor((diff % 3600000) / 60000);
+    document.getElementById('cdSecs').textContent  = Math.floor((diff % 60000) / 1000);
   }
   tick();
   countdownInterval = setInterval(tick, 1000);
+});
+
+/* ═══════════════════════════════════════════
+   TIME UNITS — bidirectional, real-time
+═══════════════════════════════════════════ */
+const TU_UNITS = [
+  { key: 'ns',   label: 'Nanoseconds',   factorToSec: 1e-9    },
+  { key: 'us',   label: 'Microseconds',  factorToSec: 1e-6    },
+  { key: 'ms',   label: 'Milliseconds',  factorToSec: 1e-3    },
+  { key: 's',    label: 'Seconds',       factorToSec: 1       },
+  { key: 'min',  label: 'Minutes',       factorToSec: 60      },
+  { key: 'hr',   label: 'Hours',         factorToSec: 3600    },
+  { key: 'day',  label: 'Days',          factorToSec: 86400   },
+  { key: 'week', label: 'Weeks',         factorToSec: 604800  },
+];
+
+let tuLocked = false; // prevent re-entrant updates
+const tuGrid = document.getElementById('tuGrid');
+TU_UNITS.forEach(u => {
+  const div   = document.createElement('div');
+  div.className = 'tu-field';
+  const inp   = document.createElement('input');
+  inp.type    = 'number';
+  inp.id      = 'tu-' + u.key;
+  inp.min     = '0';
+  inp.step    = 'any';
+  inp.placeholder = '0';
+  const lbl   = document.createElement('label');
+  lbl.htmlFor = 'tu-' + u.key;
+  lbl.textContent = u.label;
+  div.appendChild(lbl);
+  div.appendChild(inp);
+  tuGrid.appendChild(div);
+
+  inp.addEventListener('input', () => {
+    if (tuLocked) return;
+    tuLocked = true;
+    const raw = parseFloat(inp.value);
+    if (isNaN(raw) || raw < 0) { tuLocked = false; return; }
+    const seconds = raw * u.factorToSec;           // convert to seconds
+    TU_UNITS.forEach(other => {
+      if (other.key === u.key) return;
+      const otherInp = document.getElementById('tu-' + other.key);
+      const result   = seconds / other.factorToSec;
+      // Format: avoid extremely long decimals but keep precision
+      otherInp.value = result === 0 ? '0' : parseFloat(result.toPrecision(10)).toString();
+    });
+    tuLocked = false;
+  });
+});
+
+/* ═══════════════════════════════════════════
+   EXCEL TIME
+   Excel epoch: Dec 30, 1899 (UTC midnight)
+   Serial 1 = Jan 1 1900, serial 2 = Jan 2 1900, …
+   Bug: Excel treats 1900 as a leap year, so
+   serials ≥ 61 are off by 0 (we use the correct epoch).
+═══════════════════════════════════════════ */
+const EXCEL_EPOCH_MS = Date.UTC(1899, 11, 30); // Dec 30, 1899
+
+function excelSerialToDate(serial) {
+  // Correct for Excel's 1900 leap-year bug (serial 60 = Feb 29 1900, which didn't exist)
+  const corrected = serial >= 60 ? serial : serial - 1;
+  return new Date(EXCEL_EPOCH_MS + corrected * 86400000);
+}
+function dateToExcelSerial(date) {
+  const diffDays = (date - EXCEL_EPOCH_MS) / 86400000;
+  // Reverse the leap-year correction for dates after Feb 28 1900
+  return diffDays >= 60 ? diffDays : diffDays + 1;
+}
+
+document.getElementById('excelConvertBtn').addEventListener('click', () => {
+  const serial = parseFloat(document.getElementById('excelSerial').value);
+  if (isNaN(serial)) return;
+  const dt = excelSerialToDate(serial);
+  const pad = n => String(n).padStart(2, '0');
+  const dateStr = dt.getUTCFullYear() + '-' + pad(dt.getUTCMonth()+1) + '-' + pad(dt.getUTCDate());
+  const timeStr = pad(dt.getUTCHours()) + ':' + pad(dt.getUTCMinutes()) + ':' + pad(dt.getUTCSeconds());
+  document.getElementById('excelDate').textContent     = dateStr;
+  document.getElementById('excelTime').textContent     = timeStr;
+  document.getElementById('excelDateTime').textContent = dateStr + ' ' + timeStr;
+  document.getElementById('excelDow').textContent      = DAYS_OF_WEEK[dt.getUTCDay()];
+  document.getElementById('excelUnix').textContent     = Math.floor(dt.getTime() / 1000);
+  document.getElementById('excelResult').classList.remove('hidden');
+});
+
+document.getElementById('d2eBtn').addEventListener('click', () => {
+  const dateStr = document.getElementById('d2eDate').value;
+  const timeStr = document.getElementById('d2eTime').value || '00:00';
+  if (!dateStr) return;
+  const [y, mo, d]  = dateStr.split('-').map(Number);
+  const [h, mi, s]  = (timeStr + ':00').split(':').map(Number);
+  const dt = new Date(Date.UTC(y, mo-1, d, h, mi, s || 0));
+  const serial = dateToExcelSerial(dt.getTime());
+  const intPart  = Math.floor(serial);
+  const fracPart = serial - intPart;
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById('d2eSerial').textContent   = parseFloat(serial.toFixed(10)).toString();
+  document.getElementById('d2eDateOnly').textContent = intPart.toString();
+  document.getElementById('d2eTimeOnly').textContent = parseFloat(fracPart.toFixed(10)).toString()
+    + '  (' + pad(h) + ':' + pad(mi) + ':' + pad(s || 0) + ')';
+  document.getElementById('d2eResult').classList.remove('hidden');
+});
+
+/* ═══════════════════════════════════════════
+   DECIMAL ↔ HH:MM:SS
+═══════════════════════════════════════════ */
+const decDirRadios = document.querySelectorAll('input[name="decDir"]');
+decDirRadios.forEach(r => r.addEventListener('change', () => {
+  const toHMS = document.querySelector('input[name="decDir"]:checked').value === 'toHMS';
+  document.getElementById('decInputDec').classList.toggle('hidden', !toHMS);
+  document.getElementById('decInputHMS').classList.toggle('hidden', toHMS);
+  document.getElementById('decOutput').classList.add('hidden');
+}));
+
+document.getElementById('decConvertBtn').addEventListener('click', () => {
+  const dir = document.querySelector('input[name="decDir"]:checked').value;
+  const out = document.getElementById('decOutput');
+  const pad = n => String(Math.floor(n)).padStart(2, '0');
+
+  if (dir === 'toHMS') {
+    const dec = parseFloat(document.getElementById('decDecInput').value);
+    if (isNaN(dec) || dec < 0) return;
+    const totalSec = Math.round(dec * 3600);
+    const hh = Math.floor(totalSec / 3600);
+    const mm = Math.floor((totalSec % 3600) / 60);
+    const ss = totalSec % 60;
+    out.innerHTML = `${pad(hh)}:${pad(mm)}:${pad(ss)}
+      <div class="dec-sub">${dec} decimal hours = ${hh}h ${mm}m ${ss}s</div>`;
+  } else {
+    const raw = document.getElementById('decHMSInput').value.trim();
+    // Accept H:MM, H:MM:SS, or plain "Xh Ym Zs"
+    let totalSec = 0;
+    const hmsMatch = raw.match(/^(\d+):(\d{1,2})(?::(\d{1,2}))?$/);
+    if (hmsMatch) {
+      totalSec = parseInt(hmsMatch[1]) * 3600 + parseInt(hmsMatch[2]) * 60 + parseInt(hmsMatch[3] || 0);
+    } else {
+      // Try "1h30m45s" style
+      const hm = raw.match(/(\d+(?:\.\d+)?)\s*h/i);
+      const mm = raw.match(/(\d+(?:\.\d+)?)\s*m(?!s)/i);
+      const sm = raw.match(/(\d+(?:\.\d+)?)\s*s/i);
+      totalSec = (hm ? parseFloat(hm[1]) * 3600 : 0)
+               + (mm ? parseFloat(mm[1]) * 60   : 0)
+               + (sm ? parseFloat(sm[1])         : 0);
+    }
+    if (!totalSec) return;
+    const dec = totalSec / 3600;
+    out.innerHTML = `${parseFloat(dec.toFixed(6))} h
+      <div class="dec-sub">${raw} = ${parseFloat(dec.toFixed(6))} decimal hours</div>`;
+  }
+  out.classList.remove('hidden');
+});
+
+/* ═══════════════════════════════════════════
+   DURATION ADDER
+═══════════════════════════════════════════ */
+let durEntryCount = 0;
+
+function addDurEntry(sign = '+') {
+  durEntryCount++;
+  const id  = 'dur-' + durEntryCount;
+  const div = document.createElement('div');
+  div.className = 'dur-entry';
+  div.id        = id;
+  div.innerHTML = `
+    <select class="dur-sign-sel" title="Add or subtract">
+      <option value="1"  ${sign === '+' ? 'selected' : ''}>+</option>
+      <option value="-1" ${sign === '-' ? 'selected' : ''}>−</option>
+    </select>
+    <input type="text" class="dur-val" placeholder="e.g. 1h30m or 1:30:00">
+    <button class="dur-remove" title="Remove" onclick="document.getElementById('${id}').remove()">✕</button>
+  `;
+  document.getElementById('durList').appendChild(div);
+}
+
+// Start with two entries
+addDurEntry('+');
+addDurEntry('+');
+
+document.getElementById('durAddEntry').addEventListener('click', () => addDurEntry('+'));
+
+function parseDuration(str) {
+  // Returns total seconds or null
+  str = str.trim();
+  if (!str) return null;
+  // HH:MM or HH:MM:SS
+  const hmsMatch = str.match(/^(\d+):(\d{1,2})(?::(\d{1,2}))?$/);
+  if (hmsMatch) {
+    return parseInt(hmsMatch[1]) * 3600 + parseInt(hmsMatch[2]) * 60 + parseInt(hmsMatch[3] || 0);
+  }
+  // Normalize naked minutes after 'h': "1h30" → "1h30m", but leave "1h30m" alone
+  const s = str.replace(/(\d)\s*h\s*(\d+)(?!\s*m)/gi, '$1h$2m');
+  const hm = s.match(/(\d+(?:\.\d+)?)\s*h/i);
+  const mm = s.match(/(\d+(?:\.\d+)?)\s*m(?!s)/i);
+  const sm = s.match(/(\d+(?:\.\d+)?)\s*s/i);
+  const dm = s.match(/(\d+(?:\.\d+)?)\s*d/i);
+  if (!hm && !mm && !sm && !dm) {
+    const n = parseFloat(str);
+    return isNaN(n) ? null : n;
+  }
+  return (dm ? parseFloat(dm[1]) * 86400 : 0)
+       + (hm ? parseFloat(hm[1]) * 3600  : 0)
+       + (mm ? parseFloat(mm[1]) * 60    : 0)
+       + (sm ? parseFloat(sm[1])          : 0);
+}
+
+document.getElementById('durCalcBtn').addEventListener('click', () => {
+  const entries = document.querySelectorAll('.dur-entry');
+  let totalSec = 0;
+  const lines  = [];
+  let valid    = true;
+
+  entries.forEach(entry => {
+    const sign  = parseInt(entry.querySelector('.dur-sign-sel').value);
+    const raw   = entry.querySelector('.dur-val').value.trim();
+    if (!raw) return;
+    const secs  = parseDuration(raw);
+    if (secs === null) { valid = false; return; }
+    totalSec += sign * secs;
+    lines.push((sign > 0 ? '+ ' : '− ') + raw);
+  });
+
+  const result = document.getElementById('durResult');
+  const negative = totalSec < 0;
+  const abs   = Math.abs(totalSec);
+  const hh    = Math.floor(abs / 3600);
+  const mm    = Math.floor((abs % 3600) / 60);
+  const ss    = Math.floor(abs % 60);
+  const pad   = n => String(n).padStart(2, '0');
+  const total = (negative ? '−' : '') + pad(hh) + ':' + pad(mm) + ':' + pad(ss);
+  const dec   = parseFloat((abs / 3600).toFixed(4));
+
+  document.getElementById('durTotal').textContent     = total;
+  document.getElementById('durBreakdown').textContent =
+    lines.join('  ') + `  =  ${hh}h ${mm}m ${ss}s  (${dec} decimal hours)`;
+  result.classList.remove('hidden');
 });
 </script>
 </body>
