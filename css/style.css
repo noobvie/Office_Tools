@@ -909,3 +909,22 @@ body.has-sidebar .tool-main {
 .ot-sidebar-item .si-icon { font-size: .95rem; flex-shrink: 0; }
 .ot-sidebar-item .si-name { flex: 1; }
 
+/* ── Page keyword tags ─────────────────────────────────────── */
+.page-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.page-tag {
+  font-size: .65rem;
+  padding: .12rem .48rem;
+  border-radius: 50px;
+  background: color-mix(in srgb, var(--text-muted) 10%, transparent);
+  color: var(--text-muted);
+  white-space: nowrap;
+  line-height: 1.6;
+}
+
