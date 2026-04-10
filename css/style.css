@@ -489,6 +489,30 @@ a:hover { text-decoration: underline; }
   font-size: .95rem;
 }
 
+/* ---------- Tool About / Description ---------- */
+.tool-about {
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+}
+.tool-about h2 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: .75rem;
+  color: var(--text);
+}
+.tool-about p {
+  color: var(--text-muted);
+  font-size: .93rem;
+  line-height: 1.75;
+  margin-bottom: .65rem;
+}
+.tool-about p:last-child { margin-bottom: 0; }
+.tool-about strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
 /* ---------- Cards ---------- */
 .card {
   background: var(--bg-card);

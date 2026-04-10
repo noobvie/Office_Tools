@@ -70,6 +70,12 @@
     <p>Paste a JSON Web Token to decode header, payload, and check expiry. Token stays in your browser — nothing is sent anywhere.</p>
   </div>
 
+<section class="tool-about">
+  <h2>About JWT Decoder</h2>
+  <p><strong>JWTs (JSON Web Tokens)</strong> are used in virtually every modern web application for authentication. Your app generates one when you log in, and it gets sent with every subsequent request to prove who you are. But the token is base64-encoded, making it unreadable at a glance. This decoder splits any JWT into its three parts &mdash; <strong>header, payload, and signature</strong> &mdash; and shows you the decoded content of each in a clean, readable format.</p>
+  <p>Instantly see <strong>when the token expires, what user data or claims it carries</strong>, and which signing algorithm was used. The token stays entirely in your browser &mdash; nothing is transmitted anywhere. Invaluable for <strong>developers debugging authentication flows, security reviewers auditing tokens, and anyone who wants to understand what a JWT actually contains</strong> before trusting it.</p>
+</section>
+
   <div class="card">
     <label class="form-label">Paste JWT</label>
     <textarea class="jwt-textarea" id="jwtInput" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c" spellcheck="false"></textarea>
