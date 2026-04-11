@@ -89,7 +89,7 @@ const upload = multer({
     destination: UPLOADS_DIR,
     filename: (req, file, cb) => cb(null, genId()),
   }),
-  limits: { fileSize: 1024 * 1024 * 1024 }, // 1 GB
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB
 });
 
 // ── Middleware ────────────────────────────────────────────────
@@ -400,7 +400,7 @@ app.get('/api/tools/f/:code/download', (req, res) => {
 
 // ── Multer error handler ──────────────────────────────────────
 app.use((err, _req, res, next) => {
-  if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'File too large (max 1 GB)' });
+  if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'File too large (max 100 MB)' });
   if (err.code === 'LIMIT_UNEXPECTED_FILE') return res.status(400).json({ error: 'Unexpected file field' });
   next(err);
 });
