@@ -133,6 +133,12 @@
     <p>Paste a Certificate Signing Request (PEM format) to instantly decode all fields — subject, key info, SANs, fingerprints. Nothing leaves your browser.</p>
   </div>
 
+<section class="tool-about">
+  <h2>About CSR Decoder</h2>
+  <p>A <strong>Certificate Signing Request (CSR)</strong> is the file you submit when applying for an SSL/TLS certificate for your website or server. It contains encoded information about your organization and domain, but in raw PEM form it's completely unreadable. This tool decodes any CSR and displays all fields clearly &mdash; <strong>Common Name, organization, country, Subject Alternative Names (SANs), public key details, and fingerprints</strong>.</p>
+  <p>Invaluable when you need to <strong>verify a CSR before submitting it to a Certificate Authority</strong>, or when inspecting what a received CSR contains. Everything stays entirely in your browser &mdash; no data is sent to any server, which is exactly what you want when handling sensitive certificate files.</p>
+</section>
+
   <!-- Input card -->
   <div class="card">
     <div class="form-group" style="margin-bottom:.6rem">
@@ -215,6 +221,14 @@
   <div id="errorCard" class="card mt-2" style="display:none">
     <div class="alert alert-danger" id="errorMsg"></div>
   </div>
+
+<div class="page-tags">
+  <span class="page-tag">SSL certificate</span>
+  <span class="page-tag">CSR decode</span>
+  <span class="page-tag">PEM decoder</span>
+  <span class="page-tag">X.509</span>
+  <span class="page-tag">SAN certificate</span>
+</div>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/node-forge@1.3.1/dist/forge.min.js"></script>

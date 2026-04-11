@@ -52,25 +52,6 @@
 
     #noResults { display: none; text-align: center; padding: 3rem; color: var(--text-muted); }
     #noResults .big { font-size: 2.5rem; }
-
-    /* ── Tool keyword tags ── */
-    .tool-card-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: .3rem;
-      margin-top: .6rem;
-      padding-top: .5rem;
-      border-top: 1px solid var(--border);
-    }
-    .tool-tag {
-      font-size: .65rem;
-      padding: .12rem .48rem;
-      border-radius: 50px;
-      background: color-mix(in srgb, var(--text-muted) 10%, transparent);
-      color: var(--text-muted);
-      white-space: nowrap;
-      line-height: 1.6;
-    }
   </style>
 </head>
 <body>
@@ -612,104 +593,6 @@
     applyFilters();
   });
 
-  // ── Keyword tags per tool card ────────────────────────────
-  const CARD_TAGS = {
-    // Productivity & Time
-    'tools/pomodoro/index.html':           ['focus timer','25 min work','break timer','study timer','Pomodoro'],
-    'tools/date-calculator/index.html':    ['date difference','age calculator','countdown','time converter','Excel date'],
-    'tools/calendar/index.html':           ['lunar calendar','Islamic Hijri','Gregorian','农历','calendar converter'],
-    'tools/timer/index.html':              ['stopwatch','countdown alarm','lap times','interval timer','centiseconds'],
-    'tools/timezone/index.html':           ['world clock','UTC GMT offset','meeting planner','time difference','remote teams'],
-    // Generators
-    'tools/password-generator/index.html': ['random password','strong password','passphrase','create password','secure'],
-    'tools/qr-generator/index.html':       ['make QR code','barcode maker','WiFi QR','vCard QR','download PNG SVG'],
-    'tools/uuid-generator/index.html':     ['UUID v4 v7','GUID','bulk UUID','random ID','unique identifier'],
-    'tools/random-number/index.html':      ['random integer','dice roller','bulk random','no duplicates','number range'],
-    'tools/lorem-ipsum/index.html':        ['placeholder text','dummy text','lipsum','paragraphs & sentences','fake text'],
-    'tools/fake-data/index.html':          ['test data','mock data','random names','fake emails','CSV JSON export'],
-    'tools/wheel-of-names/index.html':     ['random picker','spinning wheel','winner picker','raffle','lucky draw'],
-    // PDF & Text
-    'tools/pdf-toolkit/index.html':        ['merge PDF','split PDF','compress PDF','extract pages','reorder pages'],
-    'tools/pdf-to-text/index.html':        ['extract text PDF','PDF to Word','PDF to TXT','copy PDF text','PDF reader'],
-    'tools/word-counter/index.html':       ['character count','reading time','sentence counter','keyword density','word count'],
-    'tools/markdown-editor/index.html':    ['live preview','markdown to HTML','GFM editor','export HTML','markdown renderer'],
-    'tools/text-diff/index.html':          ['compare text','diff checker','code diff','highlight changes','side by side'],
-    'tools/typing-speed/index.html':       ['WPM test','typing accuracy','words per minute','keyboard speed','touch typing'],
-    'tools/text-case/index.html':          ['UPPERCASE','camelCase','snake_case','kebab-case','title case'],
-    'tools/notepad/index.html':            ['auto-save notes','scratch pad','browser notes','quick notes','no login'],
-    // Encoding & Crypto
-    'tools/base64-converter/index.html':   ['encode Base64','decode Base64','file to Base64','Base64 image','text encode'],
-    'tools/url-encoder/index.html':        ['percent encode','URL escape','decode URL','URL encoding','URL unescape'],
-    'tools/unix-timestamp/index.html':     ['epoch converter','timestamp to date','current epoch','date to unix','epoch time'],
-    'tools/hash-generator/index.html':     ['SHA-256','SHA-512','HMAC','file checksum','crypto hash'],
-    'tools/html-entities/index.html':      ['escape HTML','HTML encode','special characters','HTML decode','amp lt gt'],
-    'tools/jwt-decoder/index.html':        ['JSON web token','decode JWT','JWT payload','token claims','auth token'],
-    'tools/base-converter/index.html':     ['binary to decimal','hexadecimal','octal','bin to hex','number base'],
-    // Calculators
-    'tools/percentage-calculator/index.html': ['percent of number','percentage change','calculate percent','increase decrease','ratio'],
-    'tools/aspect-ratio/index.html':       ['16:9 ratio','image ratio','resize calculator','video resolution','dimension'],
-    'tools/unit-converter/index.html':     ['km to miles','kg to lbs','Celsius Fahrenheit','metric imperial','length weight'],
-    'tools/loan-calculator/index.html':    ['mortgage payment','monthly payment','amortization','interest rate','EMI'],
-    'tools/tip-calculator/index.html':     ['split bill','restaurant tip','gratuity','per person','bill splitter'],
-    'tools/number-words/index.html':       ['spell out number','check writing','invoice amount','number in words','legal amount'],
-    // Development
-    'tools/json-editor/index.html':        ['format JSON','validate JSON','minify JSON','pretty print','JSON tree view'],
-    'tools/csv-json/index.html':           ['CSV to JSON','JSON to CSV','parse CSV','spreadsheet convert','data format'],
-    'tools/crontab/index.html':            ['cron expression','cron to English','Linux cron','cron parser','schedule task'],
-    'tools/regex-tester/index.html':       ['regular expression','regex debugger','live match','capture groups','regex flags'],
-    'tools/sql-formatter/index.html':      ['format SQL','SQL beautifier','pretty print SQL','SQL minifier','query formatter'],
-    'tools/file-compressor/index.html':    ['compress files','extract ZIP','make ZIP','ZIP archive','no upload'],
-    'tools/ai-token-counter/index.html':   ['GPT tokens','Claude tokens','token estimate','API cost','context window'],
-    'tools/ai-prompt-template/index.html': ['AI prompt','prompt variables','prompt engineering','ChatGPT prompt','reusable prompt'],
-    'tools/ai-json-schema/index.html':     ['JSON schema','OpenAI function','Anthropic tool use','schema generator','auto-generate'],
-    // Network & Security
-    'tools/currency/index.html':           ['exchange rate','bitcoin BTC','crypto convert','forex','USD EUR GBP'],
-    'tools/my-ip/index.html':              ['public IP','find my IP','IPv4 IPv6','ISP lookup','my IP address'],
-    'tools/ip-location/index.html':        ['IP geolocation','IP to country','trace IP','ASN lookup','VPN detection'],
-    'tools/utm-builder/index.html':        ['UTM parameters','Google Analytics','campaign tracking','UTM generator','marketing URL'],
-    'tools/csr-decoder/index.html':        ['SSL certificate','CSR decode','PEM decoder','X.509','SAN certificate'],
-    'tools/port-checker/index.html':       ['check open port','TCP port scan','firewall test','SSH RDP port','port scanner'],
-    'tools/domain-checker/index.html':     ['WHOIS lookup','domain availability','DNS records','domain expiry','RDAP'],
-    // Media
-    'tools/image-converter/index.html':    ['HEIC to JPG','compress image','resize image','PNG to JPG','convert WebP'],
-    'tools/color-converter/index.html':    ['HEX to RGB','RGB to HSL','CMYK','color picker','CSS color'],
-    'tools/contrast-checker/index.html':   ['WCAG contrast','AA AAA','accessibility','color ratio','a11y'],
-    'tools/palette-extractor/index.html':  ['extract colors','dominant colors','image palette','HEX from photo','CSS variables'],
-    'tools/screenshot-beautifier/index.html': ['screenshot frame','gradient background','shadow padding','professional screenshot','download PNG'],
-    'tools/char-map/index.html':           ['special symbols','copy characters','unicode','arrow symbols','emoji picker'],
-    'tools/yt-downloader/index.html':      ['download MP4','YouTube to MP3','save video','video downloader','playlist download'],
-    'tools/speech-voice/index.html':       ['speech to text','transcribe audio','text to speech','voice recorder','microphone'],
-    'tools/photo-editor/index.html':       ['remove background','add text to photo','background eraser','passport photo','recolor image'],
-    // Share
-    'tools/url-shortener/index.html':      ['short link','custom alias','shorten URL','tiny URL','link expiry'],
-    'tools/pastebin/index.html':           ['share code','code snippet','private paste','burn after read','syntax highlight'],
-    'tools/file-share/index.html':         ['share ZIP','upload file','temp file hosting','file transfer','download link'],
-    // Relax
-    'tools/2048/index.html':               ['merge tiles','number puzzle','slide game','brain game','office break'],
-    'tools/sudoku/index.html':             ['9×9 puzzle','easy medium hard','number grid','pencil mode','sudoku solver'],
-    'tools/gomoku/index.html':             ['five in a row','strategy game','board game','vs AI','gobang'],
-    'tools/memory/index.html':             ['flip cards','matching pairs','emoji game','concentration','brain training'],
-    'tools/chess/index.html':              ['chess vs AI','two player chess','castling','strategy game','board game'],
-    'tools/simon-says/index.html':         ['color sequence','memory game','brain training','sound game','pattern repeat'],
-    'tools/number-memory/index.html':      ['digit span','memory test','cognitive test','number recall','brain training'],
-    'tools/visual-memory/index.html':      ['pattern memory','grid game','spatial memory','brain training','cognitive test'],
-    'tools/word-memory/index.html':        ['word recall','vocabulary test','recognition game','brain training','word list'],
-  };
-
-  document.querySelectorAll('.tool-card').forEach(card => {
-    const href = card.getAttribute('href');
-    const tags = CARD_TAGS[href];
-    if (!tags) return;
-    const wrap = document.createElement('div');
-    wrap.className = 'tool-card-tags';
-    tags.forEach(tag => {
-      const span = document.createElement('span');
-      span.className = 'tool-tag';
-      span.textContent = tag;
-      wrap.appendChild(span);
-    });
-    card.appendChild(wrap);
-  });
 </script>
 </body>
 </html>
