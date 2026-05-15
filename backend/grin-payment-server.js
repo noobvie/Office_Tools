@@ -434,31 +434,55 @@ app.get('/api/wallet/status', async (req, res) => {
   }
 });
 
-// ── Port Checker — DNS resolve + TCP connect probe ───────────
+// ── Port Checker — DNS resolve (IPv4 + IPv6) + TCP connect probe ───────────
 const net = require('net');
 const dns = require('dns');
 
 app.get('/api/resolve', (req, res) => {
   const host = String(req.query.host || '').trim();
   if (!host) return res.status(400).json({ error: 'Missing host' });
-  dns.lookup(host, (err, address) => {
-    if (err) return res.json({ host, ip: null });
-    res.json({ host, ip: address });
-  });
+
+  // Raw IPv4 address
+  if (net.isIPv4(host)) {
+    return res.json({ host, addresses: [{ ip: host, family: 'IPv4' }] });
+  }
+  // Raw IPv6 address (with or without brackets)
+  const ipv6 = host.replace(/^\[|\]$/g, '');
+  if (net.isIPv6(ipv6)) {
+    return res.json({ host, addresses: [{ ip: ipv6, family: 'IPv6' }] });
+  }
+
+  // Hostname — resolve both A and AAAA records in parallel
+  let v4 = [], v6 = [], done = 0;
+  const finish = () => {
+    if (++done < 2) return;
+    const addresses = [
+      ...v4.map(ip => ({ ip, family: 'IPv4' })),
+      ...v6.map(ip => ({ ip, family: 'IPv6' })),
+    ];
+    res.json({ host, addresses: addresses.length ? addresses : [] });
+  };
+  dns.resolve4(host, (err, addrs) => { v4 = err ? [] : addrs; finish(); });
+  dns.resolve6(host, (err, addrs) => { v6 = err ? [] : addrs; finish(); });
 });
+
 app.get('/api/portcheck', (req, res) => {
-  const host = String(req.query.host || '').trim();
+  const hostInput = String(req.query.host || '').trim();
   const port = parseInt(req.query.port, 10);
-  if (!host || isNaN(port) || port < 1 || port > 65535) {
+  if (!hostInput || isNaN(port) || port < 1 || port > 65535) {
     return res.status(400).json({ error: 'Invalid host or port' });
   }
+
+  // Strip brackets from IPv6 addresses so both [::1] and ::1 work
+  const host = hostInput.replace(/^\[|\]$/g, '');
+
   const TIMEOUT = 4000;
   const socket  = new net.Socket();
   let done = false;
   function finish(open) {
     if (done) return; done = true;
     socket.destroy();
-    res.json({ host, port, open });
+    res.json({ host: hostInput, port, open });
   }
   socket.setTimeout(TIMEOUT);
   socket.once('connect', () => finish(true));
