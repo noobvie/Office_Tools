@@ -4,19 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>File Share — Office Tools</title>
-  <meta name="description" content="Upload compressed archives (.zip, .tar, .rar) up to 1 GB and share a private download link. Files are auto-deleted after 1-7 days. Self-hosted — no third-party cloud storage.">
+  <meta name="description" content="Upload compressed archives (.zip, .tar, .rar) up to 100 MB and share a private download link. Files are auto-deleted after 1-50 days. Self-hosted — no third-party cloud storage.">
   <meta name="keywords" content="file sharing, share ZIP online, upload and share file, temporary file hosting, file share link, private file transfer, upload RAR TAR">
   <meta name="robots" content="index, follow">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Office Tools">
-  <meta property="og:title" content="Free File Sharing — Upload ZIP, TAR, RAR Archives up to 1 GB">
-  <meta property="og:description" content="Upload compressed archives (.zip, .tar, .rar) up to 1 GB and share a private download link. Files are auto-deleted after 1-7 days. Self-hosted — no third-party cloud storage.">
+  <meta property="og:title" content="Free File Sharing — Upload ZIP, TAR, RAR Archives up to 100 MB">
+  <meta property="og:description" content="Upload compressed archives (.zip, .tar, .rar) up to 100 MB and share a private download link. Files are auto-deleted after 1-50 days. Self-hosted — no third-party cloud storage.">
   <meta property="og:url" content="https://tools.grin.money/tools/file-share/">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Free File Sharing — Upload ZIP, TAR, RAR Archives up to 1 GB">
-  <meta name="twitter:description" content="Upload compressed archives (.zip, .tar, .rar) up to 1 GB and share a private download link. Files are auto-deleted after 1-7 days. Self-hosted — no third-party cloud storage.">
+  <meta name="twitter:title" content="Free File Sharing — Upload ZIP, TAR, RAR Archives up to 100 MB">
+  <meta name="twitter:description" content="Upload compressed archives (.zip, .tar, .rar) up to 100 MB and share a private download link. Files are auto-deleted after 1-50 days. Self-hosted — no third-party cloud storage.">
   <link rel="canonical" href="https://tools.grin.money/tools/file-share/">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"File Share","description":"Upload compressed archives (.zip, .tar, .rar) up to 1 GB and share a private download link. Files are auto-deleted after 1-7 days. Self-hosted — no third-party cloud storage.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/file-share/"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"File Share","description":"Upload compressed archives (.zip, .tar, .rar) up to 100 MB and share a private download link. Files are auto-deleted after 1-50 days. Self-hosted — no third-party cloud storage.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/file-share/"}</script>
   <script src="../../js/theme-init.js"></script>
   <link rel="stylesheet" href="../../css/style.css">
   <style>
@@ -99,7 +99,7 @@
   <div id="uploadMode">
     <div class="tool-header">
       <h1>📦 File Share</h1>
-      <p>Upload a compressed archive and share it with a private link. Max 1 GB, max 7 days retention.</p>
+      <p>Upload a compressed archive and share it with a private link. Max 100 MB, max 50 days retention.</p>
     </div>
 
     <div class="card">
@@ -107,7 +107,7 @@
       <div class="drop-zone" id="dropZone">
         <div class="dz-icon">📦</div>
         <div class="dz-label">Drop your archive here</div>
-        <div class="dz-sub">Supported: .zip .tar .tar.gz .tar.bz2 .rar — Max 1 GB</div>
+        <div class="dz-sub">Supported: .zip .tar .tar.gz .tar.bz2 .rar — Max 100 MB</div>
         <input type="file" id="fileInput" accept=".zip,.tar,.gz,.bz2,.rar,.tar.gz,.tar.bz2" style="display:none">
         <button class="btn btn-secondary btn-sm" style="margin-top:1rem" id="browseBtn">Browse file</button>
       </div>
@@ -129,8 +129,11 @@
         <label class="form-label">Expires after</label>
         <select id="fileExpiry" class="form-input">
           <option value="1">1 day</option>
-          <option value="3" selected>3 days</option>
-          <option value="7">7 days (max)</option>
+          <option value="3">3 days</option>
+          <option value="7" selected>7 days</option>
+          <option value="14">14 days</option>
+          <option value="30">30 days</option>
+          <option value="50">50 days (max)</option>
         </select>
       </div>
 
@@ -164,8 +167,8 @@
       <strong style="color:var(--text)">Limits</strong>
       <ul style="margin:.4rem 0 0 1.1rem;line-height:1.7">
         <li>File types: <strong>.zip · .tar · .tar.gz · .tar.bz2 · .rar</strong></li>
-        <li>Max size: <strong>1 GB</strong> (requires PocketBase configured with <code>--maxBodySize=1073741824</code>)</li>
-        <li>Max retention: <strong>7 days</strong> — files are deleted automatically</li>
+        <li>Max size: <strong>100 MB</strong></li>
+        <li>Max retention: <strong>50 days</strong> — files are deleted automatically</li>
         <li>Stored on your PocketBase instance — no third-party services</li>
       </ul>
     </div>
@@ -173,14 +176,14 @@
 
 <section class="tool-about">
   <h2>About File Share</h2>
-  <p>Sometimes you need to <strong>send a large file</strong> to someone quickly &mdash; something too big for email, but you don't want to set up cloud storage or create shared folders. This tool lets you upload a file (up to <strong>1 GB</strong>) and get a <strong>private shareable link</strong> that expires automatically after up to 7 days. No login on either end.</p>
+  <p>Sometimes you need to <strong>send a large file</strong> to someone quickly &mdash; something too big for email, but you don't want to set up cloud storage or create shared folders. This tool lets you upload a file (up to <strong>100 MB</strong>) and get a <strong>private shareable link</strong> that expires automatically after up to 50 days. No login on either end.</p>
   <p>The recipient just clicks the link and downloads directly &mdash; no account required, no app to install. Perfect for <strong>sending project files, design assets, videos, or archives to clients, collaborators, and friends</strong>. The link disappears after the expiry date, keeping things clean and temporary.</p>
 </section>
 
   <div class="card mt-2" style="font-size:.82rem;border-left:3px solid var(--warning)">
     <strong style="color:var(--text)">⚠️ Data &amp; Privacy Notice</strong>
     <ul style="margin:.5rem 0 0 1.1rem;line-height:1.8;color:var(--text-muted)">
-      <li>Files you upload are <strong>stored on our server</strong> for sharing and download. Use the <strong>expiration time</strong> selector to control how long your file is retained (max 7 days).</li>
+      <li>Files you upload are <strong>stored on our server</strong> for sharing and download. Use the <strong>expiration time</strong> selector to control how long your file is retained (max 50 days).</li>
       <li>We do <strong>not</strong> read or use your files for any purpose — however, we cannot guarantee protection against unauthorized access by infrastructure providers, hosting services, or security incidents.</li>
       <li><strong>Upload non-critical data only.</strong> Do not upload sensitive, personal, or confidential files.</li>
       <li>We are <strong>not responsible</strong> for any content you upload, including legal issues arising from copyright, privacy regulations, or misuse by third parties.</li>
@@ -237,7 +240,7 @@ const ALLOWED_MIME  = ['application/zip','application/x-zip-compressed',
   'application/x-tar','application/gzip','application/x-gzip',
   'application/x-bzip2','application/vnd.rar','application/x-rar-compressed',
   'application/octet-stream'];  // .tar/.rar often come as octet-stream
-const MAX_BYTES = 1 * 1024 * 1024 * 1024; // 1 GB
+const MAX_BYTES = 100 * 1024 * 1024; // 100 MB
 
 let selectedFile = null;
 
@@ -295,7 +298,7 @@ function setFile(file) {
     return showUploadError(`File type not allowed. Only ${ALLOWED_EXT.join(', ')} files are accepted.`);
   }
   if (file.size > MAX_BYTES) {
-    return showUploadError(`File too large. Maximum size is 1 GB (${fmtSize(file.size)} selected).`);
+    return showUploadError(`File too large. Maximum size is 100 MB (${fmtSize(file.size)} selected).`);
   }
 
   selectedFile = file;
