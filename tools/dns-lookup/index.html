@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DNS Lookup — Query DNS Records for Any Domain | Office Tools</title>
+  <meta name="description" content="Free DNS lookup tool — query A, AAAA, MX, NS, TXT, CNAME, SOA and CAA records for any domain. Results via Cloudflare DNS-over-HTTPS. Fast, accurate, no login required.">
+  <meta name="keywords" content="DNS lookup, DNS records, A record lookup, AAAA record, MX record, NS record, TXT record lookup, CNAME lookup, SOA record, CAA record, DNS query tool, DNS checker, check DNS records, DNS propagation, nslookup online, dig online, DNS over HTTPS">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="DNS Lookup — Query A, AAAA, MX, NS, TXT and More">
+  <meta property="og:description" content="Query any DNS record type for any domain. A, AAAA, MX, NS, TXT, CNAME, SOA, CAA — fast and accurate. Free, no login.">
+  <meta property="og:url" content="https://tools.grin.money/tools/dns-lookup/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="DNS Lookup — All Record Types">
+  <meta name="twitter:description" content="Query A, AAAA, MX, NS, TXT, CNAME, SOA, CAA records for any domain. Free DNS checker.">
+  <link rel="canonical" href="https://tools.grin.money/tools/dns-lookup/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"DNS Lookup","description":"Query A, AAAA, MX, NS, TXT, CNAME, SOA and CAA DNS records for any domain using Cloudflare DNS-over-HTTPS.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/dns-lookup/"}</script>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <script src="../../js/theme-init.js"></script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .ctrl-row {
+      display: flex; gap: .5rem; flex-wrap: wrap; align-items: center;
+    }
+    .ctrl-row input[type="text"] {
+      flex: 1; min-width: 200px; padding: .6rem .9rem;
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-secondary); color: var(--text);
+      font-size: .92rem; font-family: 'Courier New', monospace;
+      outline: none; transition: border-color .15s; box-sizing: border-box;
+    }
+    .ctrl-row input[type="text"]:focus { border-color: var(--primary); }
+    .dns-type-bar { display: flex; gap: .3rem; flex-wrap: wrap; margin-top: .85rem; }
+    .dns-type-btn {
+      padding: .25rem .65rem; border-radius: var(--radius);
+      border: 1.5px solid var(--border); background: transparent;
+      color: var(--text-muted); font-size: .77rem; font-weight: 700;
+      cursor: pointer; transition: all .12s;
+    }
+    .dns-type-btn:hover  { border-color: var(--primary); color: var(--primary); }
+    .dns-type-btn.active { border-color: var(--primary); color: var(--primary); background: var(--primary-dim); }
+    .dns-table { width: 100%; border-collapse: collapse; font-size: .82rem; margin-top: .6rem; }
+    .dns-table th {
+      text-align: left; padding: .38rem .6rem;
+      font-size: .67rem; text-transform: uppercase; letter-spacing: .05em;
+      color: var(--text-muted); border-bottom: 1.5px solid var(--border);
+    }
+    .dns-table td {
+      padding: .42rem .6rem; border-bottom: 1px solid var(--border);
+      font-family: 'Courier New', monospace; word-break: break-all; color: var(--text);
+    }
+    .dns-table tr:last-child td { border-bottom: none; }
+    .dns-table tr:hover td { background: var(--bg-secondary); }
+    .box-error { background: var(--danger-dim); color: var(--danger); border-radius: var(--radius); padding: .65rem .9rem; font-size: .86rem; font-weight: 600; margin-top: .75rem; }
+    .box-info  { background: var(--primary-dim); color: var(--primary); border-radius: var(--radius); padding: .6rem .9rem; font-size: .82rem; margin-top: .6rem; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: .4rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 560px) { .ctrl-row input[type="text"] { min-width: 100%; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">DNS Lookup</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>📋 DNS Lookup</h1>
+    <p>Query any DNS record type for any domain — A, AAAA, MX, NS, TXT, CNAME, SOA, CAA.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About DNS Lookup</h2>
+    <p>This tool lets you query any DNS record type for any domain — the equivalent of running <code>nslookup</code> or <code>dig</code> from your terminal, but in your browser. Results are fetched via <strong>Cloudflare DNS-over-HTTPS</strong> (1.1.1.1) for fast, accurate, privacy-respecting queries. Use the <strong>AAAA</strong> tab to check if a domain has IPv6 addresses configured. Use <strong>MX</strong> to inspect mail server routing, <strong>TXT</strong> for SPF / DKIM / DMARC records, and <strong>CAA</strong> to see which certificate authorities are authorized to issue SSL for the domain. Switch between record types instantly without re-entering the domain name.</p>
+  </section>
+
+  <div class="card">
+    <div class="ctrl-row">
+      <input type="text" id="dnsHost" placeholder="domain name (e.g. google.com, cloudflare.com)" autocomplete="off" spellcheck="false">
+      <button class="btn btn-primary" id="dnsBtn">Lookup</button>
+    </div>
+    <div class="ctrl-row" style="margin-top:.5rem">
+      <button class="btn btn-ghost btn-sm" data-ex="google.com">google.com</button>
+      <button class="btn btn-ghost btn-sm" data-ex="github.com">github.com</button>
+      <button class="btn btn-ghost btn-sm" data-ex="cloudflare.com">cloudflare.com</button>
+      <button class="btn btn-ghost btn-sm" data-ex="grin.money">grin.money</button>
+    </div>
+
+    <div class="dns-type-bar" id="dnsTypeBar">
+      <button class="dns-type-btn active" data-type="A">A</button>
+      <button class="dns-type-btn" data-type="AAAA">AAAA</button>
+      <button class="dns-type-btn" data-type="MX">MX</button>
+      <button class="dns-type-btn" data-type="NS">NS</button>
+      <button class="dns-type-btn" data-type="TXT">TXT</button>
+      <button class="dns-type-btn" data-type="CNAME">CNAME</button>
+      <button class="dns-type-btn" data-type="SOA">SOA</button>
+      <button class="dns-type-btn" data-type="CAA">CAA</button>
+    </div>
+
+    <div id="dnsResult">
+      <div style="color:var(--text-muted);font-size:.86rem;padding:1rem 0">Enter a domain above and click <strong>Lookup</strong>.</div>
+    </div>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">DNS lookup</span>
+  <span class="page-tag">DNS records</span>
+  <span class="page-tag">A record</span>
+  <span class="page-tag">AAAA record</span>
+  <span class="page-tag">MX record</span>
+  <span class="page-tag">TXT record</span>
+  <span class="page-tag">nslookup online</span>
+  <span class="page-tag">dig online</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+'use strict';
+const API = window.OT_CONFIG?.GRIN_SERVER_URL || 'http://localhost:3001';
+
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let _activeDomain = '', _activeType = 'A', _cache = {};
+
+document.querySelectorAll('[data-ex]').forEach(b =>
+  b.addEventListener('click', () => { document.getElementById('dnsHost').value = b.dataset.ex; })
+);
+
+document.getElementById('dnsHost').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('dnsBtn').click();
+});
+
+document.getElementById('dnsTypeBar').addEventListener('click', e => {
+  const btn = e.target.closest('.dns-type-btn');
+  if (!btn) return;
+  document.querySelectorAll('.dns-type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  _activeType = btn.dataset.type;
+  if (_activeDomain) dnsLookup(_activeDomain, _activeType);
+});
+
+document.getElementById('dnsBtn').addEventListener('click', () => {
+  const domain = document.getElementById('dnsHost').value.trim().toLowerCase().replace(/^www\./, '');
+  if (!domain) return;
+  _activeDomain = domain;
+  _cache = {};
+  dnsLookup(domain, _activeType);
+});
+
+async function dnsLookup(domain, type) {
+  const key = domain + ':' + type;
+  if (_cache[key]) { renderDNS(_cache[key], type, domain); return; }
+
+  const el = document.getElementById('dnsResult');
+  el.innerHTML = `<div style="padding:.75rem 0"><span class="spinner"></span> Querying <strong>${escHtml(type)}</strong> records for <code>${escHtml(domain)}</code>…</div>`;
+
+  try {
+    const r = await fetch(`${API}/api/domain/dns?domain=${encodeURIComponent(domain)}&type=${encodeURIComponent(type)}`);
+    const data = await r.json();
+    if (!r.ok) { el.innerHTML = `<div class="box-error">${escHtml(data.error || 'DNS query failed')}</div>`; return; }
+    _cache[key] = data;
+    renderDNS(data, type, domain);
+  } catch (err) {
+    el.innerHTML = `<div class="box-error">Network error: ${escHtml(err.message)}</div>`;
+  }
+}
+
+function renderDNS(data, type, domain) {
+  const el = document.getElementById('dnsResult');
+  const answers = data.Answer || [];
+  if (!answers.length) {
+    el.innerHTML = `<div class="box-info">No <strong>${escHtml(type)}</strong> records found for <code>${escHtml(domain)}</code>.</div>`;
+    return;
+  }
+  const rows = answers.map(a => `<tr>
+    <td>${escHtml(a.name || '')}</td>
+    <td>${escHtml(String(a.TTL ?? ''))}</td>
+    <td>${escHtml(a.data || '')}</td>
+  </tr>`).join('');
+  el.innerHTML = `<table class="dns-table">
+    <thead><tr><th>Name</th><th>TTL (s)</th><th>Value</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+</script>
+</body>
+</html>

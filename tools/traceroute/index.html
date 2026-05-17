@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Online Traceroute — Trace Network Path to Any Host | Office Tools</title>
+  <meta name="description" content="Free online traceroute tool — trace the full network path to any IP address or hostname, hop by hop, with live output. Supports IPv4 and IPv6 (tracert / traceroute6). No login required.">
+  <meta name="keywords" content="traceroute online, tracert online, trace route, network path trace, hop by hop, network hops, traceroute IPv6, traceroute6, online tracert, network diagnostics, routing path, latency per hop, trace IP address">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Online Traceroute — Trace Network Path Hop by Hop">
+  <meta property="og:description" content="Trace the network path to any IP or hostname. Live hop-by-hop output, IPv4 and IPv6. Free, no login.">
+  <meta property="og:url" content="https://tools.grin.money/tools/traceroute/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Online Traceroute — IPv4 &amp; IPv6">
+  <meta name="twitter:description" content="Trace network path to any host hop by hop. IPv4 and IPv6 support. Free, no login.">
+  <link rel="canonical" href="https://tools.grin.money/tools/traceroute/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Online Traceroute","description":"Trace the full network path to any IP address or hostname, hop by hop, with live output. Supports IPv4 and IPv6.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/traceroute/"}</script>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <script src="../../js/theme-init.js"></script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .ctrl-row {
+      display: flex; gap: .5rem; flex-wrap: wrap; align-items: center;
+    }
+    .ctrl-row input[type="text"] {
+      flex: 1; min-width: 200px; padding: .6rem .9rem;
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-secondary); color: var(--text);
+      font-size: .92rem; font-family: 'Courier New', monospace;
+      outline: none; transition: border-color .15s; box-sizing: border-box;
+    }
+    .ctrl-row input[type="text"]:focus { border-color: var(--primary); }
+    .ctrl-row select {
+      padding: .55rem .7rem; border-radius: var(--radius);
+      border: 1.5px solid var(--border); background: var(--bg-secondary);
+      color: var(--text); font-size: .84rem; cursor: pointer; outline: none;
+    }
+    .ctrl-row select:focus { border-color: var(--primary); }
+    .ctrl-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); white-space: nowrap; }
+    .net-output {
+      font-family: 'Courier New', monospace; font-size: .8rem;
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .75rem 1rem;
+      margin-top: .85rem; min-height: 100px; max-height: 480px;
+      overflow-y: auto; white-space: pre-wrap; word-break: break-all;
+      color: var(--text); line-height: 1.55;
+    }
+    .net-output:empty::before { content: attr(data-placeholder); color: var(--text-muted); font-style: italic; }
+    .box-error { background: var(--danger-dim); color: var(--danger); border-radius: var(--radius); padding: .65rem .9rem; font-size: .86rem; font-weight: 600; margin-top: .75rem; }
+    @media (max-width: 560px) { .ctrl-row input[type="text"] { min-width: 100%; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Online Traceroute</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔍 Online Traceroute</h1>
+    <p>Trace the full network path to any IP address or hostname, hop by hop, with live streaming output.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About Online Traceroute</h2>
+    <p>Traceroute (also called <code>tracert</code> on Windows) maps every router hop between our server and your target host by sending packets with increasing TTL values. Each line of output shows a hop number, the router's IP or hostname, and round-trip times — letting you pinpoint where latency spikes or where packets stop. Full <strong>IPv4 and IPv6 support</strong>: select IPv6 mode to force a traceroute over IPv6 (equivalent to <code>traceroute6</code> / <code>tracert -6</code>). Results stream live as each hop responds, so you don't have to wait for the full trace to complete. Because the trace runs from our server, the path reflects server-to-target routing, not your local network path.</p>
+  </section>
+
+  <div class="card">
+    <div class="ctrl-row">
+      <input type="text" id="traceHost" placeholder="hostname or IP (e.g. cloudflare.com, 2606:4700::1111)" autocomplete="off" spellcheck="false">
+      <span class="ctrl-label">Max hops</span>
+      <select id="traceHops">
+        <option value="30" selected>30</option>
+        <option value="10">10</option>
+        <option value="15">15</option>
+        <option value="20">20</option>
+      </select>
+      <span class="ctrl-label">IP ver</span>
+      <select id="traceFamily">
+        <option value="auto" selected>Auto</option>
+        <option value="4">IPv4</option>
+        <option value="6">IPv6</option>
+      </select>
+    </div>
+    <div class="ctrl-row" style="margin-top:.6rem">
+      <button class="btn btn-primary" id="traceBtn">Trace</button>
+      <button class="btn btn-ghost" id="traceStop" style="display:none">■ Stop</button>
+      <button class="btn btn-ghost btn-sm" data-ex="cloudflare.com">cloudflare.com</button>
+      <button class="btn btn-ghost btn-sm" data-ex="8.8.8.8">8.8.8.8</button>
+      <button class="btn btn-ghost btn-sm" data-ex="1.1.1.1">1.1.1.1</button>
+    </div>
+    <pre class="net-output" id="traceOutput" data-placeholder="Traceroute hops will appear here…"></pre>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">traceroute online</span>
+  <span class="page-tag">tracert</span>
+  <span class="page-tag">trace route</span>
+  <span class="page-tag">network path</span>
+  <span class="page-tag">hop by hop</span>
+  <span class="page-tag">IPv6 traceroute</span>
+  <span class="page-tag">network diagnostics</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+'use strict';
+const API = window.OT_CONFIG?.GRIN_SERVER_URL || 'http://localhost:3001';
+
+document.querySelectorAll('[data-ex]').forEach(b =>
+  b.addEventListener('click', () => { document.getElementById('traceHost').value = b.dataset.ex; })
+);
+
+document.getElementById('traceHost').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('traceBtn').click();
+});
+
+let traceES = null;
+
+document.getElementById('traceBtn').addEventListener('click', () => {
+  const host   = document.getElementById('traceHost').value.trim();
+  const hops   = document.getElementById('traceHops').value;
+  const family = document.getElementById('traceFamily').value;
+  if (!host) return;
+
+  if (traceES) { traceES.close(); traceES = null; }
+  const out = document.getElementById('traceOutput');
+  out.textContent = '';
+  document.getElementById('traceBtn').disabled = true;
+  document.getElementById('traceStop').style.display = '';
+
+  const url = `${API}/api/net/traceroute?host=${encodeURIComponent(host)}&maxhops=${encodeURIComponent(hops)}&family=${encodeURIComponent(family)}`;
+  traceES = new EventSource(url);
+  traceES.onmessage = e => {
+    if (e.data === '"[DONE]"') { traceDone(); return; }
+    try { out.textContent += JSON.parse(e.data) + '\n'; } catch { out.textContent += e.data + '\n'; }
+    out.scrollTop = out.scrollHeight;
+  };
+  traceES.onerror = () => traceDone();
+});
+
+document.getElementById('traceStop').addEventListener('click', () => {
+  if (traceES) { traceES.close(); traceES = null; }
+  traceDone();
+});
+
+function traceDone() {
+  document.getElementById('traceBtn').disabled = false;
+  document.getElementById('traceStop').style.display = 'none';
+  if (traceES) { traceES.close(); traceES = null; }
+}
+</script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * scripts/check-html.js
- * Validates that every tools/*/index.html conforms to the required head structure:
+ * Validates that every tools/<name>/index.html conforms to the required head structure:
  *   1. <script src="../../js/theme-init.js"> before the stylesheet
  *   2. <link rel="stylesheet" href="../../css/style.css">
  *

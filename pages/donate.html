@@ -1,116 +1,395 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Support Grin — Office Tools</title>
+  <title>Grin — Private Digital Cash · Office Tools</title>
+  <meta name="description" content="Grin is MimbleWimble-based electronic cash — private, leaderless, no premine. Send a coin or grab free Grin from drop.grin.money.">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://tools.grin.money/pages/donate/">
+  <script src="../js/theme-init.js"></script>
   <link rel="stylesheet" href="../css/style.css">
   <style>
-    .donate-tabs {
+    /* ═══ Grin Showcase ═══ */
+
+    :root {
+      --gy: #FEF102;
+      --gy-glow: rgba(254,241,2,.22);
+      --gy-glow-s: rgba(254,241,2,.5);
+    }
+
+    /* ── Hero ── */
+    .g-hero {
+      position: relative;
+      min-height: 88vh;
       display: flex;
-      gap: .5rem;
-      margin-bottom: 1.25rem;
-      border-bottom: 2px solid var(--border);
-      padding-bottom: 0;
-    }
-    .donate-tab-btn {
-      background: none;
-      border: none;
-      border-bottom: 3px solid transparent;
-      margin-bottom: -2px;
-      padding: .6rem 1rem;
-      font-size: .88rem;
-      font-weight: 700;
-      color: var(--text-muted);
-      cursor: pointer;
-      transition: color .15s, border-color .15s;
-      white-space: nowrap;
-    }
-    .donate-tab-btn:hover  { color: var(--primary); }
-    .donate-tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
-
-    .donate-pane { display: none; }
-    .donate-pane.active { display: block; }
-
-    .slatepack-box {
-      font-family: 'Courier New', monospace;
-      font-size: .74rem;
-      background: var(--bg-secondary);
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius);
-      padding: .75rem 1rem;
-      word-break: break-all;
-      white-space: pre-wrap;
-      max-height: 200px;
-      overflow-y: auto;
-      user-select: all;
-      line-height: 1.5;
-    }
-    .cmd-box {
-      font-family: 'Courier New', monospace;
-      font-size: .82rem;
-      background: var(--bg-secondary);
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius);
-      padding: .6rem 1rem;
-      word-break: break-all;
-      white-space: pre-wrap;
-      user-select: all;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      overflow: hidden;
+      padding: 6rem 2rem 5rem;
+      background: radial-gradient(ellipse 130% 80% at 50% 5%, #12083a 0%, #050510 55%, #000 100%);
     }
 
-    .amount-grid {
+    /* Scrolling grid */
+    .g-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(254,241,2,.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(254,241,2,.045) 1px, transparent 1px);
+      background-size: 64px 64px;
+      animation: heroGrid 14s linear infinite;
+    }
+
+    /* Vignette */
+    .g-hero::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 65% 55% at 50% 50%, transparent 35%, rgba(0,0,0,.75) 100%);
+      pointer-events: none;
+    }
+
+    @keyframes heroGrid {
+      from { background-position: 0 0, 0 0; }
+      to   { background-position: 0 64px, 64px 0; }
+    }
+
+    .g-hero-inner {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Grin coin */
+    .g-coin {
+      width: 110px;
+      height: 110px;
+      margin: 0 auto 2.25rem;
+      animation: coinFloat 4s ease-in-out infinite;
+    }
+
+    @keyframes coinFloat {
+      0%, 100% {
+        filter: drop-shadow(0 0 18px var(--gy-glow-s)) drop-shadow(0 0 48px var(--gy-glow));
+        transform: translateY(0);
+      }
+      50% {
+        filter: drop-shadow(0 0 36px var(--gy-glow-s)) drop-shadow(0 0 80px var(--gy-glow));
+        transform: translateY(-8px);
+      }
+    }
+
+    .g-hero h1 {
+      font-size: clamp(2.5rem, 6.5vw, 5rem);
+      font-weight: 900;
+      color: #fff;
+      line-height: 1.08;
+      margin: 0 0 1.1rem;
+      letter-spacing: -.03em;
+    }
+
+    .g-hero h1 em {
+      font-style: normal;
+      color: var(--gy);
+      text-shadow: 0 0 50px var(--gy-glow-s);
+    }
+
+    .g-tagline {
+      font-size: clamp(.95rem, 2.2vw, 1.2rem);
+      color: rgba(255,255,255,.6);
+      max-width: 520px;
+      margin: 0 auto 2.75rem;
+      line-height: 1.7;
+    }
+
+    .g-cta-row {
       display: flex;
+      gap: 1rem;
+      justify-content: center;
       flex-wrap: wrap;
-      gap: .5rem;
-      margin: .75rem 0;
     }
-    .amount-btn {
-      padding: .5rem 1.25rem;
-      border: 2px solid var(--border);
+
+    .g-btn-y {
+      display: inline-block;
+      background: var(--gy);
+      color: #000;
+      border: none;
+      padding: .9rem 2.25rem;
       border-radius: 50px;
+      font-size: .97rem;
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform .18s, box-shadow .18s;
+      box-shadow: 0 0 20px var(--gy-glow);
+    }
+
+    .g-btn-y:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 0 44px var(--gy-glow-s), 0 10px 28px rgba(0,0,0,.35);
+    }
+
+    .g-btn-outline {
+      display: inline-block;
       background: transparent;
-      color: var(--text-muted);
-      font-size: .88rem;
+      color: rgba(255,255,255,.75);
+      border: 2px solid rgba(255,255,255,.18);
+      padding: .9rem 2.25rem;
+      border-radius: 50px;
+      font-size: .97rem;
       font-weight: 700;
       cursor: pointer;
-      transition: all .15s;
+      text-decoration: none;
+      transition: border-color .18s, color .18s, background .18s;
     }
-    .amount-btn:hover  { border-color: var(--primary); color: var(--primary); }
-    .amount-btn.active { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
 
-    .step-label {
-      font-size: .72rem;
+    .g-btn-outline:hover {
+      border-color: var(--gy);
+      color: var(--gy);
+      background: rgba(254,241,2,.05);
+    }
+
+    /* ── Section wrapper ── */
+    .g-section {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 4.5rem 1.5rem 0;
+    }
+
+    .g-section.wide {
+      max-width: 980px;
+    }
+
+    /* ── Labels & headings ── */
+    .g-eyebrow {
+      font-size: .68rem;
       font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: .06em;
-      color: var(--text-muted);
-      margin-bottom: .35rem;
+      letter-spacing: .16em;
+      color: var(--gy);
+      margin-bottom: 1rem;
+      text-align: center;
     }
 
-    .thank-you { text-align: center; padding: 3rem 2rem; }
-    .thank-you .big-emoji { font-size: 3.5rem; }
+    .g-h2 {
+      font-size: clamp(1.75rem, 4vw, 2.9rem);
+      font-weight: 900;
+      color: var(--text);
+      line-height: 1.15;
+      margin-bottom: 1.5rem;
+      text-align: center;
+      letter-spacing: -.02em;
+    }
 
-    /* Wallet status badge */
-    #walletStatus {
-      display: inline-flex;
+    /* ── Manifesto ── */
+    .g-manifesto p {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      line-height: 1.85;
+      margin-bottom: 1.3rem;
+      text-align: center;
+    }
+
+    .g-manifesto p strong {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .g-divider {
+      width: 48px;
+      height: 3px;
+      background: var(--gy);
+      border-radius: 2px;
+      margin: 3.5rem auto;
+      box-shadow: 0 0 12px var(--gy-glow-s);
+    }
+
+    /* ── Properties grid ── */
+    .g-props {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 1.25rem;
+      padding-top: 2rem;
+    }
+
+    .g-prop {
+      background: var(--bg-card);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem 1.4rem;
+      text-align: center;
+      transition: border-color .2s, transform .2s, box-shadow .2s;
+    }
+
+    .g-prop:hover {
+      border-color: rgba(254,241,2,.45);
+      box-shadow: 0 0 22px var(--gy-glow);
+      transform: translateY(-4px);
+    }
+
+    .g-prop-icon {
+      font-size: 2.2rem;
+      margin-bottom: .9rem;
+    }
+
+    .g-prop h3 {
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: .55rem;
+    }
+
+    .g-prop p {
+      font-size: .855rem;
+      color: var(--text-muted);
+      line-height: 1.65;
+    }
+
+    /* ── Action cards ── */
+    .g-actions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 1.5rem;
+      padding-top: 2rem;
+    }
+
+    .g-card {
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 2rem 1.75rem;
+      transition: transform .22s, box-shadow .22s, border-color .22s;
+    }
+
+    .g-card.gold {
+      border-color: rgba(254,241,2,.28);
+      background: linear-gradient(140deg, var(--bg-card) 0%, rgba(254,241,2,.03) 100%);
+    }
+
+    .g-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
+
+    .g-card.gold:hover {
+      border-color: rgba(254,241,2,.6);
+      box-shadow: 0 10px 40px var(--gy-glow);
+    }
+
+    .g-card h3 {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: .75rem;
+      display: flex;
       align-items: center;
       gap: .4rem;
-      font-size: .78rem;
-      font-weight: 700;
-      padding: .25rem .75rem;
-      border-radius: 50px;
-      border: 1.5px solid var(--border);
-      background: var(--bg-secondary);
-      color: var(--text-muted);
     }
-    #walletStatus.ok     { border-color: var(--success); color: var(--success); background: var(--success-dim); }
-    #walletStatus.error  { border-color: var(--danger);  color: var(--danger);  background: var(--danger-dim);  }
-    .ws-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: currentColor;
-      flex-shrink: 0;
+
+    .g-card p {
+      font-size: .88rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+      margin-bottom: 1.1rem;
+    }
+
+    .g-card p strong { color: var(--text); }
+
+    .g-addr {
+      font-family: 'Courier New', monospace;
+      font-size: .72rem;
+      background: var(--bg-secondary);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: .75rem 1rem;
+      word-break: break-all;
+      color: var(--text-muted);
+      margin-bottom: .85rem;
+      user-select: all;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+
+    .g-addr:hover { border-color: rgba(254,241,2,.4); }
+
+    .g-copy-btn {
+      background: var(--gy);
+      color: #000;
+      border: none;
+      border-radius: 50px;
+      padding: .55rem 1.4rem;
+      font-size: .88rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform .15s, box-shadow .15s;
+    }
+
+    .g-copy-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px var(--gy-glow-s);
+    }
+
+    /* ── Tech specs ── */
+    .g-specs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+      gap: 1rem;
+      padding-top: 1.75rem;
+    }
+
+    .g-spec {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.2rem;
+    }
+
+    .g-spec dt {
+      font-size: .65rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .13em;
+      color: var(--gy);
+      margin-bottom: .3rem;
+    }
+
+    .g-spec dd {
+      font-size: .875rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    /* ── Scroll reveal ── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity .65s ease, transform .65s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: none;
+    }
+
+    /* ── Page footer spacer / tags ── */
+    .page-tags {
+      text-align: center;
+      padding: 4rem 1.5rem 3rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .page-tags span {
+      display: inline-block;
+      font-size: .7rem;
+      color: var(--text-light);
+      margin: .2rem .4rem;
+    }
+
+    /* Mobile tweaks */
+    @media (max-width: 480px) {
+      .g-hero h1 { letter-spacing: -.02em; }
+      .g-cta-row { flex-direction: column; align-items: center; }
     }
   </style>
 </head>
@@ -119,420 +398,236 @@
 <header class="site-header">
   <a href="../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
   <span class="header-tool-name" style="display:inline-flex;align-items:center;gap:.35rem">
-    <svg viewBox="0 0 191 191" style="width:1.1em;height:1.1em;vertical-align:middle;flex-shrink:0" xmlns="http://www.w3.org/2000/svg"><circle cx="95.5" cy="95.5" r="95.5"/><circle fill="#FEF102" cx="95.3" cy="95.5" r="85.3"/><path d="M135.7,63.5c-2-4.6-3.9-13.6-9.1-15.6c-6.7-2.6-10.9,14.3-11.9,18.6h-1c-1.7-7.3-4-17.7-12-20c-3.7,15.6,3.9,32.5,11,46c7.6-3.6,11.3-15,12-23h1l8,24c6.4-1.8,8.7-8.2,11-14c5-12.4,9.2-27.7,6-41C141.1,41.2,138.2,55,135.7,63.5 M39.7,95.5c8.6-4.1,12.7-17.1,14-26h1c1,4.3,3.7,15.4,9.1,16.1c6.8,0.9,10.4-14.3,10.9-19.1h1c2.2,7.5,4.5,17.3,12,21c2.8-11.7-0.5-24.1-4.8-35c-1.1-2.8-3.3-10.4-7.2-10.4c-6.3,0-9.9,16.7-11,21.4h-1l-8-24C41.6,46.2,34,82,39.7,95.5 M24.7,107.5c10.4,45.6,58.6,71.4,102,52.1c15.8-7,28.3-19.5,35.5-35.1c1.9-4,5.5-11.4,3.4-16.7c-2.1-5.3-22.8,3.4-27.9,5.6c-0.7,0.3-1.2,1-1.4,1.8c-0.3,2.2,1.2,4.3,3.4,4.6c0.1,0,0.2,0,0.3,0l8.7,0.7c-15.7,30.4-58.1,43.8-88,19.5C54,134.6,48,128.2,44,120.5c-1.9-3.7-3.7-8.4-7-11C33.8,107.1,29,106.3,24.7,107.5L24.7,107.5z"/></svg>
-    Donate me with Grin coin (^_^)
+    <svg viewBox="0 0 191 191" style="width:1em;height:1em;vertical-align:middle;flex-shrink:0" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="95.5" cy="95.5" r="95.5"/>
+      <circle fill="#FEF102" cx="95.3" cy="95.5" r="85.3"/>
+      <path d="M135.7,63.5c-2-4.6-3.9-13.6-9.1-15.6c-6.7-2.6-10.9,14.3-11.9,18.6h-1c-1.7-7.3-4-17.7-12-20c-3.7,15.6,3.9,32.5,11,46c7.6-3.6,11.3-15,12-23h1l8,24c6.4-1.8,8.7-8.2,11-14c5-12.4,9.2-27.7,6-41C141.1,41.2,138.2,55,135.7,63.5 M39.7,95.5c8.6-4.1,12.7-17.1,14-26h1c1,4.3,3.7,15.4,9.1,16.1c6.8,0.9,10.4-14.3,10.9-19.1h1c2.2,7.5,4.5,17.3,12,21c2.8-11.7-0.5-24.1-4.8-35c-1.1-2.8-3.3-10.4-7.2-10.4c-6.3,0-9.9,16.7-11,21.4h-1l-8-24C41.6,46.2,34,82,39.7,95.5 M24.7,107.5c10.4,45.6,58.6,71.4,102,52.1c15.8-7,28.3-19.5,35.5-35.1c1.9-4,5.5-11.4,3.4-16.7c-2.1-5.3-22.8,3.4-27.9,5.6c-0.7,0.3-1.2,1-1.4,1.8c-0.3,2.2,1.2,4.3,3.4,4.6c0.1,0,0.2,0,0.3,0l8.7,0.7c-15.7,30.4-58.1,43.8-88,19.5C54,134.6,48,128.2,44,120.5c-1.9-3.7-3.7-8.4-7-11C33.8,107.1,29,106.3,24.7,107.5L24.7,107.5z"/>
+    </svg>
+    Grin
   </span>
   <div class="header-actions">
     <button class="theme-toggle" id="themeToggle"></button>
   </div>
 </header>
 
-<main class="tool-main">
-  <div class="tool-header">
-    <p>All tools are free. If they save you time, consider sending some Grin our way.<br>
-       <a href="https://grin.mw" target="_blank" rel="noopener" style="color:var(--primary)">What is Grin?</a>
-       — a private, lightweight, open-source cryptocurrency with no amounts visible on-chain.</p>
-    <div style="margin-top:.75rem">
-      <span id="walletStatus"><span class="ws-dot"></span> Checking wallet…</span>
+<!-- ═══════════════════════════════════════════════════════════
+     HERO
+═══════════════════════════════════════════════════════════ -->
+<section class="g-hero">
+  <div class="g-hero-inner">
+
+    <svg class="g-coin" viewBox="0 0 191 191" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="95.5" cy="95.5" r="95.5" fill="#100800"/>
+      <circle fill="#FEF102" cx="95.3" cy="95.5" r="85.3"/>
+      <path fill="#000" d="M135.7,63.5c-2-4.6-3.9-13.6-9.1-15.6c-6.7-2.6-10.9,14.3-11.9,18.6h-1c-1.7-7.3-4-17.7-12-20c-3.7,15.6,3.9,32.5,11,46c7.6-3.6,11.3-15,12-23h1l8,24c6.4-1.8,8.7-8.2,11-14c5-12.4,9.2-27.7,6-41C141.1,41.2,138.2,55,135.7,63.5 M39.7,95.5c8.6-4.1,12.7-17.1,14-26h1c1,4.3,3.7,15.4,9.1,16.1c6.8,0.9,10.4-14.3,10.9-19.1h1c2.2,7.5,4.5,17.3,12,21c2.8-11.7-0.5-24.1-4.8-35c-1.1-2.8-3.3-10.4-7.2-10.4c-6.3,0-9.9,16.7-11,21.4h-1l-8-24C41.6,46.2,34,82,39.7,95.5 M24.7,107.5c10.4,45.6,58.6,71.4,102,52.1c15.8-7,28.3-19.5,35.5-35.1c1.9-4,5.5-11.4,3.4-16.7c-2.1-5.3-22.8,3.4-27.9,5.6c-0.7,0.3-1.2,1-1.4,1.8c-0.3,2.2,1.2,4.3,3.4,4.6c0.1,0,0.2,0,0.3,0l8.7,0.7c-15.7,30.4-58.1,43.8-88,19.5C54,134.6,48,128.2,44,120.5c-1.9-3.7-3.7-8.4-7-11C33.8,107.1,29,106.3,24.7,107.5L24.7,107.5z"/>
+    </svg>
+
+    <h1>Cash for the<br><em>ghost economy</em></h1>
+
+    <p class="g-tagline">
+      Grin is private, leaderless, and has no amounts on-chain.
+      No CEO. No ICO. No premine. Just math, code,
+      and a community that believes money should be free.
+    </p>
+
+    <div class="g-cta-row">
+      <a href="#act" class="g-btn-y">Support this site</a>
+      <a href="https://grin.mw" target="_blank" rel="noopener" class="g-btn-outline">What is Grin? →</a>
     </div>
-    <div id="walletOfflineNote" class="alert alert-danger mt-2" style="display:none;font-size:.85rem">
-      ⚠️ The Grin wallet service is currently offline. Try slatepack or invoice methods.
-      Or check back in one hour — the service restarts automatically.
-    </div>
+
   </div>
+</section>
 
-  <!-- Tab switcher -->
-  <div class="donate-tabs" role="tablist">
-    <button class="donate-tab-btn active" data-pane="pane-tor"     role="tab">1. TOR Direct</button>
-    <button class="donate-tab-btn"        data-pane="pane-receive" role="tab">2. Slatepack — You Send</button>
-    <button class="donate-tab-btn"        data-pane="pane-invoice" role="tab">3. Invoice — We Request</button>
-  </div>
+<!-- ═══════════════════════════════════════════════════════════
+     MANIFESTO
+═══════════════════════════════════════════════════════════ -->
+<section class="g-section reveal">
+  <div class="g-eyebrow">The philosophy</div>
+  <h2 class="g-h2">Money shouldn't leave footprints</h2>
 
-  <!-- ══════════════════════════════════════════════════════════
-       Pane 1 — Direct TOR send
-       ══════════════════════════════════════════════════════════ -->
-  <div id="pane-tor" class="donate-pane active">
-    <div class="card">
-      <strong>Send directly from your Grin wallet via TOR</strong>
-      <p style="font-size:.88rem;color:var(--text-muted);margin:.75rem 0">
-        The simplest method — just open your wallet, paste the address below and send any amount.
-        TOR must be running. If the connection is unstable, use one of the other tabs.
-      </p>
-      <div class="step-label">Our Grin Address</div>
-      <div class="cmd-box" id="torAddress"></div>
-      <button class="btn btn-ghost btn-sm mt-2" id="copyAddrBtn">Copy Address</button>
-    </div>
-
-    <div class="card mt-2" style="background:var(--bg-secondary)">
-      <strong>Quick steps</strong>
-      <ol style="font-size:.86rem;color:var(--text-muted);margin:.6rem 0;padding-left:1.2rem;line-height:2">
-        <li>Make sure TOR is running (or built into your wallet)</li>
-        <li>In your wallet: <strong>Send → paste address above → enter amount</strong></li>
-        <li>Confirm. Done!</li>
-      </ol>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════════════════════════════════
-       Pane 2 — Slatepack (You Send / We Receive)
-       ══════════════════════════════════════════════════════════ -->
-  <div id="pane-receive" class="donate-pane">
-
-    <!-- Step 1: user generates send slate -->
-    <div class="card" id="rcv-s1">
-      <strong>Step 1 — Choose amount &amp; generate a send slate</strong>
-      <p style="font-size:.88rem;color:var(--text-muted);margin:.75rem 0">
-        Pick a donation amount, then run the shown command from your terminal.
-      </p>
-
-      <div class="amount-grid" id="rcvAmountGrid">
-        <button class="amount-btn" data-amount="10">10 GRIN</button>
-        <button class="amount-btn" data-amount="50">50 GRIN</button>
-        <button class="amount-btn" data-amount="100">100 GRIN</button>
-        <button class="amount-btn" data-amount="custom">Custom…</button>
-      </div>
-      <div id="rcvCustomWrap" style="display:none;margin-bottom:.75rem">
-        <input type="number" id="rcvCustomAmt" min="1" step="1"
-               placeholder="Min 1 GRIN" style="max-width:200px">
-      </div>
-
-      <div class="step-label">Run in your terminal</div>
-      <div class="cmd-box" id="sendCmd"></div>
-      <button class="btn btn-ghost btn-sm mt-2" id="copySendCmd">Copy Command</button>
-
-      <div class="form-group mt-2">
-        <label>Paste the output slatepack from your wallet here:</label>
-        <textarea id="rcvSlate1" rows="6"
-          placeholder="BEGINSLATEPACK.&#10;…&#10;ENDSLATEPACK."
-          style="font-family:monospace;font-size:.78rem"></textarea>
-      </div>
-      <div id="rcvError" class="alert alert-danger mt-2" style="display:none"></div>
-      <button class="btn btn-primary mt-2" id="rcvProcessBtn">Process Donation →</button>
-    </div>
-
-    <!-- Step 2: we return our response, user finalizes -->
-    <div class="card" id="rcv-s2" style="display:none">
-      <strong>Step 2 — Finalize from your wallet</strong>
-      <p style="font-size:.88rem;color:var(--text-muted);margin:.75rem 0">
-        Copy our response slatepack below, save it to a file (e.g. <code>response.slatepack</code>),
-        then run <code>grin-wallet finalize -i response.slatepack</code> to broadcast.
-      </p>
-      <div class="step-label">Our Response Slatepack</div>
-      <div class="slatepack-box" id="rcvSlate2"></div>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem">
-        <button class="btn btn-ghost btn-sm" id="copyRcvResp">Copy Response</button>
-        <button class="btn btn-ghost btn-sm" id="downloadRcvResp">Download .slatepack</button>
-      </div>
-
-      <div class="card mt-2" style="background:var(--bg-secondary)">
-        <div class="step-label">Finalize from your terminal</div>
-        <div class="cmd-box">grin-wallet finalize -i response.slatepack</div>
-      </div>
-
-      <div class="card mt-2 thank-you" style="background:var(--primary-dim)">
-        <div class="big-emoji">🙏</div>
-        <h2 style="margin:.5rem 0">Almost there!</h2>
-        <p style="color:var(--text-muted);font-size:.9rem">
-          Run the finalize command in your wallet to complete the donation. Thank you!
-        </p>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════════════════════════════════
-       Pane 3 — Invoice (We Request / You Pay)
-       ══════════════════════════════════════════════════════════ -->
-  <div id="pane-invoice" class="donate-pane">
-
-    <!-- Step 1: choose amount + address, create invoice -->
-    <div class="card" id="inv-s1">
-      <strong>Step 1 — Choose donation amount</strong>
-
-      <div class="amount-grid" id="amountGrid">
-        <button class="amount-btn" data-amount="10">10 GRIN</button>
-        <button class="amount-btn" data-amount="50">50 GRIN</button>
-        <button class="amount-btn" data-amount="100">100 GRIN</button>
-        <button class="amount-btn" data-amount="custom">Custom…</button>
-      </div>
-      <div id="customWrap" style="display:none;margin-bottom:.75rem">
-        <input type="number" id="customAmt" min="1" step="1"
-               placeholder="Min 1 GRIN" style="max-width:200px">
-      </div>
-
-      <div class="form-group mt-2">
-        <label>Your Grin wallet address <span style="color:var(--text-muted);font-weight:400">(so we direct the invoice to you)</span></label>
-        <input type="text" id="invAddress" placeholder="grin1…" autocomplete="off">
-      </div>
-
-      <div id="invError" class="alert alert-danger mt-2" style="display:none"></div>
-      <button class="btn btn-primary mt-2" id="invCreateBtn" disabled>Create Invoice →</button>
-    </div>
-
-    <!-- Step 2: show invoice slate, user pays, pastes response -->
-    <div class="card" id="inv-s2" style="display:none">
-      <strong>Step 2 — Pay the invoice from your wallet</strong>
-      <p style="font-size:.88rem;color:var(--text-muted);margin:.75rem 0">
-        Copy the invoice slatepack below, save it to a file (e.g. <code>invoice.slatepack</code>),
-        then run <code>grin-wallet pay -i invoice.slatepack</code>.
-      </p>
-
-      <div class="step-label">Invoice Slatepack — copy this into your wallet</div>
-      <div class="slatepack-box" id="invSlate1"></div>
-      <button class="btn btn-ghost btn-sm mt-2" id="copyInvSlate">Copy Invoice</button>
-
-      <div class="card mt-2" style="background:var(--bg-secondary)">
-        <div class="step-label">Run in your terminal</div>
-        <div class="cmd-box">grin-wallet pay -i invoice.slatepack</div>
-      </div>
-
-      <div class="form-group mt-2">
-        <label>Paste your wallet's payment response here:</label>
-        <textarea id="invSlate2" rows="6"
-          placeholder="BEGINSLATEPACK.&#10;…&#10;ENDSLATEPACK."
-          style="font-family:monospace;font-size:.78rem"></textarea>
-      </div>
-      <div id="invError2" class="alert alert-danger mt-2" style="display:none"></div>
-      <div class="btn-group mt-2">
-        <button class="btn btn-primary" id="invFinalizeBtn">Finalize Donation →</button>
-        <button class="btn btn-ghost btn-sm" id="invBackBtn">← Back</button>
-      </div>
-    </div>
-
-    <!-- Step 3: success -->
-    <div class="card mt-2 thank-you" id="inv-s3" style="display:none">
-      <div class="big-emoji">✅</div>
-      <h2 style="margin:.75rem 0 .5rem">Thank you!</h2>
-      <p style="color:var(--text-muted)">Your donation has been received and broadcast to the Grin network.</p>
-      <p style="color:var(--text-muted);font-size:.85rem;margin-top:.5rem">You're awesome. Grin on! 😄</p>
-      <a href="../index.html" class="btn btn-primary"
-         style="display:inline-block;margin-top:1.25rem;text-decoration:none">Back to Tools</a>
-    </div>
-  </div>
-
-  <!-- Why Grin card (always visible) -->
-  <div class="card mt-2" style="background:var(--bg-secondary)">
-    <strong>Why Grin?</strong>
-    <p style="font-size:.85rem;color:var(--text-muted);margin-top:.5rem;line-height:1.7">
-      Grin uses MimbleWimble — no transaction amounts or addresses are visible on-chain.
-      No accounts, no KYC, no centralized investor.
-      <a href="https://grin.mw" target="_blank" rel="noopener" style="color:var(--primary)">Learn more →</a>
+  <div class="g-manifesto">
+    <p>
+      In 2016, an anonymous developer posted a whitepaper to a Bitcoin forum under the name
+      <strong>Tom Elvis Jedusor</strong> — Voldemort's name in French. The protocol was called
+      <strong>MimbleWimble</strong>, the tongue-tying curse from Harry Potter. Then he vanished.
+    </p>
+    <p>
+      Two years later, <a href="https://grinscan.org/block.html?h=0" target="_blank" rel="noopener" style="color:var(--gy);text-decoration:none;border-bottom:1px solid var(--gy-glow)">Grin launched</a> — no founders' reward, no company, no venture capital,
+      no pre-sale. On launch day there were no coins to buy and no one to wire money to.
+      Just a genesis block and a GitHub repository.
+    </p>
+    <p>
+      On Grin's blockchain, there are <strong>no addresses and no visible amounts</strong>.
+      Every transaction is a cryptographic proof that value moved without recording how much
+      or to whom. Blocks compress over time through cut-through — spent outputs vanish,
+      and the entire chain stays lighter than most single-day Bitcoin traffic.
+    </p>
+    <p>
+      This is not a speculative asset. Grin emits <strong>one coin per second, forever</strong> —
+      a constant issuance that dilutes toward zero inflation over decades without ever
+      choking off miner rewards. It is electronic cash engineered to be spent.
     </p>
   </div>
+</section>
 
-</main>
+<div class="g-divider reveal"></div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PROPERTIES
+═══════════════════════════════════════════════════════════ -->
+<section class="g-section wide reveal">
+  <div class="g-eyebrow">Why it matters</div>
+  <h2 class="g-h2">Built different</h2>
+
+  <div class="g-props">
+    <div class="g-prop">
+      <div class="g-prop-icon">⏱</div>
+      <h3>Time-backed money</h3>
+      <p>60 GRIN per minute — always, without exception, without anyone's permission. You cannot fake time or print more of it. The first monetary policy enforced by physics, not politics.</p>
+    </div>
+    <div class="g-prop">
+      <div class="g-prop-icon">⚖️</div>
+      <h3>Fair for everyone, forever</h3>
+      <p>No halvings. No early-investor advantage. The same 60 GRIN per minute whether you discover it today or in 20 years. Everyone plays by identical terms.</p>
+    </div>
+    <div class="g-prop">
+      <div class="g-prop-icon">👁️</div>
+      <h3>Private by design, not by option</h3>
+      <p>Amounts and parties are hidden in the cryptographic math of every transaction. Nobody can scan the blockchain to see your balance or trace who paid whom.</p>
+    </div>
+    <div class="g-prop">
+      <div class="g-prop-icon">🏦</div>
+      <h3>No custodian risk</h3>
+      <p>No company in the middle — ever. Grin's supply is verified by open-source math on your own computer. There is no custodian who can be frozen or shut down.</p>
+    </div>
+    <div class="g-prop">
+      <div class="g-prop-icon">🖨️</div>
+      <h3>Protocol beats committees</h3>
+      <p>Stablecoins lose value when governments print more. Bitcoin's security fades when minting stops. Grin's emission is hard-coded forever — no committee can change the rules, and miners always get paid.</p>
+    </div>
+    <div class="g-prop">
+      <div class="g-prop-icon">🪶</div>
+      <h3>A blockchain that stays small</h3>
+      <p>Grin automatically removes spent data from the chain. After 7+ years live, the full history is ~5 GB pruned. Fast to sync, cheap to run a node at home.</p>
+    </div>
+    <div class="g-prop">
+      <div class="g-prop-icon">🔍</div>
+      <h3>Simple enough to verify yourself</h3>
+      <p>No hidden allocations, no founder rewards, no complex tokenomics. The codebase is small enough for any engineer to read and audit end-to-end.</p>
+    </div>
+    <div class="g-prop">
+      <div class="g-prop-icon">🌍</div>
+      <h3>Built to outlast everything</h3>
+      <p>Inflation falls smoothly every year — no halvings, no cliffs, no shocks. Anyone can fork the code, but not the history. Years of accumulated proof-of-work and community trust can't be copied. You can't fork time.</p>
+    </div>
+  </div>
+</section>
+
+<div class="g-divider reveal"></div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ACTION
+═══════════════════════════════════════════════════════════ -->
+<section class="g-section wide reveal" id="act">
+  <div class="g-eyebrow">Take action</div>
+  <h2 class="g-h2">Send some. Get some. Try it.</h2>
+  <p style="text-align:center;color:var(--text-muted);max-width:500px;margin:0 auto;font-size:.95rem;line-height:1.7">
+    All tools on this site are free, ad-free, and never log your queries.
+    If they save you time, a few Grin coins is all it takes to keep them running.
+    Or just grab some free coins and see what private cash feels like.
+  </p>
+
+  <div class="g-actions-grid">
+
+    <!-- Send -->
+    <div class="g-card gold">
+      <h3>
+        <svg viewBox="0 0 191 191" style="width:.85em;height:.85em;flex-shrink:0" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="95.5" cy="95.5" r="95.5"/><circle fill="#FEF102" cx="95.3" cy="95.5" r="85.3"/>
+          <path d="M135.7,63.5c-2-4.6-3.9-13.6-9.1-15.6c-6.7-2.6-10.9,14.3-11.9,18.6h-1c-1.7-7.3-4-17.7-12-20c-3.7,15.6,3.9,32.5,11,46c7.6-3.6,11.3-15,12-23h1l8,24c6.4-1.8,8.7-8.2,11-14c5-12.4,9.2-27.7,6-41C141.1,41.2,138.2,55,135.7,63.5 M39.7,95.5c8.6-4.1,12.7-17.1,14-26h1c1,4.3,3.7,15.4,9.1,16.1c6.8,0.9,10.4-14.3,10.9-19.1h1c2.2,7.5,4.5,17.3,12,21c2.8-11.7-0.5-24.1-4.8-35c-1.1-2.8-3.3-10.4-7.2-10.4c-6.3,0-9.9,16.7-11,21.4h-1l-8-24C41.6,46.2,34,82,39.7,95.5 M24.7,107.5c10.4,45.6,58.6,71.4,102,52.1c15.8-7,28.3-19.5,35.5-35.1c1.9-4,5.5-11.4,3.4-16.7c-2.1-5.3-22.8,3.4-27.9,5.6c-0.7,0.3-1.2,1-1.4,1.8c-0.3,2.2,1.2,4.3,3.4,4.6c0.1,0,0.2,0,0.3,0l8.7,0.7c-15.7,30.4-58.1,43.8-88,19.5C54,134.6,48,128.2,44,120.5c-1.9-3.7-3.7-8.4-7-11C33.8,107.1,29,106.3,24.7,107.5L24.7,107.5z"/>
+        </svg>
+        Send Grin
+      </h3>
+      <p>
+        Open your Grin wallet, paste the address below, and send any amount via TOR.
+        TOR must be running — most modern wallets handle it automatically.
+        Any amount is genuinely appreciated.
+      </p>
+      <div class="g-addr" id="grinAddr" title="Click to copy">Loading…</div>
+      <button class="g-copy-btn" id="copyAddrBtn">Copy Address</button>
+    </div>
+
+    <!-- Get -->
+    <div class="g-card">
+      <h3>🎁 Get free Grin</h3>
+      <p>
+        Never held Grin before? <strong>drop.grin.money</strong> gives away real coins
+        so anyone can experience private digital cash without buying anything first.
+      </p>
+      <p>
+        Claim your first coins, fire up a wallet, and feel what it's like
+        to send money that leaves no trace on any ledger.
+      </p>
+      <a href="https://drop.grin.money" target="_blank" rel="noopener" class="g-btn-y" style="font-size:.9rem">
+        Visit drop.grin.money →
+      </a>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TECH SPECS
+═══════════════════════════════════════════════════════════ -->
+<section class="g-section reveal">
+  <div class="g-eyebrow">Under the hood</div>
+  <h2 class="g-h2">The numbers</h2>
+
+  <dl class="g-specs">
+    <div class="g-spec"><dt>Protocol</dt><dd>MimbleWimble</dd></div>
+    <div class="g-spec"><dt>Genesis</dt><dd>January 15, 2019</dd></div>
+    <div class="g-spec"><dt>Emission</dt><dd>1 GRIN / second, forever</dd></div>
+    <div class="g-spec"><dt>Premine</dt><dd>None</dd></div>
+    <div class="g-spec"><dt>ICO / VC</dt><dd>None</dd></div>
+    <div class="g-spec"><dt>Mining</dt><dd>Cuckatoo32+ (PoW)</dd></div>
+    <div class="g-spec"><dt>Privacy</dt><dd>Pedersen + Bulletproofs</dd></div>
+    <div class="g-spec"><dt>Governance</dt><dd>Community RFC process</dd></div>
+    <div class="g-spec"><dt>Addresses on-chain</dt><dd>None</dd></div>
+    <div class="g-spec"><dt>Amounts on-chain</dt><dd>Hidden</dd></div>
+    <div class="g-spec"><dt>Foundation</dt><dd>None</dd></div>
+    <div class="g-spec"><dt>Learn more</dt><dd><a href="https://grin.mw" target="_blank" rel="noopener" style="color:var(--gy)">grin.mw →</a></dd></div>
+  </dl>
+</section>
+
+<div class="page-tags">
+  <span>grin cryptocurrency</span><span>mimblewimble</span><span>private digital cash</span>
+  <span>donate grin</span><span>grin wallet</span><span>free grin</span>
+  <span>drop.grin.money</span><span>electronic cash</span><span>confidential transactions</span>
+  <span>privacy coin</span><span>no premine</span><span>leaderless crypto</span>
+  <span>grin.mw</span><span>tor grin</span><span>grin send</span>
+</div>
 
 <script src="../js/config.js"></script>
 <script src="../js/common.js"></script>
 <script>
-  const GRIN_ADDR = OT_CONFIG.GRIN_ADDRESS;
-  const SERVER    = OT_CONFIG.GRIN_SERVER_URL;
+  const GRIN_ADDR = window.OT_CONFIG?.GRIN_ADDRESS || '';
+  const addrBox   = document.getElementById('grinAddr');
 
-  // ── Populate static address fields ───────────────────────────
-  document.getElementById('torAddress').textContent = GRIN_ADDR;
-  document.getElementById('sendCmd').textContent    = `grin-wallet send -m -d ${GRIN_ADDR} <amount>`;
+  addrBox.textContent = GRIN_ADDR || 'Address unavailable';
 
-  // ── Wallet status badge ───────────────────────────────────────
-  async function checkWalletStatus() {
-    const badge = document.getElementById('walletStatus');
-    try {
-      const res  = await fetch(SERVER + '/api/wallet/status', { signal: AbortSignal.timeout(8000) });
-      const data = await res.json();
-      if (res.ok && data.status === 'ok') {
-        badge.className = 'ok';
-        badge.innerHTML = '<span class="ws-dot"></span> Wallet online — ready to receive donations';
-        document.getElementById('walletOfflineNote').style.display = 'none';
-      } else {
-        throw new Error(data.message || 'Wallet offline');
-      }
-    } catch (_) {
-      badge.className = 'error';
-      badge.innerHTML = '<span class="ws-dot"></span> Wallet offline — donations unavailable';
-      document.getElementById('walletOfflineNote').style.display = '';
-    }
-  }
-  checkWalletStatus();
-  setInterval(checkWalletStatus, 30000);
-
-  // ── Tab switching ─────────────────────────────────────────────
-  document.querySelectorAll('.donate-tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.donate-tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.donate-pane').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById(btn.dataset.pane).classList.add('active');
-    });
-  });
-
-  // ── Pane 1: TOR ───────────────────────────────────────────────
   document.getElementById('copyAddrBtn').addEventListener('click', () => {
-    copyText(GRIN_ADDR, document.getElementById('copyAddrBtn'));
-  });
-  document.getElementById('copySendCmd').addEventListener('click', () => {
-    copyText(document.getElementById('sendCmd').textContent, document.getElementById('copySendCmd'));
+    if (GRIN_ADDR) copyText(GRIN_ADDR, document.getElementById('copyAddrBtn'));
   });
 
-  // ── Pane 2: Amount buttons ────────────────────────────────────
-  let rcvAmount = null;
-  document.querySelectorAll('#rcvAmountGrid .amount-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('#rcvAmountGrid .amount-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      if (btn.dataset.amount === 'custom') {
-        document.getElementById('rcvCustomWrap').style.display = '';
-        const v = parseFloat(document.getElementById('rcvCustomAmt').value);
-        rcvAmount = (v >= 1) ? v : null;
-      } else {
-        document.getElementById('rcvCustomWrap').style.display = 'none';
-        rcvAmount = parseFloat(btn.dataset.amount);
-      }
-      document.getElementById('sendCmd').textContent =
-        `grin-wallet send -m -d ${GRIN_ADDR} ${rcvAmount ?? '<amount>'}`;
-    });
-  });
-  document.getElementById('rcvCustomAmt').addEventListener('input', () => {
-    const v = parseFloat(document.getElementById('rcvCustomAmt').value);
-    rcvAmount = (v >= 1) ? v : null;
-    document.getElementById('sendCmd').textContent =
-      `grin-wallet send -m -d ${GRIN_ADDR} ${rcvAmount ?? '<amount>'}`;
+  addrBox.addEventListener('click', () => {
+    if (GRIN_ADDR) copyText(GRIN_ADDR, document.getElementById('copyAddrBtn'));
   });
 
-  // ── Pane 2: Receive ───────────────────────────────────────────
-  document.getElementById('rcvProcessBtn').addEventListener('click', async () => {
-    const slatepack = document.getElementById('rcvSlate1').value.trim();
-    if (!slatepack) { alert('Paste your slatepack first.'); return; }
-    const btn   = document.getElementById('rcvProcessBtn');
-    const errEl = document.getElementById('rcvError');
-    btn.disabled = true; btn.textContent = 'Processing…'; errEl.style.display = 'none';
-    try {
-      const res  = await fetch(SERVER + '/api/donate/receive', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slatepack }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Server error');
-      document.getElementById('rcvSlate2').textContent = data.slatepack;
-      document.getElementById('rcv-s1').style.display = 'none';
-      document.getElementById('rcv-s2').style.display = '';
-    } catch (err) {
-      errEl.textContent = err.message; errEl.style.display = '';
-    }
-    btn.disabled = false; btn.textContent = 'Process Donation →';
-  });
-
-  document.getElementById('copyRcvResp').addEventListener('click', () => {
-    copyText(document.getElementById('rcvSlate2').textContent, document.getElementById('copyRcvResp'));
-  });
-
-  document.getElementById('downloadRcvResp').addEventListener('click', () => {
-    const text = document.getElementById('rcvSlate2').textContent;
-    if (!text) return;
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-    a.download = 'response.slatepack';
-    a.click();
-    URL.revokeObjectURL(a.href);
-  });
-
-  // ── Pane 3: Invoice ───────────────────────────────────────────
-  let selectedAmount = null;
-
-  document.querySelectorAll('.amount-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      if (btn.dataset.amount === 'custom') {
-        document.getElementById('customWrap').style.display = '';
-        const v = parseFloat(document.getElementById('customAmt').value);
-        selectedAmount = (v >= 1) ? v : null;
-      } else {
-        document.getElementById('customWrap').style.display = 'none';
-        selectedAmount = parseFloat(btn.dataset.amount);
-      }
-      updateInvBtn();
-    });
-  });
-
-  document.getElementById('customAmt').addEventListener('input', () => {
-    const v = parseFloat(document.getElementById('customAmt').value);
-    selectedAmount = (v >= 1) ? v : null;
-    updateInvBtn();
-  });
-
-  document.getElementById('invAddress').addEventListener('input', updateInvBtn);
-
-  function updateInvBtn() {
-    const addr  = document.getElementById('invAddress').value.trim();
-    const valid = selectedAmount >= 1 && addr.length > 5;
-    document.getElementById('invCreateBtn').disabled = !valid;
-  }
-
-  let invCooldownTimer = null;
-  document.getElementById('invCreateBtn').addEventListener('click', async () => {
-    const address = document.getElementById('invAddress').value.trim();
-    const btn     = document.getElementById('invCreateBtn');
-    const errEl   = document.getElementById('invError');
-    btn.disabled = true; btn.textContent = 'Creating invoice…'; errEl.style.display = 'none';
-    try {
-      const res  = await fetch(SERVER + '/api/donate/invoice', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: selectedAmount, address }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Server error');
-      document.getElementById('invSlate1').textContent = data.slatepack;
-      document.getElementById('inv-s1').style.display = 'none';
-      document.getElementById('inv-s2').style.display = '';
-      return; // success — button stays hidden with the step
-    } catch (err) {
-      errEl.textContent = err.message; errEl.style.display = '';
-    }
-    // On error: 30-second cooldown before allowing retry
-    let secs = 120;
-    btn.textContent = `Create new invoice in ${secs}s`;
-    clearInterval(invCooldownTimer);
-    invCooldownTimer = setInterval(() => {
-      secs--;
-      if (secs <= 0) {
-        clearInterval(invCooldownTimer);
-        btn.disabled = false; btn.textContent = 'Create Invoice →';
-      } else {
-        btn.textContent = `Create new invoice in ${secs}s`;
-      }
-    }, 1000);
-  });
-
-  document.getElementById('copyInvSlate').addEventListener('click', () => {
-    copyText(document.getElementById('invSlate1').textContent, document.getElementById('copyInvSlate'));
-  });
-
-  document.getElementById('invFinalizeBtn').addEventListener('click', async () => {
-    const slatepack = document.getElementById('invSlate2').value.trim();
-    if (!slatepack) { alert('Paste your payment response first.'); return; }
-    const btn   = document.getElementById('invFinalizeBtn');
-    const errEl = document.getElementById('invError2');
-    btn.disabled = true; btn.textContent = 'Finalizing…'; errEl.style.display = 'none';
-    try {
-      const res  = await fetch(SERVER + '/api/donate/finalize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slatepack }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Server error');
-      document.getElementById('inv-s2').style.display = 'none';
-      document.getElementById('inv-s3').style.display = '';
-    } catch (err) {
-      errEl.textContent = err.message; errEl.style.display = '';
-    }
-    btn.disabled = false; btn.textContent = 'Finalize Donation →';
-  });
-
-  document.getElementById('invBackBtn').addEventListener('click', () => {
-    document.getElementById('inv-s2').style.display = 'none';
-    document.getElementById('inv-s1').style.display = '';
-  });
+  // Scroll reveal
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
 </script>
 </body>
 </html>

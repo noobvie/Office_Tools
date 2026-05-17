@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network Tools — Ping, Traceroute, DNS, IPv6 &amp; More | Office Tools</title>
+  <meta name="description" content="Network diagnostic tools: online ping, traceroute, DNS lookup, reverse DNS, IPv6 analyzer, and subnet calculator. Each tool has its own dedicated page.">
+  <meta name="robots" content="noindex, follow">
+  <link rel="canonical" href="https://tools.grin.money/tools/network-toolkit/">
+  <script src="../../js/theme-init.js"></script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .hub-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: .75rem;
+      margin-top: 1rem;
+    }
+    .hub-card {
+      display: flex; align-items: center; gap: .9rem;
+      padding: .9rem 1rem; border-radius: var(--radius);
+      border: 1.5px solid var(--border); background: var(--bg-card);
+      text-decoration: none; color: var(--text);
+      transition: border-color .15s, background .15s;
+    }
+    .hub-card:hover { border-color: var(--primary); background: var(--primary-dim); }
+    .hub-icon { font-size: 1.6rem; flex-shrink: 0; }
+    .hub-name { font-size: .95rem; font-weight: 700; color: var(--text); }
+    .hub-desc { font-size: .78rem; color: var(--text-muted); margin-top: .1rem; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Network Tools</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🌐 Network Tools</h1>
+    <p>Each network diagnostic is now its own dedicated tool with focused SEO and a clean interface. Pick one below.</p>
+  </div>
+
+  <div class="card">
+    <div class="hub-grid">
+      <a href="../ping/" class="hub-card">
+        <span class="hub-icon">📡</span>
+        <div>
+          <div class="hub-name">Online Ping Test</div>
+          <div class="hub-desc">ICMP echo to any host. Live output, IPv4 &amp; IPv6.</div>
+        </div>
+      </a>
+      <a href="../traceroute/" class="hub-card">
+        <span class="hub-icon">🔍</span>
+        <div>
+          <div class="hub-name">Online Traceroute</div>
+          <div class="hub-desc">Trace network path hop by hop. IPv4 &amp; IPv6.</div>
+        </div>
+      </a>
+      <a href="../dns-lookup/" class="hub-card">
+        <span class="hub-icon">📋</span>
+        <div>
+          <div class="hub-name">DNS Lookup</div>
+          <div class="hub-desc">Query A, AAAA, MX, NS, TXT, CNAME, SOA, CAA records.</div>
+        </div>
+      </a>
+      <a href="../reverse-dns/" class="hub-card">
+        <span class="hub-icon">🔄</span>
+        <div>
+          <div class="hub-name">Reverse DNS Lookup</div>
+          <div class="hub-desc">IP address → hostname via PTR record (rDNS).</div>
+        </div>
+      </a>
+      <a href="../ipv6-analyzer/" class="hub-card">
+        <span class="hub-icon">🔬</span>
+        <div>
+          <div class="hub-name">IPv6 Analyzer</div>
+          <div class="hub-desc">Expand, compress, identify type of any IPv6 address.</div>
+        </div>
+      </a>
+      <a href="../subnet-calculator/" class="hub-card">
+        <span class="hub-icon">🧮</span>
+        <div>
+          <div class="hub-name">Subnet Calculator</div>
+          <div class="hub-desc">IPv4 &amp; IPv6 CIDR — network, mask, host range.</div>
+        </div>
+      </a>
+    </div>
+  </div>
+</main>
+
+<script src="../../js/common.js"></script>
+</body>
+</html>

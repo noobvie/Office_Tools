@@ -790,6 +790,134 @@ Example: ["example.com","coolapp.io","mybrand.co"]`;
   }
 });
 
+// ── Network Toolkit — ping, traceroute, reverse DNS ──────────
+const { spawn } = require('child_process');
+const _isWin = process.platform === 'win32';
+
+function validNetHost(h) {
+  return h.length > 0 && h.length <= 253 && /^[a-zA-Z0-9.\-:\[\]_]+$/.test(h);
+}
+
+const _netRateMap = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _netRateMap) { if (now > v.resetAt) _netRateMap.delete(k); }
+}, 300_000);
+
+function _netAllow(ip) {
+  const now = Date.now();
+  let e = _netRateMap.get(ip);
+  if (!e || now > e.resetAt) e = { count: 0, resetAt: now + 60_000 };
+  e.count++;
+  _netRateMap.set(ip, e);
+  return e.count <= 10;
+}
+
+function netRLMiddleware(req, res, next) {
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+  if (!_netAllow(ip)) return res.status(429).json({ error: 'Rate limit: 10 requests/minute. Please wait.' });
+  next();
+}
+
+// GET /api/net/ping?host=&count=&family=   (SSE stream)
+app.get('/api/net/ping', netRLMiddleware, (req, res) => {
+  const host  = String(req.query.host || '').trim().replace(/^\[|\]$/g, '');
+  const count = Math.min(10, Math.max(1, parseInt(req.query.count, 10) || 4));
+  const fam   = String(req.query.family || 'auto'); // 'auto' | '4' | '6'
+
+  if (!validNetHost(host)) return res.status(400).json({ error: 'Invalid host' });
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  let cmd, args;
+  if (_isWin) {
+    cmd  = 'ping';
+    args = ['-n', String(count)];
+    if (fam === '6') args.push('-6');
+    args.push(host);
+  } else {
+    cmd  = fam === '6' ? 'ping6' : 'ping';
+    args = ['-c', String(count)];
+    if (fam === '4') args.push('-4');
+    args.push(host);
+  }
+
+  const proc = spawn(cmd, args, { timeout: 30000 });
+  const send = chunk => chunk.toString().split(/\r?\n/).filter(l => l.trim())
+    .forEach(l => res.write(`data: ${JSON.stringify(l)}\n\n`));
+
+  proc.stdout.on('data', send);
+  proc.stderr.on('data', send);
+  proc.on('close', () => { res.write('data: "[DONE]"\n\n'); res.end(); });
+  proc.on('error', err => {
+    res.write(`data: ${JSON.stringify('Error: ' + err.message)}\n\n`);
+    res.write('data: "[DONE]"\n\n');
+    res.end();
+  });
+  req.on('close', () => proc.kill());
+});
+
+// GET /api/net/traceroute?host=&maxhops=&family=   (SSE stream)
+app.get('/api/net/traceroute', netRLMiddleware, (req, res) => {
+  const host    = String(req.query.host || '').trim().replace(/^\[|\]$/g, '');
+  const maxhops = Math.min(30, Math.max(1, parseInt(req.query.maxhops, 10) || 30));
+  const fam     = String(req.query.family || 'auto');
+
+  if (!validNetHost(host)) return res.status(400).json({ error: 'Invalid host' });
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  let cmd, args;
+  if (_isWin) {
+    cmd  = 'tracert';
+    args = ['-h', String(maxhops)];
+    if (fam === '6') args.push('-6');
+    args.push(host);
+  } else {
+    cmd  = fam === '6' ? 'traceroute6' : 'traceroute';
+    args = ['-m', String(maxhops)];
+    if (fam === '4') args.push('-4');
+    args.push(host);
+  }
+
+  const proc = spawn(cmd, args, { timeout: 120000 });
+  const send = chunk => chunk.toString().split(/\r?\n/).filter(l => l.trim())
+    .forEach(l => res.write(`data: ${JSON.stringify(l)}\n\n`));
+
+  proc.stdout.on('data', send);
+  proc.stderr.on('data', send);
+  proc.on('close', () => { res.write('data: "[DONE]"\n\n'); res.end(); });
+  proc.on('error', err => {
+    res.write(`data: ${JSON.stringify('Error: ' + err.message)}\n\n`);
+    res.write('data: "[DONE]"\n\n');
+    res.end();
+  });
+  req.on('close', () => proc.kill());
+});
+
+// GET /api/net/ptr?ip=
+app.get('/api/net/ptr', netRLMiddleware, (req, res) => {
+  const ip = String(req.query.ip || '').trim().replace(/^\[|\]$/g, '');
+  if (!net.isIPv4(ip) && !net.isIPv6(ip)) {
+    return res.status(400).json({ error: 'Invalid IP address (IPv4 or IPv6 required)' });
+  }
+  dns.reverse(ip, (err, hostnames) => {
+    if (err) {
+      if (err.code === 'ENOTFOUND' || err.code === 'ENODATA' || err.code === 'ENONAME') {
+        return res.json({ ip, hostnames: [], found: false });
+      }
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({ ip, hostnames, found: hostnames.length > 0 });
+  });
+});
+
 // ── Start ─────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`Office Tools server running on port ${PORT}`);

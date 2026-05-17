@@ -11,7 +11,7 @@ window.OT_CONFIG = {
     : 'https://pay.yourdomain.com',  // ← change to your server host
 
   /* Donation wallet address (TOR direct send) */
-  GRIN_ADDRESS: 'grin149auzzey0x72pelydkc6u300dn7nkhxwtjl2zx937fqqsd450gxqzjce37',
+  GRIN_ADDRESS: 'grin16fevn3sr48j8hp863qxknvhtuxc9geg8fpvlz0v9f3fgatzu5fasvz609j',
 
   /* Free guest usage limit per tool per day (soft, localStorage-based) */
   FREE_DAILY_LIMIT: 10,

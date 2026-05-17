@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reverse DNS Lookup — IP Address to Hostname (PTR) | Office Tools</title>
+  <meta name="description" content="Free reverse DNS lookup — resolve any IPv4 or IPv6 address to its hostname via PTR record. Find the domain name behind an IP address instantly. No login required.">
+  <meta name="keywords" content="reverse DNS lookup, PTR record, IP to hostname, reverse IP lookup, rDNS, reverse DNS, find hostname from IP, IP address hostname, PTR DNS record, reverse DNS IPv6, IPv6 PTR lookup, rdns lookup, ip reverse lookup">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Reverse DNS Lookup — IP to Hostname (PTR Record)">
+  <meta property="og:description" content="Resolve any IPv4 or IPv6 address to its hostname via PTR record. Free reverse DNS lookup, no login.">
+  <meta property="og:url" content="https://tools.grin.money/tools/reverse-dns/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Reverse DNS Lookup — PTR Record">
+  <meta name="twitter:description" content="Find the hostname for any IPv4 or IPv6 address via PTR reverse DNS lookup. Free.">
+  <link rel="canonical" href="https://tools.grin.money/tools/reverse-dns/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Reverse DNS Lookup","description":"Resolve any IPv4 or IPv6 address to its hostname via PTR record (reverse DNS / rDNS lookup).","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/reverse-dns/"}</script>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <script src="../../js/theme-init.js"></script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .ctrl-row {
+      display: flex; gap: .5rem; flex-wrap: wrap; align-items: center;
+    }
+    .ctrl-row input[type="text"] {
+      flex: 1; min-width: 200px; padding: .6rem .9rem;
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-secondary); color: var(--text);
+      font-size: .92rem; font-family: 'Courier New', monospace;
+      outline: none; transition: border-color .15s; box-sizing: border-box;
+    }
+    .ctrl-row input[type="text"]:focus { border-color: var(--primary); }
+    .box-error { background: var(--danger-dim); color: var(--danger); border-radius: var(--radius); padding: .65rem .9rem; font-size: .86rem; font-weight: 600; margin-top: .75rem; }
+    .box-info  { background: var(--primary-dim); color: var(--primary); border-radius: var(--radius); padding: .6rem .9rem; font-size: .82rem; margin-top: .75rem; }
+    .ptr-result { margin-top: .85rem; }
+    .ptr-meta { font-size: .78rem; color: var(--text-muted); margin-bottom: .45rem; }
+    .ptr-hostname {
+      font-family: 'Courier New', monospace; font-size: .95rem; font-weight: 700;
+      padding: .5rem .85rem; background: var(--bg-secondary);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      margin-bottom: .3rem; color: var(--text); word-break: break-all;
+    }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: .4rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 560px) { .ctrl-row input[type="text"] { min-width: 100%; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Reverse DNS Lookup</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔄 Reverse DNS Lookup</h1>
+    <p>Resolve any IPv4 or IPv6 address to its hostname via PTR record (rDNS).</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About Reverse DNS Lookup</h2>
+    <p>Reverse DNS (rDNS) is the process of resolving an IP address back to a hostname using a <strong>PTR record</strong>. While a forward DNS lookup maps a name to an IP, a reverse lookup does the opposite — asking "what hostname is registered for this IP?". This is useful for identifying server ownership, verifying email sender identity (many spam filters check PTR records), and diagnosing network issues. Both <strong>IPv4 and IPv6</strong> are supported: enter any address in standard notation (e.g. <code>8.8.8.8</code> or <code>2606:4700:4700::1111</code>) and the tool queries the appropriate <code>in-addr.arpa</code> or <code>ip6.arpa</code> zone. Not all IPs have a PTR record — many cloud and hosting providers leave them unset.</p>
+  </section>
+
+  <div class="card">
+    <div class="ctrl-row">
+      <input type="text" id="rdnsIP" placeholder="IP address — IPv4 or IPv6 (e.g. 8.8.8.8 or 2606:4700:4700::1111)" autocomplete="off" spellcheck="false">
+      <button class="btn btn-primary" id="rdnsBtn">Lookup</button>
+    </div>
+    <div class="ctrl-row" style="margin-top:.5rem">
+      <button class="btn btn-ghost btn-sm" data-ex="8.8.8.8">8.8.8.8 (Google)</button>
+      <button class="btn btn-ghost btn-sm" data-ex="1.1.1.1">1.1.1.1 (Cloudflare)</button>
+      <button class="btn btn-ghost btn-sm" data-ex="9.9.9.9">9.9.9.9 (Quad9)</button>
+      <button class="btn btn-ghost btn-sm" data-ex="2606:4700:4700::1111">2606:4700:4700::1111</button>
+      <button class="btn btn-ghost btn-sm" data-ex="2001:4860:4860::8888">2001:4860:4860::8888</button>
+    </div>
+    <div id="rdnsResult"></div>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">reverse DNS</span>
+  <span class="page-tag">PTR record</span>
+  <span class="page-tag">IP to hostname</span>
+  <span class="page-tag">rDNS lookup</span>
+  <span class="page-tag">reverse IP lookup</span>
+  <span class="page-tag">IPv6 PTR</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+'use strict';
+const API = window.OT_CONFIG?.GRIN_SERVER_URL || 'http://localhost:3001';
+
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+document.querySelectorAll('[data-ex]').forEach(b =>
+  b.addEventListener('click', () => { document.getElementById('rdnsIP').value = b.dataset.ex; })
+);
+
+document.getElementById('rdnsIP').addEventListener('keydown', e => {
+  if (e.key === 'Enter') rdnsLookup();
+});
+document.getElementById('rdnsBtn').addEventListener('click', rdnsLookup);
+
+async function rdnsLookup() {
+  const ip = document.getElementById('rdnsIP').value.trim().replace(/^\[|\]$/g, '');
+  if (!ip) return;
+  const el = document.getElementById('rdnsResult');
+  el.innerHTML = `<div style="padding:.75rem 0"><span class="spinner"></span> Resolving PTR for <code>${escHtml(ip)}</code>…</div>`;
+
+  try {
+    const r = await fetch(`${API}/api/net/ptr?ip=${encodeURIComponent(ip)}`);
+    const data = await r.json();
+    if (!r.ok) { el.innerHTML = `<div class="box-error">${escHtml(data.error || 'Lookup failed')}</div>`; return; }
+    if (!data.found || !data.hostnames.length) {
+      el.innerHTML = `<div class="box-info">No PTR record found for <code>${escHtml(ip)}</code>. The IP has no reverse DNS entry.</div>`;
+      return;
+    }
+    const items = data.hostnames.map(h => `<div class="ptr-hostname">${escHtml(h)}</div>`).join('');
+    el.innerHTML = `<div class="ptr-result">
+      <div class="ptr-meta">${data.hostnames.length} hostname${data.hostnames.length > 1 ? 's' : ''} for <code>${escHtml(ip)}</code></div>
+      ${items}
+    </div>`;
+  } catch (err) {
+    el.innerHTML = `<div class="box-error">Network error: ${escHtml(err.message)}</div>`;
+  }
+}
+</script>
+</body>
+</html>
