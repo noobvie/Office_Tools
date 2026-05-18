@@ -288,24 +288,6 @@ const OT_TOOLS = [
 // Expose new-tool paths for the main index Stats panel
 window._OT_NEW_TOOLS = OT_TOOLS.filter(t => t.isNew).map(t => t.path);
 
-/* ---------- Stats Pill (tool pages) ---------- */
-function initStatsPill() {
-  const actions   = document.querySelector('.header-actions');
-  const toolPath  = window.location.pathname.match(/\/tools\/([^/]+)/)?.[1];
-  if (!actions || !toolPath) return;
-
-  const root = _otRootPath();
-  const pill = document.createElement('a');
-  pill.className = 'stats-pill';
-  pill.href      = root + 'index.html?cat=Stats';
-  pill.textContent = 'Stats';
-  pill.title     = 'Most used & recently added tools';
-
-  const support = actions.querySelector('.support-pill');
-  const toggle  = actions.querySelector('.theme-toggle');
-  actions.insertBefore(pill, support || toggle || null);
-}
-
 /* ---------- Related Tools ---------- */
 function renderRelatedTools(containerId, tools) {
   const el = document.getElementById(containerId);
@@ -580,7 +562,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initToolSidebar();
   autoRelatedTools();
   trackToolView();
-  initStatsPill();
   initSupportPill();
 
   // Ctrl+K / Cmd+K → focus the header search wherever it exists

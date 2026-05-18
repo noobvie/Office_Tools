@@ -433,25 +433,6 @@ a:hover { text-decoration: underline; }
 .captcha-row input:focus { border-color: var(--primary); }
 
 
-/* ---------- Stats Pill ---------- */
-.stats-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: .3rem .75rem;
-  border-radius: 50px;
-  border: 1.5px solid var(--border);
-  background: transparent;
-  color: var(--text-muted);
-  font-size: .8rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  white-space: nowrap;
-  text-decoration: none;
-  transition: border-color var(--transition), color var(--transition);
-}
-.stats-pill:hover { border-color: var(--primary); color: var(--primary); text-decoration: none; }
-
 /* ---------- Support Pill ---------- */
 .support-pill {
   display: inline-flex;
