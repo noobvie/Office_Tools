@@ -17,6 +17,7 @@
   <meta name="twitter:description" content="Find the hostname for any IPv4 or IPv6 address via PTR reverse DNS lookup. Free.">
   <link rel="canonical" href="https://tools.grin.money/tools/reverse-dns/">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Reverse DNS Lookup","description":"Resolve any IPv4 or IPv6 address to its hostname via PTR record (reverse DNS / rDNS lookup).","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/reverse-dns/"}</script>
+  <script type="application/ld+json">[{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Office Tools","item":"https://tools.grin.money/"},{"@type":"ListItem","position":2,"name":"Network Tools","item":"https://tools.grin.money/tools/network-toolkit/"},{"@type":"ListItem","position":3,"name":"Reverse DNS Lookup","item":"https://tools.grin.money/tools/reverse-dns/"}]},{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is reverse DNS used for?","acceptedAnswer":{"@type":"Answer","text":"Reverse DNS identifies the hostname associated with an IP address. Common uses include email spam filtering (many mail servers reject messages from IPs without a PTR record), logging and monitoring (readable hostnames instead of raw IPs), and network diagnostics."}},{"@type":"Question","name":"Why does my IP address have no PTR record?","acceptedAnswer":{"@type":"Answer","text":"PTR records are set by the organization that owns the IP address range — your hosting provider or ISP — not by the domain owner. Many cloud providers and consumer ISPs do not configure PTR records by default. Contact your provider to set or update one."}},{"@type":"Question","name":"How is reverse DNS different from forward DNS?","acceptedAnswer":{"@type":"Answer","text":"Forward DNS resolves a domain name to an IP address (A or AAAA records). Reverse DNS does the opposite — resolves an IP to a hostname using PTR records stored in the in-addr.arpa (IPv4) or ip6.arpa (IPv6) DNS zones."}},{"@type":"Question","name":"Can I look up reverse DNS for IPv6 addresses?","acceptedAnswer":{"@type":"Answer","text":"Yes. IPv6 PTR records live in the ip6.arpa zone. The address is reversed nibble by nibble and appended with .ip6.arpa. For example, 2606:4700:4700::1111 has its PTR at 1.1.1.1.0.0.0.7.0.0.7.4.6.0.6.2.ip6.arpa."}}]}]</script>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
   <script src="../../js/theme-init.js"></script>
   <link rel="stylesheet" href="../../css/style.css">
@@ -65,7 +66,9 @@
 
   <section class="tool-about">
     <h2>About Reverse DNS Lookup</h2>
-    <p>Reverse DNS (rDNS) is the process of resolving an IP address back to a hostname using a <strong>PTR record</strong>. While a forward DNS lookup maps a name to an IP, a reverse lookup does the opposite — asking "what hostname is registered for this IP?". This is useful for identifying server ownership, verifying email sender identity (many spam filters check PTR records), and diagnosing network issues. Both <strong>IPv4 and IPv6</strong> are supported: enter any address in standard notation (e.g. <code>8.8.8.8</code> or <code>2606:4700:4700::1111</code>) and the tool queries the appropriate <code>in-addr.arpa</code> or <code>ip6.arpa</code> zone. Not all IPs have a PTR record — many cloud and hosting providers leave them unset.</p>
+    <p>Reverse DNS (rDNS) resolves an IP address back to a hostname using a <strong>PTR record</strong>. While a forward <a href="../dns-lookup/">DNS lookup</a> maps a name to an IP, a reverse lookup asks "what hostname is registered for this IP?". PTR records are stored in special zones: <code>in-addr.arpa</code> for IPv4 (octets reversed) and <code>ip6.arpa</code> for IPv6 (nibble by nibble reversed). Both IPv4 and IPv6 are fully supported — enter any address in standard notation.</p>
+    <p>Reverse DNS is widely used in <strong>email delivery</strong> — many mail servers reject messages from IPs without a matching PTR record as a basic anti-spam measure. It also appears in server logs, monitoring dashboards, and security tools to display readable hostnames instead of raw IPs. PTR records are set by whoever controls the IP address block (your hosting provider or ISP), not by the domain owner — contact your provider to set or update one.</p>
+    <p>Not all IPs have a PTR record, and that is normal: most cloud VMs, CDN edge nodes, and consumer broadband IPs have no reverse DNS by default. If you need the organization behind an IP rather than a hostname, the <a href="../ip-location/">IP Location</a> tool provides ISP, ASN, and geolocation data instead.</p>
   </section>
 
   <div class="card">
@@ -82,6 +85,8 @@
     </div>
     <div id="rdnsResult"></div>
   </div>
+
+  <section class="tool-related" id="related-tools"></section>
 
 <div class="page-tags">
   <span class="page-tag">reverse DNS</span>
@@ -135,6 +140,13 @@ async function rdnsLookup() {
     el.innerHTML = `<div class="box-error">Network error: ${escHtml(err.message)}</div>`;
   }
 }
+
+renderRelatedTools('related-tools', [
+  { path: 'dns-lookup',   desc: 'Query A, AAAA, MX, NS, TXT and more' },
+  { path: 'ping',         desc: 'Check latency and reachability of an IP' },
+  { path: 'ip-location',  desc: 'Find ISP, ASN and geolocation for any IP' },
+  { path: 'my-ip',        desc: 'See your public IP address and ISP info' },
+]);
 </script>
 </body>
 </html>

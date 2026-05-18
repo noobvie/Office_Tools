@@ -1,6 +1,6 @@
 # Office Tools
 
-70 free, browser-based utilities for everyday office, productivity, and AI development work.
+76 free, browser-based utilities for everyday office, productivity, and AI development work.
 No build step, no framework, no tracking — everything runs locally in your browser.
 
 **Live site:** [https://tools.grin.money/](https://tools.grin.money/)
@@ -88,8 +88,14 @@ sudo bash Office_Tools/deploy.sh
 | IP Location Lookup | IPv4/IPv6/domain — country, city, ISP, ASN, VPN/proxy detection, map |
 | Campaign URL Builder | Build UTM-tagged URLs for Google Analytics with QR code |
 | CSR Decoder | Decode a CSR — subject, key size, SANs, fingerprints. Fully local |
-| Port Checker | Check if TCP ports are open on any host — common services presets (SSH, RDP, HTTP, MySQL…) + all Grin mainnet & testnet ports (3413–3420 / 13413–13420) |
+| Port Checker | Check if TCP ports are open on any host — IPv4 and IPv6, common services presets (SSH, RDP, HTTP, MySQL…) + all Grin mainnet & testnet ports |
 | Domain Checker | WHOIS / RDAP lookup, DNS records, availability across 8 TLDs (.com .net .org .io .app .dev…), and AI-powered domain name suggestions |
+| Online Ping Test | Ping any IP or hostname from our server with live ICMP output — configurable count, IPv4 and IPv6 |
+| Online Traceroute | Trace the full network path hop by hop with live streaming output — IPv4 and IPv6 |
+| DNS Lookup | Query A, AAAA, MX, NS, TXT, CNAME, SOA and CAA records via Cloudflare DoH — instant results |
+| Reverse DNS Lookup | Resolve any IPv4 or IPv6 address to its hostname via PTR record (rDNS) |
+| IPv6 Analyzer | Expand or compress any IPv6 address and identify its type (global unicast, link-local, ULA, multicast…). Fully local |
+| Subnet Calculator | IPv4 and IPv6 CIDR — network address, broadcast, mask, host range, total addresses. Fully local |
 
 ### 🖼️ Media
 | Tool | Description |
@@ -137,7 +143,7 @@ Office_Tools/
 │   ├── config.js               ← Grin payment server URL, Grin wallet address
 │   └── common.js               ← Shared nav, theme toggle, copy utilities
 ├── pages/
-│   └── donate.html             ← Grin donation page (TOR / Slatepack / Invoice)
+│   └── donate.html             ← Grin showcase page — what Grin is, send address, drop.grin.money link
 ├── backend/
 │   ├── grin-payment-server.js  ← Node.js/Express — Grin donations + SQLite tools API
 │   ├── package.json
@@ -210,12 +216,9 @@ sudo bash deploy_grinwallet.sh
 | 3 → 4) Watchdog cron | Checks port 3415 every 30 min · restarts TOR listener if down · logs to `grin-watchdog.log` |
 | 3 → 7) nginx rate limit | Enables 20 req/min per IP on `/pay-api/api/donate/*` (burst 3) |
 
-**Donation methods on `pages/donate.html`:**
-- **Method 1 — TOR direct send:** sender runs `grin-wallet send` over TOR directly to the server's onion address. Requires TOR.
-- **Method 2 — Slatepack:** sender generates a slatepack, pastes it here; server calls `receive_tx` and returns a response slatepack for the sender to finalize. No TOR required.
-- **Method 3 — Invoice:** server issues an invoice slatepack; sender pays it with `grin-wallet pay`; server finalizes automatically. No TOR required.
+**`pages/donate.html`** is a Grin showcase page — explains what Grin is, displays the TOR send address for direct donations, and links to [drop.grin.money](https://drop.grin.money) for free coins. The wallet backend (`/api/wallet/status`) is still used by other parts of the backend but is no longer shown on the donate page.
 
-The donate page badge checks port 3415 via the Node.js backend (`/api/wallet/status`). The watchdog (option 11) handles automatic recovery if the TOR listener goes down.
+The watchdog (option 11) handles automatic recovery if the TOR listener goes down.
 
 ---
 

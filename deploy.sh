@@ -434,6 +434,11 @@ server {
     root  ${WEB_ROOT};
     index index.html;
 
+    # SEO: strip explicit /index.html so canonical URL is always the directory
+    location ~ ^(.*/)index\.html$ { return 301 \$1; }
+    # SEO: enforce trailing slash on tool and page directories
+    location ~ ^(/tools/[^/]+|/pages/[^/]+)$ { return 301 \$uri/; }
+
     location / { try_files \$uri \$uri/ \$uri.html =404; }
 
     location ^~ /pay-api/ {
@@ -509,6 +514,11 @@ server {
 
     root  ${WEB_ROOT};
     index index.html;
+
+    # SEO: strip explicit /index.html so canonical URL is always the directory
+    location ~ ^(.*/)index\.html$ { return 301 \$1; }
+    # SEO: enforce trailing slash on tool and page directories
+    location ~ ^(/tools/[^/]+|/pages/[^/]+)$ { return 301 \$uri/; }
 
     location / { try_files \$uri \$uri/ \$uri.html =404; }
 

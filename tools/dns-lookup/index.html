@@ -17,6 +17,7 @@
   <meta name="twitter:description" content="Query A, AAAA, MX, NS, TXT, CNAME, SOA, CAA records for any domain. Free DNS checker.">
   <link rel="canonical" href="https://tools.grin.money/tools/dns-lookup/">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"DNS Lookup","description":"Query A, AAAA, MX, NS, TXT, CNAME, SOA and CAA DNS records for any domain using Cloudflare DNS-over-HTTPS.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/dns-lookup/"}</script>
+  <script type="application/ld+json">[{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Office Tools","item":"https://tools.grin.money/"},{"@type":"ListItem","position":2,"name":"Network Tools","item":"https://tools.grin.money/tools/network-toolkit/"},{"@type":"ListItem","position":3,"name":"DNS Lookup","item":"https://tools.grin.money/tools/dns-lookup/"}]},{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"How long does DNS propagation take?","acceptedAnswer":{"@type":"Answer","text":"DNS propagation typically takes a few minutes to 48 hours. The delay depends on the TTL of the record being changed. A TTL of 300 seconds means resolvers cache the old value for 5 minutes; a TTL of 86400 means up to 24 hours. Lower the TTL before making a change to speed up propagation."}},{"@type":"Question","name":"What is the difference between an A record and an AAAA record?","acceptedAnswer":{"@type":"Answer","text":"An A record maps a domain name to an IPv4 address (32-bit, e.g. 93.184.216.34). An AAAA record maps a domain to an IPv6 address (128-bit, e.g. 2606:2800:220:1:248:1893:25c8:1946). Many modern domains have both to support IPv4 and IPv6 clients simultaneously."}},{"@type":"Question","name":"What are TXT records used for?","acceptedAnswer":{"@type":"Answer","text":"TXT records store arbitrary text for a domain. They are most commonly used for email authentication: SPF (authorized mail senders), DKIM (cryptographic signature public key), and DMARC (policy for handling failures). They are also used for domain ownership verification by services like Google Search Console."}},{"@type":"Question","name":"What is DNS over HTTPS (DoH)?","acceptedAnswer":{"@type":"Answer","text":"DNS over HTTPS sends DNS queries encrypted inside HTTPS requests instead of plain UDP port 53. This prevents third parties from seeing which domains you are looking up. This tool uses Cloudflare's DoH resolver (1.1.1.1) for all queries."}}]}]</script>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
   <script src="../../js/theme-init.js"></script>
   <link rel="stylesheet" href="../../css/style.css">
@@ -78,7 +79,9 @@
 
   <section class="tool-about">
     <h2>About DNS Lookup</h2>
-    <p>This tool lets you query any DNS record type for any domain — the equivalent of running <code>nslookup</code> or <code>dig</code> from your terminal, but in your browser. Results are fetched via <strong>Cloudflare DNS-over-HTTPS</strong> (1.1.1.1) for fast, accurate, privacy-respecting queries. Use the <strong>AAAA</strong> tab to check if a domain has IPv6 addresses configured. Use <strong>MX</strong> to inspect mail server routing, <strong>TXT</strong> for SPF / DKIM / DMARC records, and <strong>CAA</strong> to see which certificate authorities are authorized to issue SSL for the domain. Switch between record types instantly without re-entering the domain name.</p>
+    <p>This tool queries any DNS record type for any domain — equivalent to running <code>nslookup</code> or <code>dig</code> from your terminal, but in your browser. Results are fetched via <strong>Cloudflare DNS-over-HTTPS</strong> (1.1.1.1) for fast, accurate, privacy-respecting queries with no third-party visibility into your lookups.</p>
+    <p>Each record type serves a different purpose: <strong>A</strong> maps a domain to an IPv4 address; <strong>AAAA</strong> to an IPv6 address; <strong>MX</strong> specifies mail servers with priority; <strong>NS</strong> lists authoritative name servers; <strong>TXT</strong> holds SPF, DKIM, DMARC, and domain verification strings; <strong>CNAME</strong> creates an alias from one name to another; <strong>SOA</strong> shows the authoritative server and zone serial; <strong>CAA</strong> restricts which certificate authorities can issue SSL certificates for the domain.</p>
+    <p>The <strong>TTL</strong> column shows how long resolvers cache each record in seconds — a TTL of 300 s means changes propagate in 5 minutes; 86400 s means up to 24 hours. Results per type are cached in the browser so switching tabs is instant. To find the hostname behind an IP discovered here, use <a href="../reverse-dns/">Reverse DNS Lookup</a>. To test reachability after finding an IP, run a <a href="../ping/">Ping Test</a>.</p>
   </section>
 
   <div class="card">
@@ -108,6 +111,8 @@
       <div style="color:var(--text-muted);font-size:.86rem;padding:1rem 0">Enter a domain above and click <strong>Lookup</strong>.</div>
     </div>
   </div>
+
+  <section class="tool-related" id="related-tools"></section>
 
 <div class="page-tags">
   <span class="page-tag">DNS lookup</span>
@@ -193,6 +198,13 @@ function renderDNS(data, type, domain) {
     <tbody>${rows}</tbody>
   </table>`;
 }
+
+renderRelatedTools('related-tools', [
+  { path: 'reverse-dns',    desc: 'Resolve an IP address to its hostname' },
+  { path: 'domain-checker', desc: 'WHOIS, RDAP, availability across TLDs' },
+  { path: 'ping',           desc: 'Check reachability after finding an IP' },
+  { path: 'port-checker',   desc: 'Test if TCP ports are open on any host' },
+]);
 </script>
 </body>
 </html>

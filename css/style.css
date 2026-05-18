@@ -960,3 +960,13 @@ body.has-sidebar .tool-main {
   border-bottom: none;
 }
 
+/* ── Related Tools section ── */
+.tool-related { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+.tool-related > h2 { font-size: .72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .07em; margin-bottom: .65rem; }
+.related-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(195px, 1fr)); gap: .5rem; }
+.related-card { display: flex; align-items: center; gap: .65rem; padding: .6rem .85rem; border-radius: var(--radius); border: 1.5px solid var(--border); background: var(--bg-card); text-decoration: none; color: var(--text); transition: border-color .15s, background .15s; }
+.related-card:hover { border-color: var(--primary); background: var(--primary-dim); }
+.related-icon { font-size: 1.25rem; flex-shrink: 0; line-height: 1; }
+.related-name { font-size: .86rem; font-weight: 700; color: var(--text); }
+.related-desc { font-size: .73rem; color: var(--text-muted); margin-top: .08rem; }
+

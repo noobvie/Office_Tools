@@ -17,6 +17,7 @@
   <meta name="twitter:description" content="IPv4 and IPv6 subnet calculator. Enter CIDR notation, get network, broadcast, mask, host range instantly.">
   <link rel="canonical" href="https://tools.grin.money/tools/subnet-calculator/">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Subnet Calculator","description":"Calculate subnet details from any IPv4 or IPv6 CIDR — network address, broadcast, subnet mask, host range, and total addresses. Runs entirely in your browser.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/subnet-calculator/"}</script>
+  <script type="application/ld+json">[{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Office Tools","item":"https://tools.grin.money/"},{"@type":"ListItem","position":2,"name":"Network Tools","item":"https://tools.grin.money/tools/network-toolkit/"},{"@type":"ListItem","position":3,"name":"Subnet Calculator","item":"https://tools.grin.money/tools/subnet-calculator/"}]},{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is CIDR notation?","acceptedAnswer":{"@type":"Answer","text":"CIDR (Classless Inter-Domain Routing) notation expresses a network as an IP address and prefix length, e.g. 192.168.0.0/24. The prefix length says how many bits are fixed for the network. A /24 has 8 host bits giving 256 total addresses (254 usable hosts). A /16 has 16 host bits — 65,536 addresses."}},{"@type":"Question","name":"What are the private IPv4 address ranges?","acceptedAnswer":{"@type":"Answer","text":"The three private IPv4 ranges from RFC 1918 are: 10.0.0.0/8 (16,777,216 addresses), 172.16.0.0/12 (1,048,576 addresses, covers 172.16.x.x to 172.31.x.x), and 192.168.0.0/16 (65,536 addresses). These are not routed on the public internet."}},{"@type":"Question","name":"How many usable hosts does a /24 subnet have?","acceptedAnswer":{"@type":"Answer","text":"A /24 subnet has 256 total addresses (2^8). Two are reserved — the network address (first) and the broadcast address (last) — leaving 254 usable host addresses. A /30 has 2 usable hosts; /31 subnets (RFC 3021) allow both addresses to be used on point-to-point links."}},{"@type":"Question","name":"How is IPv6 subnetting different from IPv4?","acceptedAnswer":{"@type":"Answer","text":"IPv6 has no broadcast address — all addresses in the range are usable. The standard allocation for an end site is a /48 prefix (65,536 possible /64 subnets). Individual subnets are typically /64 to support SLAAC. IPv6 subnets can contain astronomically large numbers of addresses calculated with 128-bit precision."}}]}]</script>
   <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
   <script src="../../js/theme-init.js"></script>
   <link rel="stylesheet" href="../../css/style.css">
@@ -65,7 +66,9 @@
 
   <section class="tool-about">
     <h2>About Subnet Calculator</h2>
-    <p>This tool calculates all subnet details from any <strong>CIDR notation</strong> — for both <strong>IPv4</strong> (e.g. <code>192.168.1.0/24</code>) and <strong>IPv6</strong> (e.g. <code>2001:db8::/48</code>). For IPv4 it shows the network address, subnet mask, broadcast address, first and last usable host, and total addresses. For IPv6 there is no broadcast; it shows the network address, first and last address, prefix length, and the total number of addresses (which can be astronomically large — expressed in powers of 2). Fully local — all calculations happen in your browser using JavaScript BigInt for IPv6 precision.</p>
+    <p>This tool calculates all subnet details from any <strong>CIDR notation</strong> for both <strong>IPv4</strong> and <strong>IPv6</strong>. CIDR (Classless Inter-Domain Routing) notation expresses a network as an IP address and prefix length — e.g. <code>192.168.0.0/24</code> means the first 24 bits are the network, leaving 8 bits for hosts (256 total addresses, 254 usable).</p>
+    <p>For <strong>IPv4</strong>, the calculator shows: network address, subnet mask (e.g. <code>255.255.255.0</code>), broadcast address, first and last usable host addresses, and total usable hosts. Common private ranges: <code>10.0.0.0/8</code> (16 M addresses), <code>172.16.0.0/12</code> (1 M addresses), <code>192.168.0.0/16</code> (65 K addresses). Point-to-point links use <code>/30</code> (2 usable hosts) or <code>/31</code> per RFC 3021.</p>
+    <p>For <strong>IPv6</strong>, there is no broadcast — all addresses in the range are usable. A standard <code>/64</code> subnet holds 2<sup>64</sup> ≈ 18 quintillion addresses. A typical ISP allocates a <code>/48</code> to each customer (65,536 possible /64 subnets). All IPv6 calculations use JavaScript BigInt for full 128-bit precision. Everything runs locally — no data is sent to a server. To identify the type of an individual IPv6 address, see the <a href="../ipv6-analyzer/">IPv6 Analyzer</a>.</p>
   </section>
 
   <div class="card">
@@ -84,6 +87,8 @@
     </div>
     <div id="subnetResult"></div>
   </div>
+
+  <section class="tool-related" id="related-tools"></section>
 
 <div class="page-tags">
   <span class="page-tag">subnet calculator</span>
@@ -214,6 +219,13 @@ function subnetCalc() {
     <div class="box-info">IPv6 has no broadcast address — every address in the range is usable.</div>`;
   }
 }
+
+renderRelatedTools('related-tools', [
+  { path: 'ipv6-analyzer', desc: 'Expand, compress and identify IPv6 address type' },
+  { path: 'ping',          desc: 'Test connectivity to a host in your subnet' },
+  { path: 'port-checker',  desc: 'Test if TCP ports are open on any host' },
+  { path: 'dns-lookup',    desc: 'Query A and AAAA records for any domain' },
+]);
 </script>
 </body>
 </html>
