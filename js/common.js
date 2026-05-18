@@ -97,17 +97,29 @@ function escHtml(s) {
 
 /* ---------- Header Search (tool pages) ---------- */
 function initHeaderSearch() {
-  const toolNameEl = document.querySelector('.header-tool-name');
-  if (!toolNameEl) return;
+  const header = document.querySelector('.site-header');
+  if (!header) return;
+  // Main index already has the search box in HTML — don't add a second one
+  if (header.querySelector('.header-search-wrap')) return;
+  // Only run on tool pages
+  const currentPath = window.location.pathname.match(/\/tools\/([^\/]+)/)?.[1];
+  if (!currentPath) return;
 
   const root = _otRootPath();
-  const currentPath = window.location.pathname.match(/\/tools\/([^\/]+)/)?.[1] || '';
   const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
 
   const wrap = document.createElement('div');
   wrap.className = 'header-search-wrap';
   wrap.innerHTML = `<input type="text" id="headerSearch" placeholder="Search tools…" autocomplete="off" aria-label="Search tools"><span class="hs-kbd" id="hsKbd"><kbd>Ctrl</kbd><kbd>K</kbd></span><span class="header-search-icon">${SVG}</span><div class="header-search-drop" id="headerSearchDrop" hidden></div>`;
-  toolNameEl.replaceWith(wrap);
+
+  // Replace .header-tool-name if it exists, otherwise insert before .header-actions
+  const toolNameEl = header.querySelector('.header-tool-name');
+  if (toolNameEl) {
+    toolNameEl.replaceWith(wrap);
+  } else {
+    const actions = header.querySelector('.header-actions');
+    header.insertBefore(wrap, actions || null);
+  }
 
   const input = document.getElementById('headerSearch');
   const drop  = document.getElementById('headerSearchDrop');
@@ -326,11 +338,8 @@ function initToolSidebar() {
   const sidebar = document.createElement('div');
   sidebar.className = 'ot-sidebar';
   sidebar.innerHTML = `
-    <div class="ot-sidebar-head">
-      <strong>🛠️ All Tools</strong>
-    </div>
     <div class="ot-sidebar-search">
-      <input type="text" id="otSidebarSearch" placeholder="Search tools…" autocomplete="off">
+      <input type="text" id="otSidebarSearch" placeholder="All tools…" autocomplete="off">
     </div>
     <div class="ot-sidebar-list" id="otSidebarList"></div>
   `;

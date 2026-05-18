@@ -321,7 +321,7 @@ a:hover { text-decoration: underline; }
 }
 .header-search-wrap input {
   width: 100%;
-  padding: .44rem 2.4rem .44rem 1rem;
+  padding: .44rem 2.8rem .44rem 1rem;
   border: 2px solid var(--primary);
   border-radius: 50px;
   background: var(--bg-secondary);
