@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 cd backend && npm install
 npm start          # production
 npm run dev        # nodemon watch mode
-node --check grin-payment-server.js  # syntax check only
+node --check office-tools-server.js  # syntax check only
 ```
 
 **YT server (port 9000):**
@@ -22,7 +22,6 @@ cd yt-server && npm install && npm start
 **Deploy to server:**
 ```bash
 sudo bash deploy.sh          # install/update/add domain
-sudo bash deploy_grinwallet.sh  # manage Grin wallet sessions
 ```
 
 ---
@@ -34,14 +33,14 @@ sudo bash deploy_grinwallet.sh  # manage Grin wallet sessions
 Every tool is a self-contained `tools/<name>/index.html`. There is no bundler, no transpilation. Each page includes:
 - `../../js/theme-init.js` — sets `data-theme` before render (prevents flash)
 - `../../css/style.css` — all shared styles and CSS variables
-- `../../js/config.js` — exposes `window.OT_CONFIG.GRIN_SERVER_URL`
+- `../../js/config.js` — exposes `window.OT_CONFIG.API_SERVER_URL`
 - `../../js/common.js` — theme toggle (`initThemeToggle`), `copyText(text, btn)`
 
 The hub (`index.html`) renders a tool grid with search and category filters. Adding a tool = creating the `tools/<name>/` directory and inserting a card into the correct `<section class="category-section">` in `index.html`.
 
 ### Backend — single Express file
 
-`backend/grin-payment-server.js` is one file with all API routes. Routes are grouped by feature with inline comments (`// ── Section ──`). Add new endpoints before the `// ── Start ──` block at the bottom.
+`backend/office-tools-server.js` is one file with all API routes. Routes are grouped by feature with inline comments (`// ── Section ──`). Add new endpoints before the `// ── Start ──` block at the bottom.
 
 **Rate limiting pattern** (reuse, don't reinvent):
 ```js
@@ -97,22 +96,20 @@ IPv6 addresses are accepted with or without brackets (`[::1]` and `::1`); strip 
 
 | Server | Port | Managed by |
 |---|---|---|
-| `backend/grin-payment-server.js` | 3001 | systemd `office-tools-pay.service` |
+| `backend/office-tools-server.js` | 3001 | systemd `office-tools-api.service` |
 | `yt-server/server.js` | 9000 | systemd `office-tools-cobalt.service` |
-| `grin-wallet listen` | 3415 | tmux `donate_grin_tor` + watchdog cron |
-| `grin-wallet owner_api` | 3420 | tmux `donate_grin_slatepack` |
 
 nginx proxies `/pay-api/*` → 3001 and `/yt-api/*` → 9000. The `backend/` directory is excluded from the public web root (`rsync --exclude=backend/`).
 
 ### What needs the backend vs. what doesn't
 
-Most tools are 100% browser-local. Backend is only required for: URL Shortener, Pastebin, File Share, Port Checker, Domain Checker, Network Toolkit, and Grin donations. The site works without a running backend — those tools just show an error.
+Most tools are 100% browser-local. Backend is only required for: URL Shortener, Pastebin, File Share, Port Checker, Domain Checker, and Network Toolkit. The site works without a running backend — those tools just show an error.
 
 ### Adding a new tool checklist
 
 1. Create `tools/<name>/index.html` — copy the header/footer pattern from any existing tool
 2. Add a card to the correct `<section class="category-section">` in `index.html` with `data-keywords` and `data-name` for search
-3. If it needs backend APIs, add routes to `grin-payment-server.js` before `// ── Start ──`
+3. If it needs backend APIs, add routes to `office-tools-server.js` before `// ── Start ──`
 4. Tools must be mobile-responsive, use CSS variables (not hardcoded colors), and include no external analytics or cookies
 
 **Standard page structure every tool follows:**
@@ -138,5 +135,5 @@ function escHtml(s) {
 
 **`const API`** — tools that call the backend always start their script block with:
 ```js
-const API = window.OT_CONFIG?.GRIN_SERVER_URL || 'http://localhost:3001';
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
 ```

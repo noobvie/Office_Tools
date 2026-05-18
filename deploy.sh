@@ -162,12 +162,14 @@ install_base_packages() {
     if [[ "$OS_FAMILY" == "debian" ]]; then
         apt-get update -qq
         pkg_install nginx certbot python3-certbot-nginx \
-            git curl unzip rsync ca-certificates gnupg python3-pip
+            git curl unzip rsync ca-certificates gnupg python3-pip \
+            iputils-ping traceroute
     else
         # EPEL provides certbot on RHEL-family
         dnf install -y epel-release
         dnf install -y nginx certbot python3-certbot-nginx \
-            git curl unzip rsync ca-certificates python3-pip
+            git curl unzip rsync ca-certificates python3-pip \
+            iputils traceroute
         # Allow nginx to proxy to localhost (SELinux)
         setsebool -P httpd_can_network_connect 1 2>/dev/null || \
             warn "SELinux: could not set httpd_can_network_connect — set manually if proxying fails"
@@ -442,12 +444,16 @@ server {
     location / { try_files \$uri \$uri/ \$uri.html =404; }
 
     location ^~ /pay-api/ {
-        proxy_pass         http://127.0.0.1:3001/;
-        proxy_http_version 1.1;
-        proxy_set_header   Host              \$host;
-        proxy_set_header   X-Real-IP         \$remote_addr;
-        proxy_set_header   X-Forwarded-For   \$proxy_add_x_forwarded_for;
-        proxy_set_header   X-Forwarded-Proto \$scheme;
+        proxy_pass            http://127.0.0.1:3001/;
+        proxy_http_version    1.1;
+        proxy_set_header      Host              \$host;
+        proxy_set_header      X-Real-IP         \$remote_addr;
+        proxy_set_header      X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header      X-Forwarded-Proto \$scheme;
+        proxy_read_timeout    600s;
+        proxy_send_timeout    600s;
+        proxy_request_buffering off;
+        proxy_buffering         off;
     }
     location ^~ /yt-api/ {
         proxy_pass              http://127.0.0.1:9000/;
@@ -537,6 +543,7 @@ server {
         proxy_read_timeout    600s;
         proxy_send_timeout    600s;
         proxy_request_buffering off;
+        proxy_buffering         off;
     }
     location ^~ /yt-api/ {
         proxy_pass              http://127.0.0.1:9000/;
@@ -575,14 +582,27 @@ get_ssl() {
 }
 
 # ─── Backend ──────────────────────────────────────────────────────────────────
+# Write/update NOTIFY_EMAIL and NOTIFY_EMAIL_2 in existing .env
+_update_notify_env() {
+    local e1="${1:-}" e2="${2:-}"
+    [[ ! -f "$BACKEND_DIR/.env" ]] && return 0
+    for key_val in "NOTIFY_EMAIL=${e1}" "NOTIFY_EMAIL_2=${e2}"; do
+        local key="${key_val%%=*}"
+        local val="${key_val#*=}"
+        if grep -q "^${key}=" "$BACKEND_DIR/.env" 2>/dev/null; then
+            sed -i "s|^${key}=.*|${key}=${val}|" "$BACKEND_DIR/.env"
+        else
+            echo "${key}=${val}" >> "$BACKEND_DIR/.env"
+        fi
+    done
+}
+
 setup_backend_first() {
     local domain="$1"
+    local notify_email="${2:-}"
+    local notify_email2="${3:-}"
 
-    section "Backend setup — Grin payment server"
-    echo -ne "  Grin wallet password:      "; read -rs _GW_PASS; echo ""
-    echo ""
-    info "Get your Grin receiving address with: grin-wallet address"
-    echo -ne "  Grin receiving address (Enter to skip): "; read -r _GW_ADDR
+    section "Backend setup — API server"
 
     mkdir -p "$BACKEND_DIR"
     mkdir -p /opt/office-tools/data/uploads
@@ -591,14 +611,10 @@ setup_backend_first() {
 
     cat > "$BACKEND_DIR/.env" << ENVEOF
 # Office Tools backend config
-GRIN_WALLET_PASS=${_GW_PASS}
-GRIN_RECEIVING_ADDRESS=${_GW_ADDR}
 PORT=3001
 CORS_ORIGINS=https://${domain}
-PAYMENT_EXPIRY_MINUTES=30
-PLAN_PRO_MONTHLY_NANOGRIN=10000000000
-PLAN_PRO_YEARLY_NANOGRIN=100000000000
-PLAN_LIFETIME_NANOGRIN=500000000000
+NOTIFY_EMAIL=${notify_email}
+NOTIFY_EMAIL_2=${notify_email2}
 ENVEOF
     chmod 600 "$BACKEND_DIR/.env"
 
@@ -607,16 +623,16 @@ ENVEOF
 
     # Systemd service
     section "Creating systemd service"
-    cat > /etc/systemd/system/office-tools-pay.service << PAYEOF
+    cat > /etc/systemd/system/office-tools-api.service << PAYEOF
 [Unit]
-Description=Office Tools — Grin Payment Server
+Description=Office Tools — API Server
 After=network.target
 [Service]
 Type=simple
 User=www-data
 Group=www-data
 WorkingDirectory=${BACKEND_DIR}
-ExecStart=/usr/bin/node grin-payment-server.js
+ExecStart=/usr/bin/node office-tools-server.js
 Environment=TZ=UTC
 EnvironmentFile=${BACKEND_DIR}/.env
 Restart=on-failure
@@ -628,9 +644,9 @@ WantedBy=multi-user.target
 PAYEOF
 
     systemctl daemon-reload
-    systemctl enable office-tools-pay
-    systemctl start office-tools-pay || \
-        warn "Payment server failed to start — check: journalctl -u office-tools-pay"
+    systemctl enable office-tools-api
+    systemctl start office-tools-api || \
+        warn "API server failed to start — check: journalctl -u office-tools-api"
 
     success "Backend service enabled and started"
 }
@@ -642,7 +658,7 @@ sync_backend() {
     # Ensure SQLite data directory exists and is owned by the service user
     mkdir -p /opt/office-tools/data/uploads
     chown -R www-data:www-data /opt/office-tools/data
-    systemctl restart office-tools-pay 2>/dev/null || true
+    systemctl restart office-tools-api 2>/dev/null || true
     success "Backend synced and service restarted"
 }
 
@@ -669,7 +685,7 @@ show_banner() {
     clear
     echo ""
     echo -e "${BOLD}${CYAN}╔═══════════════════════════════════════════════════════╗${RESET}"
-    echo -e "${BOLD}${CYAN}║       Office Tools — Deploy Manager  v2026.03.29      ║${RESET}"
+    echo -e "${BOLD}${CYAN}║       Office Tools — Deploy Manager  v2026.5.18      ║${RESET}"
     echo -e "${BOLD}${CYAN}║       github.com/noobvie/Office_Tools                 ║${RESET}"
     echo -e "${BOLD}${CYAN}╚═══════════════════════════════════════════════════════╝${RESET}"
     echo ""
@@ -695,7 +711,7 @@ show_status() {
     fi
 
     # Core services (cobalt excluded — managed separately)
-    local svcs=("nginx" "office-tools-pay")
+    local svcs=("nginx" "office-tools-api")
     for svc in "${svcs[@]}"; do
         if systemctl is-active --quiet "$svc" 2>/dev/null; then
             echo -e "  ${GREEN}●${RESET} ${svc}  ${DIM}running${RESET}"
@@ -703,22 +719,6 @@ show_status() {
             echo -e "  ${YELLOW}●${RESET} ${svc}  ${DIM}stopped${RESET}"
         fi
     done
-
-    # Grin wallet listener — check port 3415
-    if timeout 3 bash -c 'echo >/dev/tcp/127.0.0.1/3415' 2>/dev/null; then
-        echo -e "  ${GREEN}●${RESET} grin-wallet  ${DIM}listening on port 3415${RESET}"
-    elif tmux has-session -t "donate_grin_wallet" 2>/dev/null; then
-        echo -e "  ${YELLOW}●${RESET} grin-wallet  ${DIM}tmux running but port 3415 not yet open${RESET}"
-    else
-        echo -e "  ${RED}●${RESET} grin-wallet  ${DIM}not running${RESET}"
-    fi
-
-    # Watchdog cron
-    if crontab -l 2>/dev/null | grep -q "grin-watchdog"; then
-        echo -e "  ${GREEN}●${RESET} watchdog     ${DIM}cron active (every 30 min)${RESET}"
-    else
-        echo -e "  ${DIM}○ watchdog     : cron not set${RESET}"
-    fi
 
     echo ""
 }
@@ -827,7 +827,7 @@ opt_2_add_domain() {
     local _do_backend=false
     if [[ ! -d "$BACKEND_DIR" ]] || [[ ! -f "$BACKEND_DIR/.env" ]]; then
         echo ""
-        echo -e "  ${DIM}Backend service (Grin payment server) is optional.${RESET}"
+        echo -e "  ${DIM}Backend service (API server) is optional.${RESET}"
         echo -ne "  Set up backend? [Y/n]: "
         read -r _b; _b="${_b:-Y}"
         [[ "${_b,,}" == "y" ]] && _do_backend=true && SETUP_BACKEND="y"
@@ -835,10 +835,35 @@ opt_2_add_domain() {
         info "Backend already installed — will sync files only"
     fi
 
+    # Notify emails for feedback submissions
+    local _notify_email="" _notify_email2=""
+    _notify_email=$(grep '^NOTIFY_EMAIL=' "$BACKEND_DIR/.env" 2>/dev/null \
+        | cut -d= -f2- | tr -d '"' | tr -d "'")
+    _notify_email2=$(grep '^NOTIFY_EMAIL_2=' "$BACKEND_DIR/.env" 2>/dev/null \
+        | cut -d= -f2- | tr -d '"' | tr -d "'")
     echo ""
-    echo -e "  Domain   : ${BOLD}${DOMAIN}${RESET}"
-    echo -e "  Email    : ${DOMAIN:+$EMAIL}"
-    echo -e "  Web root : $WEB_ROOT"
+    echo -e "  ${BOLD}Feedback notification emails${RESET} ${DIM}(where to send user reports — leave blank to skip)${RESET}"
+    local _p1="  Primary email"
+    [[ -n "$_notify_email" ]] && _p1+=" ${DIM}[${_notify_email}]${RESET}"
+    echo -ne "${_p1}: "
+    read -r _new_ne; [[ "$_new_ne" == "0" ]] && return 0
+    [[ -n "$_new_ne" ]] && _notify_email="$_new_ne"
+    local _p2="  Secondary email ${DIM}(optional)"
+    [[ -n "$_notify_email2" ]] && _p2+=" [${_notify_email2}]"
+    _p2+="${RESET}"
+    echo -ne "${_p2}: "
+    read -r _new_ne2; [[ "$_new_ne2" == "0" ]] && return 0
+    [[ -n "$_new_ne2" ]] && _notify_email2="$_new_ne2"
+
+    echo ""
+    echo -e "  Domain        : ${BOLD}${DOMAIN}${RESET}"
+    echo -e "  SSL email     : ${EMAIL}"
+    if [[ -n "$_notify_email" ]]; then
+        echo -e "  Notify        : ${DIM}(configured)${RESET}"
+    else
+        echo -e "  Notify        : ${DIM}(disabled)${RESET}"
+    fi
+    echo -e "  Web root      : $WEB_ROOT"
     echo ""
     ask_proceed "Proceed" || return 0
 
@@ -857,9 +882,11 @@ opt_2_add_domain() {
         _cobalt_update_api_url "$DOMAIN"
 
         if [[ "$_do_backend" == true ]]; then
-            setup_backend_first "$DOMAIN"
+            setup_backend_first "$DOMAIN" "$_notify_email" "$_notify_email2"
         elif [[ -d "$BACKEND_DIR" ]]; then
             sync_backend
+            _update_notify_env "$_notify_email" "$_notify_email2"
+            systemctl restart office-tools-api 2>/dev/null || true
         fi
     ) || { warn "Errors during setup — check $logf"; press_enter; return 0; }
 
@@ -1128,10 +1155,11 @@ opt_6_admin_tasks() {
         echo -e "    ${BOLD}f)${RESET}  Clean Old Logs       ${DIM}delete deploy logs older than 30 days${RESET}"
         echo -e "    ${BOLD}g)${RESET}  Purge Temp Files     ${DIM}file-share uploads${RESET}"
         echo -e "    ${BOLD}h)${RESET}  Update cobalt        ${DIM}pull latest cobalt from GitHub + restart${RESET}"
+        echo -e "    ${BOLD}i)${RESET}  Feedback emails      ${DIM}set / update notification email addresses${RESET}"
         echo -e "  ${DIM}  ──────────────────────────────────────────────${RESET}"
         echo -e "    ${BOLD}0)${RESET}  Back"
         echo ""
-        echo -ne "  Choose [a-h / 0]: "; read -r _sub
+        echo -ne "  Choose [a-i / 0]: "; read -r _sub
         echo ""
 
         case "${_sub,,}" in
@@ -1143,6 +1171,7 @@ opt_6_admin_tasks() {
             f)  _admin_clean_logs       ;;
             g)  _admin_purge_temp       ;;
             h)  _admin_update_cobalt    ;;
+            i)  _admin_feedback_email   ;;
             0)  return 0                ;;
             *)  warn "Invalid: $_sub"   ;;
         esac
@@ -1151,7 +1180,7 @@ opt_6_admin_tasks() {
 
 _admin_service_status() {
     section "Service Status"
-    local svcs=("nginx" "office-tools-pay" "office-tools-cobalt")
+    local svcs=("nginx" "office-tools-api" "office-tools-cobalt")
     for svc in "${svcs[@]}"; do
         if ! systemctl list-unit-files "${svc}.service" &>/dev/null 2>&1 \
            || ! systemctl list-unit-files "${svc}.service" 2>/dev/null | grep -q "^${svc}"; then
@@ -1182,21 +1211,10 @@ _admin_service_status() {
     done
     echo ""
 
-    # Grin wallet listener (tmux, not systemd)
-    echo ""
-    if timeout 3 bash -c 'echo >/dev/tcp/127.0.0.1/3415' 2>/dev/null; then
-        echo -e "  ${GREEN}●${RESET} grin-wallet            ${GREEN}listening :3415${RESET}"
-    elif tmux has-session -t "donate_grin_wallet" 2>/dev/null; then
-        echo -e "  ${YELLOW}●${RESET} grin-wallet            ${YELLOW}tmux running, port 3415 not yet open${RESET}"
-    else
-        echo -e "  ${DIM}○ grin-wallet            not running${RESET}"
-    fi
-    echo ""
-
     # Port listener table
     echo -e "  ${BOLD}Listening ports:${RESET}"
     echo -e "  ────────────────────────────────────────"
-    for port_svc in "80:nginx (HTTP)" "443:nginx (HTTPS)" "3001:payment-server" "3415:grin-wallet" "9000:cobalt (optional)"; do
+    for port_svc in "80:nginx (HTTP)" "443:nginx (HTTPS)" "3001:api-server" "9000:cobalt (optional)"; do
         local port="${port_svc%%:*}" label="${port_svc#*:}"
         if ss -tlnp 2>/dev/null | grep -q ":${port}\b"; then
             echo -e "  ${GREEN}●${RESET} :${port}  ${label}"
@@ -1210,7 +1228,7 @@ _admin_service_status() {
 
 _admin_restart_all() {
     section "Restarting All Services"
-    local svcs=("nginx" "office-tools-pay" "office-tools-cobalt")
+    local svcs=("nginx" "office-tools-api" "office-tools-cobalt")
     local any=false
     for svc in "${svcs[@]}"; do
         if systemctl list-unit-files "${svc}.service" 2>/dev/null | grep -q "^${svc}"; then
@@ -1246,15 +1264,14 @@ _admin_list_urls() {
     echo ""
 
     echo -e "  ${BOLD}Reverse-proxy routes (nginx)${RESET}"
-    echo -e "  ${CYAN}·${RESET} Payment API     : ${base}/pay-api/            → 127.0.0.1:3001"
+    echo -e "  ${CYAN}·${RESET} API             : ${base}/pay-api/            → 127.0.0.1:3001"
     [[ -d "$COBALT_DIR/.git" ]] && \
     echo -e "  ${CYAN}·${RESET} YT Download API : ${base}/yt-api/             → 127.0.0.1:9000"
     echo ""
 
     echo -e "  ${BOLD}Internal services${RESET}"
     echo -e "  ${DIM}·${RESET} nginx           : :80 (HTTP) / :443 (HTTPS)"
-    echo -e "  ${DIM}·${RESET} payment server  : 127.0.0.1:3001"
-    echo -e "  ${DIM}·${RESET} grin-wallet     : 127.0.0.1:3415  (tmux: donate_grin_wallet)"
+    echo -e "  ${DIM}·${RESET} api server      : 127.0.0.1:3001"
     [[ -d "$COBALT_DIR/.git" ]] && \
     echo -e "  ${DIM}·${RESET} cobalt server   : 127.0.0.1:9000  (optional)"
     echo ""
@@ -1279,7 +1296,7 @@ _admin_list_urls() {
     echo ""
 
     echo -e "  ${BOLD}API health checks${RESET}"
-    echo -e "  ${DIM}·${RESET} payment server  : ${base}/pay-api/health"
+    echo -e "  ${DIM}·${RESET} api server      : ${base}/pay-api/health"
     [[ -d "$COBALT_DIR/.git" ]] && \
     echo -e "  ${DIM}·${RESET} cobalt          : ${base}/yt-api/  ${DIM}(GET with Accept: application/json)${RESET}"
     echo ""
@@ -1356,8 +1373,8 @@ _admin_restore_db() {
     echo ""
     ask_proceed "Proceed" || return 0
 
-    info "Stopping payment server…"
-    systemctl stop office-tools-pay 2>/dev/null || true
+    info "Stopping API server…"
+    systemctl stop office-tools-api 2>/dev/null || true
     sleep 1
 
     info "Restoring backup…"
@@ -1367,10 +1384,10 @@ _admin_restore_db() {
 
     chown root:root "$db_file" 2>/dev/null || true
 
-    info "Restarting payment server…"
-    systemctl start office-tools-pay 2>/dev/null \
-        && success "Payment server running" \
-        || warn "Payment server failed to restart — check: journalctl -u office-tools-pay -n 20"
+    info "Restarting API server…"
+    systemctl start office-tools-api 2>/dev/null \
+        && success "API server running" \
+        || warn "API server failed to restart — check: journalctl -u office-tools-api -n 20"
     press_enter
 }
 
@@ -1404,16 +1421,6 @@ _admin_clean_logs() {
         fi
     fi
 
-    # Rotate grin-wallet log if large (>10 MB)
-    local grin_log="/opt/office-tools/cmdgrinwallet/grin-wallet.log"
-    if [[ -f "$grin_log" ]]; then
-        local glog_size; glog_size=$(du -sm "$grin_log" 2>/dev/null | cut -f1)
-        if [[ "$glog_size" -ge 10 ]]; then
-            info "grin-wallet.log is ${glog_size} MB — truncating…"
-            truncate -s 0 "$grin_log"
-            success "grin-wallet.log cleared."
-        fi
-    fi
     press_enter
 }
 
@@ -1446,22 +1453,41 @@ _admin_purge_temp() {
     fi
     echo ""
 
-    # ── Grin watchdog log ──────────────────────────────────────────────────
-    local wdog_log="/opt/office-tools/data/grin-watchdog.log"
-    if [[ -f "$wdog_log" ]]; then
-        local wlog_size; wlog_size=$(du -sh "$wdog_log" 2>/dev/null | cut -f1)
-        echo -e "  ${BOLD}Grin watchdog log${RESET}  (${wdog_log})"
-        echo -e "  Size : ${wlog_size}"
-        echo -ne "  Truncate watchdog log? [y/N]: "; read -r _r; _r="${_r:-N}"
-        if [[ "${_r,,}" == "y" ]]; then
-            truncate -s 0 "$wdog_log"
-            success "Watchdog log cleared."
-            purged=true
-        fi
+    $purged || info "Nothing was deleted."
+    press_enter
+}
+
+_admin_feedback_email() {
+    section "Feedback Notification Emails"
+    if [[ ! -f "$BACKEND_DIR/.env" ]]; then
+        warn "Backend not installed — run Option 2 first."
+        press_enter; return 0
     fi
+
+    local cur1 cur2
+    cur1=$(grep '^NOTIFY_EMAIL=' "$BACKEND_DIR/.env" 2>/dev/null \
+        | cut -d= -f2- | tr -d '"' | tr -d "'")
+    cur2=$(grep '^NOTIFY_EMAIL_2=' "$BACKEND_DIR/.env" 2>/dev/null \
+        | cut -d= -f2- | tr -d '"' | tr -d "'")
+
+    echo -e "  ${DIM}Current primary  : ${cur1:-(not set)}${RESET}"
+    echo -e "  ${DIM}Current secondary: ${cur2:-(not set)}${RESET}"
+    echo ""
+    echo -e "  ${DIM}Leave blank to keep current value. Enter '-' to clear.${RESET}"
     echo ""
 
-    $purged || info "Nothing was deleted."
+    echo -ne "  Primary email: "; read -r _e1
+    echo -ne "  Secondary email (optional): "; read -r _e2
+
+    [[ "$_e1" == "-" ]] && _e1=""
+    [[ "$_e2" == "-" ]] && _e2=""
+    [[ -z "$_e1" ]] && _e1="$cur1"
+    [[ -z "$_e2" ]] && _e2="$cur2"
+
+    _update_notify_env "$_e1" "$_e2"
+    systemctl restart office-tools-api 2>/dev/null \
+        && success "Feedback emails updated and API server restarted." \
+        || warn "Could not restart API server — check: journalctl -u office-tools-api -n 10"
     press_enter
 }
 
@@ -1537,13 +1563,11 @@ while true; do
     echo -e "    ${BOLD}5)${RESET}   Update from Repo    ${DIM}pull specific branch · restart services${RESET}"
     echo -e "    ${BOLD}6)${RESET}   Admin Tasks         ${DIM}status · restart · URLs · backup · cleanup${RESET}"
     echo -e "  ${DIM}  ──────────────────────────────────────────────${RESET}"
-    echo -e "    ${BOLD}G)${RESET}   Grin Wallet         ${DIM}download · init · recover · service manager${RESET}"
-    echo -e "  ${DIM}  ──────────────────────────────────────────────${RESET}"
     echo -e "  ${RED}  DEL)${RESET} Delete              ${DIM}permanently remove Office Tools${RESET}"
     echo -e "    ${BOLD}0)${RESET}   Exit"
     echo -e "  ${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo ""
-    echo -ne "  Choose [0-3 / 5-6 / G / del]: "; read -r _choice
+    echo -ne "  Choose [0-3 / 5-6 / del]: "; read -r _choice
     echo ""
 
     case "${_choice,,}" in
@@ -1552,14 +1576,6 @@ while true; do
         3)   opt_3_remove_switch  ;;
         5)   opt_5_update_repo    ;;
         6)   opt_6_admin_tasks    ;;
-        g)
-            _gwscript="$(dirname "$(realpath "$0")")/deploy_grinwallet.sh"
-            if [[ ! -f "$_gwscript" ]]; then
-                warn "deploy_grinwallet.sh not found next to deploy.sh."
-            else
-                bash "$_gwscript"
-            fi
-            ;;
         del) opt_del_delete; break ;;
         0)   echo -e "${DIM}Goodbye.${RESET}"; exit 0 ;;
         *)   warn "Invalid choice: $_choice" ;;

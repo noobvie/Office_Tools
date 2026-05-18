@@ -271,6 +271,7 @@ function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot
 
 // ── Lookup ────────────────────────────────────────────────────────
 const resultArea = document.getElementById('resultArea');
+const _GEO_FIELDS = 'status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query';
 
 async function lookup(query) {
   if (!query) return;
@@ -285,35 +286,31 @@ async function lookup(query) {
 
   let data;
   try {
-    // Primary: ipwho.is — free, HTTPS, no key required
-    const res = await fetch(`https://ipwho.is/${encodeURIComponent(query)}`);
+    const res = await fetch(`https://ip-api.com/json/${encodeURIComponent(query)}?fields=${_GEO_FIELDS}`);
     const raw = await res.json();
-    if (!raw.success) {
+    if (raw.status !== 'success') {
       const msgs = {
-        'invalid ip address': 'Invalid IP address or domain name.',
-        'private range':      'This is a private/reserved IP address (not publicly routable).',
-        'reserved range':     'This is a reserved IP address range.',
+        'private range':  'This is a private/reserved IP address (not publicly routable).',
+        'reserved range': 'This is a reserved IP address range.',
       };
       const msg = msgs[(raw.message || '').toLowerCase()] || raw.message || 'Lookup failed.';
       resultArea.innerHTML = `<div class="lookup-error mt-2">&#10007; ${escHtml(msg)}</div>`;
       return;
     }
-    // Normalize to the field names used in the display code below
+    // ip-api.com fields match the display code directly
     data = {
-      query:      raw.ip,
-      country:    raw.country,
-      countryCode: raw.country_code,
-      regionName: raw.region,
-      city:       raw.city,
-      zip:        raw.postal,
-      lat:        raw.latitude,
-      lon:        raw.longitude,
-      timezone:   raw.timezone?.id,
-      isp:        raw.connection?.isp,
-      org:        raw.connection?.org,
-      as:         raw.connection?.asn
-                    ? `AS${raw.connection.asn} ${raw.connection.org || ''}`.trim()
-                    : null,
+      query:       raw.query,
+      country:     raw.country,
+      countryCode: raw.countryCode,
+      regionName:  raw.regionName,
+      city:        raw.city,
+      zip:         raw.zip,
+      lat:         raw.lat,
+      lon:         raw.lon,
+      timezone:    raw.timezone,
+      isp:         raw.isp,
+      org:         raw.org,
+      as:          raw.as,
     };
   } catch (e) {
     resultArea.innerHTML = `<div class="lookup-error mt-2">&#10007; Network error: ${escHtml(e.message)}</div>`;
@@ -402,7 +399,7 @@ async function lookup(query) {
 
       <p class="text-muted mt-2" style="font-size:.76rem">
         &#9888;&#65039; IP geolocation is approximate — accuracy varies by ISP. Coordinates typically indicate the ISP's regional hub, not your exact location.
-        Data provided by <a href="https://ipwho.is" target="_blank" rel="noopener" style="color:var(--primary)">ipwho.is</a>.
+        Data provided by <a href="https://ip-api.com" target="_blank" rel="noopener" style="color:var(--primary)">ip-api.com</a>.
       </p>
     </div>`;
 

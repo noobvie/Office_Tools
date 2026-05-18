@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="matrix">
 <head>
   <meta charset="UTF-8">
@@ -120,7 +120,7 @@
 <script src="../../js/common.js"></script>
 <script>
 'use strict';
-const API = window.OT_CONFIG?.GRIN_SERVER_URL || 'http://localhost:3001';
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
 
 document.querySelectorAll('[data-ex]').forEach(b =>
   b.addEventListener('click', () => { document.getElementById('traceHost').value = b.dataset.ex; })
@@ -151,7 +151,10 @@ document.getElementById('traceBtn').addEventListener('click', () => {
     try { out.textContent += JSON.parse(e.data) + '\n'; } catch { out.textContent += e.data + '\n'; }
     out.scrollTop = out.scrollHeight;
   };
-  traceES.onerror = () => traceDone();
+  traceES.onerror = () => {
+    if (out.textContent === '') out.textContent = 'Error: could not connect to API server.';
+    traceDone();
+  };
 });
 
 document.getElementById('traceStop').addEventListener('click', () => {

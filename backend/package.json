@@ -1,11 +1,11 @@
 {
   "name": "office-tools-server",
   "version": "2.0.0",
-  "description": "Office Tools — Grin donation server + tools API",
-  "main": "grin-payment-server.js",
+  "description": "Office Tools — API server",
+  "main": "office-tools-server.js",
   "scripts": {
-    "start": "node grin-payment-server.js",
-    "dev": "nodemon grin-payment-server.js"
+    "start": "node office-tools-server.js",
+    "dev": "nodemon office-tools-server.js"
   },
   "dependencies": {
     "better-sqlite3": "^9.4.3",

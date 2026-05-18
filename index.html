@@ -55,18 +55,15 @@
     #noResults .big { font-size: 2.5rem; }
     .cat-desc { font-size: .82rem; color: var(--text-muted); margin: -.1rem 0 .85rem; line-height: 1.55; max-width: 780px; }
     .new-badge { display: inline-block; font-size: .65rem; font-weight: 700; color: var(--primary); background: var(--primary-dim); border-radius: 4px; padding: .05rem .35rem; vertical-align: middle; margin-left: .3rem; letter-spacing: .03em; }
-    .recently-added { border-bottom: 1px solid var(--border); padding: 1rem 1.5rem 1.2rem; background: var(--bg-card); }
-    .recently-added h2 { font-size: .72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .07em; margin-bottom: .65rem; }
-    .recently-list { display: flex; flex-wrap: wrap; gap: .45rem; }
-    .recently-chip { display: inline-flex; align-items: center; gap: .3rem; padding: .3rem .75rem; border-radius: 50px; border: 1.5px solid var(--primary); color: var(--primary); font-size: .8rem; font-weight: 600; text-decoration: none; background: var(--primary-dim); transition: background var(--transition), border-color var(--transition); }
-    .recently-chip:hover { background: var(--primary); color: var(--bg-card); }
+    #popularSection { display: none; }
+    #popularEmpty { color: var(--text-muted); font-size: .88rem; padding: .5rem 0 1rem; }
   </style>
 </head>
 <body>
 
 <header class="site-header">
   <a href="index.html" class="header-logo">
-    <span class="logo-icon">🛠️</span> Office Tools
+    <span class="logo-icon">🛠️</span><span class="logo-text"> Office Tools</span>
   </a>
   <div class="header-search-wrap">
     <span class="header-search-icon"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
@@ -95,18 +92,16 @@
   <button class="cat-chip" data-cat="Share">📤 Share</button>
   <button class="cat-chip" data-cat="Encoding &amp; Crypto">🔒 Encoding</button>
   <button class="cat-chip" data-cat="Relax">🎮 Relax</button>
+  <button class="cat-chip" data-cat="Popular">🔥 Popular</button>
 </div>
 
-<div class="recently-added">
-  <h2>&#127381; Recently Added</h2>
-  <div class="recently-list">
-    <a href="tools/ping/index.html" class="recently-chip">📡 Online Ping Test</a>
-    <a href="tools/traceroute/index.html" class="recently-chip">🔍 Online Traceroute</a>
-    <a href="tools/dns-lookup/index.html" class="recently-chip">📋 DNS Lookup</a>
-    <a href="tools/reverse-dns/index.html" class="recently-chip">🔄 Reverse DNS</a>
-    <a href="tools/ipv6-analyzer/index.html" class="recently-chip">🔬 IPv6 Analyzer</a>
-    <a href="tools/subnet-calculator/index.html" class="recently-chip">🧮 Subnet Calculator</a>
-  </div>
+<div class="hub-main" id="popularSection">
+  <section class="category-section" style="display:block!important">
+    <div class="category-title">🔥 Popular Tools</div>
+    <p class="cat-desc">The 10 most-used tools based on real click data from visitors.</p>
+    <div class="tools-grid" id="popularGrid"></div>
+    <p id="popularEmpty" style="display:none">No usage data yet — start using tools and come back to see what's popular.</p>
+  </section>
 </div>
 
 <main class="hub-main" id="hubMain">
@@ -597,10 +592,13 @@
 <script src="js/config.js"></script>
 <script src="js/common.js"></script>
 <script>
-  const searchInput  = document.getElementById('searchInput');
-  const headerSearch = document.getElementById('headerSearch');
-  const noResults    = document.getElementById('noResults');
+  const API           = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+  const searchInput   = document.getElementById('searchInput');
+  const headerSearch  = document.getElementById('headerSearch');
+  const noResults     = document.getElementById('noResults');
   const noResultsTerm = document.getElementById('noResultsTerm');
+  const hubMain       = document.getElementById('hubMain');
+  const popularSection = document.getElementById('popularSection');
 
   // ── Category chips ────────────────────────────────────────
   let activeCat = 'all';
@@ -609,7 +607,6 @@
       document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
       activeCat = chip.dataset.cat;
-      // Clear search when switching category
       searchInput.value = '';
       headerSearch.value = '';
       applyFilters();
@@ -619,12 +616,15 @@
   // ── Search / filter ───────────────────────────────────────
   function applyFilters() {
     const q = searchInput.value.toLowerCase().trim();
-    // If searching, ignore chip — show all matching; otherwise respect chip
+    const showPopular = !q && activeCat === 'Popular';
+
+    popularSection.style.display = showPopular ? '' : 'none';
+    hubMain.style.display        = showPopular ? 'none' : '';
+
+    if (showPopular) { noResults.style.display = 'none'; return; }
+
     const catFilter = q ? 'all' : activeCat;
     let visible = 0;
-
-    // Split query into individual tokens so "zip file" matches cards containing
-    // both "zip" and "file" anywhere in their text/keywords.
     const terms = q ? q.split(/\s+/).filter(Boolean) : [];
 
     document.querySelectorAll('.tool-card').forEach(card => {
@@ -652,6 +652,51 @@
     if (headerSearch.value !== searchInput.value) headerSearch.value = searchInput.value;
     applyFilters();
   });
+
+  // ── Track tool clicks ─────────────────────────────────────
+  document.addEventListener('click', e => {
+    const card = e.target.closest('.tool-card');
+    if (!card) return;
+    const href = card.getAttribute('href') || '';
+    const m = href.match(/tools\/([^/]+)\//);
+    if (!m) return;
+    const body = JSON.stringify({ tool: m[1] });
+    try {
+      navigator.sendBeacon(API + '/api/tools/view', new Blob([body], { type: 'application/json' }));
+    } catch {
+      fetch(API + '/api/tools/view', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+    }
+  });
+
+  // ── Load popular tools section ────────────────────────────
+  async function loadPopular() {
+    try {
+      const r = await fetch(API + '/api/tools/popular?limit=10', { signal: AbortSignal.timeout(4000) });
+      if (!r.ok) return;
+      const { tools } = await r.json();
+      const grid     = document.getElementById('popularGrid');
+      const emptyMsg = document.getElementById('popularEmpty');
+      if (!tools || tools.length === 0) { emptyMsg.style.display = ''; return; }
+
+      // Build slug → card map from existing DOM cards
+      const cardMap = {};
+      document.querySelectorAll('#hubMain .tool-card').forEach(card => {
+        const href = card.getAttribute('href') || '';
+        const m = href.match(/tools\/([^/]+)\//);
+        if (m) cardMap[m[1]] = card;
+      });
+
+      tools.forEach(({ tool_id }) => {
+        const src = cardMap[tool_id];
+        if (!src) return;
+        grid.appendChild(src.cloneNode(true));
+      });
+
+      if (!grid.firstChild) emptyMsg.style.display = '';
+    } catch { /* backend offline — section stays hidden */ }
+  }
+
+  loadPopular();
 
 </script>
 </body>

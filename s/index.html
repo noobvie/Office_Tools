@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
@@ -29,7 +29,7 @@
 <script src="../js/config.js"></script>
 <script>
 (async () => {
-  const API  = window.OT_CONFIG?.GRIN_SERVER_URL || 'http://localhost:3001';
+  const API  = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
   const el   = document.getElementById('status');
   const code = location.hash.slice(1) || new URLSearchParams(location.search).get('c');
 

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
@@ -363,7 +363,7 @@
 <script>
 'use strict';
 
-const API = window.OT_CONFIG?.GRIN_SERVER_URL || 'http://localhost:3001';
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
 
 // ── Escape helpers ────────────────────────────────────────────
 function escAttr(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
@@ -823,7 +823,6 @@ document.getElementById('clearHistoryBtn').addEventListener('click', () => {
 
 // Init
 renderHistory();
-initThemeToggle();
 </script>
 </body>
 </html>

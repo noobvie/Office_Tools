@@ -335,6 +335,111 @@ function _otRootPath() {
   return segs.length === 0 ? './' : '../'.repeat(segs.length);
 }
 
+/* ---------- Support Pill + Feedback Modal ---------- */
+function initSupportPill() {
+  const actions = document.querySelector('.header-actions');
+  if (!actions) return;
+
+  const pill = document.createElement('button');
+  pill.className = 'support-pill';
+  pill.innerHTML = '&#128172; Support';
+  pill.title = 'Send feedback or report a broken tool';
+
+  // Insert before the theme toggle
+  const toggle = actions.querySelector('.theme-toggle');
+  actions.insertBefore(pill, toggle || null);
+
+  pill.addEventListener('click', openFeedbackModal);
+}
+
+function openFeedbackModal() {
+  if (document.getElementById('ot-feedback-modal')) return;
+
+  // Generate simple math CAPTCHA
+  const ca = Math.floor(Math.random() * 9) + 1;
+  const cb = Math.floor(Math.random() * 9) + 1;
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'ot-modal-backdrop';
+  backdrop.id = 'ot-feedback-modal';
+  backdrop.innerHTML = `
+    <div class="ot-modal" role="dialog" aria-modal="true" aria-labelledby="ot-fb-title">
+      <h3 id="ot-fb-title">&#128172; Send Feedback</h3>
+      <p>Report a broken tool, suggest a feature, or leave any comment. No login needed &mdash; or reach me directly on the <a href="https://forum.grin.mw/u/hellogrin" target="_blank" rel="noopener" style="color:var(--primary)">Grin forum @hellogrin</a>.</p>
+      <textarea id="ot-fb-msg" placeholder="Describe the issue or suggestion… (min 10 characters)" maxlength="2000"></textarea>
+      <div style="display:flex;align-items:center;gap:.6rem;font-size:.88rem">
+        <label for="ot-fb-captcha" style="white-space:nowrap;color:var(--text-muted)">What is ${ca} + ${cb}?</label>
+        <input id="ot-fb-captcha" type="number" min="0" max="99" placeholder="Answer"
+          style="width:80px;padding:.35rem .6rem;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--bg-secondary);color:var(--text);font-size:.9rem;font-family:inherit;outline:none">
+      </div>
+      <div class="ot-modal-status" id="ot-fb-status"></div>
+      <div class="ot-modal-actions">
+        <button class="btn btn-secondary" id="ot-fb-cancel">Cancel</button>
+        <button class="btn btn-primary" id="ot-fb-send">Send</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(backdrop);
+
+  const msg      = backdrop.querySelector('#ot-fb-msg');
+  const captcha  = backdrop.querySelector('#ot-fb-captcha');
+  const status   = backdrop.querySelector('#ot-fb-status');
+  const sendBtn  = backdrop.querySelector('#ot-fb-send');
+
+  msg.focus();
+
+  function close() { backdrop.remove(); }
+
+  backdrop.querySelector('#ot-fb-cancel').addEventListener('click', close);
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+  document.addEventListener('keydown', function esc(e) {
+    if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
+  });
+
+  sendBtn.addEventListener('click', async () => {
+    const text = msg.value.trim();
+    const ans  = captcha.value.trim();
+
+    if (text.length < 10) {
+      status.textContent = 'Message too short — please write at least 10 characters.';
+      status.className = 'ot-modal-status fail'; return;
+    }
+    if (!ans) {
+      status.textContent = 'Please answer the math question.';
+      status.className = 'ot-modal-status fail'; return;
+    }
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Sending…';
+    status.textContent = '';
+    status.className = 'ot-modal-status';
+
+    const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+    try {
+      const r = await fetch(`${API}/api/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, page: window.location.pathname, ca, cb, ans: parseInt(ans, 10) }),
+      });
+      if (r.ok) {
+        status.textContent = '✓ Sent! Thank you for the feedback.';
+        status.className = 'ot-modal-status ok';
+        msg.value = '';
+        setTimeout(close, 2000);
+      } else {
+        const err = await r.json().catch(() => ({}));
+        status.textContent = err.error || 'Failed to send. Try again.';
+        status.className = 'ot-modal-status fail';
+        sendBtn.disabled = false; sendBtn.textContent = 'Send';
+      }
+    } catch {
+      status.textContent = 'Network error. Check your connection.';
+      status.className = 'ot-modal-status fail';
+      sendBtn.disabled = false; sendBtn.textContent = 'Send';
+    }
+  });
+}
+
 /* ---------- Auto-init on DOMContentLoaded ---------- */
 document.addEventListener('DOMContentLoaded', () => {
   // Inject favicon once — path derived from common.js script URL so it works at any depth
@@ -351,6 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initTabs();
   initToolSidebar();
   autoRelatedTools();
+  initSupportPill();
   // Auth nav rendered by auth.js when present (loaded after common.js on auth-enabled pages)
 
   // Floating donate heart button — shown on all pages except donate.html itself

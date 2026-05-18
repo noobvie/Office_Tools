@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="matrix">
 <head>
   <meta charset="UTF-8">
@@ -102,7 +102,7 @@
 <script src="../../js/common.js"></script>
 <script>
 'use strict';
-const API = window.OT_CONFIG?.GRIN_SERVER_URL || 'http://localhost:3001';
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
 
 function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');

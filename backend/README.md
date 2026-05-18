@@ -4,134 +4,78 @@
 
 | Component | Role |
 |-----------|------|
-| [PocketBase](https://pocketbase.io) | Database, Auth, REST API, Admin UI |
-| Node.js + Express | Grin payment server (invoice creation + finalization) |
-| Grin Wallet | Crypto payment receiver (via Owner API v3) |
+| Node.js + Express | API server (URL shortener, pastebin, file share, network tools) |
+| better-sqlite3 | Local SQLite database |
 
 ---
 
-## 1. PocketBase
-
-### Download & Run
+## Quick Start
 
 ```bash
-# Debian/Ubuntu
-wget https://github.com/pocketbase/pocketbase/releases/latest/download/pocketbase_linux_amd64.zip
-unzip pocketbase_linux_amd64.zip
-chmod +x pocketbase
-
-# Start (default: http://localhost:8090)
-./pocketbase serve --http=0.0.0.0:8090
+cd backend
+cp .env.example .env
+# Edit .env — set CORS_ORIGINS to your domain
+npm install
+npm start
 ```
 
-### First-time Setup
+Development (auto-restart on changes):
+```bash
+npm run dev
+```
 
-1. Open `http://yourserver:8090/_/` — create admin account
-2. Import collections from `pb_schema.json`:
-   - Go to **Settings → Import Collections**
-   - Paste contents of `pb_schema.json`
-3. Copy `pb_hooks/main.pb.js` to your PocketBase `pb_hooks/` directory
-4. Configure email (Settings → Mail) for welcome emails
+Syntax check without running:
+```bash
+node --check office-tools-server.js
+```
 
-### Run as systemd service
+---
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `3001` | Server listen port |
+| `CORS_ORIGINS` | `http://localhost:8080` | Comma-separated allowed origins |
+| `TOOLS_DB` | `/opt/office-tools/data/tools.db` | SQLite DB path |
+| `UPLOADS_DIR` | `/opt/office-tools/data/uploads` | File share upload directory |
+| `GEMINI_API_KEY` | *(optional)* | Enables AI domain name suggestions |
+
+---
+
+## Run as systemd service
 
 ```ini
-# /etc/systemd/system/pocketbase.service
+# /etc/systemd/system/office-tools-api.service
 [Unit]
-Description=PocketBase — Office Tools
+Description=Office Tools — API Server
 After=network.target
 
 [Service]
 Type=simple
 User=www-data
 WorkingDirectory=/opt/office-tools/backend
-ExecStart=/opt/office-tools/backend/pocketbase serve --http=127.0.0.1:8090
-Restart=on-failure
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-systemctl enable --now pocketbase
-```
-
----
-
-## 2. Grin Payment Server
-
-### Prerequisites
-
-- Node.js ≥ 18
-- A running Grin wallet with Owner API enabled (your existing Grin node from the toolkit works)
-- PocketBase running
-
-### Setup
-
-```bash
-cd backend
-cp .env.example .env
-# Edit .env with your values
-nano .env
-
-npm install
-npm start
-```
-
-### Enable Grin Wallet Owner API
-
-In your Grin wallet config (`~/.grin/main/.api_secret` or `grin-wallet.toml`):
-
-```toml
-[wallet]
-owner_api_listen_port = 3420
-owner_api_include_foreign = false
-```
-
-Start wallet in listening mode:
-```bash
-grin-wallet owner_api
-```
-
-### Run as systemd service
-
-```ini
-# /etc/systemd/system/ot-payment.service
-[Unit]
-Description=Office Tools Grin Payment Server
-After=network.target pocketbase.service
-
-[Service]
-Type=simple
-User=www-data
-WorkingDirectory=/opt/office-tools/backend
-ExecStart=/usr/bin/node grin-payment-server.js
-Restart=on-failure
+ExecStart=/usr/bin/node office-tools-server.js
+Environment=TZ=UTC
 EnvironmentFile=/opt/office-tools/backend/.env
+Restart=on-failure
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
 ```
 
 ```bash
-systemctl enable --now ot-payment
+systemctl enable --now office-tools-api
 ```
 
 ---
 
-## 3. Nginx Reverse Proxy (recommended)
-
-Add to your nginx site config:
+## Nginx Reverse Proxy
 
 ```nginx
-# PocketBase API
-location /pb-api/ {
-    proxy_pass http://127.0.0.1:8090/api/;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-}
-
-# Grin payment server
 location /pay-api/ {
     proxy_pass http://127.0.0.1:3001/api/;
     proxy_set_header Host $host;
@@ -141,38 +85,30 @@ location /pay-api/ {
 
 Then update `js/config.js`:
 ```js
-PB_URL: 'https://yourdomain.com/pb-api',
-GRIN_SERVER_URL: 'https://yourdomain.com/pay-api',
+API_SERVER_URL: 'https://yourdomain.com/pay-api',
 ```
 
 ---
 
-## 4. Update Frontend Config
+## API Routes
 
-Edit `js/config.js` before deploying:
-
-```js
-PB_URL: 'https://yourdomain.com',           // or /pb-api if using nginx proxy
-GRIN_SERVER_URL: 'https://pay.yourdomain.com',  // or /pay-api
-```
-
----
-
-## Collections Reference
-
-| Collection | Purpose |
-|------------|---------|
-| `users` | Built-in PocketBase auth |
-| `subscriptions` | Active/expired Pro subscriptions |
-| `grin_payments` | Grin invoice + transaction records |
-| `usage_logs` | Server-side tool usage tracking |
-
-## Admin Dashboard
-
-Available at `/admin/index.html` — log in with your PocketBase admin credentials.
-
-Features:
-- User list + search
-- Subscription management + manual grant
-- Grin payment queue (confirm/expire manually)
-- Tool usage analytics
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/tools/s` | Create short URL |
+| GET | `/api/tools/s/:code` | Resolve short URL |
+| POST | `/api/tools/p` | Create paste |
+| GET | `/api/tools/p/:code` | Get paste |
+| POST | `/api/tools/f` | Upload file |
+| GET | `/api/tools/f/:code` | Get file metadata |
+| GET | `/api/tools/f/:code/download` | Download file |
+| GET | `/api/resolve` | DNS resolve (A + AAAA) |
+| GET | `/api/portcheck` | TCP port probe |
+| GET | `/api/net/ping` | SSE ping stream |
+| GET | `/api/net/traceroute` | SSE traceroute stream |
+| GET | `/api/net/ptr` | Reverse DNS |
+| GET | `/api/domain/whois` | WHOIS lookup |
+| GET | `/api/domain/rdap` | RDAP lookup |
+| GET | `/api/domain/dns` | DNS-over-HTTPS proxy |
+| GET | `/api/domain/availability` | Domain availability check |
+| POST | `/api/domain/ai-suggest` | AI domain name suggestions |
+| GET | `/api/health` | Health check |

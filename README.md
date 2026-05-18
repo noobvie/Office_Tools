@@ -140,12 +140,12 @@ Office_Tools/
 ├── sitemap.xml                 ← Auto-patched with real domain on deploy
 ├── css/style.css               ← Shared styles, dark/light/matrix themes
 ├── js/
-│   ├── config.js               ← Grin payment server URL, Grin wallet address
+│   ├── config.js               ← API server URL, Grin wallet address (for donate page)
 │   └── common.js               ← Shared nav, theme toggle, copy utilities
 ├── pages/
 │   └── donate.html             ← Grin showcase page — what Grin is, send address, drop.grin.money link
 ├── backend/
-│   ├── grin-payment-server.js  ← Node.js/Express — Grin donations + SQLite tools API
+│   ├── office-tools-server.js  ← Node.js/Express — SQLite tools API + network tools
 │   ├── package.json
 │   └── .env.example
 ├── yt-server/                  ← Node.js yt-dlp proxy (YouTube download backend)
@@ -157,12 +157,11 @@ Office_Tools/
 ## Tech Stack
 
 - **Frontend:** HTML / CSS / Vanilla JS — no framework, no build step
-- **Backend (optional):** Node.js + Express — Grin donations, URL shortener, Pastebin, File Share (SQLite)
+- **Backend (optional):** Node.js + Express — URL shortener, Pastebin, File Share (SQLite), network tools
 - **YouTube backend:** Node.js + yt-dlp + ffmpeg (systemd service, port 9000)
-- **Crypto donations:** Grin wallet — two tmux sessions: `donate_grin_tor` (Foreign API :3415, `grin-wallet listen`) + `donate_grin_slatepack` (Owner API :3420, `grin-wallet owner_api`) + watchdog cron
 - **AI (browser-only):** `@xenova/transformers` Whisper-tiny (Speech→Text) · `@imgly/background-removal` (Photo Editor)
 
-The frontend works fully without the backend. The backend is only needed for URL Shortener, Pastebin, File Share, and Grin donations.
+The frontend works fully without the backend. The backend is only needed for URL Shortener, Pastebin, File Share, Port Checker, Domain Checker, and Network Toolkit.
 
 ---
 
@@ -172,11 +171,12 @@ Supports **Debian · Ubuntu · AlmaLinux · Rocky Linux · CentOS Stream**.
 
 | Option | What it does |
 |--------|-------------|
-| 1) Install / Update | UTC timezone · OS packages · nginx · certbot · Node.js 20 · yt-dlp (pip3) · ffmpeg · pull latest code · weekly auto-update cron |
+| 1) Install / Update | UTC timezone · OS packages · nginx · certbot · Node.js 20 · ffmpeg · cobalt · pull latest code |
 | 2) Add Domain | Domain + Let's Encrypt SSL · nginx HTTPS config · sitemap.xml patching · optional Node.js backend |
 | 3) Remove / Switch | Remove nginx vhost + SSL cert, or switch to a new domain |
-| 4) Update from Repo | Pull any branch, sync frontend + backend, update yt-dlp binary, restart services |
-| 5) Admin Tasks | Service status · restart all · list URLs/ports · backup SQLite DB · clean logs · purge temp · update yt-dlp |
+| 5) Update from Repo | Pull any branch, sync frontend + backend, refresh nginx config, restart services |
+| 6) Admin Tasks | Service status · restart all · list URLs/ports · backup SQLite DB · clean logs · purge temp · update cobalt |
+| DEL) Delete | Permanently remove all Office Tools services, configs, and files from the server |
 
 **Security:** HSTS · TLS 1.2/1.3 · security headers · `microphone=(self)` for Speech & Voice · gzip · `client_max_body_size 1100M`
 
@@ -187,38 +187,14 @@ Supports **Debian · Ubuntu · AlmaLinux · Rocky Linux · CentOS Stream**.
 /opt/office-tools/backend/    ← Node.js server + .env
 /opt/office-tools/data/       ← SQLite DB (tools.db) + file uploads
 /opt/office-tools/yt-server/  ← yt-dlp Node.js server
-/opt/office-tools/cmdgrinwallet/ ← grin-wallet binary + config + wallet_data/
-/opt/office-tools/data/.temp  ← wallet passphrase (plain text, chmod 640, root:grin)
 /var/log/office-tools/        ← deploy logs
 ```
 
 ---
 
-## Grin Wallet Setup
+## Donate
 
-Two tmux sessions are managed by `deploy_grinwallet.sh` — no systemd required:
-
-| Session | Command | Port | Purpose |
-|---------|---------|------|---------|
-| `donate_grin_tor` | `grin-wallet listen` | 3415 | Foreign API — TOR direct-send + `receive_tx` |
-| `donate_grin_slatepack` | `grin-wallet owner_api` | 3420 | Owner API — invoice, finalize, slatepack encode/decode |
-
-```bash
-sudo bash deploy_grinwallet.sh
-```
-
-| Option | What it does |
-|--------|-------------|
-| 1) Integrate Grin Wallet | Download binary · init or recover wallet · configure node · save passphrase |
-| 2) Manage Listeners | Start/Stop/Restart each tmux session independently · view wallet log |
-| 3) Listener Settings | Re-save passphrase · auto-start · watchdog · nginx rate limit |
-| 3 → 2) Auto-start on reboot | Adds `@reboot` cron entries for both sessions |
-| 3 → 4) Watchdog cron | Checks port 3415 every 30 min · restarts TOR listener if down · logs to `grin-watchdog.log` |
-| 3 → 7) nginx rate limit | Enables 20 req/min per IP on `/pay-api/api/donate/*` (burst 3) |
-
-**`pages/donate.html`** is a Grin showcase page — explains what Grin is, displays the TOR send address for direct donations, and links to [drop.grin.money](https://drop.grin.money) for free coins. The wallet backend (`/api/wallet/status`) is still used by other parts of the backend but is no longer shown on the donate page.
-
-The watchdog (option 11) handles automatic recovery if the TOR listener goes down.
+**`pages/donate.html`** is a Grin showcase page — explains what Grin is, displays the TOR send address for direct donations, and links to [drop.grin.money](https://drop.grin.money) for free coins. It is a static page and requires no backend.
 
 ---
 

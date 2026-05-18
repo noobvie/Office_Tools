@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
@@ -139,6 +139,11 @@
 
       <div id="uploadError" class="alert alert-danger mt-2 hidden"></div>
 
+      <div class="captcha-row">
+        <span id="captchaLabel"></span>
+        <input type="number" id="captchaInput" min="0" max="99" placeholder="Answer" autocomplete="off">
+      </div>
+
       <div class="btn-group mt-3">
         <button class="btn btn-primary" id="uploadBtn" disabled>Upload &amp; Share</button>
       </div>
@@ -169,7 +174,7 @@
         <li>File types: <strong>.zip · .tar · .tar.gz · .tar.bz2 · .rar</strong></li>
         <li>Max size: <strong>100 MB</strong></li>
         <li>Max retention: <strong>50 days</strong> — files are deleted automatically</li>
-        <li>Stored on your PocketBase instance — no third-party services</li>
+        <li>Stored on our self-hosted server — no third-party cloud storage</li>
       </ul>
     </div>
   </div>
@@ -233,7 +238,16 @@
 <script src="../../js/config.js"></script>
 <script src="../../js/common.js"></script>
 <script>
-const API = window.OT_CONFIG?.GRIN_SERVER_URL || 'http://localhost:3001';
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+
+/* ── CAPTCHA ─────────────────────────────────────────────── */
+let _ca = 0, _cb = 0;
+function refreshCaptcha() {
+  _ca = Math.floor(Math.random() * 9) + 1;
+  _cb = Math.floor(Math.random() * 9) + 1;
+  document.getElementById('captchaLabel').textContent = `What is ${_ca} + ${_cb}?`;
+  document.getElementById('captchaInput').value = '';
+}
 
 const ALLOWED_EXT   = ['.zip', '.tar', '.gz', '.bz2', '.rar'];
 const ALLOWED_MIME  = ['application/zip','application/x-zip-compressed',
@@ -348,11 +362,21 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
   btn.disabled = true;
   document.getElementById('progressBox').classList.remove('hidden');
 
+  const captchaAns = parseInt(document.getElementById('captchaInput').value, 10);
+  if (isNaN(captchaAns)) {
+    btn.disabled = false;
+    document.getElementById('progressBox').classList.add('hidden');
+    return showUploadError('Please answer the math question first.');
+  }
+
   const fd = new FormData();
   fd.append('code',          code);
   fd.append('original_name', selectedFile.name);
   fd.append('file_size',     selectedFile.size);
   fd.append('expires',       expires);
+  fd.append('ca',            _ca);
+  fd.append('cb',            _cb);
+  fd.append('ans',           captchaAns);
   fd.append('file',          selectedFile, selectedFile.name);
 
   try {
@@ -393,6 +417,7 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
 
   } catch (err) {
     showUploadError(err.message || 'Upload failed. Please try again.');
+    refreshCaptcha();
   } finally {
     btn.disabled = false;
     document.getElementById('progressBox').classList.add('hidden');
@@ -441,6 +466,7 @@ async function loadShare(id) {
 /* ── Route ───────────────────────────────────────────────── */
 const shareId = new URLSearchParams(location.search).get('id');
 if (shareId) loadShare(shareId);
+else refreshCaptcha();
 
 // Add pulse animation for download loading
 const style = document.createElement('style');
