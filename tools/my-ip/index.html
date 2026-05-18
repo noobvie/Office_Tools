@@ -177,6 +177,7 @@
 </div>
 </main>
 
+<script src="../../js/config.js"></script>
 <script src="../../js/common.js"></script>
 <script>
 let myIp   = null;
@@ -232,11 +233,12 @@ async function detectIpv6() {
   return null;
 }
 
-// ── Fetch geo details from ip-api.com ────────────────────────────
+// ── Fetch geo details via backend proxy (ip-api.com HTTP-only free tier) ──
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+
 async function fetchGeo(ip) {
-  const fields = 'status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query';
   try {
-    const data = await fetchJson(`https://ip-api.com/json/${encodeURIComponent(ip)}?fields=${fields}`);
+    const data = await fetchJson(`${API}/api/ip/geo?ip=${encodeURIComponent(ip)}`);
     if (data.status === 'success') return data;
   } catch { }
   return null;
@@ -354,7 +356,7 @@ document.getElementById('verifyBtn').addEventListener('click', async () => {
     { name: 'ipinfo.io',   url: 'https://ipinfo.io/json',          parse: d => d.ip },
     { name: 'my-ip.io',    url: 'https://api.my-ip.io/ip.json',    parse: d => d.ip },
     { name: 'jsonip.com',  url: 'https://jsonip.com',              parse: d => d.ip },
-    { name: 'ip-api.com',  url: 'https://ip-api.com/json',         parse: d => d.query },
+    { name: 'ip-api.com',  url: `${API}/api/ip/geo?ip=${encodeURIComponent(myIp || '')}`, parse: d => d.query },
   ];
   grid.innerHTML = sources.map(s =>
     `<div class="detail-card" id="vsrc-${s.name}"><div class="lbl">${s.name}</div><div class="val"><span class="loading-pulse"></span></div></div>`

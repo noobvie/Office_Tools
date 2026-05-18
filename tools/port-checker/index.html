@@ -621,7 +621,7 @@ async function runChecks() {
         <td class="addr-col"><code>${escHtml(addr.ip)}</code></td>
         <td class="port-col">${port}</td>
         <td class="svc-col">${svcName}</td>
-        <td class="status-pending" id="st-${rowId}">⏳ checking…</td>
+        <td class="status-pending" id="${rowId}">⏳ checking…</td>
       `;
       tbody.appendChild(tr);
     }
@@ -636,6 +636,7 @@ async function runChecks() {
 
   // Check each address × port combination
   let testIndex = 0;
+  try {
   for (let ai = 0; ai < addresses.length; ai++) {
     const addr = addresses[ai];
     for (let pi = 0; pi < ports.length; pi++) {
@@ -648,18 +649,22 @@ async function runChecks() {
         const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
         if (!resp.ok) throw new Error('server error');
         const data = await resp.json();
-        if (data.open) {
-          stEl.className   = 'status-open';
-          stEl.textContent = '✅ Open';
-          openCount++;
-        } else {
-          stEl.className   = 'status-closed';
-          stEl.textContent = '❌ Closed';
-          closedCount++;
+        if (stEl) {
+          if (data.open) {
+            stEl.className   = 'status-open';
+            stEl.textContent = '✅ Open';
+            openCount++;
+          } else {
+            stEl.className   = 'status-closed';
+            stEl.textContent = '❌ Closed';
+            closedCount++;
+          }
         }
       } catch {
-        stEl.className   = 'status-closed';
-        stEl.textContent = '⏱ Timeout / Error';
+        if (stEl) {
+          stEl.className   = 'status-closed';
+          stEl.textContent = '⏱ Timeout / Error';
+        }
         closedCount++;
       }
 
@@ -667,6 +672,14 @@ async function runChecks() {
       progressFill.style.width  = Math.round((testIndex / totalTests) * 100) + '%';
       progressLabel.textContent = `${testIndex} / ${totalTests}`;
     }
+  }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 Check Selected Ports';
+    setTimeout(() => {
+      progressWrap.classList.remove('visible');
+      progressFill.style.width = '0%';
+    }, 1500);
   }
 
   // Summary with resolved addresses
@@ -683,12 +696,6 @@ async function runChecks() {
     <span class="sum-pending">${addrChips}</span>
   `;
 
-  btn.disabled = false;
-  btn.textContent = '🔍 Check Selected Ports';
-  setTimeout(() => {
-    progressWrap.classList.remove('visible');
-    progressFill.style.width = '0%';
-  }, 1500);
 }
 
 document.getElementById('hostInput').addEventListener('keydown', e => {

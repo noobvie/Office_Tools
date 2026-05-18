@@ -95,6 +95,92 @@ function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+/* ---------- Header Search (tool pages) ---------- */
+function initHeaderSearch() {
+  const toolNameEl = document.querySelector('.header-tool-name');
+  if (!toolNameEl) return;
+
+  const root = _otRootPath();
+  const currentPath = window.location.pathname.match(/\/tools\/([^\/]+)/)?.[1] || '';
+  const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'header-search-wrap';
+  wrap.innerHTML = `<input type="text" id="headerSearch" placeholder="Search tools…" autocomplete="off" aria-label="Search tools"><span class="hs-kbd" id="hsKbd"><kbd>Ctrl</kbd><kbd>K</kbd></span><span class="header-search-icon">${SVG}</span><div class="header-search-drop" id="headerSearchDrop" hidden></div>`;
+  toolNameEl.replaceWith(wrap);
+
+  const input = document.getElementById('headerSearch');
+  const drop  = document.getElementById('headerSearchDrop');
+  const kbd   = document.getElementById('hsKbd');
+  const icon  = wrap.querySelector('.header-search-icon');
+  let activeIdx = -1;
+
+  function showKbd() {
+    if (kbd)  kbd.hidden  = false;
+    if (icon) icon.hidden = true;
+    input.style.paddingRight = '5rem';
+  }
+  function hideKbd() {
+    if (kbd)  kbd.hidden  = true;
+    if (icon) icon.hidden = false;
+    input.style.paddingRight = '';
+  }
+  showKbd();
+
+  function dropItems() { return [...drop.querySelectorAll('.hsd-item')]; }
+
+  function highlight(idx) {
+    dropItems().forEach((el, i) => el.classList.toggle('hsd-active', i === idx));
+    activeIdx = idx;
+  }
+
+  function openDrop(q) {
+    const query = (q || '').toLowerCase().trim();
+    const pool = query
+      ? OT_TOOLS.filter(t => t.name.toLowerCase().includes(query) || t.desc.toLowerCase().includes(query) || t.cat.toLowerCase().includes(query))
+      : OT_TOOLS.filter(t => t.path !== currentPath).slice(0, 8);
+
+    if (!pool.length) {
+      drop.innerHTML = '<div class="hsd-empty">No tools found</div>';
+    } else {
+      drop.innerHTML = pool.slice(0, 8).map(t =>
+        `<a class="hsd-item${t.path === currentPath ? ' hsd-current' : ''}" href="${root}tools/${t.path}/">` +
+        `<span class="hsd-icon">${t.icon}</span>` +
+        `<span class="hsd-name">${escHtml(t.name)}</span>` +
+        `<span class="hsd-cat">${escHtml(t.cat.replace(/^\S+\s/, ''))}</span></a>`
+      ).join('');
+    }
+    drop.hidden = false;
+    activeIdx = -1;
+  }
+
+  function closeDrop() { drop.hidden = true; activeIdx = -1; }
+
+  input.addEventListener('focus', () => { hideKbd(); openDrop(input.value); });
+  input.addEventListener('blur',  () => { if (!input.value) showKbd(); });
+  input.addEventListener('input', () => { openDrop(input.value); highlight(-1); });
+  input.addEventListener('keydown', e => {
+    const els = dropItems();
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const next = Math.min(activeIdx + 1, els.length - 1);
+      highlight(next);
+      els[next]?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prev = Math.max(activeIdx - 1, 0);
+      highlight(prev);
+      els[prev]?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter' && activeIdx >= 0) {
+      els[activeIdx]?.click();
+    } else if (e.key === 'Escape') {
+      closeDrop();
+      input.blur();
+    }
+  });
+  document.addEventListener('click', e => { if (!wrap.contains(e.target)) closeDrop(); });
+}
+
 /* ---------- Tool Sidebar ---------- */
 const OT_TOOLS = [
   // ⏱️ Productivity & Time
@@ -314,13 +400,6 @@ function initToolSidebar() {
     }
   });
 
-  // Ctrl+K focuses the sidebar search
-  document.addEventListener('keydown', e => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-      e.preventDefault();
-      searchInput.focus();
-    }
-  });
 }
 
 /* ---------- Root path helper (works at any directory depth) ---------- */
@@ -333,6 +412,55 @@ function _otRootPath() {
   // Fallback: count non-html path segments
   const segs = window.location.pathname.split('/').filter(s => s && !s.endsWith('.html'));
   return segs.length === 0 ? './' : '../'.repeat(segs.length);
+}
+
+/* ---------- Popular Pill ---------- */
+function initPopularPill() {
+  const actions  = document.querySelector('.header-actions');
+  if (!actions) return;
+  const toolPath = window.location.pathname.match(/\/tools\/([^/]+)/)?.[1];
+  if (!toolPath) return;
+
+  const API  = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+  const root = _otRootPath();
+
+  // Track this page visit
+  const body = JSON.stringify({ tool: toolPath });
+  try {
+    navigator.sendBeacon(API + '/api/tools/view', new Blob([body], { type: 'application/json' }));
+  } catch {
+    fetch(API + '/api/tools/view', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+  }
+
+  const pill = document.createElement('a');
+  pill.className = 'popular-pill';
+  pill.href = root + 'index.html';
+
+  function insertPill() {
+    const support = actions.querySelector('.support-pill');
+    const toggle  = actions.querySelector('.theme-toggle');
+    actions.insertBefore(pill, support || toggle || null);
+  }
+
+  fetch(API + '/api/tools/popular?limit=20', { signal: AbortSignal.timeout(4000) })
+    .then(r => r.json())
+    .then(({ tools }) => {
+      const idx   = (tools || []).findIndex(t => t.tool_id === toolPath);
+      const entry = idx >= 0 ? tools[idx] : null;
+      const count = entry?.count || 0;
+      const rank  = idx >= 0 ? idx + 1 : null;
+      const label = count >= 1000 ? (count / 1000).toFixed(1) + 'k' : String(count);
+      pill.innerHTML = rank ? `🔥 #${rank}` : `🔥 ${count > 0 ? label : 'New'}`;
+      pill.title = rank
+        ? `#${rank} most used · ${count.toLocaleString()} visits`
+        : count > 0 ? `${count.toLocaleString()} visits` : 'Be among the first to use this tool!';
+      insertPill();
+    })
+    .catch(() => {
+      pill.innerHTML = '🔥 Popular';
+      pill.title = 'See most popular tools';
+      insertPill();
+    });
 }
 
 /* ---------- Support Pill + Feedback Modal ---------- */
@@ -454,9 +582,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initThemeToggle();
   initTabs();
+  initHeaderSearch();
   initToolSidebar();
   autoRelatedTools();
+  initPopularPill();
   initSupportPill();
+
+  // Ctrl+K / Cmd+K → focus the header search wherever it exists
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      const hs = document.getElementById('headerSearch');
+      if (hs) { e.preventDefault(); hs.focus(); hs.select(); }
+    }
+  });
   // Auth nav rendered by auth.js when present (loaded after common.js on auth-enabled pages)
 
   // Floating donate heart button — shown on all pages except donate.html itself

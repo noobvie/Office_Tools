@@ -215,6 +215,7 @@
 </div>
 </main>
 
+<script src="../../js/config.js"></script>
 <script src="../../js/common.js"></script>
 <script>
 // ── Flag emoji from ISO country code ──────────────────────────────
@@ -270,8 +271,8 @@ function renderHistory() {
 function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
 
 // ── Lookup ────────────────────────────────────────────────────────
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
 const resultArea = document.getElementById('resultArea');
-const _GEO_FIELDS = 'status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query';
 
 async function lookup(query) {
   if (!query) return;
@@ -286,7 +287,7 @@ async function lookup(query) {
 
   let data;
   try {
-    const res = await fetch(`https://ip-api.com/json/${encodeURIComponent(query)}?fields=${_GEO_FIELDS}`);
+    const res = await fetch(`${API}/api/ip/geo?ip=${encodeURIComponent(query)}`);
     const raw = await res.json();
     if (raw.status !== 'success') {
       const msgs = {
@@ -399,7 +400,7 @@ async function lookup(query) {
 
       <p class="text-muted mt-2" style="font-size:.76rem">
         &#9888;&#65039; IP geolocation is approximate — accuracy varies by ISP. Coordinates typically indicate the ISP's regional hub, not your exact location.
-        Data provided by <a href="https://ip-api.com" target="_blank" rel="noopener" style="color:var(--primary)">ip-api.com</a>.
+        Geolocation data provided by <a href="https://ip-api.com" target="_blank" rel="noopener" style="color:var(--primary)">ip-api.com</a>.
       </p>
     </div>`;
 

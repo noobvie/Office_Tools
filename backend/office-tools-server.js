@@ -736,12 +736,18 @@ app.get('/api/net/ptr', netRLMiddleware, (req, res) => {
 
 // ── Feedback ───────────────────────────────────────────────────
 function _sendmailNotify(to, subject, body) {
-  // Uses the system MTA (postfix/exim) — no credentials stored in app
   const { spawn } = require('child_process');
   const proc = spawn('sendmail', ['-t'], { timeout: 10_000 });
-  proc.stdin.write(`To: ${to}\nSubject: ${subject}\n\n${body}`);
+  const mail = `To: ${to}\nFrom: noreply@grin.money\nSubject: ${subject}\n\n${body}`;
+  proc.stdin.write(mail);
   proc.stdin.end();
-  proc.on('error', err => console.error('sendmail error:', err.message));
+  let stderr = '';
+  proc.stderr.on('data', d => { stderr += d; });
+  proc.on('error',  err  => console.error(`[sendmail] spawn error → ${err.message}`));
+  proc.on('close',  code => {
+    if (code !== 0) console.error(`[sendmail] exited ${code} stderr: ${stderr.trim()}`);
+    else            console.log(`[sendmail] delivered to ${to}`);
+  });
 }
 
 const _fbRateMap = new Map();
@@ -795,7 +801,49 @@ app.post('/api/feedback', (req, res) => {
   res.json({ ok: true });
 });
 
+// ── IP Geolocation proxy ──────────────────────────────────────
+// ip-api.com free tier only allows HTTP, not HTTPS — proxy it server-side
+const _geoRateMap = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _geoRateMap) { if (now > v.resetAt) _geoRateMap.delete(k); }
+}, 300_000);
+function _geoAllow(ip) {
+  const now = Date.now();
+  let s = _geoRateMap.get(ip);
+  if (!s || now > s.resetAt) { s = { count: 0, resetAt: now + 60_000 }; _geoRateMap.set(ip, s); }
+  s.count++;
+  return s.count <= 20;
+}
+
+const _GEO_FIELDS = 'status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query';
+
+app.get('/api/ip/geo', async (req, res) => {
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || '';
+  if (!_geoAllow(clientIp)) return res.status(429).json({ error: 'Rate limit exceeded' });
+
+  const target = (req.query.ip || '').trim();
+  if (!target) return res.status(400).json({ error: 'Missing ip parameter' });
+
+  // strip brackets from IPv6
+  const clean = target.replace(/^\[|\]$/g, '');
+  if (!/^[a-zA-Z0-9.\-:_]+$/.test(clean)) return res.status(400).json({ error: 'Invalid IP or host' });
+
+  try {
+    const r = await fetch(
+      `http://ip-api.com/json/${encodeURIComponent(clean)}?fields=${_GEO_FIELDS}`,
+      { signal: AbortSignal.timeout(8000) }
+    );
+    const data = await r.json();
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({ error: 'Geo lookup failed: ' + err.message });
+  }
+});
+
 // ── Start ─────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`Office Tools server running on port ${PORT}`);
+  if (!process.env.NOTIFY_EMAIL) console.warn('[config] NOTIFY_EMAIL not set — feedback emails will not be sent');
+  else                           console.log(`[config] Feedback emails → ${process.env.NOTIFY_EMAIL}`);
 });

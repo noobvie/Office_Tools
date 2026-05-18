@@ -164,12 +164,25 @@ install_base_packages() {
         pkg_install nginx certbot python3-certbot-nginx \
             git curl unzip rsync ca-certificates gnupg python3-pip \
             iputils-ping traceroute
+        # postfix — provides sendmail for feedback email notifications
+        if ! command -v sendmail &>/dev/null; then
+            echo "postfix postfix/mailname string $(hostname -f)"    | debconf-set-selections
+            echo "postfix postfix/main_mailer_type string 'Internet Site'" | debconf-set-selections
+            DEBIAN_FRONTEND=noninteractive pkg_install postfix
+            systemctl enable postfix
+            systemctl start  postfix
+            success "postfix installed (sendmail provider)"
+        else
+            info "sendmail already available — skipping postfix install"
+        fi
     else
         # EPEL provides certbot on RHEL-family
         dnf install -y epel-release
         dnf install -y nginx certbot python3-certbot-nginx \
             git curl unzip rsync ca-certificates python3-pip \
-            iputils traceroute
+            iputils traceroute postfix
+        systemctl enable postfix
+        systemctl start  postfix
         # Allow nginx to proxy to localhost (SELinux)
         setsebool -P httpd_can_network_connect 1 2>/dev/null || \
             warn "SELinux: could not set httpd_can_network_connect — set manually if proxying fails"
@@ -421,10 +434,12 @@ server {
 
     # SEO: strip explicit /index.html so canonical URL is always the directory
     location ~ ^(.*/)index\.html$ { return 301 \$1; }
-    # SEO: enforce trailing slash on tool and page directories
-    location ~ ^(/tools/[^/]+|/pages/[^/]+)$ { return 301 \$uri/; }
+    # SEO: strip trailing slash from .html file URLs (e.g. /pages/donate.html/)
+    location ~ ^(.*\.html)/$ { return 301 \$1; }
+    # SEO: enforce trailing slash on tool and page directory URLs (no file extension)
+    location ~ ^(/tools/[^/.]+|/pages/[^/.]+)$ { return 301 \$uri/; }
 
-    location / { try_files \$uri \$uri/ \$uri.html =404; }
+    location / { try_files \$uri/index.html \$uri \$uri.html =404; }
 
     location ^~ /pay-api/ {
         proxy_pass            http://127.0.0.1:3001/;
@@ -506,10 +521,12 @@ server {
 
     # SEO: strip explicit /index.html so canonical URL is always the directory
     location ~ ^(.*/)index\.html$ { return 301 \$1; }
-    # SEO: enforce trailing slash on tool and page directories
-    location ~ ^(/tools/[^/]+|/pages/[^/]+)$ { return 301 \$uri/; }
+    # SEO: strip trailing slash from .html file URLs (e.g. /pages/donate.html/)
+    location ~ ^(.*\.html)/$ { return 301 \$1; }
+    # SEO: enforce trailing slash on tool and page directory URLs (no file extension)
+    location ~ ^(/tools/[^/.]+|/pages/[^/.]+)$ { return 301 \$uri/; }
 
-    location / { try_files \$uri \$uri/ \$uri.html =404; }
+    location / { try_files \$uri/index.html \$uri \$uri.html =404; }
 
     location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg|woff2|woff)$ {
         expires 7d;
@@ -667,7 +684,7 @@ show_banner() {
     clear
     echo ""
     echo -e "${BOLD}${CYAN}╔═══════════════════════════════════════════════════════╗${RESET}"
-    echo -e "${BOLD}${CYAN}║       Office Tools — Deploy Manager  v2026.5.18      ║${RESET}"
+    echo -e "${BOLD}${CYAN}║       Office Tools — Deploy Manager  v2026.5.19       ║${RESET}"
     echo -e "${BOLD}${CYAN}║       github.com/noobvie/Office_Tools                 ║${RESET}"
     echo -e "${BOLD}${CYAN}╚═══════════════════════════════════════════════════════╝${RESET}"
     echo ""
