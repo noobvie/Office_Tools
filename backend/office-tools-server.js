@@ -1,15 +1,18 @@
 /**
- * Office Tools — Grin Server
- *
- * Donation endpoints (use wallet HTTP APIs — no subprocess, no file-lock conflict):
- *   POST /api/donate/receive   — decode slatepack → Foreign API receive_tx → return response slatepack
- *   POST /api/donate/invoice   — Owner API issue_invoice_tx → return invoice slatepack
- *   POST /api/donate/finalize  — decode slatepack → Owner API finalize_tx → broadcast
+ * Office Tools — API Server
  *
  * Tools API:
- *   POST/GET /api/tools/s   — URL shortener
- *   POST/GET /api/tools/p   — Pastebin
- *   POST/GET /api/tools/f   — File share
+ *   POST/GET /api/tools/s        — URL shortener
+ *   POST/GET /api/tools/p        — Pastebin
+ *   POST/GET /api/tools/f        — File share
+ *   POST     /api/tools/view     — Record tool click (popular tracking)
+ *   GET      /api/tools/popular  — Top tools by click count
+ *
+ * Network API:
+ *   GET /api/resolve, /api/portcheck
+ *   GET /api/net/ping, /api/net/traceroute, /api/net/ptr
+ *   GET /api/domain/whois, /api/domain/rdap, /api/domain/dns, /api/domain/availability
+ *   POST /api/domain/ai-suggest
  *
  * Requires: .env (copy from .env.example)
  */
@@ -20,7 +23,6 @@ const express   = require('express');
 const cors      = require('cors');
 const fs        = require('fs');
 const path      = require('path');
-const crypto    = require('crypto');
 const Database  = require('better-sqlite3');
 const multer    = require('multer');
 
@@ -29,21 +31,6 @@ const PORT = process.env.PORT || 3001;
 
 // ── Config ────────────────────────────────────────────────────
 const CORS_ORIGINS = (process.env.CORS_ORIGINS || 'http://localhost:8080').split(',').map(s => s.trim());
-
-// ── Grin API config ───────────────────────────────────────────
-const FOREIGN_API_URL         = process.env.GRIN_FOREIGN_API            || 'http://127.0.0.1:3415/v2/foreign';
-const OWNER_API_URL           = process.env.GRIN_OWNER_API              || 'http://127.0.0.1:3420/v3/owner';
-const FOREIGN_SECRET_FILE     = process.env.GRIN_API_SECRET_FILE        || '/opt/office-tools/cmdgrinwallet/wallet_data/.api_secret';
-const OWNER_SECRET_FILE       = process.env.GRIN_OWNER_API_SECRET_FILE  || '/opt/office-tools/cmdgrinwallet/.owner_api_secret';
-const PASS_FILE               = process.env.GRIN_WALLET_PASS_FILE       || '/opt/office-tools/data/.temp';
-
-// Read wallet passphrase from disk on each call so a re-saved passphrase
-// takes effect without restarting the server.
-function readWalletPass() {
-  try {
-    return fs.readFileSync(PASS_FILE, 'utf8').replace(/[\r\n]/g, '') || '';
-  } catch { return ''; }
-}
 
 // ── SQLite tools DB ───────────────────────────────────────────
 const TOOLS_DB_PATH = process.env.TOOLS_DB    || '/opt/office-tools/data/tools.db';
@@ -78,6 +65,18 @@ db.exec(`
     expires       TEXT DEFAULT '',
     created       TEXT DEFAULT (datetime('now'))
   );
+  CREATE TABLE IF NOT EXISTS tool_views (
+    tool_id TEXT PRIMARY KEY,
+    count   INTEGER DEFAULT 0,
+    updated TEXT DEFAULT (datetime('now'))
+  );
+  CREATE TABLE IF NOT EXISTS feedback (
+    id      TEXT PRIMARY KEY,
+    page    TEXT DEFAULT '',
+    message TEXT NOT NULL,
+    ip      TEXT DEFAULT '',
+    created TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 function genId() {
@@ -89,240 +88,43 @@ const upload = multer({
     destination: UPLOADS_DIR,
     filename: (req, file, cb) => cb(null, genId()),
   }),
-  limits: { fileSize: 1024 * 1024 * 1024 }, // 1 GB
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB
 });
 
 // ── Middleware ────────────────────────────────────────────────
 app.use(cors({ origin: CORS_ORIGINS, methods: ['GET','POST','DELETE'], allowedHeaders: ['Content-Type'] }));
 app.use(express.json());
 
-// ── Grin API helpers ──────────────────────────────────────────
-
-function foreignAuthHeader() {
-  try {
-    const secret = fs.readFileSync(FOREIGN_SECRET_FILE, 'utf8').trim();
-    if (secret) return { Authorization: 'Basic ' + Buffer.from('grin:' + secret).toString('base64') };
-  } catch {}
-  return {};
+// ── Shared: creation rate limit + CAPTCHA ────────────────────
+const _createRateMap = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _createRateMap) { if (now > v.resetAt) _createRateMap.delete(k); }
+}, 300_000);
+function _createAllow(ip) {
+  const now = Date.now();
+  let e = _createRateMap.get(ip);
+  if (!e || now > e.resetAt) e = { count: 0, resetAt: now + 3_600_000 };
+  e.count++;
+  _createRateMap.set(ip, e);
+  return e.count <= 10;
 }
-
-function ownerAuthHeader() {
-  try {
-    const secret = fs.readFileSync(OWNER_SECRET_FILE, 'utf8').trim();
-    if (secret) return { Authorization: 'Basic ' + Buffer.from('grin:' + secret).toString('base64') };
-  } catch {}
-  return {};
+function _checkCaptcha(body) {
+  const ca  = parseInt(body?.ca,  10);
+  const cb  = parseInt(body?.cb,  10);
+  const ans = parseInt(body?.ans, 10);
+  return !isNaN(ca) && !isNaN(cb) && !isNaN(ans) && ca + cb === ans;
 }
-
-/**
- * Call the Foreign API (port 3415) — plain JSON-RPC, no encryption.
- * Does NOT conflict with the wallet file lock.
- */
-async function foreignApiCall(method, params = []) {
-  const res = await fetch(FOREIGN_API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...foreignAuthHeader() },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
-    signal: AbortSignal.timeout(30000),
-  });
-  const json = await res.json();
-  if (json.error) throw new Error(`Foreign API ${method}: ${json.error.message || JSON.stringify(json.error)}`);
-  if (json.result && json.result.Err) throw new Error(`Foreign API ${method}: ${JSON.stringify(json.result.Err)}`);
-  return json.result && json.result.Ok !== undefined ? json.result.Ok : json.result;
+function createRLMiddleware(req, res, next) {
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
+  if (!_createAllow(ip)) return res.status(429).json({ error: 'Rate limit: 10 creates per hour. Try again later.' });
+  next();
 }
-
-/**
- * Open an Owner API v3 session — ECDH handshake + open_wallet.
- * Returns { headers, sharedKey, token } for use with encryptedOwnerCall().
- *
- * Encryption scheme (per https://grincc.github.io/grin-wallet-api-tutorial/):
- *   AES-256-GCM, 12-byte nonce, base64(ciphertext + 16-byte auth_tag)
- *   Nonce is also used as the JSON-RPC id.
- */
-async function ownerApiSession() {
-  const headers = { 'Content-Type': 'application/json', ...ownerAuthHeader() };
-
-  // Step 1 — ECDH handshake (unencrypted, plain JSON-RPC)
-  const ecdh = crypto.createECDH('secp256k1');
-  ecdh.generateKeys();
-  const ourPubKey = ecdh.getPublicKey('hex', 'compressed');
-
-  const initRes = await fetch(OWNER_API_URL, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'init_secure_api', params: { ecdh_pubkey: ourPubKey } }),
-    signal: AbortSignal.timeout(10000),
-  });
-  const initJson = await initRes.json();
-  if (initJson.error) throw new Error('init_secure_api: ' + (initJson.error.message || JSON.stringify(initJson.error)));
-
-  const serverPubKeyHex = initJson.result.Ok || initJson.result;
-  const sharedKey = ecdh.computeSecret(Buffer.from(serverPubKeyHex, 'hex')); // 32-byte secp256k1 x-coord
-
-  // Step 2 — open_wallet to get session token
-  const token = await encryptedOwnerCall(headers, sharedKey, 'open_wallet', { name: null, password: readWalletPass() });
-
-  return { headers, sharedKey, token };
-}
-
-/**
- * Send one encrypted call to the Owner API v3.
- * body_enc = base64(AES-256-GCM(inner_json) + auth_tag)
- * nonce is also used as the JSON-RPC id.
- */
-async function encryptedOwnerCall(headers, sharedKey, method, params) {
-  const nonce    = crypto.randomBytes(12);
-  const nonceHex = nonce.toString('hex');
-  const inner    = JSON.stringify({ jsonrpc: '2.0', id: nonceHex, method, params });
-
-  const cipher  = crypto.createCipheriv('aes-256-gcm', sharedKey, nonce);
-  const enc     = Buffer.concat([cipher.update(inner, 'utf8'), cipher.final()]);
-  const body_enc = Buffer.concat([enc, cipher.getAuthTag()]).toString('base64'); // base64, not hex
-
-  const encRes = await fetch(OWNER_API_URL, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ jsonrpc: '2.0', id: nonceHex, method: 'encrypted_request_v3', params: { nonce: nonceHex, body_enc } }),
-    signal: AbortSignal.timeout(30000),
-  });
-  const encJson = await encRes.json();
-  if (encJson.error) throw new Error(`encrypted_request_v3 (${method}): ${encJson.error.message || JSON.stringify(encJson.error)}`);
-
-  const { nonce: rNonce, body_enc: rBodyEnc } = encJson.result.Ok || encJson.result;
-  const rBuf     = Buffer.from(rBodyEnc, 'base64'); // base64, not hex
-  const decipher = crypto.createDecipheriv('aes-256-gcm', sharedKey, Buffer.from(rNonce, 'hex'));
-  decipher.setAuthTag(rBuf.slice(-16));
-  const plain  = Buffer.concat([decipher.update(rBuf.slice(0, -16)), decipher.final()]).toString('utf8');
-
-  const inner2 = JSON.parse(plain);
-  if (inner2.error) throw new Error(`Owner API ${method}: ${inner2.error.message || JSON.stringify(inner2.error)}`);
-  if (inner2.result && inner2.result.Err) throw new Error(`Owner API ${method}: ${JSON.stringify(inner2.result.Err)}`);
-  return inner2.result && inner2.result.Ok !== undefined ? inner2.result.Ok : inner2.result;
-}
-
-// ── Donation routes ───────────────────────────────────────────
-
-/**
- * POST /api/donate/receive
- * Method 2 — user ran `grin-wallet send -d <our_address> <amount>` and pastes the slatepack.
- * Flow:
- *   1. Owner API: slate_from_slatepack_message → decode to slate JSON
- *   2. Foreign API: receive_tx(slate) → response slate JSON (no lock conflict)
- *   3. Owner API: create_slatepack_message → encode response back to slatepack
- * User then runs: grin-wallet finalize -i response.slatepack
- */
-app.post('/api/donate/receive', async (req, res) => {
-  try {
-    const { slatepack } = req.body;
-    if (!slatepack?.trim()) return res.status(400).json({ error: 'slatepack required' });
-
-    // Open an Owner API session (ECDH + open_wallet token)
-    const session = await ownerApiSession();
-    const { headers, sharedKey, token } = session;
-
-    // 1. Decode incoming slatepack → slate JSON
-    const slate = await encryptedOwnerCall(headers, sharedKey, 'slate_from_slatepack_message', {
-      token,
-      secret_indices: [0],
-      message: slatepack.trim(),
-    });
-
-    // 2. Foreign API receive_tx — params: [slate, dest_acct_name, message]
-    const responseSlate = await foreignApiCall('receive_tx', [slate, null, null]);
-
-    // 3. Encode response slate → slatepack
-    const responseSlatepack = await encryptedOwnerCall(headers, sharedKey, 'create_slatepack_message', {
-      token,
-      sender_index: 0,
-      recipients: [],
-      slate: responseSlate,
-    });
-
-    res.json({ slatepack: responseSlatepack });
-  } catch (err) {
-    console.error('[donate/receive]', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-/**
- * POST /api/donate/invoice
- * Method 3 step 1 — we create an invoice for `amount` GRIN directed to `address`.
- * Body: { amount: number (GRIN), address: string (user's Grin address) }
- * Returns the invoice slatepack for the user to pay with `grin-wallet pay`.
- * Flow:
- *   1. Owner API: issue_invoice_tx → invoice slate JSON
- *   2. Owner API: create_slatepack_message → encode to slatepack
- */
-app.post('/api/donate/invoice', async (req, res) => {
-  try {
-    const { amount, address } = req.body;
-    const amt = parseFloat(amount);
-    if (!amt || isNaN(amt) || amt < 1) return res.status(400).json({ error: 'Amount must be at least 1 GRIN' });
-    if (!address?.trim()) return res.status(400).json({ error: 'Grin address required' });
-
-    const { headers, sharedKey, token } = await ownerApiSession();
-
-    // 1. Create invoice — amount in nanogrin (1 GRIN = 1_000_000_000)
-    const slate = await encryptedOwnerCall(headers, sharedKey, 'issue_invoice_tx', {
-      token,
-      args: {
-        amount: String(Math.round(amt * 1_000_000_000)),
-        dest_acct_name: null,
-        target_slate_version: null,
-        address: address.trim(),
-      },
-    });
-
-    // 2. Encode to slatepack
-    const slatepack = await encryptedOwnerCall(headers, sharedKey, 'create_slatepack_message', {
-      token,
-      sender_index: 0,
-      recipients: [],
-      slate,
-    });
-
-    res.json({ slatepack });
-  } catch (err) {
-    console.error('[donate/invoice]', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-/**
- * POST /api/donate/finalize
- * Method 3 step 2 — user ran `grin-wallet pay` on our invoice and pastes their response slatepack.
- * Flow:
- *   1. Owner API: slate_from_slatepack_message → decode to slate JSON
- *   2. Owner API: finalize_tx → finalize and broadcast
- */
-app.post('/api/donate/finalize', async (req, res) => {
-  try {
-    const { slatepack } = req.body;
-    if (!slatepack?.trim()) return res.status(400).json({ error: 'slatepack required' });
-
-    const { headers, sharedKey, token } = await ownerApiSession();
-
-    // 1. Decode slatepack → slate JSON
-    const slate = await encryptedOwnerCall(headers, sharedKey, 'slate_from_slatepack_message', {
-      token,
-      secret_indices: [0],
-      message: slatepack.trim(),
-    });
-
-    // 2. Finalize and broadcast
-    await encryptedOwnerCall(headers, sharedKey, 'finalize_tx', { token, slate });
-
-    res.json({ success: true });
-  } catch (err) {
-    console.error('[donate/finalize]', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
 
 // ── Tools API: URL Shortener ──────────────────────────────────
 
-app.post('/api/tools/s', (req, res) => {
+app.post('/api/tools/s', createRLMiddleware, (req, res) => {
+  if (!_checkCaptcha(req.body)) return res.status(400).json({ error: 'Incorrect answer to the math question.' });
   const { code, long_url, expires } = req.body;
   if (!code || !long_url) return res.status(400).json({ error: 'code and long_url required' });
   try { const u = new URL(long_url); if (!['http:', 'https:'].includes(u.protocol)) throw new Error(); }
@@ -345,7 +147,8 @@ app.get('/api/tools/s/:code', (req, res) => {
 
 // ── Tools API: Pastebin ───────────────────────────────────────
 
-app.post('/api/tools/p', (req, res) => {
+app.post('/api/tools/p', createRLMiddleware, (req, res) => {
+  if (!_checkCaptcha(req.body)) return res.status(400).json({ error: 'Incorrect answer to the math question.' });
   const { code, title, content, syntax, expires, burn_after_read } = req.body;
   if (!code || !content) return res.status(400).json({ error: 'code and content required' });
   const id = genId();
@@ -369,7 +172,11 @@ app.get('/api/tools/p/:code', (req, res) => {
 
 // ── Tools API: File Share ─────────────────────────────────────
 
-app.post('/api/tools/f', upload.single('file'), (req, res) => {
+app.post('/api/tools/f', createRLMiddleware, upload.single('file'), (req, res) => {
+  if (!_checkCaptcha(req.body)) {
+    if (req.file?.path) fs.unlink(req.file.path, () => {});
+    return res.status(400).json({ error: 'Incorrect answer to the math question.' });
+  }
   const { code, original_name, file_size, expires } = req.body;
   if (!code || !req.file) return res.status(400).json({ error: 'code and file required' });
   const id = genId();
@@ -400,65 +207,96 @@ app.get('/api/tools/f/:code/download', (req, res) => {
 
 // ── Multer error handler ──────────────────────────────────────
 app.use((err, _req, res, next) => {
-  if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'File too large (max 1 GB)' });
+  if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'File too large (max 100 MB)' });
   if (err.code === 'LIMIT_UNEXPECTED_FILE') return res.status(400).json({ error: 'Unexpected file field' });
   next(err);
 });
 
-// ── Wallet status — used by donate page badge ─────────────────
-// Checks whether grin-wallet listener is running by probing port 3415
-const GRIN_LISTEN_PORT = parseInt(process.env.GRIN_LISTEN_PORT || '3415', 10);
-const GRIN_LISTEN_HOST = process.env.GRIN_LISTEN_HOST || '127.0.0.1';
+// ── Popular tools — click-based view tracking ─────────────────
+const _viewRateMap = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _viewRateMap) { if (now > v.resetAt) _viewRateMap.delete(k); }
+}, 300_000);
 
-function checkWalletPort() {
-  return new Promise(resolve => {
-    const net = require('net');
-    const sock = new net.Socket();
-    sock.setTimeout(3000);
-    sock.once('connect', () => { sock.destroy(); resolve(true); });
-    sock.once('error',   () => { sock.destroy(); resolve(false); });
-    sock.once('timeout', () => { sock.destroy(); resolve(false); });
-    sock.connect(GRIN_LISTEN_PORT, GRIN_LISTEN_HOST);
-  });
+function _viewAllow(ip) {
+  const now = Date.now();
+  let e = _viewRateMap.get(ip);
+  if (!e || now > e.resetAt) e = { count: 0, resetAt: now + 60_000 };
+  e.count++;
+  _viewRateMap.set(ip, e);
+  return e.count <= 60;
 }
 
-app.get('/api/wallet/status', async (req, res) => {
-  const up = await checkWalletPort();
-  if (up) {
-    res.json({ status: 'ok' });
-  } else {
-    res.status(503).json({
-      status:  'error',
-      message: `grin-wallet not listening on ${GRIN_LISTEN_HOST}:${GRIN_LISTEN_PORT}`,
-    });
+app.post('/api/tools/view', (req, res) => {
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress;
+  if (!_viewAllow(ip)) return res.status(429).json({ error: 'Too many requests' });
+  const tool = String(req.body?.tool || '').trim();
+  if (!tool || !/^[a-z0-9-]+$/.test(tool) || tool.length > 60) {
+    return res.status(400).json({ error: 'Invalid tool id' });
   }
+  db.prepare(`
+    INSERT INTO tool_views (tool_id, count, updated) VALUES (?, 1, datetime('now'))
+    ON CONFLICT(tool_id) DO UPDATE SET count = count + 1, updated = datetime('now')
+  `).run(tool);
+  res.json({ ok: true });
 });
 
-// ── Port Checker — DNS resolve + TCP connect probe ───────────
+app.get('/api/tools/popular', (req, res) => {
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 20);
+  const rows = db.prepare('SELECT tool_id, count FROM tool_views ORDER BY count DESC LIMIT ?').all(limit);
+  res.json({ tools: rows });
+});
+
+// ── Port Checker — DNS resolve (IPv4 + IPv6) + TCP connect probe ───────────
 const net = require('net');
 const dns = require('dns');
 
-app.get('/api/resolve', (req, res) => {
+app.get('/api/resolve', netRLMiddleware, (req, res) => {
   const host = String(req.query.host || '').trim();
   if (!host) return res.status(400).json({ error: 'Missing host' });
-  dns.lookup(host, (err, address) => {
-    if (err) return res.json({ host, ip: null });
-    res.json({ host, ip: address });
-  });
+
+  // Raw IPv4 address
+  if (net.isIPv4(host)) {
+    return res.json({ host, addresses: [{ ip: host, family: 'IPv4' }] });
+  }
+  // Raw IPv6 address (with or without brackets)
+  const ipv6 = host.replace(/^\[|\]$/g, '');
+  if (net.isIPv6(ipv6)) {
+    return res.json({ host, addresses: [{ ip: ipv6, family: 'IPv6' }] });
+  }
+
+  // Hostname — resolve both A and AAAA records in parallel
+  let v4 = [], v6 = [], done = 0;
+  const finish = () => {
+    if (++done < 2) return;
+    const addresses = [
+      ...v4.map(ip => ({ ip, family: 'IPv4' })),
+      ...v6.map(ip => ({ ip, family: 'IPv6' })),
+    ];
+    res.json({ host, addresses: addresses.length ? addresses : [] });
+  };
+  dns.resolve4(host, (err, addrs) => { v4 = err ? [] : addrs; finish(); });
+  dns.resolve6(host, (err, addrs) => { v6 = err ? [] : addrs; finish(); });
 });
-app.get('/api/portcheck', (req, res) => {
-  const host = String(req.query.host || '').trim();
+
+app.get('/api/portcheck', netRLMiddleware, (req, res) => {
+  const hostInput = String(req.query.host || '').trim();
   const port = parseInt(req.query.port, 10);
-  if (!host || isNaN(port) || port < 1 || port > 65535) {
+  if (!hostInput || isNaN(port) || port < 1 || port > 65535) {
     return res.status(400).json({ error: 'Invalid host or port' });
   }
+
+  // Strip brackets from IPv6 addresses so both [::1] and ::1 work
+  const host = hostInput.replace(/^\[|\]$/g, '');
+
   const TIMEOUT = 4000;
   const socket  = new net.Socket();
   let done = false;
   function finish(open) {
     if (done) return; done = true;
     socket.destroy();
-    res.json({ host, port, open });
+    res.json({ host: hostInput, port, open });
   }
   socket.setTimeout(TIMEOUT);
   socket.once('connect', () => finish(true));
@@ -766,11 +604,246 @@ Example: ["example.com","coolapp.io","mybrand.co"]`;
   }
 });
 
+// ── Network Toolkit — ping, traceroute, reverse DNS ──────────
+const { spawn } = require('child_process');
+const _isWin = process.platform === 'win32';
+
+function validNetHost(h) {
+  return h.length > 0 && h.length <= 253 && /^[a-zA-Z0-9.\-:\[\]_]+$/.test(h);
+}
+
+const _netRateMap = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _netRateMap) { if (now > v.resetAt) _netRateMap.delete(k); }
+}, 300_000);
+
+function _netAllow(ip) {
+  const now = Date.now();
+  let e = _netRateMap.get(ip);
+  if (!e || now > e.resetAt) e = { count: 0, resetAt: now + 60_000 };
+  e.count++;
+  _netRateMap.set(ip, e);
+  return e.count <= 10;
+}
+
+function netRLMiddleware(req, res, next) {
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+  if (!_netAllow(ip)) return res.status(429).json({ error: 'Rate limit: 10 requests/minute. Please wait.' });
+  next();
+}
+
+// GET /api/net/ping?host=&count=&family=   (SSE stream)
+app.get('/api/net/ping', netRLMiddleware, (req, res) => {
+  const host  = String(req.query.host || '').trim().replace(/^\[|\]$/g, '');
+  const count = Math.min(10, Math.max(1, parseInt(req.query.count, 10) || 4));
+  const fam   = String(req.query.family || 'auto'); // 'auto' | '4' | '6'
+
+  if (!validNetHost(host)) return res.status(400).json({ error: 'Invalid host' });
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  let cmd, args;
+  if (_isWin) {
+    cmd  = 'ping';
+    args = ['-n', String(count)];
+    if (fam === '6') args.push('-6');
+    args.push(host);
+  } else {
+    cmd  = 'ping';
+    args = ['-c', String(count)];
+    if (fam === '4') args.push('-4');
+    else if (fam === '6') args.push('-6');
+    args.push(host);
+  }
+
+  const proc = spawn(cmd, args, { timeout: 30000 });
+  const send = chunk => chunk.toString().split(/\r?\n/).filter(l => l.trim())
+    .forEach(l => res.write(`data: ${JSON.stringify(l)}\n\n`));
+
+  proc.stdout.on('data', send);
+  proc.stderr.on('data', send);
+  proc.on('close', () => { res.write('data: "[DONE]"\n\n'); res.end(); });
+  proc.on('error', err => {
+    res.write(`data: ${JSON.stringify('Error: ' + err.message)}\n\n`);
+    res.write('data: "[DONE]"\n\n');
+    res.end();
+  });
+  req.on('close', () => proc.kill());
+});
+
+// GET /api/net/traceroute?host=&maxhops=&family=   (SSE stream)
+app.get('/api/net/traceroute', netRLMiddleware, (req, res) => {
+  const host    = String(req.query.host || '').trim().replace(/^\[|\]$/g, '');
+  const maxhops = Math.min(30, Math.max(1, parseInt(req.query.maxhops, 10) || 30));
+  const fam     = String(req.query.family || 'auto');
+
+  if (!validNetHost(host)) return res.status(400).json({ error: 'Invalid host' });
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  let cmd, args;
+  if (_isWin) {
+    cmd  = 'tracert';
+    args = ['-h', String(maxhops)];
+    if (fam === '6') args.push('-6');
+    args.push(host);
+  } else {
+    cmd  = 'traceroute';
+    args = ['-m', String(maxhops)];
+    if (fam === '4') args.push('-4');
+    else if (fam === '6') args.push('-6');
+    args.push(host);
+  }
+
+  const proc = spawn(cmd, args, { timeout: 120000 });
+  const send = chunk => chunk.toString().split(/\r?\n/).filter(l => l.trim())
+    .forEach(l => res.write(`data: ${JSON.stringify(l)}\n\n`));
+
+  proc.stdout.on('data', send);
+  proc.stderr.on('data', send);
+  proc.on('close', () => { res.write('data: "[DONE]"\n\n'); res.end(); });
+  proc.on('error', err => {
+    res.write(`data: ${JSON.stringify('Error: ' + err.message)}\n\n`);
+    res.write('data: "[DONE]"\n\n');
+    res.end();
+  });
+  req.on('close', () => proc.kill());
+});
+
+// GET /api/net/ptr?ip=
+app.get('/api/net/ptr', netRLMiddleware, (req, res) => {
+  const ip = String(req.query.ip || '').trim().replace(/^\[|\]$/g, '');
+  if (!net.isIPv4(ip) && !net.isIPv6(ip)) {
+    return res.status(400).json({ error: 'Invalid IP address (IPv4 or IPv6 required)' });
+  }
+  dns.reverse(ip, (err, hostnames) => {
+    if (err) {
+      if (err.code === 'ENOTFOUND' || err.code === 'ENODATA' || err.code === 'ENONAME') {
+        return res.json({ ip, hostnames: [], found: false });
+      }
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({ ip, hostnames, found: hostnames.length > 0 });
+  });
+});
+
+// ── Feedback ───────────────────────────────────────────────────
+function _sendmailNotify(to, subject, body) {
+  const { spawn } = require('child_process');
+  const proc = spawn('sendmail', ['-t'], { timeout: 10_000 });
+  const mail = `To: ${to}\nFrom: noreply@grin.money\nSubject: ${subject}\n\n${body}`;
+  proc.stdin.write(mail);
+  proc.stdin.end();
+  let stderr = '';
+  proc.stderr.on('data', d => { stderr += d; });
+  proc.on('error',  err  => console.error(`[sendmail] spawn error → ${err.message}`));
+  proc.on('close',  code => {
+    if (code !== 0) console.error(`[sendmail] exited ${code} stderr: ${stderr.trim()}`);
+    else            console.log(`[sendmail] delivered to ${to}`);
+  });
+}
+
+const _fbRateMap = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _fbRateMap) { if (now > v.resetAt) _fbRateMap.delete(k); }
+}, 300_000);
+function _fbAllow(ip) {
+  const now = Date.now();
+  let e = _fbRateMap.get(ip);
+  if (!e || now > e.resetAt) e = { count: 0, resetAt: now + 86_400_000 }; // 24 hours
+  e.count++;
+  _fbRateMap.set(ip, e);
+  return e.count <= 3;
+}
+
+// POST /api/feedback  { message, page, ca, cb, ans }
+app.post('/api/feedback', (req, res) => {
+  const clientIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
+
+  // CAPTCHA check
+  const ca  = parseInt(req.body?.ca,  10);
+  const cb  = parseInt(req.body?.cb,  10);
+  const ans = parseInt(req.body?.ans, 10);
+  if (isNaN(ca) || isNaN(cb) || isNaN(ans) || ca + cb !== ans) {
+    return res.status(400).json({ error: 'Incorrect answer to the math question.' });
+  }
+
+  if (!_fbAllow(clientIp)) return res.status(429).json({ error: 'Limit reached: 3 messages per 24 hours.' });
+
+  const message = String(req.body?.message || '').trim().slice(0, 2000);
+  const page    = String(req.body?.page    || '').trim().slice(0, 200);
+
+  if (message.length < 10) return res.status(400).json({ error: 'Message too short (minimum 10 characters).' });
+
+  // Block duplicate messages submitted in the last 24 hours
+  const duplicate = db.prepare(
+    "SELECT 1 FROM feedback WHERE message = ? AND created >= datetime('now', '-24 hours') LIMIT 1"
+  ).get(message);
+  if (duplicate) return res.status(400).json({ error: 'This message was already submitted recently.' });
+
+  db.prepare('INSERT INTO feedback (id, page, message, ip) VALUES (?, ?, ?, ?)')
+    .run(genId(), page, message, clientIp);
+
+  // Email notification via OS sendmail (fire-and-forget)
+  const _fbSubject = `[Office Tools Feedback] ${page || 'unknown page'}`;
+  const _fbBody    = `Page: ${page}\nIP: ${clientIp}\n\n${message}`;
+  if (process.env.NOTIFY_EMAIL)   _sendmailNotify(process.env.NOTIFY_EMAIL,   _fbSubject, _fbBody);
+  if (process.env.NOTIFY_EMAIL_2) _sendmailNotify(process.env.NOTIFY_EMAIL_2, _fbSubject, _fbBody);
+
+  res.json({ ok: true });
+});
+
+// ── IP Geolocation proxy ──────────────────────────────────────
+// ip-api.com free tier only allows HTTP, not HTTPS — proxy it server-side
+const _geoRateMap = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _geoRateMap) { if (now > v.resetAt) _geoRateMap.delete(k); }
+}, 300_000);
+function _geoAllow(ip) {
+  const now = Date.now();
+  let s = _geoRateMap.get(ip);
+  if (!s || now > s.resetAt) { s = { count: 0, resetAt: now + 60_000 }; _geoRateMap.set(ip, s); }
+  s.count++;
+  return s.count <= 20;
+}
+
+const _GEO_FIELDS = 'status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query';
+
+app.get('/api/ip/geo', async (req, res) => {
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || '';
+  if (!_geoAllow(clientIp)) return res.status(429).json({ error: 'Rate limit exceeded' });
+
+  const target = (req.query.ip || '').trim();
+  if (!target) return res.status(400).json({ error: 'Missing ip parameter' });
+
+  // strip brackets from IPv6
+  const clean = target.replace(/^\[|\]$/g, '');
+  if (!/^[a-zA-Z0-9.\-:_]+$/.test(clean)) return res.status(400).json({ error: 'Invalid IP or host' });
+
+  try {
+    const r = await fetch(
+      `http://ip-api.com/json/${encodeURIComponent(clean)}?fields=${_GEO_FIELDS}`,
+      { signal: AbortSignal.timeout(8000) }
+    );
+    const data = await r.json();
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({ error: 'Geo lookup failed: ' + err.message });
+  }
+});
+
 // ── Start ─────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`Office Tools server running on port ${PORT}`);
-  console.log(`Foreign API:  ${FOREIGN_API_URL}`);
-  console.log(`Owner API:    ${OWNER_API_URL}`);
-  const _wp = readWalletPass();
-  console.log(`Wallet pass:  ${_wp ? `loaded from ${PASS_FILE}` : `not set (${PASS_FILE} missing or empty)`}`);
+  if (!process.env.NOTIFY_EMAIL) console.warn('[config] NOTIFY_EMAIL not set — feedback emails will not be sent');
+  else                           console.log(`[config] Feedback emails → ${process.env.NOTIFY_EMAIL}`);
 });

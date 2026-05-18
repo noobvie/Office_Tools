@@ -1,0 +1,210 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DNS Lookup — Query DNS Records for Any Domain | Office Tools</title>
+  <meta name="description" content="Free DNS lookup tool — query A, AAAA, MX, NS, TXT, CNAME, SOA and CAA records for any domain. Results via Cloudflare DNS-over-HTTPS. Fast, accurate, no login required.">
+  <meta name="keywords" content="DNS lookup, DNS records, A record lookup, AAAA record, MX record, NS record, TXT record lookup, CNAME lookup, SOA record, CAA record, DNS query tool, DNS checker, check DNS records, DNS propagation, nslookup online, dig online, DNS over HTTPS">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="DNS Lookup — Query A, AAAA, MX, NS, TXT and More">
+  <meta property="og:description" content="Query any DNS record type for any domain. A, AAAA, MX, NS, TXT, CNAME, SOA, CAA — fast and accurate. Free, no login.">
+  <meta property="og:url" content="https://tools.grin.money/tools/dns-lookup/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="DNS Lookup — All Record Types">
+  <meta name="twitter:description" content="Query A, AAAA, MX, NS, TXT, CNAME, SOA, CAA records for any domain. Free DNS checker.">
+  <link rel="canonical" href="https://tools.grin.money/tools/dns-lookup/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"DNS Lookup","description":"Query A, AAAA, MX, NS, TXT, CNAME, SOA and CAA DNS records for any domain using Cloudflare DNS-over-HTTPS.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/dns-lookup/"}</script>
+  <script type="application/ld+json">[{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Office Tools","item":"https://tools.grin.money/"},{"@type":"ListItem","position":2,"name":"Network Tools","item":"https://tools.grin.money/tools/network-toolkit/"},{"@type":"ListItem","position":3,"name":"DNS Lookup","item":"https://tools.grin.money/tools/dns-lookup/"}]},{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"How long does DNS propagation take?","acceptedAnswer":{"@type":"Answer","text":"DNS propagation typically takes a few minutes to 48 hours. The delay depends on the TTL of the record being changed. A TTL of 300 seconds means resolvers cache the old value for 5 minutes; a TTL of 86400 means up to 24 hours. Lower the TTL before making a change to speed up propagation."}},{"@type":"Question","name":"What is the difference between an A record and an AAAA record?","acceptedAnswer":{"@type":"Answer","text":"An A record maps a domain name to an IPv4 address (32-bit, e.g. 93.184.216.34). An AAAA record maps a domain to an IPv6 address (128-bit, e.g. 2606:2800:220:1:248:1893:25c8:1946). Many modern domains have both to support IPv4 and IPv6 clients simultaneously."}},{"@type":"Question","name":"What are TXT records used for?","acceptedAnswer":{"@type":"Answer","text":"TXT records store arbitrary text for a domain. They are most commonly used for email authentication: SPF (authorized mail senders), DKIM (cryptographic signature public key), and DMARC (policy for handling failures). They are also used for domain ownership verification by services like Google Search Console."}},{"@type":"Question","name":"What is DNS over HTTPS (DoH)?","acceptedAnswer":{"@type":"Answer","text":"DNS over HTTPS sends DNS queries encrypted inside HTTPS requests instead of plain UDP port 53. This prevents third parties from seeing which domains you are looking up. This tool uses Cloudflare's DoH resolver (1.1.1.1) for all queries."}}]}]</script>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <script src="../../js/theme-init.js"></script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .ctrl-row {
+      display: flex; gap: .5rem; flex-wrap: wrap; align-items: center;
+    }
+    .ctrl-row input[type="text"] {
+      flex: 1; min-width: 200px; padding: .6rem .9rem;
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-secondary); color: var(--text);
+      font-size: .92rem; font-family: 'Courier New', monospace;
+      outline: none; transition: border-color .15s; box-sizing: border-box;
+    }
+    .ctrl-row input[type="text"]:focus { border-color: var(--primary); }
+    .dns-type-bar { display: flex; gap: .3rem; flex-wrap: wrap; margin-top: .85rem; }
+    .dns-type-btn {
+      padding: .25rem .65rem; border-radius: var(--radius);
+      border: 1.5px solid var(--border); background: transparent;
+      color: var(--text-muted); font-size: .77rem; font-weight: 700;
+      cursor: pointer; transition: all .12s;
+    }
+    .dns-type-btn:hover  { border-color: var(--primary); color: var(--primary); }
+    .dns-type-btn.active { border-color: var(--primary); color: var(--primary); background: var(--primary-dim); }
+    .dns-table { width: 100%; border-collapse: collapse; font-size: .82rem; margin-top: .6rem; }
+    .dns-table th {
+      text-align: left; padding: .38rem .6rem;
+      font-size: .67rem; text-transform: uppercase; letter-spacing: .05em;
+      color: var(--text-muted); border-bottom: 1.5px solid var(--border);
+    }
+    .dns-table td {
+      padding: .42rem .6rem; border-bottom: 1px solid var(--border);
+      font-family: 'Courier New', monospace; word-break: break-all; color: var(--text);
+    }
+    .dns-table tr:last-child td { border-bottom: none; }
+    .dns-table tr:hover td { background: var(--bg-secondary); }
+    .box-error { background: var(--danger-dim); color: var(--danger); border-radius: var(--radius); padding: .65rem .9rem; font-size: .86rem; font-weight: 600; margin-top: .75rem; }
+    .box-info  { background: var(--primary-dim); color: var(--primary); border-radius: var(--radius); padding: .6rem .9rem; font-size: .82rem; margin-top: .6rem; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: .4rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 560px) { .ctrl-row input[type="text"] { min-width: 100%; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">DNS Lookup</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>📋 DNS Lookup</h1>
+    <p>Query any DNS record type for any domain — A, AAAA, MX, NS, TXT, CNAME, SOA, CAA.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About DNS Lookup</h2>
+    <p>This tool queries any DNS record type for any domain — equivalent to running <code>nslookup</code> or <code>dig</code> from your terminal, but in your browser. Results are fetched via <strong>Cloudflare DNS-over-HTTPS</strong> (1.1.1.1) for fast, accurate, privacy-respecting queries with no third-party visibility into your lookups.</p>
+    <p>Each record type serves a different purpose: <strong>A</strong> maps a domain to an IPv4 address; <strong>AAAA</strong> to an IPv6 address; <strong>MX</strong> specifies mail servers with priority; <strong>NS</strong> lists authoritative name servers; <strong>TXT</strong> holds SPF, DKIM, DMARC, and domain verification strings; <strong>CNAME</strong> creates an alias from one name to another; <strong>SOA</strong> shows the authoritative server and zone serial; <strong>CAA</strong> restricts which certificate authorities can issue SSL certificates for the domain.</p>
+    <p>The <strong>TTL</strong> column shows how long resolvers cache each record in seconds — a TTL of 300 s means changes propagate in 5 minutes; 86400 s means up to 24 hours. Results per type are cached in the browser so switching tabs is instant. To find the hostname behind an IP discovered here, use <a href="../reverse-dns/">Reverse DNS Lookup</a>. To test reachability after finding an IP, run a <a href="../ping/">Ping Test</a>.</p>
+  </section>
+
+  <div class="card">
+    <div class="ctrl-row">
+      <input type="text" id="dnsHost" placeholder="domain name (e.g. google.com, cloudflare.com)" autocomplete="off" spellcheck="false">
+      <button class="btn btn-primary" id="dnsBtn">Lookup</button>
+    </div>
+    <div class="ctrl-row" style="margin-top:.5rem">
+      <button class="btn btn-ghost btn-sm" data-ex="google.com">google.com</button>
+      <button class="btn btn-ghost btn-sm" data-ex="github.com">github.com</button>
+      <button class="btn btn-ghost btn-sm" data-ex="cloudflare.com">cloudflare.com</button>
+      <button class="btn btn-ghost btn-sm" data-ex="grin.money">grin.money</button>
+    </div>
+
+    <div class="dns-type-bar" id="dnsTypeBar">
+      <button class="dns-type-btn active" data-type="A">A</button>
+      <button class="dns-type-btn" data-type="AAAA">AAAA</button>
+      <button class="dns-type-btn" data-type="MX">MX</button>
+      <button class="dns-type-btn" data-type="NS">NS</button>
+      <button class="dns-type-btn" data-type="TXT">TXT</button>
+      <button class="dns-type-btn" data-type="CNAME">CNAME</button>
+      <button class="dns-type-btn" data-type="SOA">SOA</button>
+      <button class="dns-type-btn" data-type="CAA">CAA</button>
+    </div>
+
+    <div id="dnsResult">
+      <div style="color:var(--text-muted);font-size:.86rem;padding:1rem 0">Enter a domain above and click <strong>Lookup</strong>.</div>
+    </div>
+  </div>
+
+  <section class="tool-related" id="related-tools"></section>
+
+<div class="page-tags">
+  <span class="page-tag">DNS lookup</span>
+  <span class="page-tag">DNS records</span>
+  <span class="page-tag">A record</span>
+  <span class="page-tag">AAAA record</span>
+  <span class="page-tag">MX record</span>
+  <span class="page-tag">TXT record</span>
+  <span class="page-tag">nslookup online</span>
+  <span class="page-tag">dig online</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+'use strict';
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let _activeDomain = '', _activeType = 'A', _cache = {};
+
+document.querySelectorAll('[data-ex]').forEach(b =>
+  b.addEventListener('click', () => { document.getElementById('dnsHost').value = b.dataset.ex; })
+);
+
+document.getElementById('dnsHost').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('dnsBtn').click();
+});
+
+document.getElementById('dnsTypeBar').addEventListener('click', e => {
+  const btn = e.target.closest('.dns-type-btn');
+  if (!btn) return;
+  document.querySelectorAll('.dns-type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  _activeType = btn.dataset.type;
+  if (_activeDomain) dnsLookup(_activeDomain, _activeType);
+});
+
+document.getElementById('dnsBtn').addEventListener('click', () => {
+  const domain = document.getElementById('dnsHost').value.trim().toLowerCase().replace(/^www\./, '');
+  if (!domain) return;
+  _activeDomain = domain;
+  _cache = {};
+  dnsLookup(domain, _activeType);
+});
+
+async function dnsLookup(domain, type) {
+  const key = domain + ':' + type;
+  if (_cache[key]) { renderDNS(_cache[key], type, domain); return; }
+
+  const el = document.getElementById('dnsResult');
+  el.innerHTML = `<div style="padding:.75rem 0"><span class="spinner"></span> Querying <strong>${escHtml(type)}</strong> records for <code>${escHtml(domain)}</code>…</div>`;
+
+  try {
+    const r = await fetch(`${API}/api/domain/dns?domain=${encodeURIComponent(domain)}&type=${encodeURIComponent(type)}`);
+    const data = await r.json();
+    if (!r.ok) { el.innerHTML = `<div class="box-error">${escHtml(data.error || 'DNS query failed')}</div>`; return; }
+    _cache[key] = data;
+    renderDNS(data, type, domain);
+  } catch (err) {
+    el.innerHTML = `<div class="box-error">Network error: ${escHtml(err.message)}</div>`;
+  }
+}
+
+function renderDNS(data, type, domain) {
+  const el = document.getElementById('dnsResult');
+  const answers = data.Answer || [];
+  if (!answers.length) {
+    el.innerHTML = `<div class="box-info">No <strong>${escHtml(type)}</strong> records found for <code>${escHtml(domain)}</code>.</div>`;
+    return;
+  }
+  const rows = answers.map(a => `<tr>
+    <td>${escHtml(a.name || '')}</td>
+    <td>${escHtml(String(a.TTL ?? ''))}</td>
+    <td>${escHtml(a.data || '')}</td>
+  </tr>`).join('');
+  el.innerHTML = `<table class="dns-table">
+    <thead><tr><th>Name</th><th>TTL (s)</th><th>Value</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+renderRelatedTools('related-tools', [
+  { path: 'reverse-dns',    desc: 'Resolve an IP address to its hostname' },
+  { path: 'domain-checker', desc: 'WHOIS, RDAP, availability across TLDs' },
+  { path: 'ping',           desc: 'Check reachability after finding an IP' },
+  { path: 'port-checker',   desc: 'Test if TCP ports are open on any host' },
+]);
+</script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IPv6 Address Analyzer — Expand, Compress &amp; Identify Type | Office Tools</title>
+  <meta name="description" content="Free IPv6 address analyzer — expand compressed IPv6 addresses to full form, compress to shortest notation, identify address type (global unicast, link-local, ULA, multicast, loopback, 6to4, Teredo). Fully local, no server needed.">
+  <meta name="keywords" content="IPv6 analyzer, IPv6 expand, IPv6 compress, IPv6 address type, IPv6 full form, IPv6 short form, link-local IPv6, ULA IPv6, global unicast, multicast IPv6, loopback IPv6, IPv6 calculator, IPv6 address info, fe80, fc00, ff00, IPv6 notation, IPv6 format">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="IPv6 Address Analyzer — Expand, Compress &amp; Identify Type">
+  <meta property="og:description" content="Expand or compress any IPv6 address and identify its type: global unicast, link-local, ULA, multicast, loopback and more. Fully local.">
+  <meta property="og:url" content="https://tools.grin.money/tools/ipv6-analyzer/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="IPv6 Address Analyzer">
+  <meta name="twitter:description" content="Expand, compress, and identify the type of any IPv6 address. Fully local, no server needed.">
+  <link rel="canonical" href="https://tools.grin.money/tools/ipv6-analyzer/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"IPv6 Address Analyzer","description":"Expand or compress any IPv6 address and identify its type: global unicast, link-local, ULA, multicast, loopback, Teredo, 6to4, and more. Runs entirely in your browser.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/ipv6-analyzer/"}</script>
+  <script type="application/ld+json">[{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Office Tools","item":"https://tools.grin.money/"},{"@type":"ListItem","position":2,"name":"Network Tools","item":"https://tools.grin.money/tools/network-toolkit/"},{"@type":"ListItem","position":3,"name":"IPv6 Address Analyzer","item":"https://tools.grin.money/tools/ipv6-analyzer/"}]},{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is the difference between compressed and expanded IPv6?","acceptedAnswer":{"@type":"Answer","text":"An expanded IPv6 address writes all 8 groups of 4 hex digits in full, e.g. 2001:0db8:0000:0000:0000:0000:0000:0001. A compressed address uses :: to replace consecutive all-zero groups and drops leading zeros: 2001:db8::1. Both represent the same address. RFC 5952 defines the canonical compressed form."}},{"@type":"Question","name":"What is a link-local IPv6 address?","acceptedAnswer":{"@type":"Answer","text":"Link-local addresses (fe80::/10) are automatically assigned to every IPv6-enabled network interface. They are only valid on the local network segment, are never routed across the internet, and are used for neighbor discovery and router discovery."}},{"@type":"Question","name":"What is a Unique Local Address (ULA)?","acceptedAnswer":{"@type":"Answer","text":"Unique Local Addresses (fc00::/7, in practice fd00::/8) are the IPv6 equivalent of private IPv4 ranges like 192.168.x.x or 10.x.x.x. They are routable within a private network but are not globally routable on the public internet."}},{"@type":"Question","name":"How do I know if my IPv6 address is globally routable?","acceptedAnswer":{"@type":"Answer","text":"Global Unicast Addresses start with the prefix 2000::/3 (first hex digit is 2 or 3). If the analyzer identifies your address as Global Unicast, it is publicly routable. Link-local (fe80::), ULA (fd::/8), loopback (::1), and multicast (ff::/8) are not globally routable."}}]}]</script>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <script src="../../js/theme-init.js"></script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .ctrl-row {
+      display: flex; gap: .5rem; flex-wrap: wrap; align-items: center;
+    }
+    .ctrl-row input[type="text"] {
+      flex: 1; min-width: 200px; padding: .6rem .9rem;
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-secondary); color: var(--text);
+      font-size: .92rem; font-family: 'Courier New', monospace;
+      outline: none; transition: border-color .15s; box-sizing: border-box;
+    }
+    .ctrl-row input[type="text"]:focus { border-color: var(--primary); }
+    .result-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: .55rem; margin-top: .85rem;
+    }
+    .result-cell {
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .65rem .85rem;
+    }
+    .rc-label { font-size: .67rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-bottom: .25rem; }
+    .rc-val { font-family: 'Courier New', monospace; font-size: .85rem; font-weight: 700; color: var(--text); word-break: break-all; }
+    .addr-badge {
+      display: inline-block; border-radius: 20px;
+      padding: .18rem .7rem; font-size: .74rem; font-weight: 700;
+      background: var(--primary-dim); color: var(--primary);
+    }
+    .box-error { background: var(--danger-dim); color: var(--danger); border-radius: var(--radius); padding: .65rem .9rem; font-size: .86rem; font-weight: 600; margin-top: .75rem; }
+    .rc-info { font-size: .78rem; font-family: inherit; font-weight: 400; color: var(--text); }
+    @media (max-width: 560px) { .ctrl-row input[type="text"] { min-width: 100%; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">IPv6 Analyzer</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔬 IPv6 Address Analyzer</h1>
+    <p>Expand, compress, and identify the type of any IPv6 address. Runs entirely in your browser — no data sent to any server.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About IPv6 Analyzer</h2>
+    <p>IPv6 addresses can be written in multiple equivalent forms: the <strong>full expanded form</strong> (8 groups of 4 hex digits, e.g. <code>2001:0db8:0000:0000:0000:0000:0000:0001</code>) and the <strong>compressed form</strong> (leading zeros dropped, consecutive zero groups replaced with <code>::</code>, e.g. <code>2001:db8::1</code>). This tool converts between both and identifies the <strong>address type</strong> based on RFC 4291 prefix ranges.</p>
+    <p>Address types and their meaning: <strong>Global Unicast</strong> (2000::/3) — publicly routable; <strong>Link-local</strong> (fe80::/10) — automatically assigned to every interface, never routed beyond the local segment; <strong>Unique Local (ULA)</strong> (fc00::/7) — the IPv6 equivalent of private RFC 1918 ranges like 192.168.x.x; <strong>Multicast</strong> (ff00::/8) — one-to-many delivery; <strong>Loopback</strong> (::1) — equivalent to 127.0.0.1. Zone IDs (e.g. <code>fe80::1%eth0</code>) are stripped automatically.</p>
+    <p>The tool also shows the <strong>/64 network prefix</strong> (the standard subnet allocation unit) and the <strong>interface identifier</strong> (last 64 bits). Everything runs entirely in your browser — nothing is sent to a server. To calculate the full range of a subnet, see the <a href="../subnet-calculator/">Subnet Calculator</a>. To ping an IPv6 address or test reachability, use the <a href="../ping/">Online Ping Test</a> with IPv6 mode selected.</p>
+  </section>
+
+  <div class="card">
+    <div class="ctrl-row">
+      <input type="text" id="ipv6Input" placeholder="IPv6 address (e.g. 2001:db8::1 or fe80::1%eth0)" autocomplete="off" spellcheck="false">
+      <button class="btn btn-primary" id="ipv6Btn">Analyze</button>
+    </div>
+    <div class="ctrl-row" style="margin-top:.5rem">
+      <button class="btn btn-ghost btn-sm" data-ex="2001:db8::1">2001:db8::1 (doc)</button>
+      <button class="btn btn-ghost btn-sm" data-ex="fe80::1">fe80::1 (link-local)</button>
+      <button class="btn btn-ghost btn-sm" data-ex="::1">::1 (loopback)</button>
+      <button class="btn btn-ghost btn-sm" data-ex="fd00::1">fd00::1 (ULA)</button>
+      <button class="btn btn-ghost btn-sm" data-ex="2606:4700:4700::1111">Cloudflare DNS</button>
+      <button class="btn btn-ghost btn-sm" data-ex="ff02::1">ff02::1 (multicast)</button>
+    </div>
+    <div id="ipv6Result"></div>
+  </div>
+
+  <section class="tool-related" id="related-tools"></section>
+
+<div class="page-tags">
+  <span class="page-tag">IPv6 analyzer</span>
+  <span class="page-tag">IPv6 expand</span>
+  <span class="page-tag">IPv6 compress</span>
+  <span class="page-tag">IPv6 address type</span>
+  <span class="page-tag">link-local</span>
+  <span class="page-tag">global unicast</span>
+  <span class="page-tag">ULA IPv6</span>
+</div>
+</main>
+
+<script src="../../js/common.js"></script>
+<script>
+'use strict';
+
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+document.querySelectorAll('[data-ex]').forEach(b =>
+  b.addEventListener('click', () => { document.getElementById('ipv6Input').value = b.dataset.ex; })
+);
+
+document.getElementById('ipv6Input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') ipv6Analyze();
+});
+document.getElementById('ipv6Btn').addEventListener('click', ipv6Analyze);
+
+function expandIPv6(addr) {
+  addr = addr.replace(/^\[|\]$/g, '').toLowerCase().split('%')[0]; // strip zone ID
+  const halves = addr.split('::');
+  if (halves.length > 2) return null;
+  let left  = halves[0] ? halves[0].split(':') : [];
+  let right = halves.length === 2 && halves[1] ? halves[1].split(':') : [];
+  const fill = 8 - left.length - right.length;
+  if (fill < 0) return null;
+  const groups = [...left, ...Array(fill).fill('0'), ...right];
+  if (groups.length !== 8) return null;
+  if (groups.some(g => !/^[0-9a-f]{1,4}$/.test(g))) return null;
+  return groups.map(g => g.padStart(4, '0')).join(':');
+}
+
+function compressIPv6(expanded) {
+  const groups = expanded.split(':').map(g => parseInt(g, 16).toString(16));
+  let bestStart = -1, bestLen = 0, curStart = -1, curLen = 0;
+  for (let i = 0; i <= 8; i++) {
+    if (i < 8 && groups[i] === '0') {
+      if (curStart === -1) { curStart = i; curLen = 1; } else curLen++;
+    } else {
+      if (curLen > bestLen) { bestStart = curStart; bestLen = curLen; }
+      curStart = -1; curLen = 0;
+    }
+  }
+  if (bestLen < 2) return groups.join(':');
+  const left  = groups.slice(0, bestStart).join(':');
+  const right = groups.slice(bestStart + bestLen).join(':');
+  if (!left && !right) return '::';
+  if (!left)  return '::' + right;
+  if (!right) return left + '::';
+  return left + '::' + right;
+}
+
+function detectIPv6Type(expanded) {
+  const g = expanded.split(':').map(x => parseInt(x, 16));
+  const hi = g[0];
+  if (g.every((v, i) => i < 7 ? v === 0 : v === 1)) return { label: 'Loopback', info: '::1 — reserved for localhost (RFC 4291)' };
+  if (g.every(v => v === 0))  return { label: 'Unspecified', info: ':: — unspecified address (RFC 4291)' };
+  if ((hi & 0xff00) === 0xff00) return { label: 'Multicast', info: 'ff00::/8 — multicast (RFC 4291)' };
+  if ((hi & 0xffc0) === 0xfe80) return { label: 'Link-local', info: 'fe80::/10 — not routable, local link only (RFC 4291)' };
+  if ((hi & 0xfe00) === 0xfc00) return { label: 'Unique Local (ULA)', info: 'fc00::/7 — private, not globally routable (RFC 4193)' };
+  if (g.slice(0,5).every(v => v === 0) && g[5] === 0xffff) return { label: 'IPv4-mapped', info: '::ffff:0:0/96 — embeds an IPv4 address (RFC 4291)' };
+  if (g.slice(0,5).every(v => v === 0) && g[5] === 0) return { label: 'IPv4-compatible', info: '::/96 — deprecated IPv4-compatible (RFC 4291)' };
+  if (hi === 0x2002) return { label: '6to4', info: '2002::/16 — 6to4 transition mechanism (RFC 3056)' };
+  if (hi === 0x2001 && g[1] === 0x0db8) return { label: 'Documentation', info: '2001:db8::/32 — reserved for examples/docs (RFC 3849)' };
+  if (hi === 0x2001 && g[1] === 0x0000) return { label: 'Teredo', info: '2001::/32 — Teredo tunneling (RFC 4380)' };
+  if ((hi & 0xe000) === 0x2000) return { label: 'Global Unicast', info: '2000::/3 — globally routable (RFC 4291)' };
+  return { label: 'Unknown', info: 'Does not match a known IPv6 prefix range' };
+}
+
+function ipv6ToBigInt(expanded) {
+  return expanded.split(':').reduce((acc, g) => (acc << 16n) | BigInt(parseInt(g, 16)), 0n);
+}
+
+function ipv6Analyze() {
+  const raw = document.getElementById('ipv6Input').value.trim();
+  const el  = document.getElementById('ipv6Result');
+  if (!raw) return;
+
+  const expanded = expandIPv6(raw);
+  if (!expanded) {
+    el.innerHTML = `<div class="box-error">Invalid IPv6 address. Check the format and try again.</div>`;
+    return;
+  }
+
+  const compressed = compressIPv6(expanded);
+  const type = detectIPv6Type(expanded);
+  const bigVal = ipv6ToBigInt(expanded);
+
+  const net64Big = bigVal & ~((1n << 64n) - 1n);
+  const net64parts = [0,1,2,3].map(i => Number((net64Big >> BigInt(112 - i*16)) & 0xffffn).toString(16).padStart(4,'0'));
+  const net64 = net64parts.join(':') + '::/64';
+  const iface = expanded.split(':').slice(4).join(':');
+
+  el.innerHTML = `<div class="result-grid">
+    <div class="result-cell" style="grid-column:1/-1">
+      <div class="rc-label">Compressed (short form)</div>
+      <div class="rc-val">${escHtml(compressed)}</div>
+    </div>
+    <div class="result-cell" style="grid-column:1/-1">
+      <div class="rc-label">Expanded (full form)</div>
+      <div class="rc-val">${escHtml(expanded)}</div>
+    </div>
+    <div class="result-cell">
+      <div class="rc-label">Address Type</div>
+      <div class="rc-val"><span class="addr-badge">${escHtml(type.label)}</span></div>
+    </div>
+    <div class="result-cell">
+      <div class="rc-label">RFC / Range</div>
+      <div class="rc-val rc-info">${escHtml(type.info)}</div>
+    </div>
+    <div class="result-cell">
+      <div class="rc-label">/64 Network Prefix</div>
+      <div class="rc-val">${escHtml(net64)}</div>
+    </div>
+    <div class="result-cell">
+      <div class="rc-label">Interface ID (last 64 bits)</div>
+      <div class="rc-val">${escHtml(iface)}</div>
+    </div>
+  </div>`;
+}
+
+renderRelatedTools('related-tools', [
+  { path: 'subnet-calculator', desc: 'IPv4 & IPv6 CIDR — network, mask, host range' },
+  { path: 'ping',              desc: 'Ping any IPv6 address or hostname' },
+  { path: 'dns-lookup',        desc: 'Query AAAA records to find IPv6 addresses' },
+  { path: 'port-checker',      desc: 'Check open ports on IPv6 hosts' },
+]);
+</script>
+</body>
+</html>

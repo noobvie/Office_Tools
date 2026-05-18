@@ -95,94 +95,227 @@ function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+/* ---------- Header Search (tool pages) ---------- */
+function initHeaderSearch() {
+  const toolNameEl = document.querySelector('.header-tool-name');
+  if (!toolNameEl) return;
+
+  const root = _otRootPath();
+  const currentPath = window.location.pathname.match(/\/tools\/([^\/]+)/)?.[1] || '';
+  const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'header-search-wrap';
+  wrap.innerHTML = `<input type="text" id="headerSearch" placeholder="Search tools…" autocomplete="off" aria-label="Search tools"><span class="hs-kbd" id="hsKbd"><kbd>Ctrl</kbd><kbd>K</kbd></span><span class="header-search-icon">${SVG}</span><div class="header-search-drop" id="headerSearchDrop" hidden></div>`;
+  toolNameEl.replaceWith(wrap);
+
+  const input = document.getElementById('headerSearch');
+  const drop  = document.getElementById('headerSearchDrop');
+  const kbd   = document.getElementById('hsKbd');
+  const icon  = wrap.querySelector('.header-search-icon');
+  let activeIdx = -1;
+
+  function showKbd() {
+    if (kbd)  kbd.hidden  = false;
+    if (icon) icon.hidden = true;
+    input.style.paddingRight = '5rem';
+  }
+  function hideKbd() {
+    if (kbd)  kbd.hidden  = true;
+    if (icon) icon.hidden = false;
+    input.style.paddingRight = '';
+  }
+  showKbd();
+
+  function dropItems() { return [...drop.querySelectorAll('.hsd-item')]; }
+
+  function highlight(idx) {
+    dropItems().forEach((el, i) => el.classList.toggle('hsd-active', i === idx));
+    activeIdx = idx;
+  }
+
+  function openDrop(q) {
+    const query = (q || '').toLowerCase().trim();
+    const pool = query
+      ? OT_TOOLS.filter(t => t.name.toLowerCase().includes(query) || t.desc.toLowerCase().includes(query) || t.cat.toLowerCase().includes(query))
+      : OT_TOOLS.filter(t => t.path !== currentPath).slice(0, 8);
+
+    if (!pool.length) {
+      drop.innerHTML = '<div class="hsd-empty">No tools found</div>';
+    } else {
+      drop.innerHTML = pool.slice(0, 8).map(t =>
+        `<a class="hsd-item${t.path === currentPath ? ' hsd-current' : ''}" href="${root}tools/${t.path}/">` +
+        `<span class="hsd-icon">${t.icon}</span>` +
+        `<span class="hsd-name">${escHtml(t.name)}</span>` +
+        `<span class="hsd-cat">${escHtml(t.cat.replace(/^\S+\s/, ''))}</span></a>`
+      ).join('');
+    }
+    drop.hidden = false;
+    activeIdx = -1;
+  }
+
+  function closeDrop() { drop.hidden = true; activeIdx = -1; }
+
+  input.addEventListener('focus', () => { hideKbd(); openDrop(input.value); });
+  input.addEventListener('blur',  () => { if (!input.value) showKbd(); });
+  input.addEventListener('input', () => { openDrop(input.value); highlight(-1); });
+  input.addEventListener('keydown', e => {
+    const els = dropItems();
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const next = Math.min(activeIdx + 1, els.length - 1);
+      highlight(next);
+      els[next]?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prev = Math.max(activeIdx - 1, 0);
+      highlight(prev);
+      els[prev]?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter' && activeIdx >= 0) {
+      els[activeIdx]?.click();
+    } else if (e.key === 'Escape') {
+      closeDrop();
+      input.blur();
+    }
+  });
+  document.addEventListener('click', e => { if (!wrap.contains(e.target)) closeDrop(); });
+}
+
 /* ---------- Tool Sidebar ---------- */
 const OT_TOOLS = [
   // ⏱️ Productivity & Time
-  { name: 'Pomodoro Timer',          path: 'pomodoro',              cat: '⏱️ Productivity & Time', icon: '🍅' },
-  { name: 'Date & Time Calculator',  path: 'date-calculator',       cat: '⏱️ Productivity & Time', icon: '📅' },
-  { name: 'World Calendar',          path: 'calendar',              cat: '⏱️ Productivity & Time', icon: '🗓️' },
-  { name: 'Stopwatch & Timer',       path: 'timer',                 cat: '⏱️ Productivity & Time', icon: '⏱️' },
-  { name: 'Time Zone Converter',     path: 'timezone',              cat: '⏱️ Productivity & Time', icon: '🌐' },
+  { name: 'Pomodoro Timer',          path: 'pomodoro',              cat: '⏱️ Productivity & Time', icon: '🍅', desc: '25-min focus timer with short and long break intervals' },
+  { name: 'Date & Time Calculator',  path: 'date-calculator',       cat: '⏱️ Productivity & Time', icon: '📅', desc: 'Date difference, age, countdown and time unit converter' },
+  { name: 'World Calendar',          path: 'calendar',              cat: '⏱️ Productivity & Time', icon: '🗓️', desc: 'Gregorian, Chinese Lunar and Islamic Hijri calendar' },
+  { name: 'Stopwatch & Timer',       path: 'timer',                 cat: '⏱️ Productivity & Time', icon: '⏱️', desc: 'Precise stopwatch with lap times and countdown timer' },
+  { name: 'Time Zone Converter',     path: 'timezone',              cat: '⏱️ Productivity & Time', icon: '🌐', desc: 'Convert times between any two time zones' },
   // ✨ Generators
-  { name: 'Password Generator',      path: 'password-generator',    cat: '✨ Generators',           icon: '🔑' },
-  { name: 'QR Code Generator',       path: 'qr-generator',          cat: '✨ Generators',           icon: '📱' },
-  { name: 'UUID Generator',          path: 'uuid-generator',        cat: '✨ Generators',           icon: '🆔' },
-  { name: 'Random Number Generator', path: 'random-number',         cat: '✨ Generators',           icon: '🎲' },
-  { name: 'Lorem Ipsum Generator',   path: 'lorem-ipsum',           cat: '✨ Generators',           icon: '📄' },
+  { name: 'Password Generator',      path: 'password-generator',    cat: '✨ Generators',           icon: '🔑', desc: 'Generate secure random passwords with custom options' },
+  { name: 'QR & Barcode Generator',  path: 'qr-generator',          cat: '✨ Generators',           icon: '📱', desc: 'Generate QR codes with logo or barcodes — URL, WiFi, vCard' },
+  { name: 'UUID Generator',          path: 'uuid-generator',        cat: '✨ Generators',           icon: '🆔', desc: 'Generate UUID v4 and v7 identifiers, single or bulk' },
+  { name: 'Random Number Generator', path: 'random-number',         cat: '✨ Generators',           icon: '🎲', desc: 'Generate random integers or decimals in any range' },
+  { name: 'Lorem Ipsum Generator',   path: 'lorem-ipsum',           cat: '✨ Generators',           icon: '📄', desc: 'Generate placeholder text by paragraphs, sentences or words' },
+  { name: 'Fake Data Generator',     path: 'fake-data',             cat: '✨ Generators',           icon: '🃏', desc: 'Generate realistic test data — names, emails, addresses' },
+  { name: 'Wheel of Names',          path: 'wheel-of-names',        cat: '✨ Generators',           icon: '🎡', desc: 'Spin a wheel to randomly pick a winner from your list' },
   // 📝 Text & Content
-  { name: 'Word Counter',            path: 'word-counter',          cat: '📝 Text & Content',       icon: '📝' },
-  { name: 'Markdown Editor',         path: 'markdown-editor',       cat: '📝 Text & Content',       icon: '✍️' },
-  { name: 'Text Diff',               path: 'text-diff',             cat: '📝 Text & Content',       icon: '🔍' },
-  { name: 'Typing Speed Test',       path: 'typing-speed',          cat: '📝 Text & Content',       icon: '⌨️' },
-  { name: 'Text Case Converter',     path: 'text-case',             cat: '📝 Text & Content',       icon: '🔡' },
-  { name: 'Notepad',                 path: 'notepad',               cat: '📝 Text & Content',       icon: '📝' },
+  { name: 'Word Counter',            path: 'word-counter',          cat: '📝 Text & Content',       icon: '📊', desc: 'Count words, characters, sentences and reading time live' },
+  { name: 'Markdown Editor',         path: 'markdown-editor',       cat: '📝 Text & Content',       icon: '✍️', desc: 'Live split-pane Markdown editor with HTML preview' },
+  { name: 'Text Diff',               path: 'text-diff',             cat: '📝 Text & Content',       icon: '🔀', desc: 'Side-by-side diff with color-highlighted additions and deletions' },
+  { name: 'Typing Speed Test',       path: 'typing-speed',          cat: '📝 Text & Content',       icon: '⌨️', desc: 'Measure WPM and accuracy with real-time error tracking' },
+  { name: 'Text Case Converter',     path: 'text-case',             cat: '📝 Text & Content',       icon: '🔡', desc: 'Convert to UPPERCASE, camelCase, snake_case, kebab-case and more' },
+  { name: 'Notepad',                 path: 'notepad',               cat: '📝 Text & Content',       icon: '📝', desc: 'Auto-saving scratch pad with up to 5 named notes' },
   // 🔒 Encoding & Crypto
-  { name: 'Base64 Converter',        path: 'base64-converter',      cat: '🔒 Encoding & Crypto',    icon: '🔐' },
-  { name: 'URL Encoder / Decoder',   path: 'url-encoder',           cat: '🔒 Encoding & Crypto',    icon: '🔗' },
-  { name: 'Unix Timestamp',          path: 'unix-timestamp',        cat: '🔒 Encoding & Crypto',    icon: '⏰' },
-  { name: 'Hash Generator',          path: 'hash-generator',        cat: '🔒 Encoding & Crypto',    icon: '🛡️' },
-  { name: 'HTML Entity Encoder',     path: 'html-entities',         cat: '🔒 Encoding & Crypto',    icon: '🏷️' },
-  { name: 'JWT Decoder',             path: 'jwt-decoder',           cat: '🔒 Encoding & Crypto',    icon: '🔐' },
-  { name: 'Number Base Converter',   path: 'base-converter',        cat: '🔒 Encoding & Crypto',    icon: '🔢' },
+  { name: 'Base64 Converter',        path: 'base64-converter',      cat: '🔒 Encoding & Crypto',    icon: '🔄', desc: 'Encode and decode text or files to/from Base64' },
+  { name: 'URL Encoder / Decoder',   path: 'url-encoder',           cat: '🔒 Encoding & Crypto',    icon: '🔗', desc: 'Percent-encode and decode URLs with before/after diff' },
+  { name: 'Unix Timestamp',          path: 'unix-timestamp',        cat: '🔒 Encoding & Crypto',    icon: '🕐', desc: 'Convert Unix timestamps to dates and vice versa' },
+  { name: 'Hash Generator',          path: 'hash-generator',        cat: '🔒 Encoding & Crypto',    icon: '🔑', desc: 'Generate SHA-256, SHA-512 and HMAC hashes from text or files' },
+  { name: 'HTML Entity Encoder',     path: 'html-entities',         cat: '🔒 Encoding & Crypto',    icon: '🏷️', desc: 'Encode and decode HTML entities for safe HTML output' },
+  { name: 'JWT Decoder',             path: 'jwt-decoder',           cat: '🔒 Encoding & Crypto',    icon: '🔐', desc: 'Decode JSON Web Tokens — header, payload, expiry and claims' },
+  { name: 'Number Base Converter',   path: 'base-converter',        cat: '🔒 Encoding & Crypto',    icon: '🔢', desc: 'Convert between binary, octal, decimal and hexadecimal' },
   // 🧮 Calculators
-  { name: 'Percentage Calculator',   path: 'percentage-calculator', cat: '🧮 Calculators',          icon: '💯' },
-  { name: 'Aspect Ratio Calculator', path: 'aspect-ratio',          cat: '🧮 Calculators',          icon: '📐' },
-  { name: 'Unit Converter',          path: 'unit-converter',        cat: '🧮 Calculators',          icon: '📐' },
-  { name: 'Loan Calculator',         path: 'loan-calculator',       cat: '🧮 Calculators',          icon: '🏦' },
-  { name: 'Tip Calculator',          path: 'tip-calculator',        cat: '🧮 Calculators',          icon: '🧾' },
-  { name: 'Number to Words',         path: 'number-words',          cat: '🧮 Calculators',          icon: '🔤' },
+  { name: 'Percentage Calculator',   path: 'percentage-calculator', cat: '🧮 Calculators',          icon: '💯', desc: 'Calculate percentages, percent of, and percentage change' },
+  { name: 'Aspect Ratio Calculator', path: 'aspect-ratio',          cat: '🧮 Calculators',          icon: '📐', desc: 'Find missing width or height for any aspect ratio' },
+  { name: 'Unit Converter',          path: 'unit-converter',        cat: '🧮 Calculators',          icon: '📐', desc: 'Convert length, weight, temperature, volume and more' },
+  { name: 'Loan Calculator',         path: 'loan-calculator',       cat: '🧮 Calculators',          icon: '🏦', desc: 'Monthly payment and amortization schedule for any loan' },
+  { name: 'Tip Calculator',          path: 'tip-calculator',        cat: '🧮 Calculators',          icon: '🧾', desc: 'Calculate tip and split the bill among friends' },
+  { name: 'Number to Words',         path: 'number-words',          cat: '🧮 Calculators',          icon: '🔤', desc: 'Convert numbers to English words for checks and invoices' },
   // 💻 Development
-  { name: 'JSON Editor',             path: 'json-editor',           cat: '💻 Development',          icon: '📋' },
-  { name: 'CSV ↔ JSON',              path: 'csv-json',              cat: '💻 Development',          icon: '📊' },
-  { name: 'Crontab Explainer',       path: 'crontab',               cat: '💻 Development',          icon: '⏲️' },
-  { name: 'Regex Tester',            path: 'regex-tester',          cat: '💻 Development',          icon: '🔍' },
-  { name: 'SQL Formatter',           path: 'sql-formatter',         cat: '💻 Development',          icon: '🗄️' },
-  { name: 'File Compressor',         path: 'file-compressor',       cat: '💻 Development',          icon: '🗜️' },
-  { name: 'AI Token Counter',        path: 'ai-token-counter',      cat: '💻 Development',          icon: '🔢' },
-  { name: 'Prompt Template Builder', path: 'ai-prompt-template',    cat: '💻 Development',          icon: '📝' },
-  { name: 'JSON Schema Builder',     path: 'ai-json-schema',        cat: '💻 Development',          icon: '🏗️' },
+  { name: 'JSON Editor',             path: 'json-editor',           cat: '💻 Development',          icon: '📋', desc: 'Validate, format and minify JSON with interactive tree view' },
+  { name: 'CSV ↔ JSON',              path: 'csv-json',              cat: '💻 Development',          icon: '⇄',  desc: 'Convert between CSV and JSON with table preview' },
+  { name: 'Crontab Explainer',       path: 'crontab',               cat: '💻 Development',          icon: '⏰', desc: 'Parse cron expressions into plain English with next run times' },
+  { name: 'Regex Tester',            path: 'regex-tester',          cat: '💻 Development',          icon: '🔍', desc: 'Test regular expressions with live match highlighting' },
+  { name: 'SQL Formatter',           path: 'sql-formatter',         cat: '💻 Development',          icon: '🗄️', desc: 'Beautify and minify SQL queries with configurable indent' },
+  { name: 'File Compressor',         path: 'file-compressor',       cat: '💻 Development',          icon: '🗜️', desc: 'Create or extract ZIP archives entirely in your browser' },
+  { name: 'AI Token Counter',        path: 'ai-token-counter',      cat: '💻 Development',          icon: '🔢', desc: 'Estimate token count and API cost for GPT-4, Claude and more' },
+  { name: 'Prompt Template Builder', path: 'ai-prompt-template',    cat: '💻 Development',          icon: '📝', desc: 'Write reusable AI prompts with {{variable}} placeholders' },
+  { name: 'JSON Schema Builder',     path: 'ai-json-schema',        cat: '💻 Development',          icon: '🏗️', desc: 'Auto-generate JSON Schema from any JSON or build visually' },
   // 🎬 Media
-  { name: 'YouTube Downloader',      path: 'yt-downloader',         cat: '🎬 Media',                icon: '📥' },
-  { name: 'Speech & Voice',          path: 'speech-voice',          cat: '🎬 Media',                icon: '🎙️' },
-  { name: 'Photo Editor',            path: 'photo-editor',          cat: '🎬 Media',                icon: '🖼️' },
+  { name: 'YouTube Downloader',      path: 'yt-downloader',         cat: '🎬 Media',                icon: '📥', desc: 'Download YouTube videos as MP4 or audio as MP3' },
+  { name: 'Speech & Voice',          path: 'speech-voice',          cat: '🎬 Media',                icon: '🎙️', desc: 'Transcribe mic or audio to text, or convert text to speech' },
+  { name: 'Photo Editor',            path: 'photo-editor',          cat: '🎬 Media',                icon: '🖼️', desc: 'Remove backgrounds, adjust colors and add text to photos' },
+  { name: 'Image Converter',         path: 'image-converter',       cat: '🎬 Media',                icon: '🖼️', desc: 'Convert HEIC/HEIF to JPG/PNG, compress and resize images' },
+  { name: 'Screenshot Beautifier',   path: 'screenshot-beautifier', cat: '🎬 Media',                icon: '🖼️', desc: 'Add gradient backgrounds and shadows to screenshots' },
   // 🎨 Design
-  { name: 'Color Converter',         path: 'color-converter',       cat: '🎨 Design',               icon: '🎨' },
-  { name: 'Character Map',           path: 'char-map',              cat: '🎨 Design',               icon: '🔣' },
+  { name: 'Color Converter',         path: 'color-converter',       cat: '🎨 Design',               icon: '🎨', desc: 'Convert HEX, RGB, HSL, HSV and CMYK with live preview' },
+  { name: 'Contrast Checker',        path: 'contrast-checker',      cat: '🎨 Design',               icon: '♿', desc: 'Check WCAG AA/AAA contrast ratios for color pairs' },
+  { name: 'Palette Extractor',       path: 'palette-extractor',     cat: '🎨 Design',               icon: '🎨', desc: 'Extract dominant color palette from any image' },
+  { name: 'Character Map',           path: 'char-map',              cat: '🎨 Design',               icon: '🔣', desc: 'Browse and copy special characters, symbols and emoji' },
   // 🌐 Network & Web
-  { name: 'Currency Converter',      path: 'currency',              cat: '🌐 Network & Web',        icon: '💱' },
-  { name: 'What Is My IP?',          path: 'my-ip',                 cat: '🌐 Network & Web',        icon: '🌐' },
-  { name: 'IP Location Lookup',      path: 'ip-location',           cat: '🌐 Network & Web',        icon: '📍' },
-  { name: 'Campaign URL Builder',    path: 'utm-builder',           cat: '🌐 Network & Web',        icon: '🔗' },
-  { name: 'Port Checker',            path: 'port-checker',          cat: '🌐 Network & Web',        icon: '🔌' },
-  { name: 'Domain Checker',         path: 'domain-checker',        cat: '🌐 Network & Web',        icon: '🌐' },
-  // 🖼️ Visual & Design
-  { name: 'Screenshot Beautifier',   path: 'screenshot-beautifier', cat: '🖼️ Visual & Design',     icon: '🖼️' },
-  { name: 'Contrast Checker',        path: 'contrast-checker',      cat: '🖼️ Visual & Design',     icon: '♿' },
-  { name: 'Palette Extractor',       path: 'palette-extractor',     cat: '🖼️ Visual & Design',     icon: '🎨' },
-  // 🎲 Fun & Productivity
-  { name: 'Fake Data Generator',     path: 'fake-data',             cat: '🎲 Fun & Productivity',   icon: '🃏' },
-  { name: 'Wheel of Names',          path: 'wheel-of-names',        cat: '🎲 Fun & Productivity',   icon: '🎡' },
-  // 🔐 Security
-  { name: 'CSR Decoder',             path: 'csr-decoder',           cat: '🔐 Security',             icon: '📜' },
-  // 📁 Images & PDF
-  { name: 'Image Converter',         path: 'image-converter',       cat: '📁 Images & PDF',         icon: '🖼️' },
-  { name: 'PDF Toolkit',             path: 'pdf-toolkit',           cat: '📁 Images & PDF',         icon: '📄' },
-  { name: 'PDF to Text',             path: 'pdf-to-text',           cat: '📁 Images & PDF',         icon: '📃' },
+  { name: 'Currency Converter',      path: 'currency',              cat: '🌐 Network & Web',        icon: '💱', desc: 'Convert 40+ fiat currencies and crypto with live rates' },
+  { name: 'What Is My IP?',          path: 'my-ip',                 cat: '🌐 Network & Web',        icon: '🌐', desc: 'Show your public IP, ISP, country and IPv6 status' },
+  { name: 'IP Location Lookup',      path: 'ip-location',           cat: '🌐 Network & Web',        icon: '📍', desc: 'Country, city, ISP, ASN and map for any IP or domain' },
+  { name: 'Campaign URL Builder',    path: 'utm-builder',           cat: '🌐 Network & Web',        icon: '📎', desc: 'Build UTM-tagged URLs for Google Analytics tracking' },
+  { name: 'CSR Decoder',             path: 'csr-decoder',           cat: '🌐 Network & Web',        icon: '🔐', desc: 'Decode a CSR — subject, key size, SANs, fingerprints' },
+  { name: 'Port Checker',            path: 'port-checker',          cat: '🌐 Network & Web',        icon: '🔌', desc: 'Check if TCP ports are open on any host — IPv4 and IPv6' },
+  { name: 'Domain Checker',          path: 'domain-checker',        cat: '🌐 Network & Web',        icon: '🌐', desc: 'WHOIS, RDAP, DNS records and availability across TLDs' },
+  { name: 'Online Ping Test',        path: 'ping',                  cat: '🌐 Network & Web',        icon: '📡', desc: 'Ping any host with live output — IPv4 and IPv6 supported' },
+  { name: 'Online Traceroute',       path: 'traceroute',            cat: '🌐 Network & Web',        icon: '🔍', desc: 'Trace the network path hop by hop with live streaming output' },
+  { name: 'DNS Lookup',              path: 'dns-lookup',            cat: '🌐 Network & Web',        icon: '📋', desc: 'Query A, AAAA, MX, NS, TXT, CNAME, SOA and CAA records' },
+  { name: 'Reverse DNS Lookup',      path: 'reverse-dns',           cat: '🌐 Network & Web',        icon: '🔄', desc: 'Resolve any IPv4 or IPv6 address to its hostname via PTR' },
+  { name: 'IPv6 Analyzer',           path: 'ipv6-analyzer',         cat: '🌐 Network & Web',        icon: '🔬', desc: 'Expand, compress and identify IPv6 address type' },
+  { name: 'Subnet Calculator',       path: 'subnet-calculator',     cat: '🌐 Network & Web',        icon: '🧮', desc: 'CIDR subnet — network address, mask, host range and total' },
   // 📤 Share
-  { name: 'URL Shortener',           path: 'url-shortener',         cat: '📤 Share',                icon: '🔗' },
-  { name: 'Pastebin',                path: 'pastebin',              cat: '📤 Share',                icon: '📋' },
-  { name: 'File Share',              path: 'file-share',            cat: '📤 Share',                icon: '📦' },
+  { name: 'URL Shortener',           path: 'url-shortener',         cat: '📤 Share',                icon: '🔗', desc: 'Create short links with optional custom alias and expiry' },
+  { name: 'Pastebin',                path: 'pastebin',              cat: '📤 Share',                icon: '📋', desc: 'Share code and text via private link with burn-after-read' },
+  { name: 'File Share',              path: 'file-share',            cat: '📤 Share',                icon: '📦', desc: 'Upload archives and share a download link, auto-deleted after 7 days' },
+  // 📁 PDF
+  { name: 'PDF Toolkit',             path: 'pdf-toolkit',           cat: '📁 PDF',                  icon: '📑', desc: 'Merge, split, extract and reorder PDF pages with drag-and-drop' },
+  { name: 'PDF to Text',             path: 'pdf-to-text',           cat: '📁 PDF',                  icon: '📄', desc: 'Extract text from any PDF — copy or download as .txt or .docx' },
   // 🎮 Relax
-  { name: '2048',                    path: '2048',                  cat: '🎮 Relax',                icon: '🔢' },
-  { name: 'Sudoku',                  path: 'sudoku',                cat: '🎮 Relax',                icon: '🧩' },
-  { name: 'Gomoku',                  path: 'gomoku',                cat: '🎮 Relax',                icon: '⭕' },
-  { name: 'Memory Match',            path: 'memory',                cat: '🎮 Relax',                icon: '🎴' },
-  { name: 'Chess',                   path: 'chess',                 cat: '🎮 Relax',                icon: '♟️' },
-  { name: 'Simon Says',              path: 'simon-says',            cat: '🎮 Relax',                icon: '🔴' },
-  { name: 'Number Memory',           path: 'number-memory',         cat: '🎮 Relax',                icon: '🔢' },
-  { name: 'Visual Memory',           path: 'visual-memory',         cat: '🎮 Relax',                icon: '🧠' },
-  { name: 'Word Memory',             path: 'word-memory',           cat: '🎮 Relax',                icon: '🔤' },
+  { name: '2048',                    path: '2048',                  cat: '🎮 Relax',                icon: '🔢', desc: 'Slide and merge tiles to reach 2048' },
+  { name: 'Sudoku',                  path: 'sudoku',                cat: '🎮 Relax',                icon: '🧩', desc: 'Classic 9×9 Sudoku — Easy, Medium, Hard with pencil mode' },
+  { name: 'Gomoku',                  path: 'gomoku',                cat: '🎮 Relax',                icon: '⭕', desc: 'Get 5 stones in a row on a 15×15 board — vs AI or friend' },
+  { name: 'Memory Match',            path: 'memory',                cat: '🎮 Relax',                icon: '🎴', desc: 'Flip emoji cards to find matching pairs' },
+  { name: 'Chess',                   path: 'chess',                 cat: '🎮 Relax',                icon: '♟️', desc: 'Full-rules chess vs AI or two players' },
+  { name: 'Simon Says',              path: 'simon-says',            cat: '🎮 Relax',                icon: '🔴', desc: 'Watch and repeat the color and sound sequence' },
+  { name: 'Number Memory',           path: 'number-memory',         cat: '🎮 Relax',                icon: '🔢', desc: 'Memorize and recall growing number sequences' },
+  { name: 'Visual Memory',           path: 'visual-memory',         cat: '🎮 Relax',                icon: '🧠', desc: 'Remember which squares light up, then reproduce the pattern' },
+  { name: 'Word Memory',             path: 'word-memory',           cat: '🎮 Relax',                icon: '🔤', desc: 'Study a word list and identify which words you actually saw' },
 ];
+
+/* ---------- Related Tools ---------- */
+function renderRelatedTools(containerId, tools) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const cards = tools.map(({ path, desc }) => {
+    const tool = OT_TOOLS.find(t => t.path === path) || {};
+    const d = desc || tool.desc || '';
+    return `<a href="../${path}/" class="related-card">
+      <span class="related-icon">${tool.icon || '🔧'}</span>
+      <div><div class="related-name">${tool.name || path}</div>${d ? `<div class="related-desc">${d}</div>` : ''}</div>
+    </a>`;
+  }).join('');
+  el.innerHTML = `<h2>Related Tools</h2><div class="related-grid">${cards}</div>`;
+}
+
+function autoRelatedTools() {
+  if (document.getElementById('related-tools')) return; // already manually set
+  const m = window.location.pathname.match(/\/tools\/([^\/]+)/);
+  if (!m) return;
+  const currentPath = m[1];
+  const current = OT_TOOLS.find(t => t.path === currentPath);
+  if (!current) return;
+  const pool = OT_TOOLS.filter(t => t.path !== currentPath && t.cat === current.cat);
+  if (!pool.length) return;
+  // Shuffle for variety on each visit
+  const shuffled = pool.slice().sort(() => Math.random() - 0.5);
+  const related = shuffled.slice(0, 4);
+  const section = document.createElement('section');
+  section.className = 'tool-related';
+  section.id = 'related-tools';
+  const cards = related.map(t => `<a href="../${t.path}/" class="related-card">
+    <span class="related-icon">${t.icon}</span>
+    <div><div class="related-name">${t.name}</div>${t.desc ? `<div class="related-desc">${t.desc}</div>` : ''}</div>
+  </a>`).join('');
+  section.innerHTML = `<h2>Related Tools</h2><div class="related-grid">${cards}</div>`;
+  const anchor = document.querySelector('.page-tags') || document.querySelector('.tool-main');
+  if (!anchor) return;
+  if (anchor.classList.contains('page-tags')) {
+    anchor.parentNode.insertBefore(section, anchor);
+  } else {
+    anchor.appendChild(section);
+  }
+}
 
 function initToolSidebar() {
   const m = window.location.pathname.match(/\/tools\/([^\/]+)/);
@@ -267,13 +400,6 @@ function initToolSidebar() {
     }
   });
 
-  // Ctrl+K focuses the sidebar search
-  document.addEventListener('keydown', e => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-      e.preventDefault();
-      searchInput.focus();
-    }
-  });
 }
 
 /* ---------- Root path helper (works at any directory depth) ---------- */
@@ -286,6 +412,160 @@ function _otRootPath() {
   // Fallback: count non-html path segments
   const segs = window.location.pathname.split('/').filter(s => s && !s.endsWith('.html'));
   return segs.length === 0 ? './' : '../'.repeat(segs.length);
+}
+
+/* ---------- Popular Pill ---------- */
+function initPopularPill() {
+  const actions  = document.querySelector('.header-actions');
+  if (!actions) return;
+  const toolPath = window.location.pathname.match(/\/tools\/([^/]+)/)?.[1];
+  if (!toolPath) return;
+
+  const API  = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+  const root = _otRootPath();
+
+  // Track this page visit
+  const body = JSON.stringify({ tool: toolPath });
+  try {
+    navigator.sendBeacon(API + '/api/tools/view', new Blob([body], { type: 'application/json' }));
+  } catch {
+    fetch(API + '/api/tools/view', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+  }
+
+  const pill = document.createElement('a');
+  pill.className = 'popular-pill';
+  pill.href = root + 'index.html';
+
+  function insertPill() {
+    const support = actions.querySelector('.support-pill');
+    const toggle  = actions.querySelector('.theme-toggle');
+    actions.insertBefore(pill, support || toggle || null);
+  }
+
+  fetch(API + '/api/tools/popular?limit=20', { signal: AbortSignal.timeout(4000) })
+    .then(r => r.json())
+    .then(({ tools }) => {
+      const idx   = (tools || []).findIndex(t => t.tool_id === toolPath);
+      const entry = idx >= 0 ? tools[idx] : null;
+      const count = entry?.count || 0;
+      const rank  = idx >= 0 ? idx + 1 : null;
+      const label = count >= 1000 ? (count / 1000).toFixed(1) + 'k' : String(count);
+      pill.innerHTML = rank ? `🔥 #${rank}` : `🔥 ${count > 0 ? label : 'New'}`;
+      pill.title = rank
+        ? `#${rank} most used · ${count.toLocaleString()} visits`
+        : count > 0 ? `${count.toLocaleString()} visits` : 'Be among the first to use this tool!';
+      insertPill();
+    })
+    .catch(() => {
+      pill.innerHTML = '🔥 Popular';
+      pill.title = 'See most popular tools';
+      insertPill();
+    });
+}
+
+/* ---------- Support Pill + Feedback Modal ---------- */
+function initSupportPill() {
+  const actions = document.querySelector('.header-actions');
+  if (!actions) return;
+
+  const pill = document.createElement('button');
+  pill.className = 'support-pill';
+  pill.innerHTML = '&#128172; Support';
+  pill.title = 'Send feedback or report a broken tool';
+
+  // Insert before the theme toggle
+  const toggle = actions.querySelector('.theme-toggle');
+  actions.insertBefore(pill, toggle || null);
+
+  pill.addEventListener('click', openFeedbackModal);
+}
+
+function openFeedbackModal() {
+  if (document.getElementById('ot-feedback-modal')) return;
+
+  // Generate simple math CAPTCHA
+  const ca = Math.floor(Math.random() * 9) + 1;
+  const cb = Math.floor(Math.random() * 9) + 1;
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'ot-modal-backdrop';
+  backdrop.id = 'ot-feedback-modal';
+  backdrop.innerHTML = `
+    <div class="ot-modal" role="dialog" aria-modal="true" aria-labelledby="ot-fb-title">
+      <h3 id="ot-fb-title">&#128172; Send Feedback</h3>
+      <p>Report a broken tool, suggest a feature, or leave any comment. No login needed &mdash; or reach me directly on the <a href="https://forum.grin.mw/u/hellogrin" target="_blank" rel="noopener" style="color:var(--primary)">Grin forum @hellogrin</a>.</p>
+      <textarea id="ot-fb-msg" placeholder="Describe the issue or suggestion… (min 10 characters)" maxlength="2000"></textarea>
+      <div style="display:flex;align-items:center;gap:.6rem;font-size:.88rem">
+        <label for="ot-fb-captcha" style="white-space:nowrap;color:var(--text-muted)">What is ${ca} + ${cb}?</label>
+        <input id="ot-fb-captcha" type="number" min="0" max="99" placeholder="Answer"
+          style="width:80px;padding:.35rem .6rem;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--bg-secondary);color:var(--text);font-size:.9rem;font-family:inherit;outline:none">
+      </div>
+      <div class="ot-modal-status" id="ot-fb-status"></div>
+      <div class="ot-modal-actions">
+        <button class="btn btn-secondary" id="ot-fb-cancel">Cancel</button>
+        <button class="btn btn-primary" id="ot-fb-send">Send</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(backdrop);
+
+  const msg      = backdrop.querySelector('#ot-fb-msg');
+  const captcha  = backdrop.querySelector('#ot-fb-captcha');
+  const status   = backdrop.querySelector('#ot-fb-status');
+  const sendBtn  = backdrop.querySelector('#ot-fb-send');
+
+  msg.focus();
+
+  function close() { backdrop.remove(); }
+
+  backdrop.querySelector('#ot-fb-cancel').addEventListener('click', close);
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+  document.addEventListener('keydown', function esc(e) {
+    if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
+  });
+
+  sendBtn.addEventListener('click', async () => {
+    const text = msg.value.trim();
+    const ans  = captcha.value.trim();
+
+    if (text.length < 10) {
+      status.textContent = 'Message too short — please write at least 10 characters.';
+      status.className = 'ot-modal-status fail'; return;
+    }
+    if (!ans) {
+      status.textContent = 'Please answer the math question.';
+      status.className = 'ot-modal-status fail'; return;
+    }
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Sending…';
+    status.textContent = '';
+    status.className = 'ot-modal-status';
+
+    const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+    try {
+      const r = await fetch(`${API}/api/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, page: window.location.pathname, ca, cb, ans: parseInt(ans, 10) }),
+      });
+      if (r.ok) {
+        status.textContent = '✓ Sent! Thank you for the feedback.';
+        status.className = 'ot-modal-status ok';
+        msg.value = '';
+        setTimeout(close, 2000);
+      } else {
+        const err = await r.json().catch(() => ({}));
+        status.textContent = err.error || 'Failed to send. Try again.';
+        status.className = 'ot-modal-status fail';
+        sendBtn.disabled = false; sendBtn.textContent = 'Send';
+      }
+    } catch {
+      status.textContent = 'Network error. Check your connection.';
+      status.className = 'ot-modal-status fail';
+      sendBtn.disabled = false; sendBtn.textContent = 'Send';
+    }
+  });
 }
 
 /* ---------- Auto-init on DOMContentLoaded ---------- */
@@ -302,7 +582,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initThemeToggle();
   initTabs();
+  initHeaderSearch();
   initToolSidebar();
+  autoRelatedTools();
+  initPopularPill();
+  initSupportPill();
+
+  // Ctrl+K / Cmd+K → focus the header search wherever it exists
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      const hs = document.getElementById('headerSearch');
+      if (hs) { e.preventDefault(); hs.focus(); hs.select(); }
+    }
+  });
   // Auth nav rendered by auth.js when present (loaded after common.js on auth-enabled pages)
 
   // Floating donate heart button — shown on all pages except donate.html itself

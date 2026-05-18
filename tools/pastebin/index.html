@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
@@ -150,6 +150,11 @@
 
       <div id="createError" class="alert alert-danger mt-2 hidden"></div>
 
+      <div class="captcha-row">
+        <span id="captchaLabel"></span>
+        <input type="number" id="captchaInput" min="0" max="99" placeholder="Answer" autocomplete="off">
+      </div>
+
       <div class="btn-group mt-3">
         <button class="btn btn-primary" id="createBtn">Create Paste</button>
       </div>
@@ -166,7 +171,7 @@
     </div>
 
     <div class="card mt-2" style="font-size:.83rem;color:var(--text-muted)">
-      <strong style="color:var(--text)">Note</strong> — Pastes are stored on your PocketBase instance.
+      <strong style="color:var(--text)">Note</strong> — Pastes are stored on our self-hosted server.
       Content is <strong>not encrypted</strong> — avoid pasting passwords or private keys.
       Use <em>Burn after read</em> for one-time sharing.
     </div>
@@ -228,7 +233,16 @@
 <script src="../../js/config.js"></script>
 <script src="../../js/common.js"></script>
 <script>
-const API = window.OT_CONFIG?.GRIN_SERVER_URL || 'http://localhost:3001';
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+
+/* ── CAPTCHA ─────────────────────────────────────────────── */
+let _ca = 0, _cb = 0;
+function refreshCaptcha() {
+  _ca = Math.floor(Math.random() * 9) + 1;
+  _cb = Math.floor(Math.random() * 9) + 1;
+  document.getElementById('captchaLabel').textContent = `What is ${_ca} + ${_cb}?`;
+  document.getElementById('captchaInput').value = '';
+}
 
 /* ── Helpers ─────────────────────────────────────────────── */
 function genCode(len = 10) {
@@ -280,6 +294,12 @@ document.getElementById('createBtn').addEventListener('click', async () => {
     return errBox.classList.remove('hidden');
   }
 
+  const captchaAns = parseInt(document.getElementById('captchaInput').value, 10);
+  if (!captchaAns && captchaAns !== 0) {
+    errBox.textContent = 'Please answer the math question.';
+    return errBox.classList.remove('hidden');
+  }
+
   const btn = document.getElementById('createBtn');
   btn.textContent = 'Creating…'; btn.disabled = true;
 
@@ -290,10 +310,11 @@ document.getElementById('createBtn').addEventListener('click', async () => {
     const r = await fetch(`${API}/api/tools/p`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, title, content, syntax, expires, burn_after_read: burn }),
+      body: JSON.stringify({ code, title, content, syntax, expires, burn_after_read: burn,
+        ca: _ca, cb: _cb, ans: captchaAns }),
     });
     const d = await r.json();
-    if (!r.ok) throw new Error(d.error || 'Server error');
+    if (!r.ok) { refreshCaptcha(); throw new Error(d.error || 'Server error'); }
 
     const shareUrl = `${location.origin}/tools/pastebin/?id=${code}`;
     document.getElementById('pasteShareUrl').textContent = shareUrl;
@@ -368,6 +389,8 @@ async function loadPaste(id) {
 const pasteId = new URLSearchParams(location.search).get('id');
 if (pasteId) {
   loadPaste(pasteId);
+} else {
+  refreshCaptcha();
 }
 </script>
 </body>

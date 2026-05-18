@@ -1,22 +1,22 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="matrix">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Port Checker — Test If TCP Ports Are Open Online | Office Tools</title>
-  <meta name="description" content="Check if TCP ports are open on any IP address or hostname. Presets for common services (SSH, RDP, HTTP, HTTPS, MySQL, FTP) and all Grin mainnet & testnet ports. Free, no login required.">
-  <meta name="keywords" content="port checker, check if port is open, TCP port scanner, open port test, firewall port check, port scan online, is port open, check open ports, Grin node ports, Grin wallet ports, SSH port 22, RDP port 3389, HTTP port 80, HTTPS port 443, MySQL port 3306, FTP port 21, Grin mainnet ports, Grin testnet ports, network diagnostics, firewall test">
+  <title>Port Checker — Test If TCP Ports Are Open on IPv4, IPv6 or Hostname | Office Tools</title>
+  <meta name="description" content="Check if TCP ports are open on any IPv4 address, IPv6 address, or hostname. Dual-stack: tests both IPv4 and IPv6 simultaneously. Presets for SSH, RDP, HTTP, HTTPS, MySQL, FTP and all Grin mainnet & testnet ports. Free, no login required.">
+  <meta name="keywords" content="port checker, IPv6 port checker, check if port is open, TCP port scanner, open port test, firewall port check, port scan online, is port open, check open ports, IPv6 port scan, dual stack port test, IPv4 IPv6 port checker, check IPv6 port, Grin node ports, Grin wallet ports, SSH port 22, RDP port 3389, HTTP port 80, HTTPS port 443, MySQL port 3306, FTP port 21, Grin mainnet ports, Grin testnet ports, network diagnostics, firewall test">
   <meta name="robots" content="index, follow">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Office Tools">
-  <meta property="og:title" content="Port Checker — Test If TCP Ports Are Open Online">
-  <meta property="og:description" content="Check if TCP ports are open on any IP or hostname. Presets for SSH, RDP, HTTP, HTTPS, MySQL and all Grin mainnet & testnet ports. Free, no login.">
+  <meta property="og:title" content="Port Checker — Test If TCP Ports Are Open on IPv4, IPv6 or Hostname">
+  <meta property="og:description" content="Check if TCP ports are open on any IPv4, IPv6 address, or hostname. Dual-stack support. Presets for SSH, RDP, HTTP, HTTPS, MySQL and all Grin mainnet & testnet ports. Free, no login.">
   <meta property="og:url" content="https://tools.grin.money/tools/port-checker/">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Port Checker — Test If TCP Ports Are Open Online">
-  <meta name="twitter:description" content="Check if TCP ports are open on any IP or hostname. Presets for common services and all Grin mainnet & testnet ports. Free, no login.">
+  <meta name="twitter:title" content="Port Checker — Test If TCP Ports Are Open on IPv4, IPv6 or Hostname">
+  <meta name="twitter:description" content="Check if TCP ports are open on any IPv4, IPv6, or hostname. Dual-stack support. Presets for common services and all Grin mainnet & testnet ports. Free, no login.">
   <link rel="canonical" href="https://tools.grin.money/tools/port-checker/">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Port Checker","description":"Check if TCP ports are open on any IP address or hostname. Presets for common services (SSH, RDP, HTTP, HTTPS, MySQL, FTP) and all Grin mainnet & testnet ports.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/port-checker/"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Port Checker","description":"Check if TCP ports are open on any IPv4, IPv6 address, or hostname. Dual-stack support with presets for common services and all Grin mainnet & testnet ports.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/port-checker/"}</script>
   <script src="../../js/theme-init.js"></script>
   <link rel="stylesheet" href="../../css/style.css">
   <style>
@@ -218,6 +218,78 @@
       color: var(--text-muted);
       margin-top: 1rem;
     }
+
+    /* ── Custom ports input ── */
+    .custom-port-row {
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+      margin-top: .4rem;
+    }
+    .custom-port-row input[type="text"] {
+      flex: 1;
+      font-size: 1rem;
+      padding: .55rem .85rem;
+      border-radius: var(--radius);
+      border: 1.5px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text);
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color var(--transition);
+      font-family: 'Courier New', monospace;
+    }
+    .custom-port-row input[type="text"]:focus { border-color: var(--primary); }
+    .custom-port-row input.input-error { border-color: var(--danger, #e05260); }
+    .custom-port-hint {
+      font-size: .78rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      min-width: 3.5rem;
+      text-align: right;
+    }
+    .custom-port-error {
+      font-size: .78rem;
+      color: var(--danger, #e05260);
+      min-height: 1.1em;
+      margin-top: .2rem;
+    }
+
+    /* ── Resolved addresses chips ── */
+    .resolved-chips {
+      display: flex;
+      gap: .45rem;
+      flex-wrap: wrap;
+      margin: .5rem 0 .1rem;
+    }
+    .resolved-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .18rem .55rem;
+      border-radius: 6px;
+      font-size: .78rem;
+      font-family: 'Courier New', monospace;
+      font-weight: 600;
+      border: 1px solid var(--border);
+    }
+    .chip-v4 {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .chip-v6 {
+      border-color: #4caf8e;
+      color: #4caf8e;
+    }
+
+    /* ── Results table Address column ── */
+    .results-table .addr-col {
+      font-family: 'Courier New', monospace;
+      font-weight: 600;
+      font-size: .8rem;
+      color: var(--text);
+    }
+    .results-table.single-addr .addr-col { display: none; }
   </style>
 </head>
 <body>
@@ -235,21 +307,22 @@
     <div class="tool-header-icon">🔌</div>
     <div>
       <h1 class="tool-title">Port Checker</h1>
-      <p class="tool-desc">Test if TCP ports are open on any IP address or hostname. Checks are performed server-side, reflecting the server's network perspective.</p>
+      <p class="tool-desc">Test if TCP ports are open on any IPv4 address, IPv6 address, or hostname. Dual-stack: checks both IPv4 and IPv6 simultaneously. Results reflect the server's network perspective.</p>
     </div>
   </div>
 
 <section class="tool-about">
   <h2>About Port Checker</h2>
   <p><strong>Open ports</strong> on a server determine which services are reachable from the internet &mdash; but what your local firewall config says is open might not match what's actually accessible externally. This tool checks whether a specific port on any host is <strong>open or closed from the perspective of an outside connection</strong>, giving you a real-world view rather than a theoretical one.</p>
-  <p>Useful for <strong>server administrators, developers deploying applications, and sysadmins doing firewall verification</strong>. Check that your web server's ports 80 and 443 are publicly accessible, confirm an SSH port is reachable, or verify that a database port is correctly blocked from external access. Fast and straightforward &mdash; enter the host and port, get the answer.</p>
+  <p>Supports <strong>IPv4, IPv6, and hostnames</strong>. When you enter a hostname, both its A (IPv4) and AAAA (IPv6) records are resolved and tested in parallel, giving you full dual-stack visibility in one check. You can also enter a bare IPv6 address directly (e.g. <code>2001:db8::1</code> or <code>[2001:db8::1]</code>).</p>
+  <p>Useful for <strong>server administrators, developers deploying applications, and sysadmins doing firewall verification</strong>. Check that your web server's ports 80 and 443 are publicly accessible on both IPv4 and IPv6, confirm an SSH port is reachable, or verify that a database port is correctly blocked from external access.</p>
 </section>
 
   <div class="card">
     <!-- Host input -->
-    <div class="field-label">Host (IP address or hostname)</div>
+    <div class="field-label">Host (IPv4, IPv6, or hostname)</div>
     <div class="pc-host-row">
-      <input type="text" id="hostInput" placeholder="e.g. 192.168.1.1 or example.com" autocomplete="off" spellcheck="false">
+      <input type="text" id="hostInput" placeholder="e.g. 1.1.1.1, example.com, or 2606:4700:4700::1111" autocomplete="off" spellcheck="false">
     </div>
 
     <!-- Presets — click to select, click again to deselect -->
@@ -312,6 +385,22 @@
 
     </div><!-- /port-groups -->
 
+    <!-- Custom ports input -->
+    <div class="field-label" style="margin-top:1rem">
+      Custom Ports
+      <span style="font-weight:400;color:var(--text-muted);font-size:.78rem">
+        (comma-separated, max 5 — e.g. 22,443,8080)
+      </span>
+    </div>
+    <div class="custom-port-row">
+      <input type="text" id="customPortsInput"
+        placeholder="e.g. 22, 443, 8080"
+        maxlength="40"
+        autocomplete="off" spellcheck="false">
+      <span class="custom-port-hint" id="customPortHint"></span>
+    </div>
+    <div class="custom-port-error" id="customPortError"></div>
+
     <!-- Action row -->
     <div class="check-row">
       <button class="btn btn-primary" id="checkBtn" onclick="runChecks()">🔍 Check Selected Ports</button>
@@ -323,11 +412,13 @@
 
     <!-- Results -->
     <div id="resultsSection">
+      <div id="resolvedAddrsDiv"></div>
       <div class="result-summary" id="resultSummary"></div>
       <div class="table-wrap">
-        <table class="results-table">
+        <table class="results-table" id="resultsTable">
           <thead>
             <tr>
+              <th class="addr-col">Address</th>
               <th>Port</th>
               <th>Service</th>
               <th>Status</th>
@@ -345,16 +436,21 @@
 
 <div class="page-tags">
   <span class="page-tag">check open port</span>
+  <span class="page-tag">IPv6 port checker</span>
   <span class="page-tag">TCP port scan</span>
+  <span class="page-tag">dual stack port test</span>
   <span class="page-tag">firewall test</span>
   <span class="page-tag">SSH RDP port</span>
   <span class="page-tag">port scanner</span>
+  <span class="page-tag">check IPv6 port open</span>
 </div>
 </main>
 
 <script src="../../js/config.js"></script>
 <script src="../../js/common.js"></script>
 <script>
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+
 /* ── Port service name lookup (results table) ── */
 const PORT_NAMES = {
   21: 'FTP', 22: 'SSH', 25: 'SMTP', 53: 'DNS', 80: 'HTTP',
@@ -375,6 +471,42 @@ const PORT_NAMES = {
   13416: 'Grin Testnet — Stratum Mining',
   13420: 'Grin Testnet — Wallet Owner API',
 };
+
+/* ── Parse and validate custom ports input ── */
+function parseCustomPorts() {
+  const input = document.getElementById('customPortsInput').value.trim();
+  if (!input) return { ports: [], error: '' };
+
+  const tokens = input.split(',').map(t => t.trim()).filter(t => t.length > 0);
+  if (tokens.length === 0) return { ports: [], error: '' };
+
+  const ports = [];
+  for (const token of tokens) {
+    const port = parseInt(token, 10);
+    if (isNaN(port) || port < 1 || port > 65535) {
+      return { ports: [], error: `Invalid port: ${token}` };
+    }
+    ports.push(port);
+  }
+
+  if (ports.length > 5) {
+    return { ports: [], error: 'Maximum 5 custom ports allowed' };
+  }
+
+  return { ports: [...new Set(ports)].sort((a, b) => a - b), error: '' };
+}
+
+/* ── Live validation hint for custom ports ── */
+document.getElementById('customPortsInput').addEventListener('input', () => {
+  const { ports, error } = parseCustomPorts();
+  const input = document.getElementById('customPortsInput');
+  const hintEl = document.getElementById('customPortHint');
+  const errorEl = document.getElementById('customPortError');
+
+  input.classList.toggle('input-error', error.length > 0);
+  errorEl.textContent = error;
+  hintEl.textContent = ports.length > 0 ? `${ports.length}/5 ports` : '';
+});
 
 /* ── Toggle preset: select all if any unchecked, clear all if all checked ── */
 function togglePreset(cls, btn) {
@@ -400,7 +532,7 @@ document.addEventListener('change', e => {
   }
 });
 
-/* ── Run checks ── */
+/* ── Run checks (with dual-stack IPv4/IPv6 support) ── */
 async function runChecks() {
   const host = document.getElementById('hostInput').value.trim();
   if (!host) {
@@ -412,9 +544,25 @@ async function runChecks() {
   }
 
   const checked = [...document.querySelectorAll('.port-cb:checked')];
-  if (!checked.length) return;
+  const { ports: customPorts, error: customError } = parseCustomPorts();
 
-  const ports = checked.map(cb => parseInt(cb.value, 10)).sort((a, b) => a - b);
+  if (customError) {
+    const inp = document.getElementById('customPortsInput');
+    inp.focus();
+    inp.classList.add('input-error');
+    return;
+  }
+
+  if (!checked.length && !customPorts.length) return;
+
+  // Merge and dedupe checkbox ports with custom ports
+  const allPorts = [...new Set([
+    ...checked.map(cb => parseInt(cb.value, 10)),
+    ...customPorts
+  ])].sort((a, b) => a - b);
+
+  const ports = allPorts;
+  const customPortSet = new Set(customPorts);
 
   const btn = document.getElementById('checkBtn');
   btn.disabled = true;
@@ -429,72 +577,125 @@ async function runChecks() {
   const resultsSection = document.getElementById('resultsSection');
   const tbody  = document.getElementById('resultsBody');
   const summary = document.getElementById('resultSummary');
+  const addrDiv = document.getElementById('resolvedAddrsDiv');
+  const tbl = document.getElementById('resultsTable');
   resultsSection.style.display = 'block';
 
-  tbody.innerHTML = '';
-  for (const port of ports) {
-    const tr = document.createElement('tr');
-    tr.id = 'row-' + port;
-    tr.innerHTML = `
-      <td class="port-col">${port}</td>
-      <td class="svc-col">${PORT_NAMES[port] || '—'}</td>
-      <td class="status-pending" id="st-${port}">⏳ checking…</td>
-    `;
-    tbody.appendChild(tr);
-  }
-  summary.innerHTML = `<span class="sum-pending">Checking ${ports.length} port${ports.length > 1 ? 's' : ''}…</span>`;
-
-  const serverBase = (window.OT_CONFIG && OT_CONFIG.GRIN_SERVER_URL) || '';
-  let resolvedIp = null;
+  // Resolve host to get all addresses (IPv4 + IPv6)
+  let addresses = [];
   try {
-    const r = await fetch(`${serverBase}/api/resolve?host=${encodeURIComponent(host)}`, { signal: AbortSignal.timeout(5000) });
-    if (r.ok) { const d = await r.json(); resolvedIp = d.ip || null; }
+    const r = await fetch(`${API}/api/resolve?host=${encodeURIComponent(host)}`, { signal: AbortSignal.timeout(5000) });
+    if (r.ok) {
+      const d = await r.json();
+      addresses = d.addresses || [];
+    }
   } catch { /* non-fatal */ }
+
+  // Fallback: treat input as raw address if resolve fails or returns empty
+  if (!addresses.length) {
+    addresses = [{ ip: host, family: null }];
+  }
+
+  // Display resolved addresses as chips
+  if (addresses.length > 0) {
+    const chips = addresses.map(a => {
+      const chipClass = a.family === 'IPv6' ? 'chip-v6' : 'chip-v4';
+      const label = a.family || 'IP';
+      return `<span class="resolved-chip ${chipClass}"><code>${escHtml(a.ip)}</code> <span>${label}</span></span>`;
+    }).join('');
+    addrDiv.innerHTML = `<div style="font-size:.78rem;color:var(--text-muted);margin-bottom:.3rem">Resolved Addresses:</div><div class="resolved-chips">${chips}</div>`;
+  } else {
+    addrDiv.innerHTML = '';
+  }
+
+  // Pre-render all rows (addresses × ports)
+  tbody.innerHTML = '';
+  const totalTests = addresses.length * ports.length;
+  for (const addr of addresses) {
+    for (const port of ports) {
+      const tr = document.createElement('tr');
+      const rowId = `st-${addresses.indexOf(addr)}-${port}`;
+      tr.id = 'row-' + rowId;
+      const svcName = PORT_NAMES[port] || (customPortSet.has(port) ? 'Custom' : '—');
+      tr.innerHTML = `
+        <td class="addr-col"><code>${escHtml(addr.ip)}</code></td>
+        <td class="port-col">${port}</td>
+        <td class="svc-col">${svcName}</td>
+        <td class="status-pending" id="${rowId}">⏳ checking…</td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
+  // Hide/show Address column based on address count
+  tbl.classList.toggle('single-addr', addresses.length === 1);
+
+  summary.innerHTML = `<span class="sum-pending">Checking ${totalTests} test${totalTests > 1 ? 's' : ''}…</span>`;
 
   let openCount = 0, closedCount = 0;
 
-  for (let i = 0; i < ports.length; i++) {
-    const port = ports[i];
-    const stEl = document.getElementById('st-' + port);
-    try {
-      const url  = `${serverBase}/api/portcheck?host=${encodeURIComponent(host)}&port=${port}`;
-      const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      if (!resp.ok) throw new Error('server error');
-      const data = await resp.json();
-      if (data.open) {
-        stEl.className   = 'status-open';
-        stEl.textContent = '✅ Open';
-        openCount++;
-      } else {
-        stEl.className   = 'status-closed';
-        stEl.textContent = '❌ Closed';
+  // Check each address × port combination
+  let testIndex = 0;
+  try {
+  for (let ai = 0; ai < addresses.length; ai++) {
+    const addr = addresses[ai];
+    for (let pi = 0; pi < ports.length; pi++) {
+      const port = ports[pi];
+      const rowId = `st-${ai}-${port}`;
+      const stEl = document.getElementById(rowId);
+
+      try {
+        const url  = `${API}/api/portcheck?host=${encodeURIComponent(addr.ip)}&port=${port}`;
+        const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+        if (!resp.ok) throw new Error('server error');
+        const data = await resp.json();
+        if (stEl) {
+          if (data.open) {
+            stEl.className   = 'status-open';
+            stEl.textContent = '✅ Open';
+            openCount++;
+          } else {
+            stEl.className   = 'status-closed';
+            stEl.textContent = '❌ Closed';
+            closedCount++;
+          }
+        }
+      } catch {
+        if (stEl) {
+          stEl.className   = 'status-closed';
+          stEl.textContent = '⏱ Timeout / Error';
+        }
         closedCount++;
       }
-    } catch {
-      stEl.className   = 'status-closed';
-      stEl.textContent = '⏱ Timeout / Error';
-      closedCount++;
+
+      testIndex++;
+      progressFill.style.width  = Math.round((testIndex / totalTests) * 100) + '%';
+      progressLabel.textContent = `${testIndex} / ${totalTests}`;
     }
-    progressFill.style.width  = Math.round(((i + 1) / ports.length) * 100) + '%';
-    progressLabel.textContent = `${i + 1} / ${ports.length}`;
+  }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 Check Selected Ports';
+    setTimeout(() => {
+      progressWrap.classList.remove('visible');
+      progressFill.style.width = '0%';
+    }, 1500);
   }
 
-  const ipLine = resolvedIp && resolvedIp !== host
-    ? `<span class="sum-pending">IP: <strong>${escHtml(resolvedIp)}</strong></span>`
-    : '';
+  // Summary with resolved addresses
+  const addrChips = addresses.map(a => {
+    const chipClass = a.family === 'IPv6' ? 'chip-v6' : 'chip-v4';
+    const label = a.family === 'IPv6' ? 'IPv6' : 'IPv4';
+    return `<span style="display:inline-flex;align-items:center;gap:.25rem;padding:.1rem .4rem;border:1px solid;border-radius:4px;font-size:.75rem;" class="${chipClass}"><code style="font-size:.7rem">${escHtml(a.ip)}</code> ${label}</span>`;
+  }).join('');
+
   summary.innerHTML = `
     <span class="sum-open">✅ Open: ${openCount}</span>
     <span class="sum-closed">❌ Closed / Filtered: ${closedCount}</span>
     <span class="sum-pending">Host: <strong>${escHtml(host)}</strong></span>
-    ${ipLine}
+    <span class="sum-pending">${addrChips}</span>
   `;
 
-  btn.disabled = false;
-  btn.textContent = '🔍 Check Selected Ports';
-  setTimeout(() => {
-    progressWrap.classList.remove('visible');
-    progressFill.style.width = '0%';
-  }, 1500);
 }
 
 document.getElementById('hostInput').addEventListener('keydown', e => {

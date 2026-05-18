@@ -1,18 +1,18 @@
 {
   "name": "office-tools-server",
   "version": "2.0.0",
-  "description": "Office Tools — Grin donation server + tools API",
-  "main": "grin-payment-server.js",
+  "description": "Office Tools — API server",
+  "main": "office-tools-server.js",
   "scripts": {
-    "start": "node grin-payment-server.js",
-    "dev": "nodemon grin-payment-server.js"
+    "start": "node office-tools-server.js",
+    "dev": "nodemon office-tools-server.js"
   },
   "dependencies": {
     "better-sqlite3": "^9.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "multer": "^1.4.5-lts.1",
+    "multer": "^2.1.1",
     "whois": "^2.14.2"
   },
   "devDependencies": {
