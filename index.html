@@ -92,15 +92,20 @@
   <button class="cat-chip" data-cat="Share">📤 Share</button>
   <button class="cat-chip" data-cat="Encoding &amp; Crypto">🔒 Encoding</button>
   <button class="cat-chip" data-cat="Relax">🎮 Relax</button>
-  <button class="cat-chip" data-cat="Popular">🔥 Popular</button>
+  <button class="cat-chip" data-cat="Stats">📊 Stats</button>
 </div>
 
 <div class="hub-main" id="popularSection">
   <section class="category-section" style="display:block!important">
-    <div class="category-title">🔥 Popular Tools</div>
-    <p class="cat-desc">The 10 most-used tools based on real click data from visitors.</p>
+    <div class="category-title">🔥 Most Used</div>
+    <p class="cat-desc">The 10 most-used tools based on real visit data from users.</p>
     <div class="tools-grid" id="popularGrid"></div>
     <p id="popularEmpty" style="display:none">No usage data yet — start using tools and come back to see what's popular.</p>
+  </section>
+  <section class="category-section" style="display:block!important">
+    <div class="category-title">✨ Recently Added</div>
+    <p class="cat-desc">New tools added to the platform.</p>
+    <div class="tools-grid" id="newToolsGrid"></div>
   </section>
 </div>
 
@@ -616,7 +621,7 @@
   // ── Search / filter ───────────────────────────────────────
   function applyFilters() {
     const q = searchInput.value.toLowerCase().trim();
-    const showPopular = !q && activeCat === 'Popular';
+    const showPopular = !q && activeCat === 'Stats';
 
     popularSection.style.display = showPopular ? '' : 'none';
     hubMain.style.display        = showPopular ? 'none' : '';
@@ -697,6 +702,28 @@
   }
 
   loadPopular();
+
+  // ── Recently Added ────────────────────────────────────────
+  function loadNewTools() {
+    const grid = document.getElementById('newToolsGrid');
+    const cardMap = {};
+    document.querySelectorAll('#hubMain .tool-card').forEach(card => {
+      const href = card.getAttribute('href') || '';
+      const m = href.match(/tools\/([^/]+)\//);
+      if (m) cardMap[m[1]] = card;
+    });
+    (window._OT_NEW_TOOLS || []).forEach(path => {
+      const card = cardMap[path];
+      if (card) grid.appendChild(card.cloneNode(true));
+    });
+  }
+  loadNewTools();
+
+  // ── Auto-open Stats tab if ?cat=Stats in URL ─────────────
+  if (new URLSearchParams(window.location.search).get('cat') === 'Stats') {
+    const chip = document.querySelector('.cat-chip[data-cat="Stats"]');
+    if (chip) chip.click();
+  }
 
 </script>
 </body>

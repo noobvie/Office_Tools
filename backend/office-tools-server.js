@@ -305,6 +305,61 @@ app.get('/api/portcheck', netRLMiddleware, (req, res) => {
   socket.connect(port, host);
 });
 
+// Batch port checker — runs all ports concurrently, own rate limiter
+const _batchRateMap = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _batchRateMap) { if (now > v.resetAt) _batchRateMap.delete(k); }
+}, 300_000);
+function _batchAllow(ip) {
+  const now = Date.now();
+  let e = _batchRateMap.get(ip);
+  if (!e || now > e.resetAt) e = { count: 0, resetAt: now + 60_000 };
+  e.count++;
+  _batchRateMap.set(ip, e);
+  return e.count <= 30;
+}
+function batchRLMiddleware(req, res, next) {
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+  if (!_batchAllow(ip)) return res.status(429).json({ error: 'Rate limit: 30 requests/minute. Please wait.' });
+  next();
+}
+
+app.get('/api/portcheckbatch', batchRLMiddleware, async (req, res) => {
+  const hostInput = String(req.query.host || '').trim();
+  const portsParam = String(req.query.ports || '').trim();
+  if (!hostInput || !portsParam) return res.status(400).json({ error: 'Missing host or ports' });
+
+  const portNums = [...new Set(
+    portsParam.split(',').map(p => parseInt(p.trim(), 10)).filter(p => !isNaN(p) && p >= 1 && p <= 65535)
+  )];
+  if (!portNums.length) return res.status(400).json({ error: 'No valid ports' });
+  if (portNums.length > 60) return res.status(400).json({ error: 'Max 60 ports per batch' });
+
+  const host = hostInput.replace(/^\[|\]$/g, '');
+  const TIMEOUT = 4000;
+
+  function probePort(port) {
+    return new Promise(resolve => {
+      const socket = new net.Socket();
+      let done = false;
+      function finish(open) {
+        if (done) return; done = true;
+        socket.destroy();
+        resolve({ port, open });
+      }
+      socket.setTimeout(TIMEOUT);
+      socket.once('connect', () => finish(true));
+      socket.once('timeout',  () => finish(false));
+      socket.once('error',    () => finish(false));
+      socket.connect(port, host);
+    });
+  }
+
+  const results = await Promise.all(portNums.map(probePort));
+  res.json({ host: hostInput, results });
+});
+
 // ── Health ────────────────────────────────────────────────────
 app.get('/api/health', (_, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
@@ -317,12 +372,7 @@ app.get('/api/health', (_, res) => res.json({ status: 'ok', ts: new Date().toISO
 //   POST /api/domain/ai-suggest         { keyword } → AI domain name suggestions (Gemini Flash)
 //
 // Rate limit: 15 req/min per IP. In-memory cache: 1 h TTL.
-// Requires: npm install whois   (already in package.json)
 // Optional env vars: GEMINI_API_KEY (AI suggest), VIEWDNS_API_KEY / WHOXY_API_KEY (history)
-
-const whoisPkg   = require('whois');
-const { promisify } = require('util');
-const whoisLookup  = promisify(whoisPkg.lookup);
 
 // Per-IP rate limiter (domain routes only)
 const _domainRateMap = new Map();
@@ -387,7 +437,7 @@ function parseWhoisText(raw) {
   };
 }
 
-// GET /api/domain/whois
+// GET /api/domain/whois — uses HackerTarget HTTP API (avoids TCP port 43 firewall issues)
 app.get('/api/domain/whois', domainRLMiddleware, async (req, res) => {
   const domain = String(req.query.domain || '').trim().toLowerCase().replace(/^www\./, '');
   if (!validDomain(domain)) return res.status(400).json({ error: 'Invalid domain name' });
@@ -397,7 +447,12 @@ app.get('/api/domain/whois', domainRLMiddleware, async (req, res) => {
   if (cached) return res.json({ ...cached, cached: true });
 
   try {
-    const raw    = await whoisLookup(domain, { timeout: 12000 });
+    const r = await fetch(`https://api.hackertarget.com/whois/?q=${encodeURIComponent(domain)}`, {
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!r.ok) throw new Error(`WHOIS API returned HTTP ${r.status}`);
+    const raw = await r.text();
+    if (/^error /i.test(raw) || raw.includes('API count exceeded')) throw new Error(raw.trim());
     const parsed = parseWhoisText(raw);
     const data   = { domain, raw, parsed };
     dcSet(ck, data);
@@ -457,6 +512,11 @@ app.get('/api/domain/rdap', domainRLMiddleware, async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error('[domain/rdap]', err.message);
+    // On timeout or network error, fall back to WHOIS instead of hard-failing
+    if (err.name === 'TimeoutError' || err.name === 'AbortError' ||
+        err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND' || err.code === 'ECONNRESET') {
+      return res.json({ domain, found: false });
+    }
     res.status(500).json({ error: err.message });
   }
 });

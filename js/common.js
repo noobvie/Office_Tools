@@ -128,13 +128,13 @@ function initHeaderSearch() {
   let activeIdx = -1;
 
   function showKbd() {
-    if (kbd)  kbd.hidden  = false;
-    if (icon) icon.hidden = true;
+    if (kbd)  kbd.style.display  = 'flex';
+    if (icon) icon.style.display = 'none';
     input.style.paddingRight = '5rem';
   }
   function hideKbd() {
-    if (kbd)  kbd.hidden  = true;
-    if (icon) icon.hidden = false;
+    if (kbd)  kbd.style.display  = 'none';
+    if (icon) icon.style.display = 'flex';
     input.style.paddingRight = '';
   }
   showKbd();
@@ -262,10 +262,10 @@ const OT_TOOLS = [
   { name: 'Domain Checker',          path: 'domain-checker',        cat: '🌐 Network & Web',        icon: '🌐', desc: 'WHOIS, RDAP, DNS records and availability across TLDs' },
   { name: 'Online Ping Test',        path: 'ping',                  cat: '🌐 Network & Web',        icon: '📡', desc: 'Ping any host with live output — IPv4 and IPv6 supported' },
   { name: 'Online Traceroute',       path: 'traceroute',            cat: '🌐 Network & Web',        icon: '🔍', desc: 'Trace the network path hop by hop with live streaming output' },
-  { name: 'DNS Lookup',              path: 'dns-lookup',            cat: '🌐 Network & Web',        icon: '📋', desc: 'Query A, AAAA, MX, NS, TXT, CNAME, SOA and CAA records' },
-  { name: 'Reverse DNS Lookup',      path: 'reverse-dns',           cat: '🌐 Network & Web',        icon: '🔄', desc: 'Resolve any IPv4 or IPv6 address to its hostname via PTR' },
-  { name: 'IPv6 Analyzer',           path: 'ipv6-analyzer',         cat: '🌐 Network & Web',        icon: '🔬', desc: 'Expand, compress and identify IPv6 address type' },
-  { name: 'Subnet Calculator',       path: 'subnet-calculator',     cat: '🌐 Network & Web',        icon: '🧮', desc: 'CIDR subnet — network address, mask, host range and total' },
+  { name: 'DNS Lookup',              path: 'dns-lookup',            cat: '🌐 Network & Web',        icon: '📋', desc: 'Query A, AAAA, MX, NS, TXT, CNAME, SOA and CAA records',          isNew: true },
+  { name: 'Reverse DNS Lookup',      path: 'reverse-dns',           cat: '🌐 Network & Web',        icon: '🔄', desc: 'Resolve any IPv4 or IPv6 address to its hostname via PTR',           isNew: true },
+  { name: 'IPv6 Analyzer',           path: 'ipv6-analyzer',         cat: '🌐 Network & Web',        icon: '🔬', desc: 'Expand, compress and identify IPv6 address type',                    isNew: true },
+  { name: 'Subnet Calculator',       path: 'subnet-calculator',     cat: '🌐 Network & Web',        icon: '🧮', desc: 'CIDR subnet — network address, mask, host range and total',           isNew: true },
   // 📤 Share
   { name: 'URL Shortener',           path: 'url-shortener',         cat: '📤 Share',                icon: '🔗', desc: 'Create short links with optional custom alias and expiry' },
   { name: 'Pastebin',                path: 'pastebin',              cat: '📤 Share',                icon: '📋', desc: 'Share code and text via private link with burn-after-read' },
@@ -284,6 +284,27 @@ const OT_TOOLS = [
   { name: 'Visual Memory',           path: 'visual-memory',         cat: '🎮 Relax',                icon: '🧠', desc: 'Remember which squares light up, then reproduce the pattern' },
   { name: 'Word Memory',             path: 'word-memory',           cat: '🎮 Relax',                icon: '🔤', desc: 'Study a word list and identify which words you actually saw' },
 ];
+
+// Expose new-tool paths for the main index Stats panel
+window._OT_NEW_TOOLS = OT_TOOLS.filter(t => t.isNew).map(t => t.path);
+
+/* ---------- Stats Pill (tool pages) ---------- */
+function initStatsPill() {
+  const actions   = document.querySelector('.header-actions');
+  const toolPath  = window.location.pathname.match(/\/tools\/([^/]+)/)?.[1];
+  if (!actions || !toolPath) return;
+
+  const root = _otRootPath();
+  const pill = document.createElement('a');
+  pill.className = 'stats-pill';
+  pill.href      = root + 'index.html?cat=Stats';
+  pill.textContent = 'Stats';
+  pill.title     = 'Most used & recently added tools';
+
+  const support = actions.querySelector('.support-pill');
+  const toggle  = actions.querySelector('.theme-toggle');
+  actions.insertBefore(pill, support || toggle || null);
+}
 
 /* ---------- Related Tools ---------- */
 function renderRelatedTools(containerId, tools) {
@@ -423,53 +444,17 @@ function _otRootPath() {
   return segs.length === 0 ? './' : '../'.repeat(segs.length);
 }
 
-/* ---------- Popular Pill ---------- */
-function initPopularPill() {
-  const actions  = document.querySelector('.header-actions');
-  if (!actions) return;
+/* ---------- Tool View Tracking ---------- */
+function trackToolView() {
   const toolPath = window.location.pathname.match(/\/tools\/([^/]+)/)?.[1];
   if (!toolPath) return;
-
   const API  = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
-  const root = _otRootPath();
-
-  // Track this page visit
   const body = JSON.stringify({ tool: toolPath });
   try {
     navigator.sendBeacon(API + '/api/tools/view', new Blob([body], { type: 'application/json' }));
   } catch {
     fetch(API + '/api/tools/view', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
   }
-
-  const pill = document.createElement('a');
-  pill.className = 'popular-pill';
-  pill.href = root + 'index.html';
-
-  function insertPill() {
-    const support = actions.querySelector('.support-pill');
-    const toggle  = actions.querySelector('.theme-toggle');
-    actions.insertBefore(pill, support || toggle || null);
-  }
-
-  fetch(API + '/api/tools/popular?limit=20', { signal: AbortSignal.timeout(4000) })
-    .then(r => r.json())
-    .then(({ tools }) => {
-      const idx   = (tools || []).findIndex(t => t.tool_id === toolPath);
-      const entry = idx >= 0 ? tools[idx] : null;
-      const count = entry?.count || 0;
-      const rank  = idx >= 0 ? idx + 1 : null;
-      const label = count >= 1000 ? (count / 1000).toFixed(1) + 'k' : String(count);
-      pill.innerHTML = rank ? `🔥 #${rank}` : `🔥 ${count > 0 ? label : 'New'}`;
-      pill.title = rank
-        ? `#${rank} most used · ${count.toLocaleString()} visits`
-        : count > 0 ? `${count.toLocaleString()} visits` : 'Be among the first to use this tool!';
-      insertPill();
-    })
-    .catch(() => {
-      pill.innerHTML = '🔥 Popular';
-      pill.title = 'See most popular tools';
-      insertPill();
-    });
 }
 
 /* ---------- Support Pill + Feedback Modal ---------- */
@@ -594,7 +579,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initHeaderSearch();
   initToolSidebar();
   autoRelatedTools();
-  initPopularPill();
+  trackToolView();
+  initStatsPill();
   initSupportPill();
 
   // Ctrl+K / Cmd+K → focus the header search wherever it exists

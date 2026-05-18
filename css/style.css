@@ -432,31 +432,25 @@ a:hover { text-decoration: underline; }
 }
 .captcha-row input:focus { border-color: var(--primary); }
 
-/* ---------- Popular Pill ---------- */
-.popular-pill {
+
+/* ---------- Stats Pill ---------- */
+.stats-pill {
   display: inline-flex;
   align-items: center;
-  gap: .3rem;
   padding: .3rem .75rem;
   border-radius: 50px;
-  border: 1.5px solid #f97316;
+  border: 1.5px solid var(--border);
   background: transparent;
-  color: #f97316;
+  color: var(--text-muted);
   font-size: .8rem;
-  font-weight: 700;
+  font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
   text-decoration: none;
-  transition: background var(--transition), color var(--transition);
+  transition: border-color var(--transition), color var(--transition);
 }
-.popular-pill:hover { background: #f97316; color: #fff; text-decoration: none; }
-[data-theme="dark"]   .popular-pill              { border-color: #fb923c; color: #fb923c; }
-[data-theme="dark"]   .popular-pill:hover        { background: #fb923c; }
-[data-theme="matrix"] .popular-pill              { border-color: var(--primary); color: var(--primary); }
-[data-theme="matrix"] .popular-pill:hover        { background: var(--primary); color: #000; }
-[data-theme="anime"]  .popular-pill              { border-color: var(--primary); color: var(--primary); }
-[data-theme="anime"]  .popular-pill:hover        { background: var(--primary); color: #fff; }
+.stats-pill:hover { border-color: var(--primary); color: var(--primary); text-decoration: none; }
 
 /* ---------- Support Pill ---------- */
 .support-pill {
