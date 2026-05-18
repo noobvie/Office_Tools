@@ -553,10 +553,9 @@ NGINXEOF
 get_ssl() {
     local domain="$1" email="$2"
     section "Getting Let's Encrypt SSL for ${domain}"
-    echo -e "  ${YELLOW}${BOLD}[!] Cloudflare users:${RESET} ${YELLOW}If your domain uses Cloudflare,${RESET}"
-    echo -e "  ${YELLOW}    set the DNS record to ${BOLD}DNS only${RESET}${YELLOW} (grey cloud) before continuing.${RESET}"
-    echo -e "  ${YELLOW}    Leaving it on ${BOLD}Proxied${RESET}${YELLOW} (orange cloud) will cause certificate${RESET}"
-    echo -e "  ${YELLOW}    generation to fail. You can re-enable proxying after SSL is issued.${RESET}"
+    echo -e "  ${DIM}[i] Cloudflare users: if certificate generation fails, try setting your${RESET}"
+    echo -e "  ${DIM}    DNS record to ${BOLD}DNS only${RESET}${DIM} (grey cloud) and re-run. You can re-enable${RESET}"
+    echo -e "  ${DIM}    proxying after the certificate is issued.${RESET}"
     echo ""
     certbot --nginx -d "$domain" \
         --non-interactive --agree-tos \
