@@ -95,7 +95,7 @@
   <button class="cat-chip" data-cat="Stats">📊 Stats</button>
 </div>
 
-<div class="hub-main" id="popularSection">
+<div class="hub-main" id="popularSection" style="display:none">
   <section class="category-section" style="display:block!important">
     <div class="category-title">🔥 Most Used</div>
     <p class="cat-desc">The 10 most-used tools based on real visit data from users.</p>
@@ -639,7 +639,7 @@
       if (matchSearch && !card.classList.contains('coming-soon')) visible++;
     });
 
-    document.querySelectorAll('.category-section').forEach(sec => {
+    document.querySelectorAll('#hubMain .category-section').forEach(sec => {
       const catMatch = catFilter === 'all' || sec.dataset.category === catFilter;
       const anyVisible = catMatch && [...sec.querySelectorAll('.tool-card')].some(c => c.style.display !== 'none');
       sec.style.display = anyVisible ? '' : 'none';

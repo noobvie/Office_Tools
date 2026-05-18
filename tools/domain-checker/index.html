@@ -233,6 +233,13 @@
       border-radius: var(--radius); padding: .75rem 1rem;
       font-size: .88rem; font-weight: 600; margin-top: .75rem;
     }
+    .lookup-error a { color: var(--danger); text-decoration: underline; }
+    .domain-notice {
+      display: none; margin-top: .45rem;
+      background: var(--primary-dim); color: var(--primary);
+      border-radius: var(--radius); padding: .4rem .75rem;
+      font-size: .8rem;
+    }
     .info-notice {
       background: var(--primary-dim); color: var(--primary);
       border-radius: var(--radius); padding: .6rem .9rem;
@@ -280,6 +287,7 @@
       <button class="btn btn-ghost btn-sm" data-example="github.com">github.com</button>
       <button class="btn btn-ghost btn-sm" data-example="grin.money">grin.money</button>
     </div>
+    <div class="domain-notice" id="domainNotice"></div>
 
     <!-- Tabs -->
     <div class="tab-bar" id="tabBar">
@@ -471,6 +479,34 @@ function fmtDate(d) {
   } catch { return d; }
 }
 
+// ── Apex domain extraction ────────────────────────────────────
+// Strips subdomains; handles common second-level ccTLDs (co.uk, com.au…)
+function extractApex(domain) {
+  const parts = domain.split('.');
+  if (parts.length <= 2) return domain;
+  const sld2 = new Set(['co','com','net','org','gov','edu','ac','or','me','ne','go']);
+  if (parts.length > 3 &&
+      sld2.has(parts[parts.length - 2]) &&
+      parts[parts.length - 1].length === 2) {
+    return parts.slice(-3).join('.');
+  }
+  return parts.slice(-2).join('.');
+}
+
+// ── WHOIS fallback links ──────────────────────────────────────
+function whoisErrorHtml(msg, domain) {
+  const enc = encodeURIComponent(domain);
+  return `<div class="lookup-error mt-2">
+    &#10007; ${escHtml(msg)}
+    <div style="margin-top:.55rem;font-weight:400;font-size:.82rem">
+      Try an external lookup:
+      <a href="https://lookup.icann.org/en/lookup?name=${enc}" target="_blank" rel="noopener">ICANN</a> &middot;
+      <a href="https://rdap.org/#${enc}" target="_blank" rel="noopener">RDAP.org</a> &middot;
+      <a href="https://who.is/whois/${enc}" target="_blank" rel="noopener">who.is</a>
+    </div>
+  </div>`;
+}
+
 // ── WHOIS / RDAP Lookup ───────────────────────────────────────
 let currentDomain = '';
 
@@ -496,7 +532,7 @@ async function lookupWhois(domain) {
 
     renderRdap(domain, rdap);
   } catch (err) {
-    out.innerHTML = errorHtml(err.message);
+    out.innerHTML = whoisErrorHtml(err.message, domain);
   }
 }
 
@@ -775,9 +811,22 @@ function renderAiSuggestions(data) {
 }
 
 // ── Main lookup (triggers WHOIS + DNS + availability in parallel) ─
-async function runLookup(domain) {
-  domain = domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+async function runLookup(rawInput) {
+  let domain = rawInput.trim().toLowerCase()
+    .replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].split('?')[0];
   if (!domain) return;
+
+  const apex   = extractApex(domain);
+  const notice = document.getElementById('domainNotice');
+  if (apex !== domain) {
+    notice.innerHTML = `Subdomain detected &mdash; looking up <strong>${escHtml(apex)}</strong> instead.`;
+    notice.style.display = '';
+  } else {
+    notice.style.display = 'none';
+    notice.innerHTML = '';
+  }
+  domain = apex;
+
   document.getElementById('domainInput').value = domain;
   currentDomain = domain;
 
