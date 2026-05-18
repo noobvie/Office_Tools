@@ -795,8 +795,10 @@ app.post('/api/feedback', (req, res) => {
   // Email notification via OS sendmail (fire-and-forget)
   const _fbSubject = `[Office Tools Feedback] ${page || 'unknown page'}`;
   const _fbBody    = `Page: ${page}\nIP: ${clientIp}\n\n${message}`;
-  if (process.env.NOTIFY_EMAIL)   _sendmailNotify(process.env.NOTIFY_EMAIL,   _fbSubject, _fbBody);
-  if (process.env.NOTIFY_EMAIL_2) _sendmailNotify(process.env.NOTIFY_EMAIL_2, _fbSubject, _fbBody);
+  const _ne1 = (process.env.NOTIFY_EMAIL   || '').trim();
+  const _ne2 = (process.env.NOTIFY_EMAIL_2 || '').trim();
+  if (_ne1) _sendmailNotify(_ne1, _fbSubject, _fbBody);
+  if (_ne2) _sendmailNotify(_ne2, _fbSubject, _fbBody);
 
   res.json({ ok: true });
 });
@@ -844,6 +846,7 @@ app.get('/api/ip/geo', async (req, res) => {
 // ── Start ─────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`Office Tools server running on port ${PORT}`);
-  if (!process.env.NOTIFY_EMAIL) console.warn('[config] NOTIFY_EMAIL not set — feedback emails will not be sent');
-  else                           console.log(`[config] Feedback emails → ${process.env.NOTIFY_EMAIL}`);
+  const _cfgEmail = (process.env.NOTIFY_EMAIL || '').trim();
+  if (!_cfgEmail) console.warn('[config] NOTIFY_EMAIL not set — feedback emails will not be sent');
+  else            console.log(`[config] Feedback emails → ${_cfgEmail}`);
 });
