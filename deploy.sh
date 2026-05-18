@@ -43,7 +43,7 @@ REPO_URL="https://github.com/noobvie/Office_Tools.git"
 REPO_DIR="/opt/office-tools/repo"
 WEB_ROOT="/var/www/office-tools"
 BACKEND_DIR="/opt/office-tools/backend"
-COBALT_DIR="/opt/office-tools/cobalt"
+YT_SERVER_DIR="/opt/office-tools/yt-server"
 DEPLOY_CONF="/opt/office-tools/deploy.conf"
 LOG_DIR="/var/log/office-tools"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -217,7 +217,7 @@ install_nodejs() {
 }
 
 # ─── ffmpeg ───────────────────────────────────────────────────────────────────
-# Required by cobalt for video processing.
+# Required by yt-dlp for MP3 conversion and 1080p video muxing.
 install_ffmpeg() {
     section "Installing ffmpeg"
 
@@ -245,69 +245,69 @@ install_ffmpeg() {
         || warn "ffmpeg not found — install manually if needed"
 }
 
-# ─── cobalt (YouTube download backend) ────────────────────────────────────────
-setup_cobalt() {
-    local domain="${1:-}"
-    section "Setting up cobalt (YouTube download backend)"
+# ─── yt-dlp ───────────────────────────────────────────────────────────────────
+# Required by yt-server for video/audio downloading.
+install_ytdlp() {
+    section "Installing yt-dlp"
 
-    # Clone or update cobalt from GitHub
-    if [[ ! -d "$COBALT_DIR/.git" ]]; then
-        info "Cloning cobalt from GitHub…"
-        mkdir -p "$(dirname "$COBALT_DIR")"
-        git clone --depth=1 https://github.com/imputnet/cobalt.git "$COBALT_DIR" \
-            || die "Failed to clone cobalt — check network and try again"
+    if command -v yt-dlp &>/dev/null; then
+        info "yt-dlp found — updating…"
     else
-        info "Updating cobalt…"
-        git -C "$COBALT_DIR" pull --ff-only 2>/dev/null \
-            || warn "cobalt git pull failed — continuing with existing version"
+        info "Installing yt-dlp…"
     fi
 
-    # Detect API package directory (monorepo: packages/api; older layout: api)
-    local api_dir="$COBALT_DIR/packages/api"
-    [[ ! -d "$api_dir" ]] && api_dir="$COBALT_DIR/api"
-    [[ ! -d "$api_dir" ]] && die "cobalt API directory not found in $COBALT_DIR — unexpected repo structure"
+    # --break-system-packages needed on Ubuntu 22.04+ / Debian 12+ (PEP 668)
+    pip3 install -U yt-dlp --break-system-packages 2>/dev/null \
+        || pip3 install -U yt-dlp \
+        || { warn "yt-dlp install failed — YouTube downloads will not work"; return 0; }
 
-    # cobalt uses pnpm workspaces — npm cannot resolve workspace:^ protocol.
-    if ! command -v pnpm &>/dev/null; then
-        info "Installing pnpm (required by cobalt)…"
-        npm install -g pnpm || die "pnpm install failed"
+    # Weekly auto-update cron so yt-dlp stays current with YouTube changes
+    local cron_file="/etc/cron.weekly/yt-dlp-update"
+    if [[ ! -f "$cron_file" ]]; then
+        cat > "$cron_file" << 'CRONEOF'
+#!/bin/bash
+pip3 install -U yt-dlp --break-system-packages 2>/dev/null || pip3 install -U yt-dlp
+systemctl restart office-tools-cobalt 2>/dev/null || true
+CRONEOF
+        chmod +x "$cron_file"
+        success "Weekly yt-dlp auto-update cron installed"
     fi
-    local pnpm_bin; pnpm_bin=$(which pnpm)
 
-    # Install all workspace dependencies from the monorepo root.
-    (cd "$COBALT_DIR" && pnpm install) \
-        || die "pnpm install failed in $COBALT_DIR"
+    command -v yt-dlp &>/dev/null \
+        && success "yt-dlp installed: $(yt-dlp --version)" \
+        || warn "yt-dlp not found — install manually: pip3 install yt-dlp"
+}
 
-    # Write .env
-    local api_url="http://127.0.0.1:9000/"
-    [[ -n "$domain" ]] && api_url="https://${domain}/yt-api/"
+# ─── yt-server (YouTube download backend) ─────────────────────────────────────
+setup_yt_server() {
+    section "Setting up yt-server (YouTube download backend)"
 
-    cat > "$api_dir/.env" << ENVEOF
+    mkdir -p "$YT_SERVER_DIR"
+    rsync -a "$REPO_DIR/yt-server/" "$YT_SERVER_DIR/"
+
+    cd "$YT_SERVER_DIR" && npm install --omit=dev && cd /
+
+    # Write .env (PORT is the only required setting; defaults cover everything else)
+    cat > "$YT_SERVER_DIR/.env" << ENVEOF
 PORT=9000
-API_URL=${api_url}
-CORS_WILDCARD=1
 ENVEOF
-    chmod 600 "$api_dir/.env"
-    # pnpm needs a writable home dir — www-data's default (/var/www) is not writable
-    local pnpm_home="/opt/office-tools/pnpm-home"
-    mkdir -p "$pnpm_home"
-    chown -R www-data:www-data "$COBALT_DIR" "$pnpm_home"
+    chmod 600 "$YT_SERVER_DIR/.env"
+    chown -R www-data:www-data "$YT_SERVER_DIR"
 
     # Create systemd service
     cat > /etc/systemd/system/office-tools-cobalt.service << COBEOF
 [Unit]
-Description=Office Tools — cobalt YouTube Download Server
+Description=Office Tools — yt-server YouTube Download Server
 After=network.target
 
 [Service]
 Type=simple
 User=www-data
 Group=www-data
-WorkingDirectory=${api_dir}
-ExecStart=${pnpm_bin} start
+WorkingDirectory=${YT_SERVER_DIR}
+ExecStart=/usr/bin/node server.js
 Environment=TZ=UTC
-Environment=PNPM_HOME=${pnpm_home}
-EnvironmentFile=-${api_dir}/.env
+EnvironmentFile=-${YT_SERVER_DIR}/.env
 Restart=on-failure
 RestartSec=5s
 StandardOutput=journal
@@ -323,37 +323,20 @@ COBEOF
 
     sleep 3
     if systemctl is-active --quiet office-tools-cobalt; then
-        success "cobalt running on http://127.0.0.1:9000/"
+        success "yt-server running on http://127.0.0.1:9000/"
     else
-        warn "cobalt failed to start — check: journalctl -u office-tools-cobalt -n 30"
+        warn "yt-server failed to start — check: journalctl -u office-tools-cobalt -n 30"
     fi
 }
 
-sync_cobalt() {
-    [[ -d "$COBALT_DIR/.git" ]] || return 0
-    section "Syncing cobalt (YouTube download backend)"
-    git -C "$COBALT_DIR" pull --ff-only 2>/dev/null \
-        || warn "cobalt git pull skipped (detached HEAD or network issue)"
-    local api_dir="$COBALT_DIR/packages/api"
-    [[ ! -d "$api_dir" ]] && api_dir="$COBALT_DIR/api"
-    if [[ -d "$COBALT_DIR" ]]; then
-        command -v pnpm &>/dev/null || npm install -g pnpm || true
-        (cd "$COBALT_DIR" && pnpm install) || true
-        chown -R www-data:www-data "$COBALT_DIR"
-    fi
+sync_yt_server() {
+    [[ -d "$YT_SERVER_DIR" ]] || return 0
+    section "Syncing yt-server (YouTube download backend)"
+    rsync -a --exclude='.env' "$REPO_DIR/yt-server/" "$YT_SERVER_DIR/"
+    cd "$YT_SERVER_DIR" && npm install --omit=dev && cd /
+    chown -R www-data:www-data "$YT_SERVER_DIR"
     systemctl restart office-tools-cobalt 2>/dev/null || true
-    success "cobalt synced and restarted"
-}
-
-# Update cobalt API_URL in .env when a domain is set or changed
-_cobalt_update_api_url() {
-    local domain="$1"
-    local api_dir="$COBALT_DIR/packages/api"
-    [[ ! -d "$api_dir" ]] && api_dir="$COBALT_DIR/api"
-    [[ ! -f "$api_dir/.env" ]] && return 0
-    sed -i "s|^API_URL=.*|API_URL=https://${domain}/yt-api/|" "$api_dir/.env"
-    systemctl restart office-tools-cobalt 2>/dev/null || true
-    success "cobalt API_URL updated to https://${domain}/yt-api/"
+    success "yt-server synced and restarted"
 }
 
 # ─── Repo & frontend ──────────────────────────────────────────────────────────
@@ -672,7 +655,7 @@ print_summary() {
     echo ""
     echo -e "  ${BOLD}Site:${RESET}           https://${domain}/"
     echo -e "  ${BOLD}YT Downloader:${RESET}  https://${domain}/tools/yt-downloader/"
-    echo -e "  ${BOLD}YT API:${RESET}         https://${domain}/yt-api/   ${DIM}(cobalt server, port 9000)${RESET}"
+    echo -e "  ${BOLD}YT API:${RESET}         https://${domain}/yt-api/   ${DIM}(yt-server, port 9000)${RESET}"
     echo -e "  ${BOLD}Web root:${RESET}       ${WEB_ROOT}"
     echo -e "  ${BOLD}nginx config:${RESET}   ${NGINX_CONF_PATH}"
     echo -e "  ${BOLD}Repo:${RESET}           ${REPO_DIR}"
@@ -710,7 +693,7 @@ show_status() {
         echo -e "  ${DIM}○ Repo         : not cloned${RESET}"
     fi
 
-    # Core services (cobalt excluded — managed separately)
+    # Core services (yt-server excluded — managed separately via Option 6)
     local svcs=("nginx" "office-tools-api")
     for svc in "${svcs[@]}"; do
         if systemctl is-active --quiet "$svc" 2>/dev/null; then
@@ -732,7 +715,7 @@ opt_1_install_update() {
     echo -e "    ${CYAN}·${RESET} Set system timezone  ${DIM}→ UTC (required for consistent timestamps)${RESET}"
     echo -e "    ${CYAN}·${RESET} Update OS packages   ${DIM}(${OS_FAMILY})${RESET}"
     echo -e "    ${CYAN}·${RESET} Install / update:    nginx · certbot · Node.js · git · curl"
-    echo -e "    ${CYAN}·${RESET} Install / update:    ffmpeg · cobalt ${DIM}(YouTube downloader backend)${RESET}"
+    echo -e "    ${CYAN}·${RESET} Install / update:    ffmpeg · yt-dlp · yt-server ${DIM}(YouTube downloader backend)${RESET}"
     echo -e "    ${CYAN}·${RESET} Pull latest code     ${DIM}(Office Tools GitHub)${RESET}"
     echo -e "    ${CYAN}·${RESET} Sync frontend files  ${DIM}→ $WEB_ROOT${RESET}"
     echo -e "    ${CYAN}·${RESET} Restart services     ${DIM}(if already configured)${RESET}"
@@ -751,12 +734,13 @@ opt_1_install_update() {
         install_base_packages
         install_nodejs
         install_ffmpeg
+        install_ytdlp
         pull_repo
         load_conf
         sync_frontend "${DOMAIN:-}"
-        # Always call setup_cobalt — it handles both fresh install and updates,
+        # Always call setup_yt_server — handles both fresh install and updates,
         # and always (re-)writes the systemd service file.
-        setup_cobalt "${DOMAIN:-}"
+        setup_yt_server
         if [[ -n "$DOMAIN" ]]; then
             [[ -d "$BACKEND_DIR" ]] && sync_backend || true
             systemctl reload nginx 2>/dev/null || true
@@ -879,7 +863,6 @@ opt_2_add_domain() {
         write_nginx_http "$DOMAIN"
         get_ssl "$DOMAIN" "$EMAIL"
         write_nginx_https "$DOMAIN"
-        _cobalt_update_api_url "$DOMAIN"
 
         if [[ "$_do_backend" == true ]]; then
             setup_backend_first "$DOMAIN" "$_notify_email" "$_notify_email2"
@@ -991,7 +974,6 @@ opt_3_remove_switch() {
             write_nginx_http "$DOMAIN"
             get_ssl "$DOMAIN" "$EMAIL"
             write_nginx_https "$DOMAIN"
-            _cobalt_update_api_url "$DOMAIN"
             [[ -d "$BACKEND_DIR" ]] && sync_backend || true
         ) || { warn "Errors during switch — check $logf"; press_enter; return 0; }
 
@@ -1109,8 +1091,8 @@ opt_5_update_repo() {
         # Sync backend if installed
         [[ -d "$BACKEND_DIR" ]] && sync_backend || true
 
-        # Sync cobalt if installed
-        [[ -d "$COBALT_DIR/.git" ]] && sync_cobalt || true
+        # Sync yt-server if installed
+        [[ -d "$YT_SERVER_DIR" ]] && sync_yt_server || true
 
         # Refresh nginx config so new location blocks (e.g. /yt-api/) are always picked up.
         # Re-write the full config from the current deploy.sh template — safe because the
@@ -1148,13 +1130,13 @@ opt_6_admin_tasks() {
         section "Option 6 — Admin Tasks"
 
         echo -e "    ${BOLD}a)${RESET}  Service Status       ${DIM}detailed status for all services${RESET}"
-        echo -e "    ${BOLD}b)${RESET}  Restart All Services ${DIM}nginx · payment · cobalt${RESET}"
+        echo -e "    ${BOLD}b)${RESET}  Restart All Services ${DIM}nginx · api · yt-server${RESET}"
         echo -e "    ${BOLD}c)${RESET}  URLs & Ports         ${DIM}list all tool URLs, APIs, and listening ports${RESET}"
         echo -e "    ${BOLD}d)${RESET}  Backup Database      ${DIM}back up SQLite DB → /opt/office-tools/backups/${RESET}"
         echo -e "    ${BOLD}e)${RESET}  Restore Database     ${DIM}restore from a previous backup${RESET}"
         echo -e "    ${BOLD}f)${RESET}  Clean Old Logs       ${DIM}delete deploy logs older than 30 days${RESET}"
         echo -e "    ${BOLD}g)${RESET}  Purge Temp Files     ${DIM}file-share uploads${RESET}"
-        echo -e "    ${BOLD}h)${RESET}  Update cobalt        ${DIM}pull latest cobalt from GitHub + restart${RESET}"
+        echo -e "    ${BOLD}h)${RESET}  Update yt-server     ${DIM}sync yt-server from repo, update yt-dlp + restart${RESET}"
         echo -e "    ${BOLD}i)${RESET}  Feedback emails      ${DIM}set / update notification email addresses${RESET}"
         echo -e "  ${DIM}  ──────────────────────────────────────────────${RESET}"
         echo -e "    ${BOLD}0)${RESET}  Back"
@@ -1170,7 +1152,7 @@ opt_6_admin_tasks() {
             e)  _admin_restore_db       ;;
             f)  _admin_clean_logs       ;;
             g)  _admin_purge_temp       ;;
-            h)  _admin_update_cobalt    ;;
+            h)  _admin_update_yt_server  ;;
             i)  _admin_feedback_email   ;;
             0)  return 0                ;;
             *)  warn "Invalid: $_sub"   ;;
@@ -1214,7 +1196,7 @@ _admin_service_status() {
     # Port listener table
     echo -e "  ${BOLD}Listening ports:${RESET}"
     echo -e "  ────────────────────────────────────────"
-    for port_svc in "80:nginx (HTTP)" "443:nginx (HTTPS)" "3001:api-server" "9000:cobalt (optional)"; do
+    for port_svc in "80:nginx (HTTP)" "443:nginx (HTTPS)" "3001:api-server" "9000:yt-server (YouTube downloads)"; do
         local port="${port_svc%%:*}" label="${port_svc#*:}"
         if ss -tlnp 2>/dev/null | grep -q ":${port}\b"; then
             echo -e "  ${GREEN}●${RESET} :${port}  ${label}"
@@ -1265,15 +1247,15 @@ _admin_list_urls() {
 
     echo -e "  ${BOLD}Reverse-proxy routes (nginx)${RESET}"
     echo -e "  ${CYAN}·${RESET} API             : ${base}/pay-api/            → 127.0.0.1:3001"
-    [[ -d "$COBALT_DIR/.git" ]] && \
+    [[ -d "$YT_SERVER_DIR" ]] && \
     echo -e "  ${CYAN}·${RESET} YT Download API : ${base}/yt-api/             → 127.0.0.1:9000"
     echo ""
 
     echo -e "  ${BOLD}Internal services${RESET}"
     echo -e "  ${DIM}·${RESET} nginx           : :80 (HTTP) / :443 (HTTPS)"
     echo -e "  ${DIM}·${RESET} api server      : 127.0.0.1:3001"
-    [[ -d "$COBALT_DIR/.git" ]] && \
-    echo -e "  ${DIM}·${RESET} cobalt server   : 127.0.0.1:9000  (optional)"
+    [[ -d "$YT_SERVER_DIR" ]] && \
+    echo -e "  ${DIM}·${RESET} yt-server       : 127.0.0.1:9000"
     echo ""
 
     echo -e "  ${BOLD}Pages${RESET}"
@@ -1297,8 +1279,8 @@ _admin_list_urls() {
 
     echo -e "  ${BOLD}API health checks${RESET}"
     echo -e "  ${DIM}·${RESET} api server      : ${base}/pay-api/health"
-    [[ -d "$COBALT_DIR/.git" ]] && \
-    echo -e "  ${DIM}·${RESET} cobalt          : ${base}/yt-api/  ${DIM}(GET with Accept: application/json)${RESET}"
+    [[ -d "$YT_SERVER_DIR" ]] && \
+    echo -e "  ${DIM}·${RESET} yt-server       : ${base}/yt-api/health"
     echo ""
 
     press_enter
@@ -1491,34 +1473,21 @@ _admin_feedback_email() {
     press_enter
 }
 
-_admin_update_cobalt() {
-    section "Update cobalt"
-    if [[ ! -d "$COBALT_DIR/.git" ]]; then
-        warn "cobalt not installed — run Option 1 first."
+_admin_update_yt_server() {
+    section "Update yt-server"
+    if [[ ! -d "$YT_SERVER_DIR" ]]; then
+        warn "yt-server not installed — run Option 1 first."
         press_enter; return 0
     fi
 
-    local cur_hash; cur_hash=$(git -C "$COBALT_DIR" log -1 --format='%h %s' 2>/dev/null || echo "unknown")
-    echo -e "  Current commit: ${BOLD}${cur_hash}${RESET}"
-    echo ""
-    ask_proceed "Pull latest cobalt from GitHub and restart service" || return 0
+    ask_proceed "Sync yt-server from repo, update yt-dlp, and restart service" || return 0
 
-    info "Pulling cobalt…"
-    git -C "$COBALT_DIR" pull --ff-only \
-        || { warn "git pull failed — check network or run: git -C $COBALT_DIR pull"; press_enter; return 0; }
+    sync_yt_server
+    install_ytdlp
 
-    local api_dir="$COBALT_DIR/packages/api"
-    [[ ! -d "$api_dir" ]] && api_dir="$COBALT_DIR/api"
-    if [[ -d "$COBALT_DIR" ]]; then
-        info "Installing updated pnpm dependencies…"
-        command -v pnpm &>/dev/null || npm install -g pnpm || true
-        (cd "$COBALT_DIR" && pnpm install) || warn "pnpm install failed"
-        chown -R www-data:www-data "$COBALT_DIR"
-    fi
-
-    systemctl restart office-tools-cobalt \
-        && success "cobalt updated and restarted — $(git -C "$COBALT_DIR" log -1 --format='%h %s')" \
-        || warn "cobalt restart failed — check: journalctl -u office-tools-cobalt -n 20"
+    systemctl is-active --quiet office-tools-cobalt \
+        && success "yt-server updated and running" \
+        || warn "yt-server restart failed — check: journalctl -u office-tools-cobalt -n 20"
     press_enter
 }
 
