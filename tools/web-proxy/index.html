@@ -75,7 +75,7 @@
     </div>
     <div class="opts">
       <label><input type="checkbox" id="stripScripts" checked> Strip scripts (safer, recommended)</label>
-      <a href="#" id="newTab" style="display:none">↗ Open raw in new tab</a>
+      <a href="#" id="newTab" target="_blank" rel="noopener noreferrer" style="display:none">↗ Open in new tab (full page)</a>
     </div>
     <div id="msg"></div>
     <div class="frame-wrap" id="frameWrap" style="display:none">
@@ -83,6 +83,8 @@
         <span>🛡️ proxied</span>
         <span class="url" id="frameUrl"></span>
         <span id="frameStatus"></span>
+        <a href="#" id="frameNewTab" target="_blank" rel="noopener noreferrer"
+           style="color:var(--primary);text-decoration:none;font-weight:700;white-space:nowrap;flex-shrink:0">↗ Open in new tab</a>
       </div>
       <iframe id="proxyFrame" sandbox="allow-popups allow-forms" referrerpolicy="no-referrer" title="Proxied page"></iframe>
     </div>
@@ -152,6 +154,7 @@ async function openProxy() {
     document.getElementById('frameUrl').textContent = target;
     const nt = document.getElementById('newTab');
     nt.href = proxied; nt.style.display = 'inline';
+    document.getElementById('frameNewTab').href = proxied;
     frame.src = proxied;
     frameWrap.style.display = 'block';
   } catch (err) {

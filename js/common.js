@@ -264,6 +264,8 @@ const OT_TOOLS = [
   { name: 'Loan Calculator',         path: 'loan-calculator',       cat: '🧮 Calculators',          icon: '🏦', desc: 'Monthly payment and amortization schedule for any loan' },
   { name: 'Tip Calculator',          path: 'tip-calculator',        cat: '🧮 Calculators',          icon: '🧾', desc: 'Calculate tip and split the bill among friends' },
   { name: 'Number to Words',         path: 'number-words',          cat: '🧮 Calculators',          icon: '🔤', desc: 'Convert numbers to English words for checks and invoices' },
+  { name: 'BMI Calculator',          path: 'bmi-calculator',        cat: '🧮 Calculators',          icon: '⚖️', desc: 'Body Mass Index in metric or imperial with healthy weight range' },
+  { name: 'Age Calculator',          path: 'age-calculator',        cat: '🧮 Calculators',          icon: '🎂', desc: 'Exact age in years, months and days, plus next-birthday countdown' },
   { name: 'Sales Tax & VAT Calculator', path: 'tax-calculator',     cat: '🧮 Calculators',          icon: '🧾', desc: 'Add tax to a net price or remove VAT from a gross total',            isNew: true },
   { name: 'Discount Calculator',     path: 'discount-calculator',   cat: '🧮 Calculators',          icon: '🏷️', desc: 'Sale price, savings and stacked percent-off discounts',               isNew: true },
   { name: 'Compound Interest Calculator', path: 'compound-interest', cat: '🧮 Calculators',         icon: '📈', desc: 'Project savings growth with contributions and a yearly chart',         isNew: true },
@@ -294,6 +296,8 @@ const OT_TOOLS = [
   { name: 'Speech & Voice',          path: 'speech-voice',          cat: '🎬 Media',                icon: '🎙️', desc: 'Transcribe mic or audio to text, or convert text to speech' },
   { name: 'Photo Editor',            path: 'photo-editor',          cat: '🎬 Media',                icon: '🖼️', desc: 'Remove backgrounds, adjust colors and add text to photos' },
   { name: 'Image Converter',         path: 'image-converter',       cat: '🎬 Media',                icon: '🖼️', desc: 'Convert HEIC/HEIF to JPG/PNG, compress and resize images' },
+  { name: 'Image to Text (OCR)',     path: 'ocr',                   cat: '🎬 Media',                icon: '🔎', desc: 'Extract text from photos, screenshots and scans — 10+ languages' },
+  { name: 'Image Cropper',           path: 'image-cropper',         cat: '🎬 Media',                icon: '✂️', desc: 'Crop photos with aspect presets, rotate, flip and zoom' },
   { name: 'Screenshot Beautifier',   path: 'screenshot-beautifier', cat: '🎬 Media',                icon: '🖼️', desc: 'Add gradient backgrounds and shadows to screenshots' },
   { name: 'Color Picker / Eyedropper', path: 'color-picker',        cat: '🎬 Media',                icon: '🎨', desc: 'Pick HEX/RGB/HSL colors from any image with a magnified loupe',       isNew: true },
   { name: 'EXIF Viewer & Remover',   path: 'exif-viewer',           cat: '🎬 Media',                icon: '📷', desc: 'View photo metadata and GPS, then download a stripped clean copy',     isNew: true },
@@ -316,6 +320,8 @@ const OT_TOOLS = [
   { name: 'Reverse DNS Lookup',      path: 'reverse-dns',           cat: '🌐 Network & Web',        icon: '🔄', desc: 'Resolve any IPv4 or IPv6 address to its hostname via PTR' },
   { name: 'IPv6 Analyzer',           path: 'ipv6-analyzer',         cat: '🌐 Network & Web',        icon: '🔬', desc: 'Expand, compress and identify IPv6 address type' },
   { name: 'Subnet Calculator',       path: 'subnet-calculator',     cat: '🌐 Network & Web',        icon: '🧮', desc: 'CIDR subnet — network address, mask, host range and total' },
+  { name: 'Website Up or Down',      path: 'website-status',        cat: '🌐 Network & Web',        icon: '🔌', desc: 'Check if a website is up or down — HTTP status, response time, SSL' },
+  { name: 'Web Proxy',               path: 'web-proxy',             cat: '🌐 Network & Web',        icon: '🛡️', desc: 'View blocked or geo-restricted pages through an online proxy' },
   // 📤 Share
   { name: 'URL Shortener',           path: 'url-shortener',         cat: '📤 Share',                icon: '🔗', desc: 'Create short links with optional custom alias and expiry' },
   { name: 'Pastebin',                path: 'pastebin',              cat: '📤 Share',                icon: '📋', desc: 'Share code and text via private link with burn-after-read' },
@@ -323,6 +329,7 @@ const OT_TOOLS = [
   // 📁 PDF
   { name: 'PDF Toolkit',             path: 'pdf-toolkit',           cat: '📁 PDF',                  icon: '📑', desc: 'Merge, split, extract and reorder PDF pages with drag-and-drop' },
   { name: 'PDF to Text',             path: 'pdf-to-text',           cat: '📁 PDF',                  icon: '📄', desc: 'Extract text from any PDF — copy or download as .txt or .docx' },
+  { name: 'Image to PDF',            path: 'image-to-pdf',          cat: '📁 PDF',                  icon: '🖼️', desc: 'Combine JPG/PNG/WebP images into one PDF — reorder, A4/Letter' },
   // 🎮 Relax
   { name: '2048',                    path: '2048',                  cat: '🎮 Relax',                icon: '🔢', desc: 'Slide and merge tiles to reach 2048' },
   { name: 'Sudoku',                  path: 'sudoku',                cat: '🎮 Relax',                icon: '🧩', desc: 'Classic 9×9 Sudoku — Easy, Medium, Hard with pencil mode' },
