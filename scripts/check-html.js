@@ -2,8 +2,11 @@
 /**
  * scripts/check-html.js
  * Validates that every tools/<name>/index.html conforms to the required head structure:
- *   1. <script src="../../js/theme-init.js"> before the stylesheet
+ *   1. inline theme-init <script> (sets data-theme) before the stylesheet
  *   2. <link rel="stylesheet" href="../../css/style.css">
+ *
+ * theme-init is inlined (not an external file) so it runs with zero fetch
+ * delay and there is no flash of the wrong theme on first paint.
  *
  * Usage:  node scripts/check-html.js
  * Exit code 0 = all OK, 1 = one or more violations found.
@@ -13,7 +16,8 @@ const fs   = require('fs');
 const path = require('path');
 
 const TOOLS_DIR      = path.join(__dirname, '..', 'tools');
-const THEME_INIT_REF = '<script src="../../js/theme-init.js"></script>';
+// Distinctive marker for the inline theme-init snippet.
+const THEME_INIT_REF = 'localStorage.getItem("ot-theme")';
 const STYLESHEET_REF = '<link rel="stylesheet" href="../../css/style.css">';
 
 const dirs = fs.readdirSync(TOOLS_DIR, { withFileTypes: true })
@@ -41,13 +45,13 @@ for (const file of dirs) {
   const rel = path.relative(path.join(__dirname, '..'), file);
 
   if (!hasThemeInit) {
-    console.error(`FAIL  ${rel}  — missing theme-init.js <script> tag`);
+    console.error(`FAIL  ${rel}  — missing inline theme-init <script>`);
     errors++;
   } else if (!hasStylesheet) {
     console.error(`FAIL  ${rel}  — missing style.css <link> tag`);
     errors++;
   } else if (!correctOrder) {
-    console.error(`FAIL  ${rel}  — theme-init.js must come before style.css`);
+    console.error(`FAIL  ${rel}  — theme-init must come before style.css`);
     errors++;
   } else {
     console.log(`OK    ${rel}`);

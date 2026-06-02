@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="matrix">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,7 +17,7 @@
   <meta name="twitter:description" content="Sale price, savings, and stacked discounts — instantly.">
   <link rel="canonical" href="https://tools.grin.money/tools/discount-calculator/">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Discount Calculator","description":"Calculate sale price, amount saved, and stacked percent-off discounts. Runs in your browser.","applicationCategory":"FinanceApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/discount-calculator/"}</script>
-  <script src="../../js/theme-init.js"></script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
   <link rel="stylesheet" href="../../css/style.css">
   <style>
     .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
@@ -117,7 +117,7 @@
 <script src="../../js/common.js"></script>
 <script>
 const $ = id => document.getElementById(id);
-const fmt = n => '$' + (isFinite(n) ? n : 0).toFixed(2);
+const money = n => '$' + (isFinite(n) ? n : 0).toFixed(2);
 let extra = [];
 
 function renderStacks() {
@@ -148,8 +148,8 @@ function compute() {
   extra.forEach(d => { p = p * (1 - (d || 0) / 100); });
   const save = price - p;
   const eff = price > 0 ? (save / price) * 100 : 0;
-  $('rFinal').textContent = fmt(p);
-  $('rSave').textContent  = fmt(save);
+  $('rFinal').textContent = money(p);
+  $('rSave').textContent  = money(save);
   $('rEff').textContent   = eff.toFixed(1) + '%';
 }
 

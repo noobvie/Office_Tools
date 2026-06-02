@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="matrix">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,7 +17,7 @@
   <meta name="twitter:description" content="Check your public IP address instantly. Reveals IPv4 or IPv6, ISP name, country, city, approximate coordinates, and your network's IPv6 support status. No signup needed.">
   <link rel="canonical" href="https://tools.grin.money/tools/my-ip/">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"What Is My IP?","description":"Check your public IP address instantly. Reveals IPv4 or IPv6, ISP name, country, city, approximate coordinates, and your network's IPv6 support status. No signup needed.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/my-ip/"}</script>
-  <script src="../../js/theme-init.js"></script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
   <link rel="stylesheet" href="../../css/style.css">
   <style>
     .ip-display {
@@ -130,8 +130,7 @@
       <span class="loading-pulse"></span>
       <span class="text-muted">Detecting your IP…</span>
     </div>
-    <div class="btn-group" style="justify-content:center" id="ipActions" style="display:none">
-      <button class="btn btn-primary" id="copyIpBtn">Copy IP</button>
+    <div class="btn-group" id="ipActions" style="justify-content:center;display:none">
       <button class="btn btn-secondary btn-sm" id="refreshIpBtn">↺ Refresh</button>
     </div>
   </div>
@@ -293,17 +292,22 @@ function renderIp() {
   if (myIpv4) {
     html += `<div class="ip-address">${escHtml(myIpv4)}</div>
     <div class="ip-label">IPv4 Address</div>
-    <span class="ip-type-badge badge badge-success">IPv4</span>`;
+    <div><span class="ip-type-badge badge badge-success">IPv4</span></div>
+    <button class="btn btn-secondary btn-sm" id="copyV4Btn" style="margin-top:.6rem">📋 Copy IPv4</button>`;
   }
   if (myIpv6) {
-    if (myIpv4) html += '<div style="margin:.75rem 0;border-top:1px solid var(--border)"></div>';
+    if (myIpv4) html += '<div style="margin:1rem 0;border-top:1px solid var(--border)"></div>';
     html += `<div class="ip-address" style="${myIpv4 ? 'font-size:1.5rem' : ''}">${escHtml(myIpv6)}</div>
     <div class="ip-label">IPv6 Address</div>
-    <span class="ip-type-badge badge badge-primary">IPv6</span>`;
+    <div><span class="ip-type-badge badge badge-primary">IPv6</span></div>
+    <button class="btn btn-secondary btn-sm" id="copyV6Btn" style="margin-top:.6rem">📋 Copy IPv6</button>`;
   }
   display.innerHTML = html;
 
-  document.getElementById('copyIpBtn').onclick = () => copyText(myIp, document.getElementById('copyIpBtn'));
+  const v4Btn = document.getElementById('copyV4Btn');
+  if (v4Btn) v4Btn.onclick = () => copyText(myIpv4, v4Btn);
+  const v6Btn = document.getElementById('copyV6Btn');
+  if (v6Btn) v6Btn.onclick = () => copyText(myIpv6, v6Btn);
   document.getElementById('ipActions').style.display = '';
 
   if (ipData && ipData.status === 'success') {

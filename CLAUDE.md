@@ -31,7 +31,7 @@ sudo bash deploy.sh          # install/update/add domain
 ### Frontend — no framework, no build
 
 Every tool is a self-contained `tools/<name>/index.html`. There is no bundler, no transpilation. Each page includes:
-- `../../js/theme-init.js` — sets `data-theme` before render (prevents flash)
+- an **inline** theme-init `<script>` in `<head>` before the stylesheet — sets `data-theme` (default `matrix`) with zero fetch delay so there is no flash of the wrong theme on first paint. The static `<html data-theme="matrix">` attribute must match this default. (Inlined rather than an external file precisely to avoid the fetch round-trip that caused the flash.)
 - `../../css/style.css` — all shared styles and CSS variables
 - `../../js/config.js` — exposes `window.OT_CONFIG.API_SERVER_URL`
 - `../../js/common.js` — theme toggle (`initThemeToggle`), `copyText(text, btn)`
