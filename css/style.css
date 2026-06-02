@@ -638,6 +638,24 @@ a:hover { text-decoration: underline; }
   font-size: .95rem;
 }
 
+.tool-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .4rem;
+  font-size: .82rem;
+  margin-bottom: 1rem;
+  color: var(--text-muted);
+}
+.tool-breadcrumb a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color .15s;
+}
+.tool-breadcrumb a:hover { color: var(--primary); }
+.tool-breadcrumb .bc-sep { opacity: .6; }
+.tool-breadcrumb .bc-current { color: var(--text); font-weight: 600; }
+
 /* ---------- Tool About / Description ---------- */
 .tool-about {
   margin-top: 2.5rem;

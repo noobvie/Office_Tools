@@ -389,6 +389,51 @@ function autoRelatedTools() {
   }
 }
 
+/* ---------- Breadcrumbs (visible nav + BreadcrumbList schema) ---------- */
+function renderBreadcrumbs() {
+  const main = document.querySelector('.tool-main');
+  if (!main || main.querySelector('.tool-breadcrumb')) return;
+  const m = window.location.pathname.match(/\/tools\/([^\/]+)/);
+  if (!m) return;
+  const currentPath = m[1];
+  const tool = OT_TOOLS.find(t => t.path === currentPath);
+  // Fall back to the page title (minus the " — Office Tools" suffix) for any
+  // tool page not listed in OT_TOOLS.
+  const name = tool ? tool.name : document.title.replace(/\s*[—|].*$/, '').trim();
+
+  // root resolves to the absolute site root (e.g. https://host/) — links there
+  // directly to avoid the /index.html → / 301 the nginx SEO rule performs.
+  const root = _otRootPath();
+
+  // Absolute URLs for schema — prefer the canonical link, fall back to location.
+  const canonical = document.querySelector('link[rel="canonical"]')?.href || window.location.href;
+  const homeUrl = new URL('/', canonical).href;
+
+  // Visible breadcrumb
+  const nav = document.createElement('nav');
+  nav.className = 'tool-breadcrumb';
+  nav.setAttribute('aria-label', 'Breadcrumb');
+  nav.innerHTML =
+    `<a href="${root}">🛠️ Office Tools</a>` +
+    `<span class="bc-sep" aria-hidden="true">›</span>` +
+    `<span class="bc-current" aria-current="page">${escHtml(name)}</span>`;
+  main.insertBefore(nav, main.firstChild);
+
+  // BreadcrumbList structured data (Google renders JS, then reads injected JSON-LD)
+  const ld = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Office Tools', item: homeUrl },
+      { '@type': 'ListItem', position: 2, name, item: canonical },
+    ],
+  };
+  const s = document.createElement('script');
+  s.type = 'application/ld+json';
+  s.textContent = JSON.stringify(ld);
+  document.head.appendChild(s);
+}
+
 function initToolSidebar() {
   const m = window.location.pathname.match(/\/tools\/([^\/]+)/);
   if (!m) return;
@@ -617,6 +662,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initTabs();
   initHeaderSearch();
   initToolSidebar();
+  renderBreadcrumbs();
   autoRelatedTools();
   trackToolView();
   initSupportPill();

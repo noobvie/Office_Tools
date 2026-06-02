@@ -439,6 +439,11 @@ server {
     # SEO: enforce trailing slash on tool and page directory URLs (no file extension)
     location ~ ^(/tools/[^/.]+|/pages/[^/.]+)$ { return 301 \$uri/; }
 
+    # Permanently removed pages — 410 Gone de-indexes faster/cleaner than a 404.
+    # Add formerly-public URLs here when a tool/page is retired.
+    location = /tools/wordle/ { return 410; }
+    location ^~ /auth/        { return 410; }
+
     location / { try_files \$uri/index.html \$uri \$uri.html =404; }
 
     location ^~ /pay-api/ {
@@ -525,6 +530,11 @@ server {
     location ~ ^(.*\.html)/$ { return 301 \$1; }
     # SEO: enforce trailing slash on tool and page directory URLs (no file extension)
     location ~ ^(/tools/[^/.]+|/pages/[^/.]+)$ { return 301 \$uri/; }
+
+    # Permanently removed pages — 410 Gone de-indexes faster/cleaner than a 404.
+    # Add formerly-public URLs here when a tool/page is retired.
+    location = /tools/wordle/ { return 410; }
+    location ^~ /auth/        { return 410; }
 
     location / { try_files \$uri/index.html \$uri \$uri.html =404; }
 
