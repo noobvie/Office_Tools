@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image to Text (OCR) — Extract Text from Photos &amp; Scans — Office Tools</title>
+  <meta name="description" content="Free OCR tool. Extract text from images, photos, screenshots and scanned documents directly in your browser. 10+ languages, no upload — your images never leave your device.">
+  <meta name="keywords" content="OCR online, image to text, extract text from image, photo to text, picture to text, scanned document to text, screenshot to text, free OCR, Tesseract OCR">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Image to Text (OCR) — Extract Text from Photos &amp; Scans — Office Tools">
+  <meta property="og:description" content="Extract text from images, screenshots and scanned documents in your browser. 10+ languages, no upload — 100% private.">
+  <meta property="og:url" content="https://tools.grin.money/tools/ocr/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Image to Text (OCR) — Office Tools">
+  <meta name="twitter:description" content="Extract text from images and scans in your browser. 10+ languages, no upload.">
+  <link rel="canonical" href="https://tools.grin.money/tools/ocr/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Image to Text (OCR)","description":"Extract text from images, photos, screenshots and scanned documents in your browser. Multiple languages, no upload.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/ocr/"}</script>
+  <script src="../../js/theme-init.js"></script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .drop-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 2.2rem 1rem;
+      text-align: center; cursor: pointer; color: var(--text-muted); transition: all var(--transition); }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
+    .drop-zone input[type=file] { display: none; }
+    .drop-icon { font-size: 2.2rem; }
+    .opts { display: grid; grid-template-columns: 1fr auto; gap: .75rem; align-items: end; margin-top: 1rem; }
+    .preview-wrap { margin-top: 1rem; text-align: center; }
+    .preview-wrap img { max-width: 100%; max-height: 320px; border-radius: var(--radius); border: 1px solid var(--border); }
+    .prog-wrap { margin-top: 1rem; display: none; }
+    .prog-bar { height: 10px; background: var(--bg-secondary); border-radius: 5px; overflow: hidden; }
+    .prog-fill { height: 100%; width: 0%; background: var(--primary); transition: width .2s ease; }
+    .prog-label { font-size: .8rem; color: var(--text-muted); margin-top: .4rem; text-align: center; }
+    .out-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: .5rem; }
+    .out-head .count { font-size: .8rem; color: var(--text-muted); }
+    textarea.out { width: 100%; min-height: 220px; resize: vertical; font-family: inherit; }
+    @media (max-width: 480px) { .opts { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Image to Text (OCR)</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔎 Image to Text (OCR)</h1>
+    <p>Extract text from images, screenshots and scanned documents — runs entirely in your browser.</p>
+  </div>
+
+<section class="tool-about">
+  <h2>About Image to Text (OCR)</h2>
+  <p><strong>Optical Character Recognition (OCR)</strong> reads the text inside an image and turns it back into editable, copyable text. Drop in a <strong>photo, screenshot, or scanned page</strong>, pick the language, and the tool extracts the text for you to copy or download. It works on receipts, book pages, business cards, signs, slides, and PDF screenshots.</p>
+  <p>Recognition runs locally using the open-source Tesseract engine compiled to WebAssembly &mdash; your image is <strong>never uploaded to any server</strong>. The language data file downloads once from a CDN on first use and is then cached. For best results use a sharp, well-lit, straight image; tiny or skewed text will read less accurately.</p>
+</section>
+
+  <div class="card">
+    <label class="drop-zone" id="dropZone">
+      <div class="drop-icon">🖼️</div>
+      <div><strong>Click to choose an image</strong> or drag &amp; drop</div>
+      <div style="font-size:.8rem;margin-top:.3rem">PNG · JPG · WebP · BMP · GIF</div>
+      <input type="file" id="fileInput" accept="image/*">
+    </label>
+
+    <div class="opts">
+      <div>
+        <label class="form-label">Language</label>
+        <select id="langSel" class="form-input">
+          <option value="eng">English</option>
+          <option value="spa">Spanish (Español)</option>
+          <option value="fra">French (Français)</option>
+          <option value="deu">German (Deutsch)</option>
+          <option value="ita">Italian (Italiano)</option>
+          <option value="por">Portuguese (Português)</option>
+          <option value="nld">Dutch (Nederlands)</option>
+          <option value="rus">Russian (Русский)</option>
+          <option value="chi_sim">Chinese — Simplified (简体)</option>
+          <option value="chi_tra">Chinese — Traditional (繁體)</option>
+          <option value="jpn">Japanese (日本語)</option>
+          <option value="kor">Korean (한국어)</option>
+          <option value="ara">Arabic (العربية)</option>
+          <option value="hin">Hindi (हिन्दी)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="runBtn" disabled>Extract Text</button>
+    </div>
+
+    <div class="preview-wrap" id="previewWrap" style="display:none">
+      <img id="previewImg" alt="selected image preview">
+    </div>
+
+    <div class="prog-wrap" id="progWrap">
+      <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+      <div class="prog-label" id="progLabel">Starting…</div>
+    </div>
+  </div>
+
+  <div class="card mt-2" id="outCard" style="display:none">
+    <div class="out-head">
+      <strong>Extracted Text</strong>
+      <span class="count" id="charCount"></span>
+    </div>
+    <textarea class="form-input out" id="outText" placeholder="Recognised text will appear here…"></textarea>
+    <div class="btn-group mt-2">
+      <button class="btn btn-secondary" id="copyBtn">Copy</button>
+      <button class="btn btn-secondary" id="downloadBtn">Download .txt</button>
+      <button class="btn btn-ghost" id="clearBtn">Clear</button>
+    </div>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">image to text</span>
+  <span class="page-tag">extract text from photo</span>
+  <span class="page-tag">screenshot to text</span>
+  <span class="page-tag">scanned document OCR</span>
+  <span class="page-tag">free OCR</span>
+</div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+let selectedFile = null;
+let running = false;
+
+const dropZone   = document.getElementById('dropZone');
+const fileInput  = document.getElementById('fileInput');
+const runBtn     = document.getElementById('runBtn');
+const previewImg = document.getElementById('previewImg');
+
+function setFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  selectedFile = file;
+  const url = URL.createObjectURL(file);
+  previewImg.src = url;
+  document.getElementById('previewWrap').style.display = 'block';
+  runBtn.disabled = false;
+}
+
+fileInput.addEventListener('change', e => { if (e.target.files[0]) setFile(e.target.files[0]); });
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+});
+
+// Allow pasting an image directly (e.g. a screenshot from the clipboard)
+window.addEventListener('paste', e => {
+  const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith('image/'));
+  if (item) setFile(item.getAsFile());
+});
+
+function setProgress(pct, label) {
+  document.getElementById('progFill').style.width = pct + '%';
+  document.getElementById('progLabel').textContent = label;
+}
+
+runBtn.addEventListener('click', async () => {
+  if (!selectedFile || running) return;
+  running = true;
+  runBtn.disabled = true;
+  document.getElementById('progWrap').style.display = 'block';
+  setProgress(2, 'Loading language data…');
+
+  const lang = document.getElementById('langSel').value;
+  try {
+    const { data } = await Tesseract.recognize(selectedFile, lang, {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          setProgress(Math.round(m.progress * 100), `Recognising… ${Math.round(m.progress * 100)}%`);
+        } else {
+          setProgress(Math.min(99, Math.round((m.progress || 0) * 100)), m.status);
+        }
+      }
+    });
+    const text = (data.text || '').trim();
+    document.getElementById('outText').value = text;
+    document.getElementById('charCount').textContent =
+      `${text.length.toLocaleString()} chars · ${(text.split(/\s+/).filter(Boolean)).length.toLocaleString()} words`;
+    document.getElementById('outCard').style.display = 'block';
+    setProgress(100, 'Done ✓');
+  } catch (err) {
+    setProgress(0, 'Error: ' + (err.message || 'recognition failed'));
+  } finally {
+    running = false;
+    runBtn.disabled = false;
+    setTimeout(() => { document.getElementById('progWrap').style.display = 'none'; }, 1200);
+  }
+});
+
+document.getElementById('copyBtn').addEventListener('click', function () {
+  copyText(document.getElementById('outText').value, this);
+});
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  const blob = new Blob([document.getElementById('outText').value], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ocr-text.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+document.getElementById('clearBtn').addEventListener('click', () => {
+  selectedFile = null;
+  fileInput.value = '';
+  document.getElementById('previewWrap').style.display = 'none';
+  document.getElementById('outCard').style.display = 'none';
+  document.getElementById('outText').value = '';
+  runBtn.disabled = true;
+});
+</script>
+</body>
+</html>

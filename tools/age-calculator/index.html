@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Age Calculator — Exact Age in Years, Months &amp; Days — Office Tools</title>
+  <meta name="description" content="Free age calculator. Enter your date of birth to find your exact age in years, months and days, total weeks, days and hours lived, the day you were born, and a countdown to your next birthday.">
+  <meta name="keywords" content="age calculator, calculate age, how old am I, date of birth calculator, exact age, age in days, next birthday countdown, day of week born">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Age Calculator — Exact Age in Years, Months &amp; Days — Office Tools">
+  <meta property="og:description" content="Find your exact age in years, months and days, plus total weeks/days/hours lived and a countdown to your next birthday. Free, runs in your browser.">
+  <meta property="og:url" content="https://tools.grin.money/tools/age-calculator/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Age Calculator — How Old Am I — Office Tools">
+  <meta name="twitter:description" content="Find your exact age in years, months and days, plus a countdown to your next birthday.">
+  <link rel="canonical" href="https://tools.grin.money/tools/age-calculator/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Age Calculator","description":"Find your exact age in years, months and days, total time lived, and a countdown to your next birthday.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/age-calculator/"}</script>
+  <script src="../../js/theme-init.js"></script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; align-items: end; }
+    .age-main { text-align: center; padding: .5rem 0 .25rem; }
+    .age-big { font-size: 2.6rem; font-weight: 800; color: var(--primary); line-height: 1.1; }
+    .age-sub { font-size: .9rem; color: var(--text-muted); margin-top: .3rem; }
+    .stat-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: .75rem; margin-top: .75rem; }
+    .stat { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: .8rem 1rem; }
+    .stat-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+    .stat-val { font-size: 1.4rem; font-weight: 800; margin-top: .1rem; }
+    .bday-box { background: var(--primary-dim); border: 1px solid var(--primary); border-radius: var(--radius);
+      padding: .9rem 1rem; margin-top: 1rem; text-align: center; }
+    .bday-box .big { font-size: 1.6rem; font-weight: 800; color: var(--primary); }
+    @media (max-width: 480px) { .input-grid { grid-template-columns: 1fr; } .stat-grid { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Age Calculator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🎂 Age Calculator</h1>
+    <p>Find your exact age in years, months and days — plus total time lived and a countdown to your next birthday.</p>
+  </div>
+
+<section class="tool-about">
+  <h2>About Age Calculator</h2>
+  <p>Enter your <strong>date of birth</strong> and this tool calculates your <strong>exact age in years, months, and days</strong> as of today (or any date you choose). It also breaks your life down into total months, weeks, days, and hours lived, tells you which <strong>day of the week you were born</strong>, and counts down the days to your next birthday.</p>
+  <p>Age is calculated calendar-accurately &mdash; months and leap years are handled properly, not approximated as "365.25 days". Useful for forms, eligibility checks, birthday planning, or just curiosity. Everything runs locally in your browser; no date is ever sent anywhere.</p>
+</section>
+
+  <div class="card">
+    <div class="input-grid">
+      <div>
+        <label class="form-label">Date of Birth</label>
+        <input type="date" id="dob" class="form-input">
+      </div>
+      <div>
+        <label class="form-label">Age at Date</label>
+        <input type="date" id="atDate" class="form-input">
+      </div>
+    </div>
+    <p id="errMsg" style="color:var(--danger);font-size:.82rem;margin:.6rem 0 0;display:none"></p>
+  </div>
+
+  <div class="card mt-2" id="resultCard">
+    <div class="age-main">
+      <div class="age-big" id="ageBig">—</div>
+      <div class="age-sub" id="ageSub"></div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-label">Total Months</div><div class="stat-val" id="sMonths">—</div></div>
+      <div class="stat"><div class="stat-label">Total Weeks</div><div class="stat-val" id="sWeeks">—</div></div>
+      <div class="stat"><div class="stat-label">Total Days</div><div class="stat-val" id="sDays">—</div></div>
+      <div class="stat"><div class="stat-label">Total Hours</div><div class="stat-val" id="sHours">—</div></div>
+    </div>
+
+    <div class="bday-box">
+      <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted)">Next Birthday</div>
+      <div class="big" id="bdayCount">—</div>
+      <div style="font-size:.85rem;color:var(--text-muted);margin-top:.2rem" id="bdayWhen"></div>
+    </div>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">how old am I</span>
+  <span class="page-tag">exact age</span>
+  <span class="page-tag">age in days</span>
+  <span class="page-tag">next birthday</span>
+  <span class="page-tag">day of week born</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function todayISO() {
+  const d = new Date();
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
+}
+
+function showErr(msg) {
+  const e = document.getElementById('errMsg');
+  e.textContent = msg; e.style.display = 'block';
+  document.getElementById('resultCard').style.opacity = '.4';
+}
+function clearErr() {
+  document.getElementById('errMsg').style.display = 'none';
+  document.getElementById('resultCard').style.opacity = '1';
+}
+
+// Exact Y/M/D difference using calendar borrow logic
+function diffYMD(from, to) {
+  let y = to.getFullYear() - from.getFullYear();
+  let m = to.getMonth() - from.getMonth();
+  let d = to.getDate() - from.getDate();
+  if (d < 0) {
+    m -= 1;
+    const daysInPrevMonth = new Date(to.getFullYear(), to.getMonth(), 0).getDate();
+    d += daysInPrevMonth;
+  }
+  if (m < 0) { y -= 1; m += 12; }
+  return { y, m, d };
+}
+
+function plural(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
+
+function compute() {
+  const dobStr = document.getElementById('dob').value;
+  const atStr  = document.getElementById('atDate').value || todayISO();
+  if (!dobStr) { showErr('Enter your date of birth to begin.'); return; }
+
+  const dob = new Date(dobStr + 'T00:00:00');
+  const at  = new Date(atStr + 'T00:00:00');
+  if (isNaN(dob) || isNaN(at)) { showErr('Invalid date.'); return; }
+  if (at < dob) { showErr('The "age at" date is before the birth date.'); return; }
+  clearErr();
+
+  const { y, m, d } = diffYMD(dob, at);
+  document.getElementById('ageBig').textContent =
+    `${plural(y,'year')}, ${plural(m,'month')}, ${plural(d,'day')}`;
+  document.getElementById('ageSub').textContent =
+    `Born on a ${DAYS[dob.getDay()]} — ${MONTHS[dob.getMonth()]} ${dob.getDate()}, ${dob.getFullYear()}`;
+
+  const ms = at - dob;
+  const totalDays  = Math.floor(ms / 86400000);
+  const totalHours = Math.floor(ms / 3600000);
+  const totalWeeks = Math.floor(totalDays / 7);
+  const totalMonths = y * 12 + m;
+
+  document.getElementById('sMonths').textContent = totalMonths.toLocaleString();
+  document.getElementById('sWeeks').textContent  = totalWeeks.toLocaleString();
+  document.getElementById('sDays').textContent   = totalDays.toLocaleString();
+  document.getElementById('sHours').textContent  = totalHours.toLocaleString();
+
+  // Next birthday relative to the "at" date
+  let next = new Date(at.getFullYear(), dob.getMonth(), dob.getDate());
+  if (next < at) next = new Date(at.getFullYear() + 1, dob.getMonth(), dob.getDate());
+  const daysToBday = Math.round((next - at) / 86400000);
+  const turning = next.getFullYear() - dob.getFullYear();
+
+  const countEl = document.getElementById('bdayCount');
+  if (daysToBday === 0) {
+    countEl.textContent = '🎉 Today!';
+    document.getElementById('bdayWhen').textContent = `Happy birthday — turning ${turning}`;
+  } else {
+    countEl.textContent = plural(daysToBday, 'day') + ' away';
+    document.getElementById('bdayWhen').textContent =
+      `${DAYS[next.getDay()]}, ${MONTHS[next.getMonth()]} ${next.getDate()}, ${next.getFullYear()} — turning ${turning}`;
+  }
+}
+
+document.getElementById('atDate').value = todayISO();
+['dob','atDate'].forEach(id => document.getElementById(id).addEventListener('input', compute));
+compute();
+</script>
+</body>
+</html>

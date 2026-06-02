@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Morse Code Translator — Text ↔ Morse + Audio — Office Tools</title>
+  <meta name="description" content="Translate text to Morse code and Morse code to text. Play the Morse as audio beeps, adjust speed (WPM), and flash a visual signal. Free online Morse code translator.">
+  <meta name="keywords" content="morse code translator, text to morse, morse to text, morse code converter, morse code audio, morse code generator, learn morse code, SOS morse">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Morse Code Translator — Office Tools">
+  <meta property="og:description" content="Translate text ↔ Morse code and play it as audio beeps with adjustable speed.">
+  <meta property="og:url" content="https://tools.grin.money/tools/morse-code/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Morse Code Translator — Office Tools">
+  <meta name="twitter:description" content="Text ↔ Morse with audio playback and visual flash.">
+  <link rel="canonical" href="https://tools.grin.money/tools/morse-code/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Morse Code Translator","description":"Translate text to Morse code and back, play it as audio beeps with adjustable speed, and flash a visual signal. Runs in your browser.","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/morse-code/"}</script>
+  <script src="../../js/theme-init.js"></script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .ta { width: 100%; box-sizing: border-box; min-height: 120px; resize: vertical;
+      font-family: 'Courier New', monospace; font-size: 1rem; line-height: 1.7;
+      background: var(--bg-secondary); color: var(--text); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .75rem 1rem; outline: none; }
+    .ta:focus { border-color: var(--primary); }
+    .field-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: .35rem; }
+    .swap-btn { width: 42px; height: 42px; border-radius: 50%; border: 1.5px solid var(--border);
+      background: var(--bg-card); color: var(--primary); font-size: 1.2rem; cursor: pointer; display: block; margin: .6rem auto; }
+    .swap-btn:hover { background: var(--primary); color: #fff; }
+    .seg { display: inline-flex; border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 1rem; }
+    .seg button { padding: .4rem .85rem; border: none; background: none; cursor: pointer; font-size: .82rem; font-weight: 700; color: var(--text); }
+    .seg button.active { background: var(--primary); color: #fff; }
+    .lamp { width: 80px; height: 80px; border-radius: 50%; background: var(--bg-secondary);
+      border: 2px solid var(--border); margin: 0 auto; transition: background .04s, box-shadow .04s; }
+    .lamp.on { background: #ffd23f; box-shadow: 0 0 30px 6px #ffd23f; border-color: #ffd23f; }
+    .ctl-row { display: flex; gap: 1.25rem; flex-wrap: wrap; align-items: center; }
+    @media (max-width: 560px) { .ctl-row { gap: .75rem; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Morse Code Translator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>📡 Morse Code Translator</h1>
+    <p>Translate text to Morse code and back. Play it as audio beeps with a visual flash.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About this tool</h2>
+    <p>Convert <strong>text to Morse code</strong> and decode <strong>Morse back to text</strong> using International Morse. Dots and dashes are separated by spaces, and words by a forward slash (<code>/</code>). Hit <strong>Play</strong> to hear it as <strong>audio beeps</strong> and watch the lamp flash in time — adjustable from slow to fast (words per minute).</p>
+    <p>Supports letters, numbers and common punctuation. Audio is generated with the Web Audio API; everything runs locally.</p>
+  </section>
+
+  <div class="card">
+    <div class="seg" id="dirSeg">
+      <button data-dir="encode" class="active">Text → Morse</button>
+      <button data-dir="decode">Morse → Text</button>
+    </div>
+    <div>
+      <label class="field-label" id="topLabel">Text</label>
+      <textarea id="topTa" class="ta" placeholder="Type text…">SOS</textarea>
+    </div>
+    <button class="swap-btn" id="swap" title="Swap">⇅</button>
+    <div>
+      <label class="field-label" id="botLabel">Morse code</label>
+      <textarea id="botTa" class="ta" placeholder="... --- ..."></textarea>
+    </div>
+    <div class="mt-2" style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <button class="btn btn-primary" id="copyBtn">📋 Copy result</button>
+      <button class="btn" id="clearBtn">✕ Clear</button>
+    </div>
+  </div>
+
+  <div class="card mt-2">
+    <div class="ctl-row">
+      <button class="btn btn-primary" id="playBtn">▶ Play Morse</button>
+      <button class="btn" id="stopBtn">■ Stop</button>
+      <label style="font-size:.85rem;display:inline-flex;align-items:center;gap:.5rem">
+        Speed <input type="range" id="wpm" min="5" max="30" value="15" style="accent-color:var(--primary)"> <span id="wpmVal">15</span> WPM
+      </label>
+      <label style="font-size:.85rem;display:inline-flex;align-items:center;gap:.4rem">
+        Tone <input type="number" id="freq" class="form-input" value="650" min="200" max="1200" style="width:80px"> Hz
+      </label>
+    </div>
+    <div class="lamp" id="lamp" style="margin-top:1rem"></div>
+  </div>
+
+  <div class="page-tags">
+    <span class="page-tag">morse code</span>
+    <span class="page-tag">text to morse</span>
+    <span class="page-tag">morse to text</span>
+    <span class="page-tag">morse audio</span>
+    <span class="page-tag">SOS</span>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+let dir = 'encode';
+
+const MORSE = {
+  A:'.-',B:'-...',C:'-.-.',D:'-..',E:'.',F:'..-.',G:'--.',H:'....',I:'..',J:'.---',K:'-.-',L:'.-..',M:'--',
+  N:'-.',O:'---',P:'.--.',Q:'--.-',R:'.-.',S:'...',T:'-',U:'..-',V:'...-',W:'.--',X:'-..-',Y:'-.--',Z:'--..',
+  '0':'-----','1':'.----','2':'..---','3':'...--','4':'....-','5':'.....','6':'-....','7':'--...','8':'---..','9':'----.',
+  '.':'.-.-.-',',':'--..--','?':'..--..','\'':'.----.','!':'-.-.--','/':'-..-.','(':'-.--.',')':'-.--.-',
+  '&':'.-...',':':'---...',';':'-.-.-.','=':'-...-','+':'.-.-.','-':'-....-','_':'..--.-','"':'.-..-.','$':'...-..-','@':'.--.-.'
+};
+const REV = Object.fromEntries(Object.entries(MORSE).map(([k, v]) => [v, k]));
+
+function textToMorse(t) {
+  return t.toUpperCase().trim().split(/\s+/).map(word =>
+    word.split('').map(ch => MORSE[ch] || '').filter(Boolean).join(' ')
+  ).join(' / ');
+}
+function morseToText(m) {
+  return m.trim().split(/\s*\/\s*/).map(word =>
+    word.trim().split(/\s+/).map(code => REV[code] || '').join('')
+  ).join(' ');
+}
+
+function setMode() {
+  $('topLabel').textContent = dir === 'encode' ? 'Text' : 'Morse code';
+  $('botLabel').textContent = dir === 'encode' ? 'Morse code' : 'Text';
+  $('topTa').placeholder = dir === 'encode' ? 'Type text…' : '... --- ...';
+}
+function convert() {
+  const src = $('topTa').value;
+  $('botTa').value = dir === 'encode' ? textToMorse(src) : morseToText(src);
+}
+
+document.querySelectorAll('#dirSeg button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#dirSeg button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  const out = $('botTa').value;
+  dir = b.dataset.dir; setMode();
+  if (out) $('topTa').value = out;
+  convert();
+}));
+$('swap').addEventListener('click', () => {
+  document.querySelector(`#dirSeg button[data-dir="${dir === 'encode' ? 'decode' : 'encode'}"]`).click();
+});
+$('topTa').addEventListener('input', convert);
+$('copyBtn').addEventListener('click', () => copyText($('botTa').value, $('copyBtn')));
+$('clearBtn').addEventListener('click', () => { $('topTa').value = ''; convert(); });
+$('wpm').addEventListener('input', () => $('wpmVal').textContent = $('wpm').value);
+
+/* ---- Audio playback ---- */
+let audioCtx = null, playToken = 0;
+function getMorseString() {
+  // always derive Morse regardless of direction
+  return dir === 'encode' ? $('botTa').value : $('topTa').value;
+}
+async function play() {
+  stop();
+  const morse = getMorseString().trim();
+  if (!morse) return;
+  audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') await audioCtx.resume();
+  const wpm = parseInt($('wpm').value, 10);
+  const unit = 1.2 / wpm;                 // seconds per dot (PARIS standard)
+  const freq = parseInt($('freq').value, 10) || 650;
+  const token = ++playToken;
+
+  // Build a timeline of [on?, durationUnits]
+  const seq = [];
+  for (let i = 0; i < morse.length; i++) {
+    const c = morse[i];
+    if (c === '.') seq.push([1, 1]);
+    else if (c === '-') seq.push([1, 3]);
+    else if (c === ' ') seq.push([0, 3]);    // letter gap (within letters single space already produced)
+    else if (c === '/') seq.push([0, 7]);
+    if (c === '.' || c === '-') seq.push([0, 1]); // intra-letter gap
+  }
+
+  let t = audioCtx.currentTime + 0.05;
+  for (const [on, dur] of seq) {
+    const len = dur * unit;
+    if (on) {
+      const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+      osc.frequency.value = freq; osc.type = 'sine';
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.25, t + 0.005);
+      gain.gain.setValueAtTime(0.25, t + len - 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + len);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(t); osc.stop(t + len);
+      scheduleLamp(token, (t - audioCtx.currentTime) * 1000, len * 1000);
+    }
+    t += len;
+  }
+}
+function scheduleLamp(token, delayMs, durMs) {
+  setTimeout(() => { if (token !== playToken) return; $('lamp').classList.add('on');
+    setTimeout(() => $('lamp').classList.remove('on'), durMs); }, delayMs);
+}
+function stop() {
+  playToken++;
+  $('lamp').classList.remove('on');
+}
+$('playBtn').addEventListener('click', play);
+$('stopBtn').addEventListener('click', stop);
+
+setMode();
+convert();
+</script>
+</body>
+</html>

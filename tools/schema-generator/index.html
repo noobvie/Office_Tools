@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schema.org JSON-LD Generator — Structured Data — Office Tools</title>
+  <meta name="description" content="Generate Schema.org structured data as JSON-LD for Article, Product, FAQ, LocalBusiness, Organization and more. Copy a valid script tag for rich results. Free JSON-LD generator.">
+  <meta name="keywords" content="JSON-LD generator, schema.org generator, structured data, rich results, Article schema, Product schema, FAQ schema, LocalBusiness schema, rich snippets">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Schema.org JSON-LD Generator — Office Tools">
+  <meta property="og:description" content="Generate JSON-LD structured data for Article, Product, FAQ, LocalBusiness and more.">
+  <meta property="og:url" content="https://tools.grin.money/tools/schema-generator/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Schema.org JSON-LD Generator — Office Tools">
+  <meta name="twitter:description" content="Structured data for rich results — Article, Product, FAQ, LocalBusiness.">
+  <link rel="canonical" href="https://tools.grin.money/tools/schema-generator/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Schema.org JSON-LD Generator","description":"Generate Schema.org structured data as JSON-LD for Article, Product, FAQ, LocalBusiness, Organization and more. Runs in your browser.","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/schema-generator/"}</script>
+  <script src="../../js/theme-init.js"></script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .io-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; align-items: start; }
+    .field { margin-bottom: .75rem; }
+    .field-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: .3rem; }
+    .code-out { width: 100%; box-sizing: border-box; min-height: 340px; resize: vertical;
+      font-family: 'Courier New', monospace; font-size: .82rem; line-height: 1.5;
+      background: var(--bg-secondary); color: var(--text); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .75rem 1rem; white-space: pre; }
+    .faq-item { border: 1px solid var(--border); border-radius: var(--radius); padding: .7rem; margin-bottom: .5rem; background: var(--bg-secondary); }
+    .x-btn { border: none; background: var(--danger-dim, rgba(220,38,38,.12)); color: var(--danger);
+      width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-weight: 700; }
+    @media (max-width: 760px) { .io-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Schema.org JSON-LD Generator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🏗️ Schema.org JSON-LD Generator</h1>
+    <p>Generate structured data for rich results — Article, Product, FAQ, LocalBusiness and Organization.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About this tool</h2>
+    <p><strong>Structured data</strong> helps search engines understand your page and can unlock <strong>rich results</strong> — star ratings, FAQs, breadcrumbs and more. Pick a schema type, fill in the fields, and copy a valid <code>&lt;script type="application/ld+json"&gt;</code> block into your page's HTML.</p>
+    <p>Supports <strong>Article, Product, FAQ, LocalBusiness, Organization and Website</strong> templates. Generated locally; validate the output in Google's Rich Results Test before publishing.</p>
+  </section>
+
+  <div class="card">
+    <div class="field" style="max-width:280px">
+      <label class="field-label">Schema type</label>
+      <select id="schemaType" class="form-input">
+        <option value="Article">Article</option>
+        <option value="Product">Product</option>
+        <option value="FAQPage">FAQ Page</option>
+        <option value="LocalBusiness">Local Business</option>
+        <option value="Organization">Organization</option>
+        <option value="WebSite">Website (+ Sitelinks search)</option>
+      </select>
+    </div>
+    <div class="io-grid" style="margin-top:1rem">
+      <div id="fields"></div>
+      <div>
+        <label class="field-label">Generated JSON-LD</label>
+        <textarea class="code-out" id="out" readonly spellcheck="false"></textarea>
+        <div class="mt-2" style="display:flex;gap:.6rem;flex-wrap:wrap">
+          <button class="btn btn-primary" id="copyBtn">📋 Copy script tag</button>
+          <a class="btn" href="https://search.google.com/test/rich-results" target="_blank" rel="noopener">↗ Rich Results Test</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-tags">
+    <span class="page-tag">json-ld</span>
+    <span class="page-tag">schema.org</span>
+    <span class="page-tag">structured data</span>
+    <span class="page-tag">rich results</span>
+    <span class="page-tag">faq schema</span>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+let faqs = [{ q: 'What is your return policy?', a: 'You can return items within 30 days.' }];
+
+const TEMPLATES = {
+  Article: [
+    ['headline', 'Headline', 'text', 'How to Bake Sourdough Bread'],
+    ['author', 'Author name', 'text', 'Jane Doe'],
+    ['datePublished', 'Date published', 'date', ''],
+    ['image', 'Image URL', 'url', ''],
+    ['publisher', 'Publisher name', 'text', 'Office Tools'],
+    ['url', 'Article URL', 'url', ''],
+    ['description', 'Description', 'textarea', ''],
+  ],
+  Product: [
+    ['name', 'Product name', 'text', 'Wireless Headphones'],
+    ['image', 'Image URL', 'url', ''],
+    ['description', 'Description', 'textarea', ''],
+    ['brand', 'Brand', 'text', ''],
+    ['sku', 'SKU', 'text', ''],
+    ['price', 'Price', 'text', '99.00'],
+    ['currency', 'Currency (ISO)', 'text', 'USD'],
+    ['availability', 'Availability', 'select:InStock,OutOfStock,PreOrder', 'InStock'],
+    ['rating', 'Avg rating (optional)', 'text', ''],
+    ['reviewCount', 'Review count (optional)', 'text', ''],
+  ],
+  LocalBusiness: [
+    ['name', 'Business name', 'text', 'Joe\'s Coffee'],
+    ['image', 'Image URL', 'url', ''],
+    ['phone', 'Telephone', 'text', '+1-555-123-4567'],
+    ['street', 'Street address', 'text', '123 Main St'],
+    ['city', 'City', 'text', 'Springfield'],
+    ['region', 'Region/State', 'text', 'IL'],
+    ['postal', 'Postal code', 'text', '62701'],
+    ['country', 'Country (ISO)', 'text', 'US'],
+    ['url', 'Website URL', 'url', ''],
+    ['priceRange', 'Price range', 'text', '$$'],
+  ],
+  Organization: [
+    ['name', 'Organization name', 'text', 'Acme Inc.'],
+    ['url', 'Website URL', 'url', 'https://example.com'],
+    ['logo', 'Logo URL', 'url', ''],
+    ['sameAs', 'Social URLs (one per line)', 'textarea', ''],
+  ],
+  WebSite: [
+    ['name', 'Site name', 'text', 'Office Tools'],
+    ['url', 'Site URL', 'url', 'https://example.com'],
+    ['searchUrl', 'Search URL template', 'text', 'https://example.com/search?q={search_term_string}'],
+  ],
+};
+
+const v = {};
+
+function renderFields() {
+  const type = $('schemaType').value;
+  const wrap = $('fields');
+  wrap.innerHTML = '';
+  if (type === 'FAQPage') { renderFAQ(wrap); gen(); return; }
+  TEMPLATES[type].forEach(([key, label, kind, def]) => {
+    if (!(type + '.' + key in v)) v[type + '.' + key] = def;
+    const cur = v[type + '.' + key];
+    const div = document.createElement('div');
+    div.className = 'field';
+    let input;
+    if (kind === 'textarea') input = `<textarea class="form-input" rows="2" data-k="${key}">${(cur||'').replace(/</g,'&lt;')}</textarea>`;
+    else if (kind.startsWith('select:')) {
+      const opts = kind.slice(7).split(',').map(o => `<option ${o===cur?'selected':''}>${o}</option>`).join('');
+      input = `<select class="form-input" data-k="${key}">${opts}</select>`;
+    } else input = `<input type="${kind}" class="form-input" value="${(cur||'').replace(/"/g,'&quot;')}" data-k="${key}">`;
+    div.innerHTML = `<label class="field-label">${label}</label>${input}`;
+    wrap.appendChild(div);
+  });
+  wrap.querySelectorAll('[data-k]').forEach(el => el.addEventListener('input', e => {
+    v[$('schemaType').value + '.' + e.target.dataset.k] = e.target.value; gen();
+  }));
+  gen();
+}
+
+function renderFAQ(wrap) {
+  const box = document.createElement('div');
+  faqs.forEach((f, i) => {
+    const d = document.createElement('div');
+    d.className = 'faq-item';
+    d.innerHTML =
+      `<div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem">` +
+        `<input type="text" class="form-input" value="${(f.q||'').replace(/"/g,'&quot;')}" placeholder="Question" data-fq="${i}" style="flex:1">` +
+        `<button class="x-btn" data-delfaq="${i}" ${faqs.length<=1?'disabled style="opacity:.35"':''}>✕</button>` +
+      `</div>` +
+      `<textarea class="form-input" rows="2" placeholder="Answer" data-fa="${i}">${(f.a||'').replace(/</g,'&lt;')}</textarea>`;
+    box.appendChild(d);
+  });
+  wrap.appendChild(box);
+  const add = document.createElement('button');
+  add.className = 'btn btn-sm'; add.textContent = '+ Add question';
+  add.onclick = () => { faqs.push({ q: '', a: '' }); renderFields(); };
+  wrap.appendChild(add);
+  wrap.querySelectorAll('[data-fq]').forEach(el => el.addEventListener('input', e => { faqs[+e.target.dataset.fq].q = e.target.value; gen(); }));
+  wrap.querySelectorAll('[data-fa]').forEach(el => el.addEventListener('input', e => { faqs[+e.target.dataset.fa].a = e.target.value; gen(); }));
+  wrap.querySelectorAll('[data-delfaq]').forEach(el => el.addEventListener('click', e => { if(faqs.length>1){faqs.splice(+e.target.dataset.delfaq,1); renderFields();} }));
+}
+
+function get(key) { return (v[$('schemaType').value + '.' + key] || '').trim(); }
+
+function build() {
+  const type = $('schemaType').value;
+  const base = { '@context': 'https://schema.org', '@type': type };
+  if (type === 'Article') {
+    Object.assign(base, {
+      headline: get('headline'),
+      author: { '@type': 'Person', name: get('author') },
+      datePublished: get('datePublished'),
+      image: get('image') || undefined,
+      publisher: { '@type': 'Organization', name: get('publisher') },
+      mainEntityOfPage: get('url') || undefined,
+      description: get('description') || undefined,
+    });
+  } else if (type === 'Product') {
+    base.name = get('name');
+    if (get('image')) base.image = get('image');
+    if (get('description')) base.description = get('description');
+    if (get('brand')) base.brand = { '@type': 'Brand', name: get('brand') };
+    if (get('sku')) base.sku = get('sku');
+    base.offers = {
+      '@type': 'Offer', price: get('price'), priceCurrency: get('currency'),
+      availability: 'https://schema.org/' + get('availability'),
+    };
+    if (get('rating') && get('reviewCount')) base.aggregateRating = {
+      '@type': 'AggregateRating', ratingValue: get('rating'), reviewCount: get('reviewCount'),
+    };
+  } else if (type === 'FAQPage') {
+    base.mainEntity = faqs.filter(f => f.q.trim()).map(f => ({
+      '@type': 'Question', name: f.q,
+      acceptedAnswer: { '@type': 'Answer', text: f.a },
+    }));
+  } else if (type === 'LocalBusiness') {
+    Object.assign(base, {
+      name: get('name'), image: get('image') || undefined, telephone: get('phone'),
+      address: { '@type': 'PostalAddress', streetAddress: get('street'), addressLocality: get('city'),
+        addressRegion: get('region'), postalCode: get('postal'), addressCountry: get('country') },
+      url: get('url') || undefined, priceRange: get('priceRange') || undefined,
+    });
+  } else if (type === 'Organization') {
+    base.name = get('name'); base.url = get('url');
+    if (get('logo')) base.logo = get('logo');
+    const sa = get('sameAs').split('\n').map(s => s.trim()).filter(Boolean);
+    if (sa.length) base.sameAs = sa;
+  } else if (type === 'WebSite') {
+    base.name = get('name'); base.url = get('url');
+    if (get('searchUrl')) base.potentialAction = {
+      '@type': 'SearchAction', target: get('searchUrl'), 'query-input': 'required name=search_term_string',
+    };
+  }
+  // strip undefined
+  return JSON.parse(JSON.stringify(base));
+}
+
+function gen() {
+  const json = JSON.stringify(build(), null, 2);
+  $('out').value = `<script type="application/ld+json">\n${json}\n<\/script>`;
+}
+
+$('schemaType').addEventListener('change', renderFields);
+$('copyBtn').addEventListener('click', () => copyText($('out').value, $('copyBtn')));
+renderFields();
+</script>
+</body>
+</html>

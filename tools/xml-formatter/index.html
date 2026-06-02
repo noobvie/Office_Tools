@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XML Formatter &amp; Beautifier — Office Tools</title>
+  <meta name="description" content="Format, beautify, minify and validate XML online. Pretty-print messy XML with proper indentation or compress it to a single line. Runs locally in your browser — no upload.">
+  <meta name="keywords" content="XML formatter, XML beautifier, format XML online, XML pretty print, XML minifier, XML validator, validate XML, indent XML">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="XML Formatter &amp; Beautifier — Office Tools">
+  <meta property="og:description" content="Pretty-print, minify and validate XML. Runs locally — nothing is uploaded.">
+  <meta property="og:url" content="https://tools.grin.money/tools/xml-formatter/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="XML Formatter &amp; Beautifier — Office Tools">
+  <meta name="twitter:description" content="Beautify, minify and validate XML locally in your browser.">
+  <link rel="canonical" href="https://tools.grin.money/tools/xml-formatter/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"XML Formatter & Beautifier","description":"Format, beautify, minify and validate XML online with configurable indentation. Runs locally in your browser.","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/xml-formatter/"}</script>
+  <script src="../../js/theme-init.js"></script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .io-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .code-area {
+      width: 100%; box-sizing: border-box; min-height: 340px; resize: vertical;
+      font-family: 'Courier New', monospace; font-size: .85rem; line-height: 1.55;
+      background: var(--bg-secondary); color: var(--text);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: .75rem 1rem; outline: none; white-space: pre; tab-size: 2;
+      transition: border-color var(--transition);
+    }
+    .code-area:focus { border-color: var(--primary); }
+    .code-area.bad { border-color: var(--danger); }
+    .seg { display: inline-flex; border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .seg button { padding: .45rem .95rem; border: none; background: none; cursor: pointer;
+      font-size: .85rem; font-weight: 700; color: var(--text); }
+    .seg button.active { background: var(--primary); color: #fff; }
+    .field-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: .35rem; }
+    .status { font-size: .82rem; margin-top: .5rem; min-height: 1.2em; }
+    .status.ok { color: var(--primary); }
+    .status.bad { color: var(--danger); }
+    .ctl-row { display: flex; gap: 1.25rem; flex-wrap: wrap; align-items: center; }
+    @media (max-width: 700px) { .io-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">XML Formatter</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>📐 XML Formatter &amp; Beautifier</h1>
+    <p>Pretty-print, minify and validate XML. Configurable indentation, instant error reporting.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About this tool</h2>
+    <p>Clean up <strong>XML</strong> documents in one click. <strong>Beautify</strong> adds consistent indentation and line breaks so nested elements are easy to read; <strong>minify</strong> strips insignificant whitespace between tags for a compact single-stream payload. Malformed XML is caught and the parser error is shown.</p>
+    <p>Validation and parsing use the browser's built-in <code>DOMParser</code> — no external library and no server round-trip. Your XML stays on your machine.</p>
+  </section>
+
+  <div class="card">
+    <div class="ctl-row">
+      <div>
+        <span class="field-label">Action</span>
+        <div class="seg" id="actSeg">
+          <button data-act="beautify" class="active">Beautify</button>
+          <button data-act="minify">Minify</button>
+        </div>
+      </div>
+      <label style="font-size:.85rem;display:inline-flex;align-items:center;gap:.45rem">
+        Indent
+        <select id="indentSel" class="form-input" style="max-width:130px">
+          <option value="2">2 spaces</option>
+          <option value="4">4 spaces</option>
+          <option value="tab">Tab</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <div class="card mt-2">
+    <div class="io-grid">
+      <div>
+        <span class="field-label">Input XML</span>
+        <textarea id="xmlIn" class="code-area" spellcheck="false" placeholder='<note><to>You</to><from>Me</from><body>Hello</body></note>'></textarea>
+        <div class="status" id="inStatus"></div>
+      </div>
+      <div>
+        <span class="field-label">Output</span>
+        <textarea id="xmlOut" class="code-area" spellcheck="false" readonly placeholder="Result appears here…"></textarea>
+      </div>
+    </div>
+    <div class="mt-2" style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <button class="btn btn-primary" id="runBtn">▶ Run</button>
+      <button class="btn" id="copyBtn">📋 Copy output</button>
+      <button class="btn" id="clearBtn">✕ Clear</button>
+    </div>
+  </div>
+
+  <div class="page-tags">
+    <span class="page-tag">xml formatter</span>
+    <span class="page-tag">xml beautifier</span>
+    <span class="page-tag">pretty print xml</span>
+    <span class="page-tag">validate xml</span>
+    <span class="page-tag">minify xml</span>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+let action = 'beautify';
+
+function indentStr() {
+  const v = $('indentSel').value;
+  return v === 'tab' ? '\t' : ' '.repeat(parseInt(v, 10));
+}
+
+// Validate using DOMParser; returns error string or null
+function xmlError(src) {
+  const doc = new DOMParser().parseFromString(src, 'application/xml');
+  const err = doc.querySelector('parsererror');
+  if (err) return err.textContent.replace(/\s+/g, ' ').trim();
+  return null;
+}
+
+// Token-based pretty printer that preserves text content
+function beautify(src) {
+  const pad = indentStr();
+  // normalise: insert breaks between adjacent tags, keep text nodes intact
+  const xml = src.replace(/>\s+</g, '><').trim();
+  const tokens = xml.replace(/></g, '>\n<').split('\n');
+  let depth = 0, out = [];
+  for (let tok of tokens) {
+    tok = tok.trim();
+    if (!tok) continue;
+    const isClose   = /^<\//.test(tok);
+    const isSelf    = /\/>$/.test(tok) || /^<\?/.test(tok) || /^<!/.test(tok);
+    // opening+closing on one line e.g. <a>text</a>
+    const isOneLine = /^<[^!?][^>]*>.*<\/[^>]+>$/.test(tok);
+    if (isClose) depth = Math.max(0, depth - 1);
+    out.push(pad.repeat(depth) + tok);
+    if (!isClose && !isSelf && !isOneLine) depth++;
+  }
+  return out.join('\n');
+}
+
+function minify(src) {
+  return src.replace(/>\s+</g, '><').replace(/^\s+|\s+$/g, '');
+}
+
+function run() {
+  const src = $('xmlIn').value;
+  if (!src.trim()) {
+    $('xmlOut').value = '';
+    $('inStatus').textContent = '';
+    $('inStatus').className = 'status';
+    $('xmlIn').classList.remove('bad');
+    return;
+  }
+  const err = xmlError(src);
+  if (err) {
+    $('xmlIn').classList.add('bad');
+    $('inStatus').textContent = '✕ ' + err;
+    $('inStatus').className = 'status bad';
+    return;
+  }
+  $('xmlIn').classList.remove('bad');
+  $('inStatus').textContent = '✓ Well-formed XML';
+  $('inStatus').className = 'status ok';
+  $('xmlOut').value = action === 'beautify' ? beautify(src) : minify(src);
+}
+
+document.querySelectorAll('#actSeg button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#actSeg button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active'); action = b.dataset.act; run();
+}));
+$('indentSel').addEventListener('change', run);
+$('xmlIn').addEventListener('input', run);
+$('runBtn').addEventListener('click', run);
+$('copyBtn').addEventListener('click', () => copyText($('xmlOut').value, $('copyBtn')));
+$('clearBtn').addEventListener('click', () => { $('xmlIn').value = ''; run(); });
+</script>
+</body>
+</html>

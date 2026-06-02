@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSON ↔ YAML Converter — Office Tools</title>
+  <meta name="description" content="Convert JSON to YAML and YAML to JSON online, both directions, with validation. Paste data and get a clean conversion instantly. Runs locally in your browser — no upload.">
+  <meta name="keywords" content="JSON to YAML, YAML to JSON, JSON YAML converter, convert YAML online, YAML validator, JSON validator, yaml parser">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="JSON ↔ YAML Converter — Office Tools">
+  <meta property="og:description" content="Convert JSON to YAML and back, with validation. Runs locally — nothing is uploaded.">
+  <meta property="og:url" content="https://tools.grin.money/tools/json-yaml/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="JSON ↔ YAML Converter — Office Tools">
+  <meta name="twitter:description" content="Two-way JSON and YAML conversion with validation. 100% local.">
+  <link rel="canonical" href="https://tools.grin.money/tools/json-yaml/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"JSON ↔ YAML Converter","description":"Convert JSON to YAML and YAML to JSON, both directions, with validation. Runs locally in your browser.","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/json-yaml/"}</script>
+  <script src="../../js/theme-init.js"></script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .io-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: stretch; }
+    .code-area {
+      width: 100%; box-sizing: border-box; min-height: 360px; resize: vertical;
+      font-family: 'Courier New', monospace; font-size: .85rem; line-height: 1.55;
+      background: var(--bg-secondary); color: var(--text);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: .75rem 1rem; outline: none; white-space: pre; tab-size: 2;
+      transition: border-color var(--transition);
+    }
+    .code-area:focus { border-color: var(--primary); }
+    .code-area.bad { border-color: var(--danger); }
+    .swap-col { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; }
+    .swap-btn { width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--border);
+      background: var(--bg-card); color: var(--primary); font-size: 1.2rem; cursor: pointer; }
+    .swap-btn:hover { background: var(--primary); color: #fff; }
+    .field-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: .35rem; }
+    .status { font-size: .82rem; margin-top: .5rem; min-height: 1.2em; }
+    .status.ok { color: var(--primary); }
+    .status.bad { color: var(--danger); }
+    @media (max-width: 760px) {
+      .io-grid { grid-template-columns: 1fr; }
+      .swap-col { flex-direction: row; }
+      .swap-btn { transform: rotate(90deg); }
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">JSON ↔ YAML Converter</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔁 JSON ↔ YAML Converter</h1>
+    <p>Convert between JSON and YAML in either direction, with live validation. Type on either side.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About this tool</h2>
+    <p>Paste <strong>JSON</strong> on the left or <strong>YAML</strong> on the right and the other side updates automatically. Toggle the direction with the swap button, then copy the result. Invalid input is flagged with a clear parse error so you can fix it quickly.</p>
+    <p>Parsing uses the <code>js-yaml</code> library loaded from a CDN. All conversion happens in your browser — your data never leaves the page.</p>
+  </section>
+
+  <div class="card">
+    <div class="io-grid">
+      <div>
+        <span class="field-label" id="leftLabel">JSON</span>
+        <textarea id="leftTa" class="code-area" spellcheck="false" placeholder='{\n  "name": "office-tools",\n  "tags": ["json", "yaml"]\n}'></textarea>
+        <div class="status" id="leftStatus"></div>
+      </div>
+      <div class="swap-col">
+        <button class="swap-btn" id="swapDir" title="Swap direction">⇄</button>
+        <span style="font-size:.7rem;color:var(--text-muted)" id="dirHint">JSON → YAML</span>
+      </div>
+      <div>
+        <span class="field-label" id="rightLabel">YAML</span>
+        <textarea id="rightTa" class="code-area" spellcheck="false" readonly placeholder="Result appears here…"></textarea>
+        <div class="status" id="rightStatus"></div>
+      </div>
+    </div>
+    <div class="mt-2" style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-primary" id="copyBtn">📋 Copy output</button>
+      <button class="btn" id="clearBtn">✕ Clear</button>
+      <label style="font-size:.85rem;display:inline-flex;align-items:center;gap:.4rem;margin-left:auto">
+        Indent <input type="number" id="indentNum" class="form-input" value="2" min="1" max="8" style="width:64px">
+      </label>
+    </div>
+  </div>
+
+  <div class="page-tags">
+    <span class="page-tag">json to yaml</span>
+    <span class="page-tag">yaml to json</span>
+    <span class="page-tag">yaml validator</span>
+    <span class="page-tag">config converter</span>
+    <span class="page-tag">yaml parser</span>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+// direction true = JSON→YAML, false = YAML→JSON
+let j2y = true;
+
+function setLabels() {
+  $('leftLabel').textContent  = j2y ? 'JSON' : 'YAML';
+  $('rightLabel').textContent = j2y ? 'YAML' : 'JSON';
+  $('dirHint').textContent    = j2y ? 'JSON → YAML' : 'YAML → JSON';
+  $('leftTa').placeholder = j2y
+    ? '{\n  "name": "office-tools",\n  "tags": ["json", "yaml"]\n}'
+    : 'name: office-tools\ntags:\n  - json\n  - yaml';
+}
+
+function convert() {
+  const src = $('leftTa').value;
+  const indent = Math.min(8, Math.max(1, parseInt($('indentNum').value, 10) || 2));
+  $('rightStatus').textContent = '';
+  $('rightStatus').className = 'status';
+  if (!src.trim()) {
+    $('rightTa').value = '';
+    $('leftStatus').textContent = '';
+    $('leftStatus').className = 'status';
+    $('leftTa').classList.remove('bad');
+    return;
+  }
+  try {
+    let out;
+    if (j2y) {
+      const obj = JSON.parse(src);
+      out = jsyaml.dump(obj, { indent, lineWidth: -1, noRefs: true });
+    } else {
+      const obj = jsyaml.load(src);
+      out = JSON.stringify(obj, null, indent);
+    }
+    $('rightTa').value = out;
+    $('leftTa').classList.remove('bad');
+    $('leftStatus').textContent = '✓ Valid ' + (j2y ? 'JSON' : 'YAML');
+    $('leftStatus').className = 'status ok';
+  } catch (e) {
+    $('leftTa').classList.add('bad');
+    $('leftStatus').textContent = '✕ ' + (e.message || 'Parse error');
+    $('leftStatus').className = 'status bad';
+  }
+}
+
+$('swapDir').addEventListener('click', () => {
+  // move the current output into the input and flip direction
+  const out = $('rightTa').value;
+  j2y = !j2y;
+  setLabels();
+  if (out.trim()) $('leftTa').value = out;
+  convert();
+});
+
+['leftTa','indentNum'].forEach(id => $(id).addEventListener('input', convert));
+$('copyBtn').addEventListener('click', () => copyText($('rightTa').value, $('copyBtn')));
+$('clearBtn').addEventListener('click', () => { $('leftTa').value = ''; convert(); });
+
+setLabels();
+convert();
+</script>
+</body>
+</html>

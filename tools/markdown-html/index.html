@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Markdown ↔ HTML Converter — Office Tools</title>
+  <meta name="description" content="Convert Markdown to HTML and HTML to Markdown, both directions, with a live rendered preview. Supports GitHub-flavored Markdown. Copy clean output. Runs locally in your browser.">
+  <meta name="keywords" content="markdown to html, html to markdown, markdown converter, md to html, html to md, GFM converter, markdown html, convert markdown online">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Markdown ↔ HTML Converter — Office Tools">
+  <meta property="og:description" content="Two-way Markdown and HTML conversion with a live preview. Runs locally.">
+  <meta property="og:url" content="https://tools.grin.money/tools/markdown-html/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Markdown ↔ HTML Converter — Office Tools">
+  <meta name="twitter:description" content="Markdown to HTML and back, with live preview.">
+  <link rel="canonical" href="https://tools.grin.money/tools/markdown-html/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Markdown ↔ HTML Converter","description":"Convert Markdown to HTML and HTML to Markdown, both directions, with a live rendered preview. Runs locally in your browser.","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/markdown-html/"}</script>
+  <script src="../../js/theme-init.js"></script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .io-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .code-area { width: 100%; box-sizing: border-box; min-height: 360px; resize: vertical;
+      font-family: 'Courier New', monospace; font-size: .86rem; line-height: 1.6;
+      background: var(--bg-secondary); color: var(--text); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .75rem 1rem; outline: none; }
+    .code-area:focus { border-color: var(--primary); }
+    .field-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: .35rem; }
+    .seg { display: inline-flex; border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 1rem; }
+    .seg button { padding: .45rem .9rem; border: none; background: none; cursor: pointer; font-size: .84rem; font-weight: 700; color: var(--text); }
+    .seg button.active { background: var(--primary); color: #fff; }
+    .preview { min-height: 360px; border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 1rem 1.2rem; overflow: auto; background: var(--bg-card); }
+    .preview h1,.preview h2,.preview h3 { margin: .6em 0 .3em; }
+    .preview pre { background: var(--bg-secondary); padding: .75rem; border-radius: 8px; overflow: auto; }
+    .preview code { background: var(--bg-secondary); padding: .1em .35em; border-radius: 4px; font-size: .9em; }
+    .preview pre code { background: none; padding: 0; }
+    .preview blockquote { border-left: 3px solid var(--primary); margin: .5em 0; padding-left: 1em; color: var(--text-muted); }
+    .preview table { border-collapse: collapse; } .preview th,.preview td { border: 1px solid var(--border); padding: .3em .6em; }
+    .preview img { max-width: 100%; }
+    @media (max-width: 760px) { .io-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Markdown ↔ HTML Converter</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>📝 Markdown ↔ HTML Converter</h1>
+    <p>Convert Markdown to HTML and HTML back to Markdown, with a live rendered preview.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About this tool</h2>
+    <p>Write <strong>Markdown</strong> and get clean <strong>HTML</strong>, or paste HTML and get tidy Markdown back. The middle panel shows a <strong>live rendered preview</strong>. Supports GitHub-flavored Markdown — headings, lists, tables, code blocks, links, images and blockquotes.</p>
+    <p>Conversion uses the <code>marked</code> (MD→HTML) and <code>turndown</code> (HTML→MD) libraries loaded from a CDN. Everything runs in your browser — your content is never uploaded.</p>
+  </section>
+
+  <div class="card">
+    <div class="seg" id="dirSeg">
+      <button data-dir="md2html" class="active">Markdown → HTML</button>
+      <button data-dir="html2md">HTML → Markdown</button>
+    </div>
+    <div class="io-grid">
+      <div>
+        <label class="field-label" id="inLabel">Markdown</label>
+        <textarea id="inTa" class="code-area" spellcheck="false"># Hello
+
+Write **Markdown** here and see the _HTML_ on the right.
+
+- Lists
+- [Links](https://example.com)
+- `inline code`
+
+> A blockquote.</textarea>
+      </div>
+      <div>
+        <label class="field-label" id="outLabel">HTML output</label>
+        <textarea id="outTa" class="code-area" readonly spellcheck="false"></textarea>
+      </div>
+    </div>
+    <div class="mt-2" style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <button class="btn btn-primary" id="copyBtn">📋 Copy output</button>
+      <button class="btn" id="swapBtn">↩ Use output as input</button>
+      <button class="btn" id="clearBtn">✕ Clear</button>
+    </div>
+  </div>
+
+  <div class="card mt-2">
+    <label class="field-label">Rendered preview</label>
+    <div class="preview" id="preview"></div>
+  </div>
+
+  <div class="page-tags">
+    <span class="page-tag">markdown to html</span>
+    <span class="page-tag">html to markdown</span>
+    <span class="page-tag">markdown converter</span>
+    <span class="page-tag">gfm</span>
+    <span class="page-tag">md to html</span>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/turndown/7.1.3/turndown.min.js"></script>
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+let dir = 'md2html';
+const td = (typeof TurndownService !== 'undefined') ? new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' }) : null;
+
+function convert() {
+  const src = $('inTa').value;
+  let out = '';
+  try {
+    if (dir === 'md2html') {
+      out = (typeof marked !== 'undefined') ? marked.parse(src) : src;
+      $('preview').innerHTML = out;
+    } else {
+      out = td ? td.turndown(src) : src;
+      // preview the HTML input as rendered
+      $('preview').innerHTML = src;
+    }
+  } catch (e) {
+    out = '<!-- conversion error: ' + (e.message || e) + ' -->';
+  }
+  $('outTa').value = out;
+}
+
+function setMode() {
+  $('inLabel').textContent  = dir === 'md2html' ? 'Markdown' : 'HTML';
+  $('outLabel').textContent = dir === 'md2html' ? 'HTML output' : 'Markdown output';
+}
+
+document.querySelectorAll('#dirSeg button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#dirSeg button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  const out = $('outTa').value;
+  dir = b.dataset.dir; setMode();
+  if (out.trim()) $('inTa').value = out;
+  convert();
+}));
+$('inTa').addEventListener('input', convert);
+$('copyBtn').addEventListener('click', () => copyText($('outTa').value, $('copyBtn')));
+$('swapBtn').addEventListener('click', () => { $('inTa').value = $('outTa').value; convert(); });
+$('clearBtn').addEventListener('click', () => { $('inTa').value = ''; convert(); });
+
+setMode();
+convert();
+</script>
+</body>
+</html>

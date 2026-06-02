@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meta Tag Generator — SEO &lt;head&gt; Tags — Office Tools</title>
+  <meta name="description" content="Generate SEO meta tags for your web page — title, description, canonical, robots, viewport, charset and author. Live Google preview and copy-ready HTML. Free meta tag generator.">
+  <meta name="keywords" content="meta tag generator, SEO meta tags, title tag generator, meta description generator, canonical tag, robots meta, html head tags, SEO tags">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Meta Tag Generator — SEO head Tags — Office Tools">
+  <meta property="og:description" content="Generate SEO meta tags with a live Google preview and copy-ready HTML.">
+  <meta property="og:url" content="https://tools.grin.money/tools/meta-tag-generator/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Meta Tag Generator — Office Tools">
+  <meta name="twitter:description" content="Title, description, canonical, robots and more — with a live SERP preview.">
+  <link rel="canonical" href="https://tools.grin.money/tools/meta-tag-generator/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Meta Tag Generator","description":"Generate SEO meta tags — title, description, canonical, robots and more — with a live Google preview and copy-ready HTML.","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/meta-tag-generator/"}</script>
+  <script src="../../js/theme-init.js"></script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .io-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; align-items: start; }
+    .field { margin-bottom: .85rem; }
+    .field-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: .3rem; }
+    .counter { font-size: .72rem; color: var(--text-muted); float: right; font-weight: 600; }
+    .counter.warn { color: var(--danger); }
+    .code-out { width: 100%; box-sizing: border-box; min-height: 260px; resize: vertical;
+      font-family: 'Courier New', monospace; font-size: .82rem; line-height: 1.55;
+      background: var(--bg-secondary); color: var(--text); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .75rem 1rem; white-space: pre; }
+    .serp { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
+    .serp-url { color: #202124; font-size: .82rem; }
+    .serp-title { color: #1a0dab; font-size: 1.2rem; line-height: 1.3; margin: .15rem 0; }
+    .serp-desc { color: #4d5156; font-size: .85rem; line-height: 1.45; }
+    @media (max-width: 760px) { .io-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Meta Tag Generator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🏷️ Meta Tag Generator</h1>
+    <p>Build SEO-ready <code>&lt;head&gt;</code> meta tags with a live Google preview, then copy the HTML.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About this tool</h2>
+    <p>Fill in your page details and get clean, valid <strong>SEO meta tags</strong> ready to paste into your HTML <code>&lt;head&gt;</code>. Covers the <strong>title, meta description, canonical URL, robots directive, viewport, charset, language and author</strong>. The live preview shows roughly how your page appears in Google search results, and character counters flag titles or descriptions that are too long.</p>
+    <p>Everything is generated in your browser — nothing is uploaded.</p>
+  </section>
+
+  <div class="card">
+    <div class="io-grid">
+      <div>
+        <div class="field">
+          <label class="field-label">Page title <span class="counter" id="cTitle">0</span></label>
+          <input type="text" id="mTitle" class="form-input" placeholder="Your Page Title — Brand" value="My Awesome Page — Brand">
+        </div>
+        <div class="field">
+          <label class="field-label">Meta description <span class="counter" id="cDesc">0</span></label>
+          <textarea id="mDesc" class="form-input" rows="3" placeholder="A concise, compelling summary of the page (around 155 characters).">A concise, compelling summary of what this page is about, written for both search engines and people.</textarea>
+        </div>
+        <div class="field">
+          <label class="field-label">Canonical URL</label>
+          <input type="url" id="mCanon" class="form-input" placeholder="https://example.com/page" value="https://example.com/page">
+        </div>
+        <div class="field">
+          <label class="field-label">Keywords (optional, comma-separated)</label>
+          <input type="text" id="mKeywords" class="form-input" placeholder="keyword one, keyword two">
+        </div>
+        <div class="field">
+          <label class="field-label">Author (optional)</label>
+          <input type="text" id="mAuthor" class="form-input" placeholder="Jane Doe">
+        </div>
+        <div class="field" style="display:flex;gap:1rem;flex-wrap:wrap">
+          <div style="flex:1;min-width:130px">
+            <label class="field-label">Robots</label>
+            <select id="mRobots" class="form-input">
+              <option value="index, follow">index, follow</option>
+              <option value="noindex, follow">noindex, follow</option>
+              <option value="index, nofollow">index, nofollow</option>
+              <option value="noindex, nofollow">noindex, nofollow</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:90px">
+            <label class="field-label">Language</label>
+            <input type="text" id="mLang" class="form-input" value="en">
+          </div>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Google preview</label>
+        <div class="serp" style="margin-bottom:1rem">
+          <div class="serp-url" id="pUrl">example.com › page</div>
+          <div class="serp-title" id="pTitle">My Awesome Page — Brand</div>
+          <div class="serp-desc" id="pDesc"></div>
+        </div>
+        <label class="field-label">Generated HTML</label>
+        <textarea class="code-out" id="out" readonly spellcheck="false"></textarea>
+        <div class="mt-2" style="display:flex;gap:.6rem;flex-wrap:wrap">
+          <button class="btn btn-primary" id="copyBtn">📋 Copy HTML</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-tags">
+    <span class="page-tag">meta tags</span>
+    <span class="page-tag">seo tags</span>
+    <span class="page-tag">title tag</span>
+    <span class="page-tag">meta description</span>
+    <span class="page-tag">canonical url</span>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+function escHtml(s){ return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function prettyUrl(u) {
+  try { const x = new URL(u); return x.hostname.replace(/^www\./,'') + (x.pathname !== '/' ? ' › ' + x.pathname.replace(/^\//,'').replace(/\//g,' › ') : ''); }
+  catch { return u || 'example.com'; }
+}
+
+function counter(el, val, max) {
+  el.textContent = val.length + ' / ' + max;
+  el.classList.toggle('warn', val.length > max);
+}
+
+function gen() {
+  const title = $('mTitle').value.trim();
+  const desc  = $('mDesc').value.trim();
+  const canon = $('mCanon').value.trim();
+  const kw    = $('mKeywords').value.trim();
+  const author= $('mAuthor').value.trim();
+  const robots= $('mRobots').value;
+  const lang  = $('mLang').value.trim() || 'en';
+
+  counter($('cTitle'), title, 60);
+  counter($('cDesc'), desc, 160);
+
+  // preview
+  $('pTitle').textContent = title || 'Page title';
+  $('pDesc').textContent  = desc || 'Your meta description will appear here.';
+  $('pUrl').textContent   = prettyUrl(canon);
+
+  const L = [];
+  L.push('<meta charset="UTF-8">');
+  L.push('<meta name="viewport" content="width=device-width, initial-scale=1.0">');
+  if (title)  L.push(`<title>${escHtml(title)}</title>`);
+  if (desc)   L.push(`<meta name="description" content="${escHtml(desc)}">`);
+  if (kw)     L.push(`<meta name="keywords" content="${escHtml(kw)}">`);
+  if (author) L.push(`<meta name="author" content="${escHtml(author)}">`);
+  L.push(`<meta name="robots" content="${escHtml(robots)}">`);
+  if (canon)  L.push(`<link rel="canonical" href="${escHtml(canon)}">`);
+  L.push(`<meta http-equiv="content-language" content="${escHtml(lang)}">`);
+  $('out').value = L.join('\n');
+}
+
+['mTitle','mDesc','mCanon','mKeywords','mAuthor','mRobots','mLang'].forEach(id => {
+  $(id).addEventListener('input', gen);
+  $(id).addEventListener('change', gen);
+});
+$('copyBtn').addEventListener('click', () => copyText($('out').value, $('copyBtn')));
+gen();
+</script>
+</body>
+</html>

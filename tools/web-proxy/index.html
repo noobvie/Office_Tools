@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Free Web Proxy — View Blocked Websites | Office Tools</title>
+  <meta name="description" content="A free reader-mode web proxy. View websites that block your IP or region — the page is fetched from our server and shown to you. Best for articles and static pages.">
+  <meta name="keywords" content="web proxy, free web proxy, online proxy, view blocked website, bypass region block, unblock website, proxy browser, anonymous browsing, read blocked page, geo-blocked site, proxy server online">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Free Web Proxy — View Blocked Websites">
+  <meta property="og:description" content="Reader-mode web proxy: fetch a page from our server when your IP or region is blocked. Free, no login.">
+  <meta property="og:url" content="https://tools.grin.money/tools/web-proxy/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Free Web Proxy">
+  <meta name="twitter:description" content="View region-blocked or IP-blocked pages through our server. Reader-mode proxy, free.">
+  <link rel="canonical" href="https://tools.grin.money/tools/web-proxy/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Web Proxy","description":"Reader-mode web proxy that fetches a web page from our server so you can view sites that block your IP or region.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/web-proxy/"}</script>
+  <script type="application/ld+json">[{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Office Tools","item":"https://tools.grin.money/"},{"@type":"ListItem","position":2,"name":"Network Tools","item":"https://tools.grin.money/tools/network-toolkit/"},{"@type":"ListItem","position":3,"name":"Web Proxy","item":"https://tools.grin.money/tools/web-proxy/"}]},{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is a web proxy?","acceptedAnswer":{"@type":"Answer","text":"A web proxy fetches a web page on your behalf from its own server and shows it to you. The target site sees the proxy's IP address, not yours, so it is useful when a site blocks your IP address or region."}},{"@type":"Question","name":"Which sites work with this proxy?","acceptedAnswer":{"@type":"Answer","text":"This is a reader-mode proxy, best suited to articles, documentation and mostly static pages. JavaScript-heavy apps, logins, video players and sites with strict anti-bot protection (such as Cloudflare challenges) will not work reliably — that is a fundamental limit of HTML-rewriting proxies."}},{"@type":"Question","name":"Is browsing through the proxy private?","acceptedAnswer":{"@type":"Answer","text":"The destination website sees our server's IP rather than yours, but this is not anonymity software like Tor. Do not use it to send passwords or sensitive data. Scripts are stripped by default for safety."}},{"@type":"Question","name":"Why are some images or styles missing?","acceptedAnswer":{"@type":"Answer","text":"The proxy rewrites links and assets to route through our server, but resources that a page builds dynamically with JavaScript, or that live inside external CSS, may not be rewritten. The text content will still be readable."}}]}]</script>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <script src="../../js/theme-init.js"></script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .ctrl-row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+    .ctrl-row input[type="text"] {
+      flex: 1; min-width: 200px; padding: .6rem .9rem;
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-secondary); color: var(--text);
+      font-size: .92rem; font-family: 'Courier New', monospace;
+      outline: none; transition: border-color .15s; box-sizing: border-box;
+    }
+    .ctrl-row input[type="text"]:focus { border-color: var(--primary); }
+    .box-error { background: var(--danger-dim); color: var(--danger); border-radius: var(--radius); padding: .65rem .9rem; font-size: .86rem; font-weight: 600; margin-top: .75rem; }
+    .box-warn  { background: rgba(241,196,15,.1); color: #b8860b; border: 1px solid rgba(241,196,15,.4); border-radius: var(--radius); padding: .6rem .9rem; font-size: .82rem; margin-top: .75rem; }
+    [data-theme="dark"] .box-warn, [data-theme="matrix"] .box-warn { color: #f1c40f; }
+    .opts { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; margin-top: .55rem; font-size: .85rem; color: var(--text-muted); }
+    .opts label { display: inline-flex; align-items: center; gap: .35rem; cursor: pointer; }
+
+    .frame-wrap { margin-top: .9rem; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--bg-secondary); }
+    .frame-bar { display: flex; align-items: center; gap: .5rem; padding: .45rem .7rem; background: var(--bg-card); border-bottom: 1px solid var(--border); font-size: .78rem; color: var(--text-muted); }
+    .frame-bar .url { flex: 1; font-family: 'Courier New', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+    #proxyFrame { width: 100%; height: 70vh; border: 0; background: #fff; display: block; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: .4rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 560px) { .ctrl-row input[type="text"] { min-width: 100%; } #proxyFrame { height: 60vh; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Web Proxy</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🛡️ Web Proxy — View Blocked Websites</h1>
+    <p>Fetch a page from our server when a site blocks your IP or region. Reader-mode — best for articles and static pages.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About the Web Proxy</h2>
+    <p>This <strong>reader-mode web proxy</strong> fetches a web page from our server and shows it to you, so the destination site sees our IP address instead of yours. That makes it handy when a website <strong>blocks your IP or geographic region</strong>, or when you just want to read a page without connecting to it directly. Links and images on the page are rewritten to keep routing through the proxy as you click around.</p>
+    <p>Because it works by fetching and rewriting HTML, it suits <strong>articles, documentation and mostly static pages</strong>. It is <em>not</em> a full browser: JavaScript-heavy single-page apps, logins, video players and sites with strict anti-bot protection (Cloudflare challenges, CAPTCHAs) will not render reliably. Scripts are stripped by default for safety — turn that off only if a page genuinely needs them. This is not anonymity software like Tor; don't send passwords or sensitive data through it. To simply check whether a site is online, use the <a href="../website-status/">Website Status</a> checker.</p>
+  </section>
+
+  <div class="card">
+    <div class="ctrl-row">
+      <input type="text" id="urlInput" placeholder="example.com or https://example.com/article" autocomplete="off" spellcheck="false">
+      <button class="btn btn-primary" id="goBtn">Open</button>
+    </div>
+    <div class="opts">
+      <label><input type="checkbox" id="stripScripts" checked> Strip scripts (safer, recommended)</label>
+      <a href="#" id="newTab" style="display:none">↗ Open raw in new tab</a>
+    </div>
+    <div id="msg"></div>
+    <div class="frame-wrap" id="frameWrap" style="display:none">
+      <div class="frame-bar">
+        <span>🛡️ proxied</span>
+        <span class="url" id="frameUrl"></span>
+        <span id="frameStatus"></span>
+      </div>
+      <iframe id="proxyFrame" sandbox="allow-popups allow-forms" referrerpolicy="no-referrer" title="Proxied page"></iframe>
+    </div>
+  </div>
+
+  <section class="tool-related" id="related-tools"></section>
+
+<div class="page-tags">
+  <span class="page-tag">web proxy</span>
+  <span class="page-tag">view blocked website</span>
+  <span class="page-tag">bypass region block</span>
+  <span class="page-tag">unblock website</span>
+  <span class="page-tag">online proxy</span>
+  <span class="page-tag">proxy browser</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+'use strict';
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+const PROXY_BASE = `${API}/api/net/proxy`;
+
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+const urlInput = document.getElementById('urlInput');
+const frameWrap = document.getElementById('frameWrap');
+const frame = document.getElementById('proxyFrame');
+const msg = document.getElementById('msg');
+
+document.getElementById('goBtn').addEventListener('click', openProxy);
+urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') openProxy(); });
+
+function buildUrl(target) {
+  const strip = document.getElementById('stripScripts').checked ? '1' : '0';
+  return `${PROXY_BASE}?url=${encodeURIComponent(target)}&self=${encodeURIComponent(PROXY_BASE)}&strip=${strip}`;
+}
+
+async function openProxy() {
+  let target = urlInput.value.trim();
+  if (!target) return;
+  if (!/^https?:\/\//i.test(target)) target = 'https://' + target;
+
+  msg.innerHTML = `<div class="box-warn"><span class="spinner"></span> Fetching <code>${escHtml(target)}</code> through the proxy…</div>`;
+  frameWrap.style.display = 'none';
+
+  // Pre-flight with fetch so we can surface a clean error (SSRF block, timeout…)
+  // instead of a blank iframe. Then point the iframe at the same URL.
+  const proxied = buildUrl(target);
+  try {
+    const r = await fetch(proxied, { method: 'GET' });
+    const ct = r.headers.get('content-type') || '';
+    if (!r.ok && /application\/json/i.test(ct)) {
+      const d = await r.json().catch(() => ({}));
+      msg.innerHTML = `<div class="box-error">${escHtml(d.error || ('Proxy error ' + r.status))}</div>`;
+      return;
+    }
+    // Good — show it in the iframe (second fetch is served fast; size is capped server-side).
+    // Opaque origin always (never allow-same-origin); only allow scripts when the user
+    // opted out of stripping, so the toggle is honest while staying isolated from our origin.
+    const stripped = document.getElementById('stripScripts').checked;
+    frame.setAttribute('sandbox', stripped ? 'allow-popups allow-forms' : 'allow-scripts allow-popups allow-forms');
+    msg.innerHTML = `<div class="box-warn">Reader-mode view. Scripts, logins and dynamic apps may not work. Don't enter passwords here.</div>`;
+    document.getElementById('frameUrl').textContent = target;
+    const nt = document.getElementById('newTab');
+    nt.href = proxied; nt.style.display = 'inline';
+    frame.src = proxied;
+    frameWrap.style.display = 'block';
+  } catch (err) {
+    msg.innerHTML = `<div class="box-error">Network error: ${escHtml(err.message)} — is the backend running?</div>`;
+  }
+}
+
+renderRelatedTools('related-tools', [
+  { path: 'website-status', desc: 'Check whether a website is up or down' },
+  { path: 'ip-location',    desc: 'See the location and ISP behind any IP' },
+  { path: 'my-ip',          desc: 'Show your own public IP address' },
+  { path: 'dns-lookup',     desc: 'Query A, AAAA, MX and more DNS records' },
+]);
+</script>
+</body>
+</html>

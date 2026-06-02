@@ -5,6 +5,33 @@
 /* Capture script URL before any async code (document.currentScript is only live here) */
 const _OT_SCRIPT_SRC = document.currentScript?.src || '';
 
+/* ---------- Google Analytics 4 (centralised — loads on every page) ----------
+   The authoritative ID lives HERE, not in config.js, because common.js is the
+   only script loaded on EVERY page — many client-only tools (password generator,
+   games, etc.) don't load config.js at all. config.js may optionally override or
+   disable it (set GA_MEASUREMENT_ID to '' there). Skipped on localhost so dev
+   traffic never pollutes the report. */
+const OT_GA_ID = 'G-4YG2V55YEY';
+(function loadGA() {
+  var id = OT_GA_ID;
+  if (window.OT_CONFIG && typeof window.OT_CONFIG.GA_MEASUREMENT_ID === 'string') {
+    id = window.OT_CONFIG.GA_MEASUREMENT_ID;   // optional override / disable
+  }
+  var host = location.hostname;
+  if (!id) return;
+  if (host === 'localhost' || host === '127.0.0.1' || host === '' || location.protocol === 'file:') return;
+
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function () { window.dataLayer.push(arguments); };
+  window.gtag('js', new Date());
+  window.gtag('config', id);
+
+  var s = document.createElement('script');
+  s.async = true;
+  s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(id);
+  document.head.appendChild(s);
+})();
+
 /* ---------- Theme ---------- */
 const OT_THEMES  = ['light', 'dark', 'matrix', 'anime'];
 const OT_LABELS  = { light: '🌙 Dark', dark: '💻 Matrix', matrix: '🌸 Anime', anime: '☀️ Light' };
@@ -209,6 +236,7 @@ const OT_TOOLS = [
   { name: 'Lorem Ipsum Generator',   path: 'lorem-ipsum',           cat: '✨ Generators',           icon: '📄', desc: 'Generate placeholder text by paragraphs, sentences or words' },
   { name: 'Fake Data Generator',     path: 'fake-data',             cat: '✨ Generators',           icon: '🃏', desc: 'Generate realistic test data — names, emails, addresses' },
   { name: 'Wheel of Names',          path: 'wheel-of-names',        cat: '✨ Generators',           icon: '🎡', desc: 'Spin a wheel to randomly pick a winner from your list' },
+  { name: 'Barcode Generator',       path: 'barcode-generator',     cat: '✨ Generators',           icon: '📊', desc: 'Code 128, EAN-13, UPC-A, Code 39 and ITF — download PNG or SVG',       isNew: true },
   // 📝 Text & Content
   { name: 'Word Counter',            path: 'word-counter',          cat: '📝 Text & Content',       icon: '📊', desc: 'Count words, characters, sentences and reading time live' },
   { name: 'Markdown Editor',         path: 'markdown-editor',       cat: '📝 Text & Content',       icon: '✍️', desc: 'Live split-pane Markdown editor with HTML preview' },
@@ -216,6 +244,8 @@ const OT_TOOLS = [
   { name: 'Typing Speed Test',       path: 'typing-speed',          cat: '📝 Text & Content',       icon: '⌨️', desc: 'Measure WPM and accuracy with real-time error tracking' },
   { name: 'Text Case Converter',     path: 'text-case',             cat: '📝 Text & Content',       icon: '🔡', desc: 'Convert to UPPERCASE, camelCase, snake_case, kebab-case and more' },
   { name: 'Notepad',                 path: 'notepad',               cat: '📝 Text & Content',       icon: '📝', desc: 'Auto-saving scratch pad with up to 5 named notes' },
+  { name: 'Remove Duplicate Lines & Sort', path: 'dedupe-sort',     cat: '📝 Text & Content',       icon: '🧹', desc: 'Dedupe, sort, trim, change case, reverse and shuffle text lines',     isNew: true },
+  { name: 'Markdown ↔ HTML Converter', path: 'markdown-html',       cat: '📝 Text & Content',       icon: '📝', desc: 'Two-way Markdown and HTML conversion with a live preview',             isNew: true },
   // 🔒 Encoding & Crypto
   { name: 'Base64 Converter',        path: 'base64-converter',      cat: '🔒 Encoding & Crypto',    icon: '🔄', desc: 'Encode and decode text or files to/from Base64' },
   { name: 'URL Encoder / Decoder',   path: 'url-encoder',           cat: '🔒 Encoding & Crypto',    icon: '🔗', desc: 'Percent-encode and decode URLs with before/after diff' },
@@ -224,6 +254,9 @@ const OT_TOOLS = [
   { name: 'HTML Entity Encoder',     path: 'html-entities',         cat: '🔒 Encoding & Crypto',    icon: '🏷️', desc: 'Encode and decode HTML entities for safe HTML output' },
   { name: 'JWT Decoder',             path: 'jwt-decoder',           cat: '🔒 Encoding & Crypto',    icon: '🔐', desc: 'Decode JSON Web Tokens — header, payload, expiry and claims' },
   { name: 'Number Base Converter',   path: 'base-converter',        cat: '🔒 Encoding & Crypto',    icon: '🔢', desc: 'Convert between binary, octal, decimal and hexadecimal' },
+  { name: 'Binary ↔ Text Converter', path: 'binary-text',           cat: '🔒 Encoding & Crypto',    icon: '0️⃣', desc: 'Text to binary and back, with hex and decimal views (UTF-8)',          isNew: true },
+  { name: 'Morse Code Translator',   path: 'morse-code',            cat: '🔒 Encoding & Crypto',    icon: '📡', desc: 'Text ↔ Morse with audio beeps, visual flash and adjustable WPM',       isNew: true },
+  { name: 'ROT13 & Caesar Cipher',   path: 'caesar-cipher',         cat: '🔒 Encoding & Crypto',    icon: '🔐', desc: 'Encode/decode ROT13 and Caesar shifts, with brute-force cracking',     isNew: true },
   // 🧮 Calculators
   { name: 'Percentage Calculator',   path: 'percentage-calculator', cat: '🧮 Calculators',          icon: '💯', desc: 'Calculate percentages, percent of, and percentage change' },
   { name: 'Aspect Ratio Calculator', path: 'aspect-ratio',          cat: '🧮 Calculators',          icon: '📐', desc: 'Find missing width or height for any aspect ratio' },
@@ -231,6 +264,11 @@ const OT_TOOLS = [
   { name: 'Loan Calculator',         path: 'loan-calculator',       cat: '🧮 Calculators',          icon: '🏦', desc: 'Monthly payment and amortization schedule for any loan' },
   { name: 'Tip Calculator',          path: 'tip-calculator',        cat: '🧮 Calculators',          icon: '🧾', desc: 'Calculate tip and split the bill among friends' },
   { name: 'Number to Words',         path: 'number-words',          cat: '🧮 Calculators',          icon: '🔤', desc: 'Convert numbers to English words for checks and invoices' },
+  { name: 'Sales Tax & VAT Calculator', path: 'tax-calculator',     cat: '🧮 Calculators',          icon: '🧾', desc: 'Add tax to a net price or remove VAT from a gross total',            isNew: true },
+  { name: 'Discount Calculator',     path: 'discount-calculator',   cat: '🧮 Calculators',          icon: '🏷️', desc: 'Sale price, savings and stacked percent-off discounts',               isNew: true },
+  { name: 'Compound Interest Calculator', path: 'compound-interest', cat: '🧮 Calculators',         icon: '📈', desc: 'Project savings growth with contributions and a yearly chart',         isNew: true },
+  { name: 'Scientific Calculator',   path: 'scientific-calculator', cat: '🧮 Calculators',          icon: '🔬', desc: 'Trig, logs, powers, roots, factorial and memory — deg or rad',         isNew: true },
+  { name: 'Roman Numeral Converter', path: 'roman-numerals',        cat: '🧮 Calculators',          icon: '🏛️', desc: 'Convert numbers to Roman numerals and back, both directions',          isNew: true },
   // 💻 Development
   { name: 'JSON Editor',             path: 'json-editor',           cat: '💻 Development',          icon: '📋', desc: 'Validate, format and minify JSON with interactive tree view' },
   { name: 'CSV ↔ JSON',              path: 'csv-json',              cat: '💻 Development',          icon: '⇄',  desc: 'Convert between CSV and JSON with table preview' },
@@ -241,12 +279,24 @@ const OT_TOOLS = [
   { name: 'AI Token Counter',        path: 'ai-token-counter',      cat: '💻 Development',          icon: '🔢', desc: 'Estimate token count and API cost for GPT-4, Claude and more' },
   { name: 'Prompt Template Builder', path: 'ai-prompt-template',    cat: '💻 Development',          icon: '📝', desc: 'Write reusable AI prompts with {{variable}} placeholders' },
   { name: 'JSON Schema Builder',     path: 'ai-json-schema',        cat: '💻 Development',          icon: '🏗️', desc: 'Auto-generate JSON Schema from any JSON or build visually' },
+  { name: 'Code Beautifier & Minifier', path: 'code-beautifier',    cat: '💻 Development',          icon: '💅', desc: 'Beautify or minify HTML, CSS and JavaScript with byte comparison',    isNew: true },
+  { name: 'JSON ↔ YAML Converter',   path: 'json-yaml',             cat: '💻 Development',          icon: '🔁', desc: 'Two-way JSON and YAML conversion with live validation',               isNew: true },
+  { name: 'XML Formatter',           path: 'xml-formatter',         cat: '💻 Development',          icon: '📐', desc: 'Pretty-print, minify and validate XML with configurable indent',      isNew: true },
+  { name: 'CSS Gradient Generator',  path: 'gradient-generator',    cat: '💻 Development',          icon: '🌈', desc: 'Build linear and radial CSS gradients visually and copy the CSS',     isNew: true },
+  { name: 'Meta Tag Generator',      path: 'meta-tag-generator',    cat: '💻 Development',          icon: '🏷️', desc: 'SEO meta tags with a live Google preview and copy-ready HTML',         isNew: true },
+  { name: 'Open Graph & Twitter Card', path: 'og-generator',        cat: '💻 Development',          icon: '🔗', desc: 'OG + Twitter Card tags with a live social share preview',              isNew: true },
+  { name: 'Robots.txt Generator',    path: 'robots-generator',      cat: '💻 Development',          icon: '🤖', desc: 'Allow/disallow rules per user-agent, crawl-delay and sitemap line',   isNew: true },
+  { name: 'Schema.org JSON-LD Generator', path: 'schema-generator', cat: '💻 Development',          icon: '🏗️', desc: 'Structured data for rich results — Article, Product, FAQ and more',    isNew: true },
+  { name: 'URL Slug Generator',      path: 'slug-generator',        cat: '💻 Development',          icon: '🔗', desc: 'Turn titles into clean SEO-friendly URL slugs, single or bulk',       isNew: true },
+  { name: 'Favicon Generator',       path: 'favicon-generator',     cat: '💻 Development',          icon: '⭐', desc: 'Favicons from image, emoji or initials — multi-size PNG + HTML',       isNew: true },
   // 🎬 Media
   { name: 'YouTube Downloader',      path: 'yt-downloader',         cat: '🎬 Media',                icon: '📥', desc: 'Download YouTube videos as MP4 or audio as MP3' },
   { name: 'Speech & Voice',          path: 'speech-voice',          cat: '🎬 Media',                icon: '🎙️', desc: 'Transcribe mic or audio to text, or convert text to speech' },
   { name: 'Photo Editor',            path: 'photo-editor',          cat: '🎬 Media',                icon: '🖼️', desc: 'Remove backgrounds, adjust colors and add text to photos' },
   { name: 'Image Converter',         path: 'image-converter',       cat: '🎬 Media',                icon: '🖼️', desc: 'Convert HEIC/HEIF to JPG/PNG, compress and resize images' },
   { name: 'Screenshot Beautifier',   path: 'screenshot-beautifier', cat: '🎬 Media',                icon: '🖼️', desc: 'Add gradient backgrounds and shadows to screenshots' },
+  { name: 'Color Picker / Eyedropper', path: 'color-picker',        cat: '🎬 Media',                icon: '🎨', desc: 'Pick HEX/RGB/HSL colors from any image with a magnified loupe',       isNew: true },
+  { name: 'EXIF Viewer & Remover',   path: 'exif-viewer',           cat: '🎬 Media',                icon: '📷', desc: 'View photo metadata and GPS, then download a stripped clean copy',     isNew: true },
   // 🎨 Design
   { name: 'Color Converter',         path: 'color-converter',       cat: '🎨 Design',               icon: '🎨', desc: 'Convert HEX, RGB, HSL, HSV and CMYK with live preview' },
   { name: 'Contrast Checker',        path: 'contrast-checker',      cat: '🎨 Design',               icon: '♿', desc: 'Check WCAG AA/AAA contrast ratios for color pairs' },
@@ -262,10 +312,10 @@ const OT_TOOLS = [
   { name: 'Domain Checker',          path: 'domain-checker',        cat: '🌐 Network & Web',        icon: '🌐', desc: 'WHOIS, RDAP, DNS records and availability across TLDs' },
   { name: 'Online Ping Test',        path: 'ping',                  cat: '🌐 Network & Web',        icon: '📡', desc: 'Ping any host with live output — IPv4 and IPv6 supported' },
   { name: 'Online Traceroute',       path: 'traceroute',            cat: '🌐 Network & Web',        icon: '🔍', desc: 'Trace the network path hop by hop with live streaming output' },
-  { name: 'DNS Lookup',              path: 'dns-lookup',            cat: '🌐 Network & Web',        icon: '📋', desc: 'Query A, AAAA, MX, NS, TXT, CNAME, SOA and CAA records',          isNew: true },
-  { name: 'Reverse DNS Lookup',      path: 'reverse-dns',           cat: '🌐 Network & Web',        icon: '🔄', desc: 'Resolve any IPv4 or IPv6 address to its hostname via PTR',           isNew: true },
-  { name: 'IPv6 Analyzer',           path: 'ipv6-analyzer',         cat: '🌐 Network & Web',        icon: '🔬', desc: 'Expand, compress and identify IPv6 address type',                    isNew: true },
-  { name: 'Subnet Calculator',       path: 'subnet-calculator',     cat: '🌐 Network & Web',        icon: '🧮', desc: 'CIDR subnet — network address, mask, host range and total',           isNew: true },
+  { name: 'DNS Lookup',              path: 'dns-lookup',            cat: '🌐 Network & Web',        icon: '📋', desc: 'Query A, AAAA, MX, NS, TXT, CNAME, SOA and CAA records' },
+  { name: 'Reverse DNS Lookup',      path: 'reverse-dns',           cat: '🌐 Network & Web',        icon: '🔄', desc: 'Resolve any IPv4 or IPv6 address to its hostname via PTR' },
+  { name: 'IPv6 Analyzer',           path: 'ipv6-analyzer',         cat: '🌐 Network & Web',        icon: '🔬', desc: 'Expand, compress and identify IPv6 address type' },
+  { name: 'Subnet Calculator',       path: 'subnet-calculator',     cat: '🌐 Network & Web',        icon: '🧮', desc: 'CIDR subnet — network address, mask, host range and total' },
   // 📤 Share
   { name: 'URL Shortener',           path: 'url-shortener',         cat: '📤 Share',                icon: '🔗', desc: 'Create short links with optional custom alias and expiry' },
   { name: 'Pastebin',                path: 'pastebin',              cat: '📤 Share',                icon: '📋', desc: 'Share code and text via private link with burn-after-read' },

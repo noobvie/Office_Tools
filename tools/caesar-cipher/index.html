@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ROT13 &amp; Caesar Cipher — Encode / Decode — Office Tools</title>
+  <meta name="description" content="Encode and decode text with ROT13 or a Caesar cipher of any shift. Includes a brute-force view showing all 25 shifts to crack unknown ciphers. Free online cipher tool.">
+  <meta name="keywords" content="ROT13, caesar cipher, caesar cipher decoder, shift cipher, ROT13 encoder, decode caesar, cipher solver, brute force caesar, letter shift cipher">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="ROT13 &amp; Caesar Cipher — Office Tools">
+  <meta property="og:description" content="Encode/decode ROT13 and Caesar ciphers, with a brute-force all-shifts view.">
+  <meta property="og:url" content="https://tools.grin.money/tools/caesar-cipher/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="ROT13 &amp; Caesar Cipher — Office Tools">
+  <meta name="twitter:description" content="ROT13 and Caesar cipher with brute-force cracking.">
+  <link rel="canonical" href="https://tools.grin.money/tools/caesar-cipher/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"ROT13 & Caesar Cipher","description":"Encode and decode text with ROT13 or a Caesar cipher of any shift, with a brute-force view of all 25 shifts. Runs in your browser.","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/caesar-cipher/"}</script>
+  <script src="../../js/theme-init.js"></script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .ta { width: 100%; box-sizing: border-box; min-height: 120px; resize: vertical;
+      font-family: 'Courier New', monospace; font-size: .95rem; line-height: 1.6;
+      background: var(--bg-secondary); color: var(--text); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .75rem 1rem; outline: none; }
+    .ta:focus { border-color: var(--primary); }
+    .field-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: .35rem; }
+    .ctl-row { display: flex; gap: 1.25rem; flex-wrap: wrap; align-items: center; margin: 1rem 0; }
+    .seg { display: inline-flex; border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .seg button { padding: .4rem .85rem; border: none; background: none; cursor: pointer; font-size: .82rem; font-weight: 700; color: var(--text); }
+    .seg button.active { background: var(--primary); color: #fff; }
+    .brute { font-family: 'Courier New', monospace; font-size: .82rem; }
+    .brute-row { display: flex; gap: .75rem; padding: .35rem .5rem; border-bottom: 1px solid var(--border); }
+    .brute-row:hover { background: var(--bg-secondary); cursor: pointer; }
+    .brute-n { color: var(--primary); font-weight: 700; min-width: 52px; }
+    .brute-t { word-break: break-all; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">ROT13 &amp; Caesar Cipher</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔐 ROT13 &amp; Caesar Cipher</h1>
+    <p>Encode or decode with ROT13 or any Caesar shift. Brute-force view cracks unknown shifts.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About this tool</h2>
+    <p>The <strong>Caesar cipher</strong> shifts each letter by a fixed number of positions; <strong>ROT13</strong> is the special case of a shift of 13 (which is its own inverse). Type your message, pick a shift, and see the result instantly. To decode a message when you don't know the shift, expand the <strong>brute-force panel</strong> — it shows all 25 possible shifts so you can spot the readable one.</p>
+    <p>Letters keep their case; numbers, spaces and punctuation pass through unchanged. Everything runs locally — note that these are classical ciphers for fun and learning, <strong>not secure encryption</strong>.</p>
+  </section>
+
+  <div class="card">
+    <div>
+      <label class="field-label">Input</label>
+      <textarea id="inTa" class="ta" placeholder="Type your message…">The quick brown fox</textarea>
+    </div>
+    <div class="ctl-row">
+      <div class="seg" id="presetSeg">
+        <button data-shift="13" class="active">ROT13</button>
+        <button data-shift="3">Caesar (3)</button>
+        <button data-shift="custom">Custom</button>
+      </div>
+      <label style="font-size:.85rem;display:inline-flex;align-items:center;gap:.5rem">
+        Shift <input type="range" id="shift" min="0" max="25" value="13" style="accent-color:var(--primary)"> <b id="shiftVal" style="color:var(--primary)">13</b>
+      </label>
+    </div>
+    <div>
+      <label class="field-label">Output</label>
+      <textarea id="outTa" class="ta" readonly></textarea>
+    </div>
+    <div class="mt-2" style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <button class="btn btn-primary" id="copyBtn">📋 Copy output</button>
+      <button class="btn" id="swapBtn">↩ Use output as input</button>
+      <button class="btn" id="clearBtn">✕ Clear</button>
+    </div>
+  </div>
+
+  <div class="card mt-2">
+    <details>
+      <summary style="cursor:pointer;font-weight:700;color:var(--primary)">🔓 Brute force — all 25 shifts</summary>
+      <p style="font-size:.82rem;color:var(--text-muted);margin:.5rem 0">Click any row to load that shift into the converter.</p>
+      <div class="brute" id="bruteList"></div>
+    </details>
+  </div>
+
+  <div class="page-tags">
+    <span class="page-tag">rot13</span>
+    <span class="page-tag">caesar cipher</span>
+    <span class="page-tag">cipher decoder</span>
+    <span class="page-tag">shift cipher</span>
+    <span class="page-tag">brute force</span>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+
+function shiftText(str, n) {
+  n = ((n % 26) + 26) % 26;
+  return str.replace(/[a-z]/gi, ch => {
+    const base = ch <= 'Z' ? 65 : 97;
+    return String.fromCharCode((ch.charCodeAt(0) - base + n) % 26 + base);
+  });
+}
+
+function convert() {
+  const n = parseInt($('shift').value, 10);
+  $('shiftVal').textContent = n;
+  $('outTa').value = shiftText($('inTa').value, n);
+  renderBrute();
+}
+
+function renderBrute() {
+  const src = $('inTa').value;
+  let html = '';
+  for (let n = 1; n <= 25; n++) {
+    const t = shiftText(src, n).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    html += `<div class="brute-row" data-n="${n}"><span class="brute-n">+${n}</span><span class="brute-t">${t}</span></div>`;
+  }
+  $('bruteList').innerHTML = html;
+  $('bruteList').querySelectorAll('.brute-row').forEach(r => r.addEventListener('click', () => {
+    $('shift').value = r.dataset.n;
+    document.querySelectorAll('#presetSeg button').forEach(x => x.classList.remove('active'));
+    document.querySelector('#presetSeg button[data-shift="custom"]').classList.add('active');
+    convert();
+  }));
+}
+
+document.querySelectorAll('#presetSeg button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#presetSeg button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  if (b.dataset.shift !== 'custom') $('shift').value = b.dataset.shift;
+  convert();
+}));
+$('shift').addEventListener('input', () => {
+  document.querySelectorAll('#presetSeg button').forEach(x => x.classList.remove('active'));
+  document.querySelector('#presetSeg button[data-shift="custom"]').classList.add('active');
+  convert();
+});
+$('inTa').addEventListener('input', convert);
+$('copyBtn').addEventListener('click', () => copyText($('outTa').value, $('copyBtn')));
+$('swapBtn').addEventListener('click', () => { $('inTa').value = $('outTa').value; convert(); });
+$('clearBtn').addEventListener('click', () => { $('inTa').value = ''; convert(); });
+
+convert();
+</script>
+</body>
+</html>

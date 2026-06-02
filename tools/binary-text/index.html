@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Binary ↔ Text Converter — Office Tools</title>
+  <meta name="description" content="Convert text to binary and binary to text instantly. Also view hexadecimal and decimal byte values. Full Unicode (UTF-8) support. Free online binary translator — runs locally.">
+  <meta name="keywords" content="binary to text, text to binary, binary translator, binary converter, ASCII to binary, binary code translator, text to ASCII, hex converter, UTF-8 binary">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Binary ↔ Text Converter — Office Tools">
+  <meta property="og:description" content="Convert text to binary and back, with hex and decimal views. Full UTF-8 support.">
+  <meta property="og:url" content="https://tools.grin.money/tools/binary-text/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Binary ↔ Text Converter — Office Tools">
+  <meta name="twitter:description" content="Text to binary and binary to text, plus hex and decimal.">
+  <link rel="canonical" href="https://tools.grin.money/tools/binary-text/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Binary ↔ Text Converter","description":"Convert text to binary and binary to text, with hexadecimal and decimal views and full UTF-8 support. Runs locally in your browser.","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/binary-text/"}</script>
+  <script src="../../js/theme-init.js"></script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .ta { width: 100%; box-sizing: border-box; min-height: 130px; resize: vertical;
+      font-family: 'Courier New', monospace; font-size: .9rem; line-height: 1.6;
+      background: var(--bg-secondary); color: var(--text); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .75rem 1rem; outline: none; }
+    .ta:focus { border-color: var(--primary); }
+    .ta.bad { border-color: var(--danger); }
+    .field-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: .35rem; }
+    .swap-btn { width: 42px; height: 42px; border-radius: 50%; border: 1.5px solid var(--border);
+      background: var(--bg-card); color: var(--primary); font-size: 1.2rem; cursor: pointer; display: block; margin: .6rem auto; }
+    .swap-btn:hover { background: var(--primary); color: #fff; }
+    .seg { display: inline-flex; border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 1rem; }
+    .seg button { padding: .4rem .85rem; border: none; background: none; cursor: pointer; font-size: .82rem; font-weight: 700; color: var(--text); }
+    .seg button.active { background: var(--primary); color: #fff; }
+    .status { font-size: .82rem; min-height: 1.2em; margin-top: .4rem; }
+    .status.bad { color: var(--danger); }
+    .extra { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 560px) { .extra { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Binary ↔ Text Converter</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>0️⃣1️⃣ Binary ↔ Text Converter</h1>
+    <p>Convert text to binary and binary back to text, with hex and decimal views. Full Unicode support.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About this tool</h2>
+    <p>Translate <strong>text into 8-bit binary</strong> and decode <strong>binary back into readable text</strong>. Every character is encoded as UTF-8 bytes, so emoji and accented characters work correctly. The converter also shows the <strong>hexadecimal and decimal</strong> byte values for the same input.</p>
+    <p>Type in either box — the rest update live. Everything runs locally in your browser.</p>
+  </section>
+
+  <div class="card">
+    <div class="seg" id="dirSeg">
+      <button data-dir="encode" class="active">Text → Binary</button>
+      <button data-dir="decode">Binary → Text</button>
+    </div>
+    <div>
+      <label class="field-label" id="topLabel">Text</label>
+      <textarea id="topTa" class="ta" placeholder="Type text here…">Hello</textarea>
+      <div class="status" id="topStatus"></div>
+    </div>
+    <button class="swap-btn" id="swap" title="Swap">⇅</button>
+    <div>
+      <label class="field-label" id="botLabel">Binary</label>
+      <textarea id="botTa" class="ta" placeholder="01001000 01101001"></textarea>
+      <div class="status" id="botStatus"></div>
+    </div>
+    <div class="mt-2" style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <button class="btn btn-primary" id="copyBtn">📋 Copy result</button>
+      <button class="btn" id="clearBtn">✕ Clear</button>
+    </div>
+  </div>
+
+  <div class="card mt-2">
+    <span class="field-label">Other representations (from the text above)</span>
+    <div class="extra">
+      <div><label class="field-label">Hexadecimal</label><textarea id="hexOut" class="ta" readonly style="min-height:80px"></textarea></div>
+      <div><label class="field-label">Decimal (bytes)</label><textarea id="decOut" class="ta" readonly style="min-height:80px"></textarea></div>
+    </div>
+  </div>
+
+  <div class="page-tags">
+    <span class="page-tag">binary to text</span>
+    <span class="page-tag">text to binary</span>
+    <span class="page-tag">binary translator</span>
+    <span class="page-tag">ascii binary</span>
+    <span class="page-tag">hex converter</span>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+let dir = 'encode';
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+
+function bytesOf(str) { return Array.from(enc.encode(str)); }
+
+function textToBinary(str) {
+  return bytesOf(str).map(b => b.toString(2).padStart(8, '0')).join(' ');
+}
+function binaryToText(bin) {
+  const groups = bin.trim().split(/\s+/).filter(Boolean);
+  const bytes = [];
+  for (const g of groups) {
+    if (!/^[01]+$/.test(g)) throw new Error('Only 0s, 1s and spaces allowed');
+    // support any multiple-of-8 chunk too
+    for (let i = 0; i < g.length; i += 8) {
+      const chunk = g.slice(i, i + 8);
+      bytes.push(parseInt(chunk.padEnd(8, '0').slice(0, 8), 2));
+    }
+  }
+  return dec.decode(new Uint8Array(bytes));
+}
+
+function updateExtra(text) {
+  const bytes = bytesOf(text);
+  $('hexOut').value = bytes.map(b => b.toString(16).padStart(2, '0')).join(' ');
+  $('decOut').value = bytes.map(b => String(b)).join(' ');
+}
+
+function setMode() {
+  $('topLabel').textContent = dir === 'encode' ? 'Text' : 'Binary';
+  $('botLabel').textContent = dir === 'encode' ? 'Binary' : 'Text';
+  $('topTa').placeholder = dir === 'encode' ? 'Type text here…' : '01001000 01101001';
+  $('botTa').readOnly = false;
+}
+
+function convert() {
+  $('topStatus').textContent = ''; $('topStatus').className = 'status';
+  $('botStatus').textContent = ''; $('botStatus').className = 'status';
+  $('topTa').classList.remove('bad'); $('botTa').classList.remove('bad');
+  const src = $('topTa').value;
+  try {
+    if (dir === 'encode') {
+      $('botTa').value = textToBinary(src);
+      updateExtra(src);
+    } else {
+      const text = binaryToText(src);
+      $('botTa').value = text;
+      updateExtra(text);
+    }
+  } catch (e) {
+    $('topTa').classList.add('bad');
+    $('topStatus').textContent = '✕ ' + e.message;
+    $('topStatus').className = 'status bad';
+    $('botTa').value = '';
+  }
+}
+
+document.querySelectorAll('#dirSeg button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#dirSeg button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  // carry current output into input when flipping
+  const out = $('botTa').value;
+  dir = b.dataset.dir; setMode();
+  if (out) $('topTa').value = out;
+  convert();
+}));
+$('swap').addEventListener('click', () => {
+  document.querySelector(`#dirSeg button[data-dir="${dir === 'encode' ? 'decode' : 'encode'}"]`).click();
+});
+$('topTa').addEventListener('input', convert);
+$('copyBtn').addEventListener('click', () => copyText($('botTa').value, $('copyBtn')));
+$('clearBtn').addEventListener('click', () => { $('topTa').value = ''; convert(); });
+
+setMode();
+convert();
+</script>
+</body>
+</html>

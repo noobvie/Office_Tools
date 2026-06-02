@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Robots.txt Generator — Allow/Disallow Rules — Office Tools</title>
+  <meta name="description" content="Generate a valid robots.txt file with allow and disallow rules per user-agent, crawl-delay, and sitemap line. Presets for allow-all and block-all. Copy or download instantly.">
+  <meta name="keywords" content="robots.txt generator, robots txt, disallow rules, user-agent, crawl-delay, sitemap line, block crawlers, SEO robots, googlebot rules">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Robots.txt Generator — Office Tools">
+  <meta property="og:description" content="Build a valid robots.txt with allow/disallow rules and a sitemap line. Copy or download.">
+  <meta property="og:url" content="https://tools.grin.money/tools/robots-generator/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Robots.txt Generator — Office Tools">
+  <meta name="twitter:description" content="Generate robots.txt rules per user-agent with presets.">
+  <link rel="canonical" href="https://tools.grin.money/tools/robots-generator/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Robots.txt Generator","description":"Generate a valid robots.txt file with allow/disallow rules per user-agent, crawl-delay, and sitemap line. Runs in your browser.","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/robots-generator/"}</script>
+  <script src="../../js/theme-init.js"></script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .io-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; align-items: start; }
+    .field-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: .3rem; }
+    .group { border: 1px solid var(--border); border-radius: var(--radius); padding: .9rem; margin-bottom: .85rem; background: var(--bg-secondary); }
+    .group-head { display: flex; gap: .5rem; align-items: center; margin-bottom: .6rem; }
+    .rule-row { display: flex; gap: .5rem; align-items: center; margin-bottom: .4rem; }
+    .rule-row select { max-width: 130px; }
+    .x-btn { border: none; background: var(--danger-dim, rgba(220,38,38,.12)); color: var(--danger);
+      width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-weight: 700; flex: none; }
+    .code-out { width: 100%; box-sizing: border-box; min-height: 280px; resize: vertical;
+      font-family: 'Courier New', monospace; font-size: .85rem; line-height: 1.6;
+      background: var(--bg-secondary); color: var(--text); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .75rem 1rem; white-space: pre; }
+    .preset-row { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    @media (max-width: 760px) { .io-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Robots.txt Generator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🤖 Robots.txt Generator</h1>
+    <p>Build a valid <code>robots.txt</code> with per-user-agent allow/disallow rules and a sitemap line.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About this tool</h2>
+    <p>A <strong>robots.txt</strong> file tells search engine crawlers which parts of your site they may or may not request. Add <strong>user-agent groups</strong>, give each one <strong>Allow / Disallow</strong> rules and an optional <strong>crawl-delay</strong>, point crawlers to your <strong>sitemap</strong>, and copy or download the result to your site root.</p>
+    <p>Use the presets to start from allow-all or block-all. Everything is generated locally — nothing is uploaded.</p>
+  </section>
+
+  <div class="card">
+    <div class="preset-row">
+      <button class="btn btn-sm" data-preset="allow">Allow all</button>
+      <button class="btn btn-sm" data-preset="block">Block all</button>
+      <button class="btn btn-sm" data-preset="common">Common (block admin/cart)</button>
+    </div>
+    <div class="io-grid">
+      <div>
+        <div id="groups"></div>
+        <button class="btn btn-sm" id="addGroup">+ Add user-agent group</button>
+        <div style="margin-top:1rem">
+          <label class="field-label">Sitemap URL (optional)</label>
+          <input type="url" id="sitemap" class="form-input" placeholder="https://example.com/sitemap.xml" value="https://example.com/sitemap.xml">
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Generated robots.txt</label>
+        <textarea class="code-out" id="out" readonly spellcheck="false"></textarea>
+        <div class="mt-2" style="display:flex;gap:.6rem;flex-wrap:wrap">
+          <button class="btn btn-primary" id="copyBtn">📋 Copy</button>
+          <button class="btn" id="dlBtn">⬇ Download robots.txt</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-tags">
+    <span class="page-tag">robots.txt</span>
+    <span class="page-tag">disallow rules</span>
+    <span class="page-tag">crawl-delay</span>
+    <span class="page-tag">user-agent</span>
+    <span class="page-tag">sitemap line</span>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+let groups = [];
+let gid = 0;
+
+function addGroup(ua = '*', rules = [{ type: 'Disallow', path: '' }], delay = '') {
+  groups.push({ id: ++gid, ua, rules: rules.map(r => ({ ...r })), delay });
+}
+
+function render() {
+  const wrap = $('groups');
+  wrap.innerHTML = '';
+  groups.forEach((g, gi) => {
+    const div = document.createElement('div');
+    div.className = 'group';
+    div.innerHTML =
+      `<div class="group-head">` +
+        `<span class="field-label" style="margin:0">User-agent</span>` +
+        `<input type="text" class="form-input" value="${g.ua.replace(/"/g,'&quot;')}" data-g="${gi}" data-k="ua" style="flex:1">` +
+        `<button class="x-btn" data-delg="${gi}" ${groups.length<=1?'disabled style="opacity:.35"':''}>✕</button>` +
+      `</div>` +
+      `<div data-rules="${gi}"></div>` +
+      `<button class="btn btn-sm" data-addrule="${gi}" style="margin-top:.3rem">+ Add rule</button>` +
+      `<div style="margin-top:.5rem"><label class="field-label">Crawl-delay (optional, seconds)</label>` +
+        `<input type="number" class="form-input" value="${g.delay}" data-g="${gi}" data-k="delay" min="0" style="max-width:140px"></div>`;
+    wrap.appendChild(div);
+    const rwrap = div.querySelector(`[data-rules="${gi}"]`);
+    g.rules.forEach((r, ri) => {
+      const row = document.createElement('div');
+      row.className = 'rule-row';
+      row.innerHTML =
+        `<select class="form-input" data-g="${gi}" data-r="${ri}" data-k="type">` +
+          `<option ${r.type==='Disallow'?'selected':''}>Disallow</option>` +
+          `<option ${r.type==='Allow'?'selected':''}>Allow</option>` +
+        `</select>` +
+        `<input type="text" class="form-input" value="${(r.path||'').replace(/"/g,'&quot;')}" placeholder="/path/" data-g="${gi}" data-r="${ri}" data-k="path" style="flex:1">` +
+        `<button class="x-btn" data-delr="${gi}.${ri}">✕</button>`;
+      rwrap.appendChild(row);
+    });
+  });
+  bind();
+  gen();
+}
+
+function bind() {
+  document.querySelectorAll('[data-k]').forEach(el => el.addEventListener('input', e => {
+    const gi = +e.target.dataset.g, k = e.target.dataset.k, ri = e.target.dataset.r;
+    if (ri != null) groups[gi].rules[+ri][k] = e.target.value;
+    else groups[gi][k] = e.target.value;
+    gen();
+  }));
+  document.querySelectorAll('[data-addrule]').forEach(b => b.addEventListener('click', e => {
+    groups[+e.target.dataset.addrule].rules.push({ type: 'Disallow', path: '' }); render();
+  }));
+  document.querySelectorAll('[data-delr]').forEach(b => b.addEventListener('click', e => {
+    const [gi, ri] = e.target.dataset.delr.split('.').map(Number);
+    groups[gi].rules.splice(ri, 1); render();
+  }));
+  document.querySelectorAll('[data-delg]').forEach(b => b.addEventListener('click', e => {
+    if (groups.length <= 1) return;
+    groups.splice(+e.target.dataset.delg, 1); render();
+  }));
+}
+
+function gen() {
+  const out = [];
+  groups.forEach(g => {
+    out.push('User-agent: ' + (g.ua.trim() || '*'));
+    g.rules.forEach(r => {
+      const p = r.path.trim();
+      // Disallow with empty path = allow everything; keep blank value intentionally
+      out.push(`${r.type}: ${p}`);
+    });
+    if (String(g.delay).trim() !== '') out.push('Crawl-delay: ' + g.delay);
+    out.push('');
+  });
+  const sm = $('sitemap').value.trim();
+  if (sm) out.push('Sitemap: ' + sm);
+  $('out').value = out.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
+}
+
+document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
+  const p = b.dataset.preset;
+  if (p === 'allow') groups = [], addGroup('*', [{ type: 'Disallow', path: '' }]);
+  else if (p === 'block') groups = [], addGroup('*', [{ type: 'Disallow', path: '/' }]);
+  else { groups = []; addGroup('*', [
+    { type: 'Disallow', path: '/admin/' },
+    { type: 'Disallow', path: '/cart/' },
+    { type: 'Disallow', path: '/checkout/' },
+    { type: 'Disallow', path: '/*?*' },
+  ]); }
+  render();
+}));
+$('addGroup').addEventListener('click', () => { addGroup('Googlebot', [{ type: 'Allow', path: '/' }]); render(); });
+$('sitemap').addEventListener('input', gen);
+$('copyBtn').addEventListener('click', () => copyText($('out').value, $('copyBtn')));
+$('dlBtn').addEventListener('click', () => {
+  const blob = new Blob([$('out').value], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'robots.txt'; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+addGroup('*', [{ type: 'Disallow', path: '' }]);
+render();
+</script>
+</body>
+</html>

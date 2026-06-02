@@ -903,6 +903,262 @@ app.get('/api/ip/geo', async (req, res) => {
   }
 });
 
+// ── Web Proxy & Website Status ────────────────────────────────
+//
+//   GET /api/net/uptime?url=        is a site up? status, latency, redirect, SSL expiry
+//   GET /api/net/proxy?url=&self=&strip=   reader-mode fetch + HTML link/asset rewrite
+//
+// SSRF guard: every fetch target is resolved and rejected if it points at a
+// private / loopback / link-local / cloud-metadata address. Only http(s) URLs.
+const tls = require('tls');
+
+// IPv4 ranges that must never be fetched server-side
+const _PRIVATE_V4 = [
+  /^0\./, /^10\./, /^127\./, /^169\.254\./, /^192\.168\./,
+  /^172\.(1[6-9]|2\d|3[01])\./,                              // 172.16/12
+  /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./,                // 100.64/10 CGNAT
+  /^192\.0\.0\./, /^192\.0\.2\./, /^198\.51\.100\./,         // special-use / TEST-NET
+  /^203\.0\.113\./, /^198\.1[89]\./,                         // TEST-NET-3 / benchmarking
+  /^22[4-9]\./, /^2[34]\d\./, /^25[0-5]\./,                  // multicast + reserved
+];
+function _isPrivateIp(ip) {
+  if (net.isIPv6(ip)) {
+    const l = ip.toLowerCase();
+    if (l === '::1' || l === '::') return true;
+    if (l.startsWith('fe8') || l.startsWith('fe9') || l.startsWith('fea') || l.startsWith('feb')) return true; // link-local fe80::/10
+    if (l.startsWith('fc') || l.startsWith('fd')) return true;  // unique local fc00::/7
+    if (l.startsWith('ff')) return true;                        // multicast
+    const m = l.match(/(?:::ffff:)(\d+\.\d+\.\d+\.\d+)$/);      // IPv4-mapped (dotted)
+    if (m) return _isPrivateIp(m[1]);
+    if (l.startsWith('::ffff:') || l.startsWith('::')) return true; // mapped/compat (hex) — never a legit browse target
+    return false;
+  }
+  return _PRIVATE_V4.some(re => re.test(ip));
+}
+
+// Validate + normalise a user URL, ensuring it resolves to a public address.
+// Throws { code, msg } on rejection.
+async function _assertPublicUrl(raw) {
+  const withScheme = /^https?:\/\//i.test(raw) ? raw : 'https://' + raw;
+  let u;
+  try { u = new URL(withScheme); } catch { throw { code: 400, msg: 'Invalid URL' }; }
+  if (!['http:', 'https:'].includes(u.protocol)) throw { code: 400, msg: 'Only http:// and https:// URLs are allowed' };
+  const host = u.hostname.replace(/^\[|\]$/g, '');
+  if (!host) throw { code: 400, msg: 'Missing host in URL' };
+  if (net.isIP(host)) {
+    if (_isPrivateIp(host)) throw { code: 403, msg: 'Refusing to fetch a private / internal address' };
+    return u;
+  }
+  let addrs;
+  try { addrs = await dns.promises.lookup(host, { all: true }); }
+  catch { throw { code: 502, msg: 'Could not resolve host' }; }
+  if (!addrs.length) throw { code: 502, msg: 'Could not resolve host' };
+  for (const a of addrs) if (_isPrivateIp(a.address)) throw { code: 403, msg: 'Host resolves to a private / internal address' };
+  return u;
+}
+
+const _PROXY_UA = 'Mozilla/5.0 (X11; Linux x86_64; OfficeToolsProxy/1.0; +https://tools.grin.money)';
+
+// Best-effort TLS certificate expiry for https hosts
+function _certInfo(host, port) {
+  return new Promise(resolve => {
+    let settled = false;
+    const done = v => { if (!settled) { settled = true; resolve(v); } };
+    try {
+      const socket = tls.connect({ host, port: port || 443, servername: host, timeout: 8000, rejectUnauthorized: false }, () => {
+        const c = socket.getPeerCertificate();
+        socket.end();
+        if (!c || !c.valid_to) return done(null);
+        done({ validTo: c.valid_to, daysLeft: Math.round((new Date(c.valid_to) - Date.now()) / 86_400_000), issuer: c.issuer?.O || null });
+      });
+      socket.once('error', () => done(null));
+      socket.once('timeout', () => { socket.destroy(); done(null); });
+    } catch { done(null); }
+  });
+}
+
+// GET /api/net/uptime?url=
+app.get('/api/net/uptime', netRLMiddleware, async (req, res) => {
+  const raw = String(req.query.url || '').trim();
+  if (!raw) return res.status(400).json({ error: 'Missing url' });
+  let url;
+  try { url = await _assertPublicUrl(raw); }
+  catch (e) { return res.status(e.code || 400).json({ error: e.msg || 'Invalid URL' }); }
+
+  const started = Date.now();
+  const fetchOnce = method => fetch(url.href, {
+    method, redirect: 'follow',
+    headers: { 'User-Agent': _PROXY_UA, 'Accept': '*/*' },
+    signal: AbortSignal.timeout(12000),
+  });
+
+  try {
+    let r;
+    try {
+      r = await fetchOnce('HEAD');
+      if ([400, 403, 405, 501].includes(r.status)) r = await fetchOnce('GET');
+    } catch { r = await fetchOnce('GET'); }
+
+    const ms = Date.now() - started;
+    let cert = null;
+    if (url.protocol === 'https:') cert = await _certInfo(url.hostname.replace(/^\[|\]$/g, ''), url.port || 443);
+
+    res.json({
+      url: url.href,
+      finalUrl: r.url || url.href,
+      status: r.status,
+      up: true,
+      ok: r.status < 400,
+      responseMs: ms,
+      redirected: !!r.redirected || (r.url && r.url !== url.href),
+      server: r.headers.get('server') || null,
+      contentType: r.headers.get('content-type') || null,
+      cert,
+    });
+  } catch (err) {
+    const ms = Date.now() - started;
+    const reason = err?.name === 'TimeoutError' ? 'timeout'
+      : (err?.cause?.code || err?.code || err?.name || 'connection failed');
+    res.json({ url: url.href, up: false, responseMs: ms, error: String(reason) });
+  }
+});
+
+// Dedicated proxy rate limiter — one page pulls many assets, so allow more
+const _proxyRateMap = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _proxyRateMap) { if (now > v.resetAt) _proxyRateMap.delete(k); }
+}, 300_000);
+function _proxyAllow(ip) {
+  const now = Date.now();
+  let e = _proxyRateMap.get(ip);
+  if (!e || now > e.resetAt) e = { count: 0, resetAt: now + 60_000 };
+  e.count++;
+  _proxyRateMap.set(ip, e);
+  return e.count <= 240;
+}
+function proxyRLMiddleware(req, res, next) {
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+  if (!_proxyAllow(ip)) return res.status(429).json({ error: 'Rate limit: 240 requests/minute. Please slow down.' });
+  next();
+}
+
+const _PROXY_MAX_BYTES = 12 * 1024 * 1024; // 12 MB cap per resource
+
+function _absolutize(ref, base) { try { return new URL(ref, base).href; } catch { return null; } }
+function _proxify(absUrl, selfBase) { return `${selfBase}?url=${encodeURIComponent(absUrl)}&self=${encodeURIComponent(selfBase)}`; }
+
+// Reader-mode HTML rewrite: absolutise + route links/assets back through the proxy.
+function _rewriteHtml(html, baseUrl, selfBase, stripScripts) {
+  // Drop directives that would block rewritten/proxied content
+  html = html.replace(/<meta[^>]+http-equiv\s*=\s*["']?content-security-policy["']?[^>]*>/gi, '');
+  html = html.replace(/\sintegrity\s*=\s*("|')[^"']*\1/gi, '');
+  html = html.replace(/\scrossorigin(\s*=\s*("|')[^"']*\2)?/gi, '');
+
+  if (stripScripts) {
+    html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+    html = html.replace(/<script\b[^>]*\/?>/gi, '');
+    html = html.replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, ''); // inline handlers
+  }
+
+  // CSS url(...)
+  html = html.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gi, (m, q, ref) => {
+    if (/^(data:|#)/i.test(ref.trim())) return m;
+    const abs = _absolutize(ref.trim(), baseUrl);
+    return abs ? `url(${q}${_proxify(abs, selfBase)}${q})` : m;
+  });
+
+  // srcset (comma-separated candidate list)
+  html = html.replace(/\ssrcset\s*=\s*("|')(.*?)\1/gi, (m, q, val) => {
+    const out = val.split(',').map(part => {
+      const seg = part.trim().split(/\s+/);
+      if (seg[0] && !/^data:/i.test(seg[0])) {
+        const abs = _absolutize(seg[0], baseUrl);
+        if (abs) seg[0] = _proxify(abs, selfBase);
+      }
+      return seg.join(' ');
+    }).join(', ');
+    return ` srcset=${q}${out}${q}`;
+  });
+
+  // href / src / action / poster
+  html = html.replace(/\s(href|src|action|poster)\s*=\s*("|')(.*?)\2/gi, (m, attr, q, ref) => {
+    const t = ref.trim();
+    if (!t || /^(data:|mailto:|tel:|javascript:|#)/i.test(t)) return m;
+    const abs = _absolutize(t, baseUrl);
+    return abs ? ` ${attr}=${q}${_proxify(abs, selfBase)}${q}` : m;
+  });
+
+  // A small banner so the user knows they are inside the proxy
+  const banner = `<div style="all:initial;display:block;font:13px/1.4 system-ui,sans-serif;background:#1a1a2e;color:#e0e0e0;padding:8px 14px;border-bottom:2px solid #6c5ce7;position:sticky;top:0;z-index:2147483647">🛡️ Viewed via Office Tools web proxy — <span style="color:#a29bfe">${baseUrl.replace(/"/g, '&quot;').replace(/</g, '&lt;')}</span></div>`;
+  if (/<body[^>]*>/i.test(html)) html = html.replace(/(<body[^>]*>)/i, `$1${banner}`);
+  else html = banner + html;
+
+  return html;
+}
+
+// GET /api/net/proxy?url=&self=&strip=
+app.get('/api/net/proxy', proxyRLMiddleware, async (req, res) => {
+  const raw = String(req.query.url || '').trim();
+  if (!raw) return res.status(400).json({ error: 'Missing url' });
+  const stripScripts = req.query.strip !== '0';
+  // Where rewritten links should point back to (the public proxy endpoint).
+  let selfBase = String(req.query.self || '').trim();
+  if (!/^https?:\/\/[^\s]+\/api\/net\/proxy$/i.test(selfBase)) {
+    selfBase = `${req.headers['x-forwarded-proto'] || req.protocol}://${req.get('host')}/api/net/proxy`;
+  }
+
+  let url;
+  try { url = await _assertPublicUrl(raw); }
+  catch (e) { return res.status(e.code || 400).json({ error: e.msg || 'Invalid URL' }); }
+
+  try {
+    const r = await fetch(url.href, {
+      redirect: 'follow',
+      headers: {
+        'User-Agent': _PROXY_UA,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      signal: AbortSignal.timeout(15000),
+    });
+
+    const ct = r.headers.get('content-type') || '';
+    const finalUrl = r.url || url.href;
+
+    // Reject oversized resources before buffering them into memory
+    const clen = parseInt(r.headers.get('content-length') || '', 10);
+    if (Number.isFinite(clen) && clen > _PROXY_MAX_BYTES) {
+      return res.status(413).json({ error: 'Resource too large (max 12 MB)' });
+    }
+    // Read with a hard size cap (also guards chunked responses with no length header)
+    const ab = await r.arrayBuffer();
+    if (ab.byteLength > _PROXY_MAX_BYTES) {
+      return res.status(413).json({ error: 'Resource too large (max 12 MB)' });
+    }
+    const buf = Buffer.from(ab);
+
+    // Frame-safe headers so the result can render in our iframe
+    res.removeHeader?.('X-Frame-Options');
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+
+    if (/text\/html|application\/xhtml/i.test(ct)) {
+      const html = _rewriteHtml(buf.toString('utf8'), finalUrl, selfBase, stripScripts);
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.status(r.status < 400 ? 200 : r.status).send(html);
+    }
+
+    // Non-HTML asset (image, css, font, …) — pass through with original type
+    res.setHeader('Content-Type', ct || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    return res.send(buf);
+  } catch (err) {
+    const reason = err?.name === 'TimeoutError' ? 'Request timed out'
+      : (err?.cause?.code || err?.code || err?.message || 'Fetch failed');
+    res.status(502).json({ error: 'Proxy fetch failed: ' + String(reason) });
+  }
+});
+
 // ── Start ─────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`Office Tools server running on port ${PORT}`);

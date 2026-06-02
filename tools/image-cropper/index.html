@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Cropper — Crop Photos Online (Free, No Upload) — Office Tools</title>
+  <meta name="description" content="Free online image cropper. Crop JPG, PNG and WebP photos with aspect-ratio presets (1:1, 16:9, 4:3), rotate, flip and zoom. Runs entirely in your browser — no upload.">
+  <meta name="keywords" content="image cropper, crop image online, crop photo, crop picture, aspect ratio crop, square crop, 16:9 crop, rotate image, free image crop tool">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Image Cropper — Crop Photos Online — Office Tools">
+  <meta property="og:description" content="Crop JPG, PNG and WebP photos with aspect-ratio presets, rotate, flip and zoom. Runs in your browser — no upload.">
+  <meta property="og:url" content="https://tools.grin.money/tools/image-cropper/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Image Cropper — Crop Photos Online — Office Tools">
+  <meta name="twitter:description" content="Crop photos with aspect-ratio presets, rotate and flip. Runs in your browser, no upload.">
+  <link rel="canonical" href="https://tools.grin.money/tools/image-cropper/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Image Cropper","description":"Crop JPG, PNG and WebP photos with aspect-ratio presets, rotate, flip and zoom. Runs entirely in your browser.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/image-cropper/"}</script>
+  <script src="../../js/theme-init.js"></script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+  <style>
+    .drop-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 2.6rem 1rem;
+      text-align: center; cursor: pointer; color: var(--text-muted); transition: all var(--transition); }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
+    .drop-zone input[type=file] { display: none; }
+    .drop-icon { font-size: 2.4rem; }
+    .cropper-stage { max-height: 460px; }
+    .cropper-stage img { max-width: 100%; display: block; }
+    .ratio-row { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: 1rem; }
+    .ratio-btn { padding: .4rem .8rem; border: 1.5px solid var(--border); border-radius: 2rem; background: none;
+      cursor: pointer; font-size: .82rem; font-weight: 700; color: var(--text); transition: all var(--transition); }
+    .ratio-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .tool-row { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .75rem; }
+    .out-opts { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top: 1rem; }
+    .dims { font-size: .8rem; color: var(--text-muted); margin-top: .6rem; text-align: center; }
+    @media (max-width: 480px) { .out-opts { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Image Cropper</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>✂️ Image Cropper</h1>
+    <p>Crop photos with aspect-ratio presets, rotate, flip and zoom — all in your browser, no upload.</p>
+  </div>
+
+<section class="tool-about">
+  <h2>About Image Cropper</h2>
+  <p>Cut an image down to exactly the region you want. Drag the crop box, resize the handles, and use the <strong>aspect-ratio presets</strong> (1:1 square for profile pictures, 16:9 for thumbnails, 4:3, 3:2, and free-form) to lock proportions. You can also <strong>rotate, flip, and zoom</strong> before exporting as JPG, PNG, or WebP.</p>
+  <p>The crop is rendered at the image's <strong>full original resolution</strong>, not the on-screen preview size, so you keep maximum quality. Processing happens entirely in your browser using the open-source Cropper.js library &mdash; your photo is <strong>never uploaded</strong> to any server. Perfect for avatars, banners, passport photos, and trimming screenshots.</p>
+</section>
+
+  <div class="card" id="dropCard">
+    <label class="drop-zone" id="dropZone">
+      <div class="drop-icon">✂️</div>
+      <div><strong>Click to choose an image</strong> or drag &amp; drop</div>
+      <div style="font-size:.8rem;margin-top:.3rem">JPG · PNG · WebP · GIF · BMP</div>
+      <input type="file" id="fileInput" accept="image/*">
+    </label>
+  </div>
+
+  <div class="card" id="editCard" style="display:none">
+    <div class="cropper-stage">
+      <img id="cropImg" alt="image to crop">
+    </div>
+
+    <div style="font-size:.78rem;color:var(--text-muted);margin-top:1rem;font-weight:600">Aspect Ratio</div>
+    <div class="ratio-row" id="ratioRow">
+      <button class="ratio-btn active" data-ratio="free">Free</button>
+      <button class="ratio-btn" data-ratio="1">1:1</button>
+      <button class="ratio-btn" data-ratio="1.7777778">16:9</button>
+      <button class="ratio-btn" data-ratio="1.3333333">4:3</button>
+      <button class="ratio-btn" data-ratio="1.5">3:2</button>
+      <button class="ratio-btn" data-ratio="0.75">3:4</button>
+      <button class="ratio-btn" data-ratio="0.5625">9:16</button>
+    </div>
+
+    <div class="tool-row">
+      <button class="btn btn-secondary btn-sm" id="rotLeft">↺ Rotate</button>
+      <button class="btn btn-secondary btn-sm" id="rotRight">↻ Rotate</button>
+      <button class="btn btn-secondary btn-sm" id="flipH">⇋ Flip H</button>
+      <button class="btn btn-secondary btn-sm" id="flipV">⇅ Flip V</button>
+      <button class="btn btn-secondary btn-sm" id="zoomIn">＋ Zoom</button>
+      <button class="btn btn-secondary btn-sm" id="zoomOut">－ Zoom</button>
+      <button class="btn btn-ghost btn-sm" id="resetBtn">Reset</button>
+    </div>
+
+    <div class="dims" id="dims"></div>
+
+    <div class="out-opts">
+      <div>
+        <label class="form-label">Output Format</label>
+        <select id="fmt" class="form-input">
+          <option value="image/png">PNG</option>
+          <option value="image/jpeg">JPG</option>
+          <option value="image/webp">WebP</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Quality (JPG/WebP): <span id="qVal">92</span>%</label>
+        <input type="range" id="quality" min="10" max="100" value="92" style="width:100%">
+      </div>
+    </div>
+
+    <div class="btn-group mt-2">
+      <button class="btn btn-primary" id="downloadBtn">Download Cropped</button>
+      <button class="btn btn-ghost" id="newImgBtn">Choose Another Image</button>
+    </div>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">crop image online</span>
+  <span class="page-tag">crop photo</span>
+  <span class="page-tag">square crop</span>
+  <span class="page-tag">aspect ratio crop</span>
+  <span class="page-tag">rotate &amp; flip</span>
+</div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+let cropper = null;
+let currentName = 'image';
+
+const dropZone  = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const cropImg   = document.getElementById('cropImg');
+
+function loadFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  currentName = (file.name || 'image').replace(/\.[^.]+$/, '');
+  const url = URL.createObjectURL(file);
+  cropImg.src = url;
+  document.getElementById('dropCard').style.display = 'none';
+  document.getElementById('editCard').style.display = 'block';
+
+  if (cropper) cropper.destroy();
+  cropper = new Cropper(cropImg, {
+    viewMode: 1,
+    autoCropArea: 0.8,
+    background: false,
+    crop() { updateDims(); },
+  });
+}
+
+function updateDims() {
+  if (!cropper) return;
+  const d = cropper.getData(true);
+  document.getElementById('dims').textContent =
+    `Crop: ${Math.round(d.width)} × ${Math.round(d.height)} px`;
+}
+
+fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+
+// Aspect ratio presets
+document.getElementById('ratioRow').addEventListener('click', e => {
+  const btn = e.target.closest('.ratio-btn');
+  if (!btn || !cropper) return;
+  document.querySelectorAll('.ratio-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const r = btn.dataset.ratio;
+  cropper.setAspectRatio(r === 'free' ? NaN : parseFloat(r));
+});
+
+document.getElementById('rotLeft').addEventListener('click',  () => cropper && cropper.rotate(-90));
+document.getElementById('rotRight').addEventListener('click', () => cropper && cropper.rotate(90));
+let flipX = 1, flipY = 1;
+document.getElementById('flipH').addEventListener('click', () => { flipX *= -1; cropper && cropper.scaleX(flipX); });
+document.getElementById('flipV').addEventListener('click', () => { flipY *= -1; cropper && cropper.scaleY(flipY); });
+document.getElementById('zoomIn').addEventListener('click',  () => cropper && cropper.zoom(0.1));
+document.getElementById('zoomOut').addEventListener('click', () => cropper && cropper.zoom(-0.1));
+document.getElementById('resetBtn').addEventListener('click', () => { if (cropper) { cropper.reset(); flipX = flipY = 1; } });
+
+const qSlider = document.getElementById('quality');
+qSlider.addEventListener('input', () => { document.getElementById('qVal').textContent = qSlider.value; });
+
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  if (!cropper) return;
+  const fmt = document.getElementById('fmt').value;
+  const q = parseInt(qSlider.value, 10) / 100;
+  const canvas = cropper.getCroppedCanvas({ imageSmoothingQuality: 'high' });
+  if (!canvas) return;
+  canvas.toBlob(blob => {
+    const ext = fmt === 'image/jpeg' ? 'jpg' : fmt === 'image/webp' ? 'webp' : 'png';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${currentName}-cropped.${ext}`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }, fmt, q);
+});
+
+document.getElementById('newImgBtn').addEventListener('click', () => {
+  if (cropper) { cropper.destroy(); cropper = null; }
+  fileInput.value = '';
+  document.getElementById('editCard').style.display = 'none';
+  document.getElementById('dropCard').style.display = 'block';
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Open Graph &amp; Twitter Card Generator — Office Tools</title>
+  <meta name="description" content="Generate Open Graph and Twitter Card meta tags with a live social preview. See exactly how your link looks shared on Facebook, LinkedIn, and X (Twitter). Copy-ready HTML.">
+  <meta name="keywords" content="open graph generator, og tags generator, twitter card generator, social meta tags, og image, facebook preview, twitter card preview, social share tags">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Open Graph &amp; Twitter Card Generator — Office Tools">
+  <meta property="og:description" content="Generate OG + Twitter Card tags with a live social preview. Copy-ready HTML.">
+  <meta property="og:url" content="https://tools.grin.money/tools/og-generator/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Open Graph &amp; Twitter Card Generator — Office Tools">
+  <meta name="twitter:description" content="See how your link looks on Facebook, LinkedIn and X, then copy the tags.">
+  <link rel="canonical" href="https://tools.grin.money/tools/og-generator/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Open Graph & Twitter Card Generator","description":"Generate Open Graph and Twitter Card meta tags with a live social share preview and copy-ready HTML.","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/og-generator/"}</script>
+  <script src="../../js/theme-init.js"></script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .io-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; align-items: start; }
+    .field { margin-bottom: .85rem; }
+    .field-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: .3rem; }
+    .code-out { width: 100%; box-sizing: border-box; min-height: 220px; resize: vertical;
+      font-family: 'Courier New', monospace; font-size: .8rem; line-height: 1.55;
+      background: var(--bg-secondary); color: var(--text); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .75rem 1rem; white-space: pre; }
+    .social-card { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--bg-card); margin-bottom: 1rem; }
+    .social-img { width: 100%; aspect-ratio: 1.91/1; background: var(--bg-secondary) center/cover no-repeat;
+      display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: .8rem; }
+    .social-body { padding: .7rem .9rem; }
+    .social-host { font-size: .72rem; color: var(--text-muted); text-transform: uppercase; }
+    .social-title { font-weight: 700; font-size: .95rem; margin: .2rem 0; color: var(--text); }
+    .social-desc { font-size: .82rem; color: var(--text-muted); line-height: 1.4; }
+    @media (max-width: 760px) { .io-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Open Graph &amp; Twitter Card Generator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔗 Open Graph &amp; Twitter Card Generator</h1>
+    <p>Control how your page looks when shared. Build OG + Twitter tags with a live preview.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About this tool</h2>
+    <p>When someone shares your link on <strong>Facebook, LinkedIn, Slack, or X (Twitter)</strong>, these <strong>Open Graph</strong> and <strong>Twitter Card</strong> meta tags decide the title, description, and image that appear. Fill in the fields, watch the live card preview update, and copy the generated tags into your HTML <code>&lt;head&gt;</code>.</p>
+    <p>All generation happens locally in your browser. The preview image is loaded directly from the URL you provide.</p>
+  </section>
+
+  <div class="card">
+    <div class="io-grid">
+      <div>
+        <div class="field">
+          <label class="field-label">Title</label>
+          <input type="text" id="oTitle" class="form-input" value="My Awesome Page" placeholder="Page title">
+        </div>
+        <div class="field">
+          <label class="field-label">Description</label>
+          <textarea id="oDesc" class="form-input" rows="2" placeholder="Short summary for the share card">A short, share-worthy summary of this page.</textarea>
+        </div>
+        <div class="field">
+          <label class="field-label">Page URL</label>
+          <input type="url" id="oUrl" class="form-input" value="https://example.com/page" placeholder="https://example.com/page">
+        </div>
+        <div class="field">
+          <label class="field-label">Image URL (1200×630 recommended)</label>
+          <input type="url" id="oImg" class="form-input" placeholder="https://example.com/share.jpg">
+        </div>
+        <div class="field" style="display:flex;gap:1rem;flex-wrap:wrap">
+          <div style="flex:1;min-width:120px">
+            <label class="field-label">Site name</label>
+            <input type="text" id="oSite" class="form-input" value="Office Tools">
+          </div>
+          <div style="flex:1;min-width:120px">
+            <label class="field-label">OG type</label>
+            <select id="oType" class="form-input">
+              <option value="website">website</option>
+              <option value="article">article</option>
+              <option value="product">product</option>
+              <option value="profile">profile</option>
+              <option value="video.other">video</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" style="display:flex;gap:1rem;flex-wrap:wrap">
+          <div style="flex:1;min-width:120px">
+            <label class="field-label">Twitter card</label>
+            <select id="oCard" class="form-input">
+              <option value="summary_large_image">summary_large_image</option>
+              <option value="summary">summary</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:120px">
+            <label class="field-label">Twitter @handle</label>
+            <input type="text" id="oHandle" class="form-input" placeholder="@yoursite">
+          </div>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Social preview</label>
+        <div class="social-card">
+          <div class="social-img" id="prevImg">No image set</div>
+          <div class="social-body">
+            <div class="social-host" id="prevHost">example.com</div>
+            <div class="social-title" id="prevTitle">My Awesome Page</div>
+            <div class="social-desc" id="prevDesc"></div>
+          </div>
+        </div>
+        <label class="field-label">Generated HTML</label>
+        <textarea class="code-out" id="out" readonly spellcheck="false"></textarea>
+        <div class="mt-2" style="display:flex;gap:.6rem;flex-wrap:wrap">
+          <button class="btn btn-primary" id="copyBtn">📋 Copy HTML</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-tags">
+    <span class="page-tag">open graph</span>
+    <span class="page-tag">twitter card</span>
+    <span class="page-tag">og image</span>
+    <span class="page-tag">social meta tags</span>
+    <span class="page-tag">share preview</span>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+function escHtml(s){ return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function host(u){ try { return new URL(u).hostname.replace(/^www\./,''); } catch { return u || 'example.com'; } }
+
+function gen() {
+  const t = $('oTitle').value.trim(), d = $('oDesc').value.trim(), u = $('oUrl').value.trim();
+  const img = $('oImg').value.trim(), site = $('oSite').value.trim(), type = $('oType').value;
+  const card = $('oCard').value, handle = $('oHandle').value.trim();
+
+  // preview
+  $('prevTitle').textContent = t || 'Page title';
+  $('prevDesc').textContent  = d || 'Page description';
+  $('prevHost').textContent  = host(u);
+  if (img) { $('prevImg').style.backgroundImage = `url("${img.replace(/"/g,'%22')}")`; $('prevImg').textContent = ''; }
+  else { $('prevImg').style.backgroundImage = ''; $('prevImg').textContent = 'No image set'; }
+
+  const L = [];
+  L.push('<!-- Open Graph -->');
+  L.push(`<meta property="og:type" content="${escHtml(type)}">`);
+  if (t)    L.push(`<meta property="og:title" content="${escHtml(t)}">`);
+  if (d)    L.push(`<meta property="og:description" content="${escHtml(d)}">`);
+  if (u)    L.push(`<meta property="og:url" content="${escHtml(u)}">`);
+  if (site) L.push(`<meta property="og:site_name" content="${escHtml(site)}">`);
+  if (img) {
+    L.push(`<meta property="og:image" content="${escHtml(img)}">`);
+    L.push('<meta property="og:image:width" content="1200">');
+    L.push('<meta property="og:image:height" content="630">');
+  }
+  L.push('');
+  L.push('<!-- Twitter Card -->');
+  L.push(`<meta name="twitter:card" content="${escHtml(card)}">`);
+  if (t)      L.push(`<meta name="twitter:title" content="${escHtml(t)}">`);
+  if (d)      L.push(`<meta name="twitter:description" content="${escHtml(d)}">`);
+  if (img)    L.push(`<meta name="twitter:image" content="${escHtml(img)}">`);
+  if (handle) L.push(`<meta name="twitter:site" content="${escHtml(handle.startsWith('@') ? handle : '@' + handle)}">`);
+  $('out').value = L.join('\n');
+}
+
+['oTitle','oDesc','oUrl','oImg','oSite','oType','oCard','oHandle'].forEach(id => {
+  $(id).addEventListener('input', gen);
+  $(id).addEventListener('change', gen);
+});
+$('copyBtn').addEventListener('click', () => copyText($('out').value, $('copyBtn')));
+gen();
+</script>
+</body>
+</html>

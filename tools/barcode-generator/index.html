@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Barcode Generator — EAN, UPC, Code 128 — Office Tools</title>
+  <meta name="description" content="Generate barcodes online — Code 128, EAN-13, EAN-8, UPC-A, Code 39 and ITF. Customize size, colors and text, then download as PNG or SVG. Free barcode generator, runs locally.">
+  <meta name="keywords" content="barcode generator, EAN-13 generator, UPC barcode, Code 128 generator, Code 39, ITF barcode, make barcode, barcode maker, download barcode PNG SVG">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Barcode Generator — EAN, UPC, Code 128 — Office Tools">
+  <meta property="og:description" content="Generate Code 128, EAN-13, UPC-A and more. Download PNG or SVG. Runs locally.">
+  <meta property="og:url" content="https://tools.grin.money/tools/barcode-generator/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Barcode Generator — Office Tools">
+  <meta name="twitter:description" content="Code 128, EAN-13, UPC-A, Code 39, ITF — download PNG/SVG.">
+  <link rel="canonical" href="https://tools.grin.money/tools/barcode-generator/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Barcode Generator","description":"Generate barcodes — Code 128, EAN-13, EAN-8, UPC-A, Code 39 and ITF — and download as PNG or SVG. Runs in your browser.","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/barcode-generator/"}</script>
+  <script src="../../js/theme-init.js"></script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .io-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start; }
+    .field { margin-bottom: .85rem; }
+    .field-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: .3rem; }
+    .barcode-stage { background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 1.5rem; text-align: center; min-height: 160px; display: flex; align-items: center; justify-content: center; }
+    .err { color: var(--danger); font-size: .85rem; min-height: 1.2em; margin-top: .5rem; }
+    .row2 { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .row2 > div { flex: 1; min-width: 120px; }
+    @media (max-width: 760px) { .io-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Barcode Generator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>📊 Barcode Generator</h1>
+    <p>Generate Code 128, EAN-13, UPC-A and more. Customize and download as PNG or SVG.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About this tool</h2>
+    <p>Create scannable <strong>1D barcodes</strong> for products, inventory, and labels. Choose a <strong>format</strong> — Code 128, EAN-13, EAN-8, UPC-A, Code 39 or ITF-14 — type your data, and the barcode renders instantly. Adjust bar width, height, colors and the human-readable text, then <strong>download as PNG or SVG</strong>.</p>
+    <p>Rendering uses the <code>JsBarcode</code> library loaded from a CDN. Everything runs in your browser — nothing is uploaded. Need a 2D QR code instead? Use the <a href="../qr-generator/index.html">QR &amp; Barcode Generator</a>.</p>
+  </section>
+
+  <div class="card">
+    <div class="io-grid">
+      <div>
+        <div class="field">
+          <label class="field-label">Format</label>
+          <select id="fmt" class="form-input">
+            <option value="CODE128">Code 128 (any text)</option>
+            <option value="EAN13">EAN-13 (12–13 digits)</option>
+            <option value="EAN8">EAN-8 (7–8 digits)</option>
+            <option value="UPC">UPC-A (11–12 digits)</option>
+            <option value="CODE39">Code 39</option>
+            <option value="ITF14">ITF-14 (13–14 digits)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Data</label>
+          <input type="text" id="data" class="form-input" value="012345678905">
+          <div class="err" id="err"></div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label class="field-label">Bar width</label>
+            <input type="number" id="bw" class="form-input" value="2" min="1" max="6" step="0.5">
+          </div>
+          <div class="field">
+            <label class="field-label">Height</label>
+            <input type="number" id="bh" class="form-input" value="100" min="20" max="300" step="10">
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label class="field-label">Bar color</label>
+            <input type="color" id="lineColor" class="form-input" value="#000000" style="height:42px;padding:3px">
+          </div>
+          <div class="field">
+            <label class="field-label">Background</label>
+            <input type="color" id="bgColor" class="form-input" value="#ffffff" style="height:42px;padding:3px">
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label" style="display:inline-flex;align-items:center;gap:.45rem">
+            <input type="checkbox" id="showText" checked> Show text under barcode
+          </label>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Preview</label>
+        <div class="barcode-stage">
+          <svg id="barcode"></svg>
+        </div>
+        <div class="mt-2" style="display:flex;gap:.6rem;flex-wrap:wrap">
+          <button class="btn btn-primary" id="pngBtn">⬇ Download PNG</button>
+          <button class="btn" id="svgBtn">⬇ Download SVG</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-tags">
+    <span class="page-tag">barcode generator</span>
+    <span class="page-tag">ean-13</span>
+    <span class="page-tag">upc barcode</span>
+    <span class="page-tag">code 128</span>
+    <span class="page-tag">code 39</span>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+
+function render() {
+  $('err').textContent = '';
+  const fmt = $('fmt').value;
+  const data = $('data').value;
+  if (typeof JsBarcode === 'undefined') { $('err').textContent = 'Barcode library failed to load (offline?).'; return; }
+  try {
+    JsBarcode('#barcode', data, {
+      format: fmt,
+      width: parseFloat($('bw').value) || 2,
+      height: parseInt($('bh').value) || 100,
+      lineColor: $('lineColor').value,
+      background: $('bgColor').value,
+      displayValue: $('showText').checked,
+      margin: 10,
+      valid: (v) => { if (!v) $('err').textContent = 'Invalid data for ' + fmt + ' format.'; },
+    });
+  } catch (e) {
+    $('err').textContent = 'Invalid data for ' + fmt + ' format.';
+  }
+}
+
+function svgString() {
+  const svg = $('barcode');
+  return new XMLSerializer().serializeToString(svg);
+}
+
+$('pngBtn').addEventListener('click', () => {
+  const svg = svgString();
+  const img = new Image();
+  const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  img.onload = () => {
+    const cv = document.createElement('canvas');
+    const scale = 3;
+    cv.width = (img.width || 300) * scale; cv.height = (img.height || 150) * scale;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = $('bgColor').value; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(img, 0, 0, cv.width, cv.height);
+    URL.revokeObjectURL(url);
+    const a = document.createElement('a');
+    a.href = cv.toDataURL('image/png'); a.download = 'barcode.png'; a.click();
+  };
+  img.src = url;
+});
+$('svgBtn').addEventListener('click', () => {
+  const blob = new Blob([svgString()], { type: 'image/svg+xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'barcode.svg'; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+['fmt','data','bw','bh','lineColor','bgColor','showText'].forEach(id => {
+  $(id).addEventListener('input', render);
+  $(id).addEventListener('change', render);
+});
+// preset sample data when switching format
+$('fmt').addEventListener('change', () => {
+  const samples = { CODE128: 'Office-Tools-123', EAN13: '012345678905', EAN8: '1234567', UPC: '01234567890', CODE39: 'CODE39', ITF14: '1234567890123' };
+  $('data').value = samples[$('fmt').value] || $('data').value;
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
