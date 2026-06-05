@@ -252,6 +252,87 @@ app.get('/api/tools/popular', (req, res) => {
 const net = require('net');
 const dns = require('dns');
 
+// ── Public probe service (portcheck / portcheckbatch) ─────────
+// These GET routes are a PUBLIC service so any solo-pool setup page on any domain can
+// verify its own stratum port. Open CORS only on these read-only routes — the global
+// allowlist still guards every write route (uploads, pastes, payment, AI). No cookies
+// are used, so Access-Control-Allow-Origin:* is safe here.
+function publicCors(req, res, next) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET');
+  res.setHeader('Vary', 'Origin');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+}
+
+// SSRF guard: a public TCP-connect endpoint must never be usable to probe the server's
+// own internal network or cloud metadata. Reject loopback/private/link-local/reserved
+// targets; resolve hostnames first so we connect to the VALIDATED public IP — this
+// defeats DNS rebinding to 127.0.0.1 / 169.254.169.254 / 10.x etc.
+function ipIsPublic(ip) {
+  if (net.isIPv4(ip)) {
+    const o = ip.split('.').map(Number);
+    if (o.length !== 4 || o.some(n => isNaN(n) || n < 0 || n > 255)) return false;
+    if (o[0] === 0)   return false;                              // 0.0.0.0/8
+    if (o[0] === 10)  return false;                              // 10/8 private
+    if (o[0] === 127) return false;                              // loopback
+    if (o[0] === 169 && o[1] === 254) return false;             // link-local (metadata)
+    if (o[0] === 172 && o[1] >= 16 && o[1] <= 31) return false; // 172.16/12 private
+    if (o[0] === 192 && o[1] === 168) return false;             // 192.168/16 private
+    if (o[0] === 100 && o[1] >= 64 && o[1] <= 127) return false;// CGNAT 100.64/10
+    if (o[0] >= 224)  return false;                              // multicast/reserved
+    return true;
+  }
+  if (net.isIPv6(ip)) {
+    const a = ip.toLowerCase();
+    if (a === '::1' || a === '::') return false;       // loopback / unspecified
+    if (/^fe[89ab]/.test(a)) return false;             // link-local fe80::/10
+    if (/^f[cd]/.test(a))    return false;             // unique-local fc00::/7
+    const m = a.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/); // IPv4-mapped
+    if (m) return ipIsPublic(m[1]);
+    return true;
+  }
+  return false;
+}
+
+// Resolve host → a public IP to connect to, or throw. IP inputs are validated directly.
+function resolvePublicTarget(host) {
+  return new Promise((resolve, reject) => {
+    const clean = host.replace(/^\[|\]$/g, '');
+    if (net.isIP(clean)) {
+      if (!ipIsPublic(clean)) return reject(new Error('Target is a private or reserved address'));
+      return resolve(clean);
+    }
+    dns.lookup(clean, { all: true }, (err, addrs) => {
+      if (err || !addrs || !addrs.length) return reject(new Error('DNS resolution failed'));
+      const ok = addrs.find(a => ipIsPublic(a.address));
+      if (!ok) return reject(new Error('Host resolves only to private or reserved addresses'));
+      resolve(ok.address);
+    });
+  });
+}
+
+// Dedicated 40/min per-IP limiter for the public probe endpoints (a setup page may
+// check a few hosts × ports and reload). Kept separate from ping/resolve (netRL, 10/min).
+const _probeRateMap = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _probeRateMap) { if (now > v.resetAt) _probeRateMap.delete(k); }
+}, 300_000);
+function _probeAllow(ip) {
+  const now = Date.now();
+  let e = _probeRateMap.get(ip);
+  if (!e || now > e.resetAt) e = { count: 0, resetAt: now + 60_000 };
+  e.count++;
+  _probeRateMap.set(ip, e);
+  return e.count <= 40;
+}
+function probeRLMiddleware(req, res, next) {
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+  if (!_probeAllow(ip)) return res.status(429).json({ error: 'Rate limit: 40 requests/minute. Please wait.' });
+  next();
+}
+
 app.get('/api/resolve', netRLMiddleware, (req, res) => {
   const host = String(req.query.host || '').trim();
   if (!host) return res.status(400).json({ error: 'Missing host' });
@@ -280,15 +361,16 @@ app.get('/api/resolve', netRLMiddleware, (req, res) => {
   dns.resolve6(host, (err, addrs) => { v6 = err ? [] : addrs; finish(); });
 });
 
-app.get('/api/portcheck', netRLMiddleware, (req, res) => {
+app.get('/api/portcheck', publicCors, probeRLMiddleware, async (req, res) => {
   const hostInput = String(req.query.host || '').trim();
   const port = parseInt(req.query.port, 10);
   if (!hostInput || isNaN(port) || port < 1 || port > 65535) {
     return res.status(400).json({ error: 'Invalid host or port' });
   }
 
-  // Strip brackets from IPv6 addresses so both [::1] and ::1 work
-  const host = hostInput.replace(/^\[|\]$/g, '');
+  let target;
+  try { target = await resolvePublicTarget(hostInput); }
+  catch (e) { return res.status(400).json({ error: e.message }); }
 
   const TIMEOUT = 4000;
   const socket  = new net.Socket();
@@ -302,7 +384,45 @@ app.get('/api/portcheck', netRLMiddleware, (req, res) => {
   socket.once('connect', () => finish(true));
   socket.once('timeout',  () => finish(false));
   socket.once('error',    () => finish(false));
-  socket.connect(port, host);
+  socket.connect(port, target);
+});
+
+// Batch port checker — runs all ports concurrently (public, CORS-open, probe limiter)
+app.get('/api/portcheckbatch', publicCors, probeRLMiddleware, async (req, res) => {
+  const hostInput = String(req.query.host || '').trim();
+  const portsParam = String(req.query.ports || '').trim();
+  if (!hostInput || !portsParam) return res.status(400).json({ error: 'Missing host or ports' });
+
+  const portNums = [...new Set(
+    portsParam.split(',').map(p => parseInt(p.trim(), 10)).filter(p => !isNaN(p) && p >= 1 && p <= 65535)
+  )];
+  if (!portNums.length) return res.status(400).json({ error: 'No valid ports' });
+  if (portNums.length > 60) return res.status(400).json({ error: 'Max 60 ports per batch' });
+
+  let target;
+  try { target = await resolvePublicTarget(hostInput); }
+  catch (e) { return res.status(400).json({ error: e.message }); }
+
+  const TIMEOUT = 4000;
+  function probePort(port) {
+    return new Promise(resolve => {
+      const socket = new net.Socket();
+      let done = false;
+      function finish(open) {
+        if (done) return; done = true;
+        socket.destroy();
+        resolve({ port, open });
+      }
+      socket.setTimeout(TIMEOUT);
+      socket.once('connect', () => finish(true));
+      socket.once('timeout',  () => finish(false));
+      socket.once('error',    () => finish(false));
+      socket.connect(port, target);
+    });
+  }
+
+  const results = await Promise.all(portNums.map(probePort));
+  res.json({ host: hostInput, results });
 });
 
 // ── Health ────────────────────────────────────────────────────
@@ -317,12 +437,7 @@ app.get('/api/health', (_, res) => res.json({ status: 'ok', ts: new Date().toISO
 //   POST /api/domain/ai-suggest         { keyword } → AI domain name suggestions (Gemini Flash)
 //
 // Rate limit: 15 req/min per IP. In-memory cache: 1 h TTL.
-// Requires: npm install whois   (already in package.json)
 // Optional env vars: GEMINI_API_KEY (AI suggest), VIEWDNS_API_KEY / WHOXY_API_KEY (history)
-
-const whoisPkg   = require('whois');
-const { promisify } = require('util');
-const whoisLookup  = promisify(whoisPkg.lookup);
 
 // Per-IP rate limiter (domain routes only)
 const _domainRateMap = new Map();
@@ -387,7 +502,7 @@ function parseWhoisText(raw) {
   };
 }
 
-// GET /api/domain/whois
+// GET /api/domain/whois — uses HackerTarget HTTP API (avoids TCP port 43 firewall issues)
 app.get('/api/domain/whois', domainRLMiddleware, async (req, res) => {
   const domain = String(req.query.domain || '').trim().toLowerCase().replace(/^www\./, '');
   if (!validDomain(domain)) return res.status(400).json({ error: 'Invalid domain name' });
@@ -397,7 +512,12 @@ app.get('/api/domain/whois', domainRLMiddleware, async (req, res) => {
   if (cached) return res.json({ ...cached, cached: true });
 
   try {
-    const raw    = await whoisLookup(domain, { timeout: 12000 });
+    const r = await fetch(`https://api.hackertarget.com/whois/?q=${encodeURIComponent(domain)}`, {
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!r.ok) throw new Error(`WHOIS API returned HTTP ${r.status}`);
+    const raw = await r.text();
+    if (/^error /i.test(raw) || raw.includes('API count exceeded')) throw new Error(raw.trim());
     const parsed = parseWhoisText(raw);
     const data   = { domain, raw, parsed };
     dcSet(ck, data);
@@ -457,6 +577,11 @@ app.get('/api/domain/rdap', domainRLMiddleware, async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error('[domain/rdap]', err.message);
+    // On timeout or network error, fall back to WHOIS instead of hard-failing
+    if (err.name === 'TimeoutError' || err.name === 'AbortError' ||
+        err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND' || err.code === 'ECONNRESET') {
+      return res.json({ domain, found: false });
+    }
     res.status(500).json({ error: err.message });
   }
 });
@@ -795,8 +920,10 @@ app.post('/api/feedback', (req, res) => {
   // Email notification via OS sendmail (fire-and-forget)
   const _fbSubject = `[Office Tools Feedback] ${page || 'unknown page'}`;
   const _fbBody    = `Page: ${page}\nIP: ${clientIp}\n\n${message}`;
-  if (process.env.NOTIFY_EMAIL)   _sendmailNotify(process.env.NOTIFY_EMAIL,   _fbSubject, _fbBody);
-  if (process.env.NOTIFY_EMAIL_2) _sendmailNotify(process.env.NOTIFY_EMAIL_2, _fbSubject, _fbBody);
+  const _ne1 = (process.env.NOTIFY_EMAIL   || '').trim();
+  const _ne2 = (process.env.NOTIFY_EMAIL_2 || '').trim();
+  if (_ne1) _sendmailNotify(_ne1, _fbSubject, _fbBody);
+  if (_ne2) _sendmailNotify(_ne2, _fbSubject, _fbBody);
 
   res.json({ ok: true });
 });
@@ -841,9 +968,266 @@ app.get('/api/ip/geo', async (req, res) => {
   }
 });
 
+// ── Web Proxy & Website Status ────────────────────────────────
+//
+//   GET /api/net/uptime?url=        is a site up? status, latency, redirect, SSL expiry
+//   GET /api/net/proxy?url=&self=&strip=   reader-mode fetch + HTML link/asset rewrite
+//
+// SSRF guard: every fetch target is resolved and rejected if it points at a
+// private / loopback / link-local / cloud-metadata address. Only http(s) URLs.
+const tls = require('tls');
+
+// IPv4 ranges that must never be fetched server-side
+const _PRIVATE_V4 = [
+  /^0\./, /^10\./, /^127\./, /^169\.254\./, /^192\.168\./,
+  /^172\.(1[6-9]|2\d|3[01])\./,                              // 172.16/12
+  /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./,                // 100.64/10 CGNAT
+  /^192\.0\.0\./, /^192\.0\.2\./, /^198\.51\.100\./,         // special-use / TEST-NET
+  /^203\.0\.113\./, /^198\.1[89]\./,                         // TEST-NET-3 / benchmarking
+  /^22[4-9]\./, /^2[34]\d\./, /^25[0-5]\./,                  // multicast + reserved
+];
+function _isPrivateIp(ip) {
+  if (net.isIPv6(ip)) {
+    const l = ip.toLowerCase();
+    if (l === '::1' || l === '::') return true;
+    if (l.startsWith('fe8') || l.startsWith('fe9') || l.startsWith('fea') || l.startsWith('feb')) return true; // link-local fe80::/10
+    if (l.startsWith('fc') || l.startsWith('fd')) return true;  // unique local fc00::/7
+    if (l.startsWith('ff')) return true;                        // multicast
+    const m = l.match(/(?:::ffff:)(\d+\.\d+\.\d+\.\d+)$/);      // IPv4-mapped (dotted)
+    if (m) return _isPrivateIp(m[1]);
+    if (l.startsWith('::ffff:') || l.startsWith('::')) return true; // mapped/compat (hex) — never a legit browse target
+    return false;
+  }
+  return _PRIVATE_V4.some(re => re.test(ip));
+}
+
+// Validate + normalise a user URL, ensuring it resolves to a public address.
+// Throws { code, msg } on rejection.
+async function _assertPublicUrl(raw) {
+  const withScheme = /^https?:\/\//i.test(raw) ? raw : 'https://' + raw;
+  let u;
+  try { u = new URL(withScheme); } catch { throw { code: 400, msg: 'Invalid URL' }; }
+  if (!['http:', 'https:'].includes(u.protocol)) throw { code: 400, msg: 'Only http:// and https:// URLs are allowed' };
+  const host = u.hostname.replace(/^\[|\]$/g, '');
+  if (!host) throw { code: 400, msg: 'Missing host in URL' };
+  if (net.isIP(host)) {
+    if (_isPrivateIp(host)) throw { code: 403, msg: 'Refusing to fetch a private / internal address' };
+    return u;
+  }
+  let addrs;
+  try { addrs = await dns.promises.lookup(host, { all: true }); }
+  catch { throw { code: 502, msg: 'Could not resolve host' }; }
+  if (!addrs.length) throw { code: 502, msg: 'Could not resolve host' };
+  for (const a of addrs) if (_isPrivateIp(a.address)) throw { code: 403, msg: 'Host resolves to a private / internal address' };
+  return u;
+}
+
+const _PROXY_UA = 'Mozilla/5.0 (X11; Linux x86_64; OfficeToolsProxy/1.0; +https://tools.grin.money)';
+
+// Best-effort TLS certificate expiry for https hosts
+function _certInfo(host, port) {
+  return new Promise(resolve => {
+    let settled = false;
+    const done = v => { if (!settled) { settled = true; resolve(v); } };
+    try {
+      const socket = tls.connect({ host, port: port || 443, servername: host, timeout: 8000, rejectUnauthorized: false }, () => {
+        const c = socket.getPeerCertificate();
+        socket.end();
+        if (!c || !c.valid_to) return done(null);
+        done({ validTo: c.valid_to, daysLeft: Math.round((new Date(c.valid_to) - Date.now()) / 86_400_000), issuer: c.issuer?.O || null });
+      });
+      socket.once('error', () => done(null));
+      socket.once('timeout', () => { socket.destroy(); done(null); });
+    } catch { done(null); }
+  });
+}
+
+// GET /api/net/uptime?url=
+app.get('/api/net/uptime', netRLMiddleware, async (req, res) => {
+  const raw = String(req.query.url || '').trim();
+  if (!raw) return res.status(400).json({ error: 'Missing url' });
+  let url;
+  try { url = await _assertPublicUrl(raw); }
+  catch (e) { return res.status(e.code || 400).json({ error: e.msg || 'Invalid URL' }); }
+
+  const started = Date.now();
+  const fetchOnce = method => fetch(url.href, {
+    method, redirect: 'follow',
+    headers: { 'User-Agent': _PROXY_UA, 'Accept': '*/*' },
+    signal: AbortSignal.timeout(12000),
+  });
+
+  try {
+    let r;
+    try {
+      r = await fetchOnce('HEAD');
+      if ([400, 403, 405, 501].includes(r.status)) r = await fetchOnce('GET');
+    } catch { r = await fetchOnce('GET'); }
+
+    const ms = Date.now() - started;
+    let cert = null;
+    if (url.protocol === 'https:') cert = await _certInfo(url.hostname.replace(/^\[|\]$/g, ''), url.port || 443);
+
+    res.json({
+      url: url.href,
+      finalUrl: r.url || url.href,
+      status: r.status,
+      up: true,
+      ok: r.status < 400,
+      responseMs: ms,
+      redirected: !!r.redirected || (r.url && r.url !== url.href),
+      server: r.headers.get('server') || null,
+      contentType: r.headers.get('content-type') || null,
+      cert,
+    });
+  } catch (err) {
+    const ms = Date.now() - started;
+    const reason = err?.name === 'TimeoutError' ? 'timeout'
+      : (err?.cause?.code || err?.code || err?.name || 'connection failed');
+    res.json({ url: url.href, up: false, responseMs: ms, error: String(reason) });
+  }
+});
+
+// Dedicated proxy rate limiter — one page pulls many assets, so allow more
+const _proxyRateMap = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _proxyRateMap) { if (now > v.resetAt) _proxyRateMap.delete(k); }
+}, 300_000);
+function _proxyAllow(ip) {
+  const now = Date.now();
+  let e = _proxyRateMap.get(ip);
+  if (!e || now > e.resetAt) e = { count: 0, resetAt: now + 60_000 };
+  e.count++;
+  _proxyRateMap.set(ip, e);
+  return e.count <= 240;
+}
+function proxyRLMiddleware(req, res, next) {
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+  if (!_proxyAllow(ip)) return res.status(429).json({ error: 'Rate limit: 240 requests/minute. Please slow down.' });
+  next();
+}
+
+const _PROXY_MAX_BYTES = 12 * 1024 * 1024; // 12 MB cap per resource
+
+function _absolutize(ref, base) { try { return new URL(ref, base).href; } catch { return null; } }
+function _proxify(absUrl, selfBase) { return `${selfBase}?url=${encodeURIComponent(absUrl)}&self=${encodeURIComponent(selfBase)}`; }
+
+// Reader-mode HTML rewrite: absolutise + route links/assets back through the proxy.
+function _rewriteHtml(html, baseUrl, selfBase, stripScripts) {
+  // Drop directives that would block rewritten/proxied content
+  html = html.replace(/<meta[^>]+http-equiv\s*=\s*["']?content-security-policy["']?[^>]*>/gi, '');
+  html = html.replace(/\sintegrity\s*=\s*("|')[^"']*\1/gi, '');
+  html = html.replace(/\scrossorigin(\s*=\s*("|')[^"']*\2)?/gi, '');
+
+  if (stripScripts) {
+    html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+    html = html.replace(/<script\b[^>]*\/?>/gi, '');
+    html = html.replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, ''); // inline handlers
+  }
+
+  // CSS url(...)
+  html = html.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gi, (m, q, ref) => {
+    if (/^(data:|#)/i.test(ref.trim())) return m;
+    const abs = _absolutize(ref.trim(), baseUrl);
+    return abs ? `url(${q}${_proxify(abs, selfBase)}${q})` : m;
+  });
+
+  // srcset (comma-separated candidate list)
+  html = html.replace(/\ssrcset\s*=\s*("|')(.*?)\1/gi, (m, q, val) => {
+    const out = val.split(',').map(part => {
+      const seg = part.trim().split(/\s+/);
+      if (seg[0] && !/^data:/i.test(seg[0])) {
+        const abs = _absolutize(seg[0], baseUrl);
+        if (abs) seg[0] = _proxify(abs, selfBase);
+      }
+      return seg.join(' ');
+    }).join(', ');
+    return ` srcset=${q}${out}${q}`;
+  });
+
+  // href / src / action / poster
+  html = html.replace(/\s(href|src|action|poster)\s*=\s*("|')(.*?)\2/gi, (m, attr, q, ref) => {
+    const t = ref.trim();
+    if (!t || /^(data:|mailto:|tel:|javascript:|#)/i.test(t)) return m;
+    const abs = _absolutize(t, baseUrl);
+    return abs ? ` ${attr}=${q}${_proxify(abs, selfBase)}${q}` : m;
+  });
+
+  // A small banner so the user knows they are inside the proxy
+  const banner = `<div style="all:initial;display:block;font:13px/1.4 system-ui,sans-serif;background:#1a1a2e;color:#e0e0e0;padding:8px 14px;border-bottom:2px solid #6c5ce7;position:sticky;top:0;z-index:2147483647">🛡️ Viewed via Office Tools web proxy — <span style="color:#a29bfe">${baseUrl.replace(/"/g, '&quot;').replace(/</g, '&lt;')}</span></div>`;
+  if (/<body[^>]*>/i.test(html)) html = html.replace(/(<body[^>]*>)/i, `$1${banner}`);
+  else html = banner + html;
+
+  return html;
+}
+
+// GET /api/net/proxy?url=&self=&strip=
+app.get('/api/net/proxy', proxyRLMiddleware, async (req, res) => {
+  const raw = String(req.query.url || '').trim();
+  if (!raw) return res.status(400).json({ error: 'Missing url' });
+  const stripScripts = req.query.strip !== '0';
+  // Where rewritten links should point back to (the public proxy endpoint).
+  let selfBase = String(req.query.self || '').trim();
+  if (!/^https?:\/\/[^\s]+\/api\/net\/proxy$/i.test(selfBase)) {
+    selfBase = `${req.headers['x-forwarded-proto'] || req.protocol}://${req.get('host')}/api/net/proxy`;
+  }
+
+  let url;
+  try { url = await _assertPublicUrl(raw); }
+  catch (e) { return res.status(e.code || 400).json({ error: e.msg || 'Invalid URL' }); }
+
+  try {
+    const r = await fetch(url.href, {
+      redirect: 'follow',
+      headers: {
+        'User-Agent': _PROXY_UA,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      signal: AbortSignal.timeout(15000),
+    });
+
+    const ct = r.headers.get('content-type') || '';
+    const finalUrl = r.url || url.href;
+
+    // Reject oversized resources before buffering them into memory
+    const clen = parseInt(r.headers.get('content-length') || '', 10);
+    if (Number.isFinite(clen) && clen > _PROXY_MAX_BYTES) {
+      return res.status(413).json({ error: 'Resource too large (max 12 MB)' });
+    }
+    // Read with a hard size cap (also guards chunked responses with no length header)
+    const ab = await r.arrayBuffer();
+    if (ab.byteLength > _PROXY_MAX_BYTES) {
+      return res.status(413).json({ error: 'Resource too large (max 12 MB)' });
+    }
+    const buf = Buffer.from(ab);
+
+    // Frame-safe headers so the result can render in our iframe
+    res.removeHeader?.('X-Frame-Options');
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+
+    if (/text\/html|application\/xhtml/i.test(ct)) {
+      const html = _rewriteHtml(buf.toString('utf8'), finalUrl, selfBase, stripScripts);
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.status(r.status < 400 ? 200 : r.status).send(html);
+    }
+
+    // Non-HTML asset (image, css, font, …) — pass through with original type
+    res.setHeader('Content-Type', ct || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    return res.send(buf);
+  } catch (err) {
+    const reason = err?.name === 'TimeoutError' ? 'Request timed out'
+      : (err?.cause?.code || err?.code || err?.message || 'Fetch failed');
+    res.status(502).json({ error: 'Proxy fetch failed: ' + String(reason) });
+  }
+});
+
 // ── Start ─────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`Office Tools server running on port ${PORT}`);
-  if (!process.env.NOTIFY_EMAIL) console.warn('[config] NOTIFY_EMAIL not set — feedback emails will not be sent');
-  else                           console.log(`[config] Feedback emails → ${process.env.NOTIFY_EMAIL}`);
+  const _cfgEmail = (process.env.NOTIFY_EMAIL || '').trim();
+  if (!_cfgEmail) console.warn('[config] NOTIFY_EMAIL not set — feedback emails will not be sent');
+  else            console.log(`[config] Feedback emails → ${_cfgEmail}`);
 });

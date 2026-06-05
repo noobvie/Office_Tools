@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Is It Down? — Website Up or Down Checker | Office Tools</title>
+  <meta name="description" content="Check if a website is up or down right now. See HTTP status code, response time, redirects and SSL certificate expiry. Tells you if a site is down for everyone or just you.">
+  <meta name="keywords" content="website up or down, is it down, is it down right now, website status checker, site down checker, website monitor, HTTP status code, response time, uptime checker, down for everyone or just me, check website online">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Is It Down? — Website Up or Down Checker">
+  <meta property="og:description" content="Check if any website is up or down. HTTP status, response time, redirects and SSL expiry. Free, no login.">
+  <meta property="og:url" content="https://tools.grin.money/tools/website-status/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Website Up or Down Checker">
+  <meta name="twitter:description" content="Is that website down for everyone or just you? Check status, latency and SSL instantly.">
+  <link rel="canonical" href="https://tools.grin.money/tools/website-status/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Website Up or Down Checker","description":"Check whether a website is up or down, with HTTP status code, response time, redirects and SSL certificate expiry.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/website-status/"}</script>
+  <script type="application/ld+json">[{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Office Tools","item":"https://tools.grin.money/"},{"@type":"ListItem","position":2,"name":"Network Tools","item":"https://tools.grin.money/tools/network-toolkit/"},{"@type":"ListItem","position":3,"name":"Website Up or Down Checker","item":"https://tools.grin.money/tools/website-status/"}]},{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is the site down for everyone or just me?","acceptedAnswer":{"@type":"Answer","text":"This checker fetches the site from our server, not your network. If it reports the site as UP but you still cannot reach it, the problem is likely on your side — your ISP, DNS, VPN or local firewall — rather than the website itself."}},{"@type":"Question","name":"What does the HTTP status code mean?","acceptedAnswer":{"@type":"Answer","text":"2xx means success (the page loaded). 3xx means a redirect. 4xx means a client error such as 404 Not Found or 403 Forbidden. 5xx means a server error. A site can respond with a 4xx or 5xx code and still be 'up' in the sense that the server answered."}},{"@type":"Question","name":"Why does response time matter?","acceptedAnswer":{"@type":"Answer","text":"Response time is how long the server took to answer our request in milliseconds. High values can indicate an overloaded server, slow database, or network congestion. It is measured from our server, so your own latency may differ."}},{"@type":"Question","name":"Does it check the SSL certificate?","acceptedAnswer":{"@type":"Answer","text":"Yes. For HTTPS sites it reports the certificate issuer and how many days remain before it expires, so you can catch certificates that are about to lapse."}}]}]</script>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .ctrl-row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+    .ctrl-row input[type="text"] {
+      flex: 1; min-width: 200px; padding: .6rem .9rem;
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-secondary); color: var(--text);
+      font-size: .92rem; font-family: 'Courier New', monospace;
+      outline: none; transition: border-color .15s; box-sizing: border-box;
+    }
+    .ctrl-row input[type="text"]:focus { border-color: var(--primary); }
+    .box-error { background: var(--danger-dim); color: var(--danger); border-radius: var(--radius); padding: .65rem .9rem; font-size: .86rem; font-weight: 600; margin-top: .75rem; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: .4rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .verdict { display: flex; align-items: center; gap: .7rem; margin-top: .9rem; padding: .9rem 1.1rem; border-radius: var(--radius); font-weight: 700; font-size: 1.15rem; }
+    .verdict-up   { background: rgba(46,204,113,.12); color: #2ecc71; border: 1px solid rgba(46,204,113,.4); }
+    .verdict-down { background: var(--danger-dim); color: var(--danger); border: 1px solid var(--danger); }
+    .verdict-warn { background: rgba(241,196,15,.12); color: #f1c40f; border: 1px solid rgba(241,196,15,.4); }
+    .verdict .dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; background: currentColor; box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 25%, transparent); }
+
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem; margin-top: .85rem; }
+    .stat { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: .6rem .8rem; }
+    .stat-label { font-size: .72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .03em; }
+    .stat-value { font-size: .95rem; font-weight: 700; color: var(--text); margin-top: .2rem; word-break: break-all; font-family: 'Courier New', monospace; }
+
+    @media (max-width: 560px) { .ctrl-row input[type="text"] { min-width: 100%; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Website Up or Down</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🟢 Is It Down? — Website Status Checker</h1>
+    <p>Check whether a website is up or down from our server — HTTP status, response time, redirects and SSL expiry.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About the Website Status Checker</h2>
+    <p>Enter any website address and this tool fetches it <strong>from our server</strong> to tell you if it is up or down. Because the request comes from our network rather than yours, it answers the classic question — <em>"is this site down for everyone, or just me?"</em>. If we report the site as up but you still cannot load it, the problem is on your side: your ISP, DNS resolver, VPN, or a local firewall.</p>
+    <p>The result shows the <strong>HTTP status code</strong> (2xx success, 3xx redirect, 4xx client error, 5xx server error), the <strong>response time</strong> in milliseconds measured from our server, the <strong>final URL</strong> after any redirects, the reported <code>Server</code> header, and — for HTTPS sites — the <strong>SSL certificate issuer and days until expiry</strong> so you can catch certificates about to lapse. To inspect the network path itself, try <a href="../ping/">Ping</a> or <a href="../traceroute/">Traceroute</a>; to view a page that is blocking your region, use the <a href="../web-proxy/">Web Proxy</a>.</p>
+  </section>
+
+  <div class="card">
+    <div class="ctrl-row">
+      <input type="text" id="urlInput" placeholder="example.com or https://example.com/path" autocomplete="off" spellcheck="false">
+      <button class="btn btn-primary" id="checkBtn">Check</button>
+    </div>
+    <div class="ctrl-row" style="margin-top:.5rem">
+      <button class="btn btn-ghost btn-sm" data-ex="github.com">github.com</button>
+      <button class="btn btn-ghost btn-sm" data-ex="forum.grin.mw">forum.grin.mw</button>
+      <button class="btn btn-ghost btn-sm" data-ex="https://example.com">example.com</button>
+    </div>
+    <div id="result"></div>
+  </div>
+
+  <section class="tool-related" id="related-tools"></section>
+
+<div class="page-tags">
+  <span class="page-tag">website up or down</span>
+  <span class="page-tag">is it down right now</span>
+  <span class="page-tag">site status checker</span>
+  <span class="page-tag">HTTP status code</span>
+  <span class="page-tag">response time</span>
+  <span class="page-tag">SSL expiry</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+'use strict';
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+document.querySelectorAll('[data-ex]').forEach(b =>
+  b.addEventListener('click', () => { document.getElementById('urlInput').value = b.dataset.ex; checkSite(); })
+);
+document.getElementById('urlInput').addEventListener('keydown', e => { if (e.key === 'Enter') checkSite(); });
+document.getElementById('checkBtn').addEventListener('click', checkSite);
+
+function statusClass(code) {
+  if (code < 300) return 'verdict-up';
+  if (code < 400) return 'verdict-up';
+  return 'verdict-warn';
+}
+
+async function checkSite() {
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url) return;
+  const el = document.getElementById('result');
+  el.innerHTML = `<div style="padding:.75rem 0"><span class="spinner"></span> Checking <code>${escHtml(url)}</code>…</div>`;
+
+  try {
+    const r = await fetch(`${API}/api/net/uptime?url=${encodeURIComponent(url)}`);
+    const d = await r.json();
+    if (!r.ok && d.error && d.up === undefined) {
+      el.innerHTML = `<div class="box-error">${escHtml(d.error)}</div>`;
+      return;
+    }
+
+    if (!d.up) {
+      el.innerHTML = `<div class="verdict verdict-down"><span class="dot"></span> DOWN — could not reach the site</div>
+        <div class="stat-grid">
+          <div class="stat"><div class="stat-label">Reason</div><div class="stat-value">${escHtml(d.error || 'no response')}</div></div>
+          <div class="stat"><div class="stat-label">Checked URL</div><div class="stat-value">${escHtml(d.url)}</div></div>
+          <div class="stat"><div class="stat-label">Time waited</div><div class="stat-value">${escHtml(d.responseMs)} ms</div></div>
+        </div>
+        <div style="font-size:.8rem;color:var(--text-muted);margin-top:.6rem">The server did not answer. The site may be offline, blocking automated requests, or the domain may not resolve.</div>`;
+      return;
+    }
+
+    const label = d.ok ? 'UP — the site is responding' : `UP — server responded with ${d.status}`;
+    const cls = statusClass(d.status);
+    const stats = [];
+    stats.push(`<div class="stat"><div class="stat-label">HTTP status</div><div class="stat-value">${escHtml(d.status)}</div></div>`);
+    stats.push(`<div class="stat"><div class="stat-label">Response time</div><div class="stat-value">${escHtml(d.responseMs)} ms</div></div>`);
+    if (d.server)      stats.push(`<div class="stat"><div class="stat-label">Server</div><div class="stat-value">${escHtml(d.server)}</div></div>`);
+    if (d.contentType) stats.push(`<div class="stat"><div class="stat-label">Content type</div><div class="stat-value">${escHtml(d.contentType.split(';')[0])}</div></div>`);
+    if (d.redirected)  stats.push(`<div class="stat"><div class="stat-label">Redirected to</div><div class="stat-value">${escHtml(d.finalUrl)}</div></div>`);
+    if (d.cert) {
+      const warn = d.cert.daysLeft <= 14 ? ' style="color:var(--danger)"' : '';
+      stats.push(`<div class="stat"><div class="stat-label">SSL expires</div><div class="stat-value"${warn}>${escHtml(d.cert.daysLeft)} days${d.cert.issuer ? ' · ' + escHtml(d.cert.issuer) : ''}</div></div>`);
+    }
+
+    el.innerHTML = `<div class="verdict ${cls}"><span class="dot"></span> ${escHtml(label)}</div>
+      <div class="stat-grid">${stats.join('')}</div>
+      <div style="font-size:.8rem;color:var(--text-muted);margin-top:.6rem">Checked from our server. If you still can't reach it, the issue is likely on your network (ISP, DNS, VPN or firewall).</div>`;
+  } catch (err) {
+    el.innerHTML = `<div class="box-error">Network error: ${escHtml(err.message)} — is the backend running?</div>`;
+  }
+}
+
+renderRelatedTools('related-tools', [
+  { path: 'web-proxy',   desc: 'View a site blocked in your region through our server' },
+  { path: 'ping',        desc: 'Check latency and reachability of a host' },
+  { path: 'port-checker', desc: 'Test whether a TCP port is open' },
+  { path: 'dns-lookup',  desc: 'Query A, AAAA, MX and more DNS records' },
+]);
+</script>
+</body>
+</html>

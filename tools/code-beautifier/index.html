@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTML / CSS / JS Beautifier &amp; Minifier — Office Tools</title>
+  <meta name="description" content="Beautify or minify HTML, CSS, and JavaScript online. Format messy code with proper indentation, or compress it to save bytes. Runs locally in your browser — no upload.">
+  <meta name="keywords" content="HTML beautifier, CSS beautifier, JS beautifier, javascript formatter, code minifier, HTML minifier, CSS minifier, format code online, pretty print HTML">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="HTML / CSS / JS Beautifier &amp; Minifier — Office Tools">
+  <meta property="og:description" content="Format and minify HTML, CSS and JavaScript. Toggle per language. Runs locally — nothing is uploaded.">
+  <meta property="og:url" content="https://tools.grin.money/tools/code-beautifier/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="HTML / CSS / JS Beautifier &amp; Minifier — Office Tools">
+  <meta name="twitter:description" content="Beautify or minify HTML, CSS and JavaScript locally in your browser.">
+  <link rel="canonical" href="https://tools.grin.money/tools/code-beautifier/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"HTML / CSS / JS Beautifier & Minifier","description":"Beautify or minify HTML, CSS, and JavaScript online with configurable indentation. Runs locally in your browser.","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/code-beautifier/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .io-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .code-area {
+      width: 100%; box-sizing: border-box; min-height: 340px; resize: vertical;
+      font-family: 'Courier New', monospace; font-size: .85rem; line-height: 1.55;
+      background: var(--bg-secondary); color: var(--text);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: .75rem 1rem; outline: none; white-space: pre; tab-size: 2;
+      transition: border-color var(--transition);
+    }
+    .code-area:focus { border-color: var(--primary); }
+    .seg { display: inline-flex; border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .seg button { padding: .45rem .95rem; border: none; background: none; cursor: pointer;
+      font-size: .85rem; font-weight: 700; color: var(--text); }
+    .seg button.active { background: var(--primary); color: #fff; }
+    .ctl-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+    .field-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); }
+    .stat { font-size: .8rem; color: var(--text-muted); margin-top: .5rem; }
+    .stat b { color: var(--primary); }
+    .err { color: var(--danger); font-size: .82rem; margin-top: .5rem; }
+    @media (max-width: 700px) { .io-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">HTML / CSS / JS Beautifier</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>💅 HTML / CSS / JS Beautifier &amp; Minifier</h1>
+    <p>Format messy code with clean indentation, or minify it to save bytes. Choose the language and direction.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About this tool</h2>
+    <p>A two-way code formatter for front-end developers. <strong>Beautify</strong> compressed or inconsistent <strong>HTML, CSS, and JavaScript</strong> into readable, properly-indented code, or <strong>minify</strong> it to strip whitespace and comments and shrink the payload. Pick the language, pick the direction, and the result updates with a byte-count comparison.</p>
+    <p>Beautification is powered by the well-known <code>js-beautify</code> library loaded from a CDN; everything runs in your browser, so your code is never sent to a server.</p>
+  </section>
+
+  <div class="card">
+    <div class="ctl-row">
+      <div>
+        <span class="field-label">Language</span><br>
+        <div class="seg" id="langSeg" style="margin-top:.35rem">
+          <button data-lang="js" class="active">JavaScript</button>
+          <button data-lang="css">CSS</button>
+          <button data-lang="html">HTML</button>
+        </div>
+      </div>
+      <div>
+        <span class="field-label">Action</span><br>
+        <div class="seg" id="actSeg" style="margin-top:.35rem">
+          <button data-act="beautify" class="active">Beautify</button>
+          <button data-act="minify">Minify</button>
+        </div>
+      </div>
+      <div>
+        <span class="field-label">Indent</span><br>
+        <select id="indentSel" class="form-input" style="margin-top:.35rem;max-width:140px">
+          <option value="2">2 spaces</option>
+          <option value="4">4 spaces</option>
+          <option value="tab">Tab</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-2">
+    <div class="io-grid">
+      <div>
+        <span class="field-label">Input</span>
+        <textarea id="codeIn" class="code-area" spellcheck="false" placeholder="Paste your code here…"></textarea>
+        <div class="stat">Size: <b id="inSize">0 B</b></div>
+      </div>
+      <div>
+        <span class="field-label">Output</span>
+        <textarea id="codeOut" class="code-area" spellcheck="false" readonly placeholder="Result appears here…"></textarea>
+        <div class="stat">Size: <b id="outSize">0 B</b> <span id="delta"></span></div>
+      </div>
+    </div>
+    <div class="err" id="errMsg"></div>
+    <div class="mt-2" style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <button class="btn btn-primary" id="runBtn">▶ Run</button>
+      <button class="btn" id="copyBtn">📋 Copy output</button>
+      <button class="btn" id="clearBtn">✕ Clear</button>
+    </div>
+  </div>
+
+  <div class="page-tags">
+    <span class="page-tag">html beautifier</span>
+    <span class="page-tag">css formatter</span>
+    <span class="page-tag">javascript minifier</span>
+    <span class="page-tag">pretty print code</span>
+    <span class="page-tag">compress css</span>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify-css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify-html.min.js"></script>
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+let lang = 'js', action = 'beautify';
+
+function fmtBytes(n) {
+  if (n < 1024) return n + ' B';
+  return (n / 1024).toFixed(1) + ' KB';
+}
+
+function indentOpts() {
+  const v = $('indentSel').value;
+  return v === 'tab'
+    ? { indent_with_tabs: true, indent_size: 1 }
+    : { indent_size: parseInt(v, 10), indent_char: ' ' };
+}
+
+// Lightweight minifiers (no extra CDN dependency)
+function minifyCSS(src) {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, '')           // comments
+    .replace(/\s+/g, ' ')                         // collapse whitespace
+    .replace(/\s*([{}:;,>~+])\s*/g, '$1')         // around punctuation
+    .replace(/;}/g, '}')                          // trailing semicolons
+    .trim();
+}
+function minifyJS(src) {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, '')             // block comments
+    .replace(/(^|[^:])\/\/[^\n\r]*/g, '$1')       // line comments (avoid http://)
+    .replace(/\n\s*/g, '\n')                      // leading indent
+    .replace(/[ \t]+/g, ' ')                      // runs of spaces/tabs
+    .replace(/\s*([{}();,:])\s*/g, '$1')          // around punctuation
+    .replace(/\n+/g, '')                          // newlines
+    .trim();
+}
+function minifyHTML(src) {
+  return src
+    .replace(/<!--(?!\[if)[\s\S]*?-->/g, '')      // comments (keep IE conditionals)
+    .replace(/>\s+</g, '><')                      // between tags
+    .replace(/\s{2,}/g, ' ')                      // runs of whitespace
+    .trim();
+}
+
+function run() {
+  $('errMsg').textContent = '';
+  const src = $('codeIn').value;
+  $('inSize').textContent = fmtBytes(new Blob([src]).size);
+  if (!src.trim()) { $('codeOut').value = ''; $('outSize').textContent = '0 B'; $('delta').textContent = ''; return; }
+
+  let out = '';
+  try {
+    if (action === 'beautify') {
+      if (lang === 'js')   out = js_beautify(src, indentOpts());
+      if (lang === 'css')  out = css_beautify(src, indentOpts());
+      if (lang === 'html') out = html_beautify(src, { ...indentOpts(), wrap_line_length: 0 });
+    } else {
+      if (lang === 'js')   out = minifyJS(src);
+      if (lang === 'css')  out = minifyCSS(src);
+      if (lang === 'html') out = minifyHTML(src);
+    }
+  } catch (e) {
+    $('errMsg').textContent = '⚠ ' + (e.message || 'Could not process input.');
+    return;
+  }
+
+  $('codeOut').value = out;
+  const inB = new Blob([src]).size, outB = new Blob([out]).size;
+  $('outSize').textContent = fmtBytes(outB);
+  if (action === 'minify' && inB > 0) {
+    const saved = inB - outB;
+    const pct = ((saved / inB) * 100).toFixed(1);
+    $('delta').textContent = saved > 0 ? `— saved ${fmtBytes(saved)} (${pct}%)` : '';
+  } else {
+    $('delta').textContent = '';
+  }
+}
+
+document.querySelectorAll('#langSeg button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#langSeg button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active'); lang = b.dataset.lang; run();
+}));
+document.querySelectorAll('#actSeg button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#actSeg button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active'); action = b.dataset.act; run();
+}));
+$('indentSel').addEventListener('change', run);
+$('codeIn').addEventListener('input', run);
+$('runBtn').addEventListener('click', run);
+$('copyBtn').addEventListener('click', () => copyText($('codeOut').value, $('copyBtn')));
+$('clearBtn').addEventListener('click', () => { $('codeIn').value = ''; run(); });
+</script>
+</body>
+</html>

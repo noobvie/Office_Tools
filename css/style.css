@@ -321,7 +321,7 @@ a:hover { text-decoration: underline; }
 }
 .header-search-wrap input {
   width: 100%;
-  padding: .44rem 2.4rem .44rem 1rem;
+  padding: .44rem 2.8rem .44rem 1rem;
   border: 2px solid var(--primary);
   border-radius: 50px;
   background: var(--bg-secondary);
@@ -432,31 +432,6 @@ a:hover { text-decoration: underline; }
 }
 .captcha-row input:focus { border-color: var(--primary); }
 
-/* ---------- Popular Pill ---------- */
-.popular-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: .3rem;
-  padding: .3rem .75rem;
-  border-radius: 50px;
-  border: 1.5px solid #f97316;
-  background: transparent;
-  color: #f97316;
-  font-size: .8rem;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  white-space: nowrap;
-  text-decoration: none;
-  transition: background var(--transition), color var(--transition);
-}
-.popular-pill:hover { background: #f97316; color: #fff; text-decoration: none; }
-[data-theme="dark"]   .popular-pill              { border-color: #fb923c; color: #fb923c; }
-[data-theme="dark"]   .popular-pill:hover        { background: #fb923c; }
-[data-theme="matrix"] .popular-pill              { border-color: var(--primary); color: var(--primary); }
-[data-theme="matrix"] .popular-pill:hover        { background: var(--primary); color: #000; }
-[data-theme="anime"]  .popular-pill              { border-color: var(--primary); color: var(--primary); }
-[data-theme="anime"]  .popular-pill:hover        { background: var(--primary); color: #fff; }
 
 /* ---------- Support Pill ---------- */
 .support-pill {
@@ -662,6 +637,24 @@ a:hover { text-decoration: underline; }
   margin-top: .35rem;
   font-size: .95rem;
 }
+
+.tool-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .4rem;
+  font-size: .82rem;
+  margin-bottom: 1rem;
+  color: var(--text-muted);
+}
+.tool-breadcrumb a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color .15s;
+}
+.tool-breadcrumb a:hover { color: var(--primary); }
+.tool-breadcrumb .bc-sep { opacity: .6; }
+.tool-breadcrumb .bc-current { color: var(--text); font-weight: 600; }
 
 /* ---------- Tool About / Description ---------- */
 .tool-about {

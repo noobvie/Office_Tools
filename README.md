@@ -1,7 +1,7 @@
 # Office Tools
 
-76 free, browser-based utilities for everyday office, productivity, and AI development work.
-No build step, no framework, no tracking — everything runs locally in your browser.
+100+ free, browser-based utilities for everyday office, productivity, and AI development work.
+No build step, no framework — everything runs locally in your browser.
 
 **Live site:** [https://tools.grin.money/](https://tools.grin.money/)
 
@@ -33,18 +33,22 @@ sudo bash Office_Tools/deploy.sh
 | Lorem Ipsum Generator | Placeholder text by paragraphs, sentences, words, or list items |
 | Fake Data Generator | Realistic test data — names, emails, phones, addresses. Download CSV/JSON/**JSONL AI training pairs** |
 | Wheel of Names | Animated spinning wheel to randomly pick a winner from your list |
+| Barcode Generator | Code 128, EAN-13, EAN-8, UPC-A, Code 39, ITF — customize size/colors, download PNG or SVG (JsBarcode) |
 
 ### 📝 PDF & Text
 | Tool | Description |
 |------|-------------|
 | PDF Toolkit | Merge, split, extract pages, reorder with drag-and-drop thumbnails |
 | PDF to Text | Extract text per-page, copy or download as .txt / Word .docx |
+| Image to PDF | Combine JPG/PNG/WebP images into one PDF — reorder, A4/Letter, orientation, margins |
 | Word Counter | Words, characters, sentences, reading time and keyword density |
 | Markdown Editor | Live split-pane editor with HTML preview, toolbar and export |
 | Text Diff | Side-by-side diff with color-highlighted additions/deletions |
 | Typing Speed Test | WPM and accuracy with real-time error tracking |
 | Text Case Converter | UPPERCASE, lowercase, Title Case, camelCase, snake_case, kebab-case |
 | Notepad | Auto-saving scratch pad with up to 5 named notes in localStorage |
+| Remove Duplicate Lines & Sort | Dedupe, sort A–Z/Z–A/numeric/length/shuffle, trim, change case, reverse — single pass |
+| Markdown ↔ HTML Converter | Two-way Markdown/HTML conversion with live rendered preview (marked + turndown) |
 
 ### 🔒 Encoding & Crypto
 | Tool | Description |
@@ -56,6 +60,9 @@ sudo bash Office_Tools/deploy.sh
 | HTML Entity Encoder | Encode & decode HTML entities — includes entity reference table |
 | JWT Decoder | Decode JSON Web Tokens — header, payload, expiry, claims. Fully local |
 | Number Base Converter | Convert between binary, octal, decimal, hex — bit-length and ranges |
+| Binary ↔ Text Converter | Text ↔ 8-bit binary with hex and decimal views — full UTF-8/Unicode support |
+| Morse Code Translator | Text ↔ Morse with audio beeps, visual flash, adjustable WPM (Web Audio) |
+| ROT13 & Caesar Cipher | Encode/decode ROT13 or any shift — brute-force panel shows all 25 shifts |
 
 ### 🧮 Calculators
 | Tool | Description |
@@ -66,6 +73,13 @@ sudo bash Office_Tools/deploy.sh
 | Loan Calculator | Monthly payment, total interest, and amortization schedule |
 | Tip Calculator | Tip and bill split — quick buttons for 10%–25%, per-person total |
 | Number to Words | Spell out any number in English — ordinal and currency modes |
+| BMI Calculator | Body Mass Index in metric or imperial — weight category and healthy weight range |
+| Age Calculator | Exact age in years/months/days, total time lived, next-birthday countdown |
+| Sales Tax & VAT Calculator | Add tax to a net price or remove VAT from a gross total — country rate presets |
+| Discount Calculator | Sale price, savings and effective % — stack multiple discounts in order |
+| Compound Interest Calculator | Future value with regular contributions — year-by-year growth chart and table |
+| Scientific Calculator | Trig, logs, powers, roots, factorial, π, e, memory — deg/rad, safe expression parser (no eval) |
+| Roman Numeral Converter | Numbers ↔ Roman numerals both directions — overline notation up to 3,999,999 |
 
 ### 💻 Development
 | Tool | Description |
@@ -79,6 +93,16 @@ sudo bash Office_Tools/deploy.sh
 | AI Token Counter | Estimate token count and API cost for GPT-4, Claude, Llama, Gemini — context window usage bar |
 | AI Prompt Template Builder | Write prompts with `{{variable}}` placeholders, fill in, preview, save to browser |
 | AI JSON Schema Builder | Auto-generate JSON Schema from any JSON or build visually — export for OpenAI/Anthropic tool calling |
+| Code Beautifier & Minifier | Beautify or minify HTML, CSS and JavaScript — per-language toggle, byte-savings (js-beautify) |
+| JSON ↔ YAML Converter | Two-way JSON/YAML conversion with live validation and clear parse errors (js-yaml) |
+| XML Formatter | Pretty-print, minify and validate XML — configurable indent, well-formedness check (DOMParser) |
+| CSS Gradient Generator | Build linear/radial gradients visually — color stops, angle, copy production CSS |
+| Meta Tag Generator | SEO `<head>` tags (title/desc/canonical/robots) with a live Google SERP preview |
+| Open Graph & Twitter Card | OG + Twitter Card tags with a live social-share card preview |
+| Robots.txt Generator | Per-user-agent allow/disallow rules, crawl-delay, sitemap line — copy or download |
+| Schema.org JSON-LD Generator | Structured data for rich results — Article, Product, FAQ, LocalBusiness, Organization, WebSite |
+| URL Slug Generator | Title → SEO-friendly slug — accent transliteration, stop-word removal, bulk mode |
+| Favicon Generator | From image, emoji or initials — multi-size PNG export (16–512px) + HTML link snippet |
 
 ### 🌐 Network & Security
 | Tool | Description |
@@ -101,9 +125,13 @@ sudo bash Office_Tools/deploy.sh
 | Tool | Description |
 |------|-------------|
 | Image Converter | Convert HEIC/HEIF → JPG/PNG/WebP, compress, resize with aspect-ratio lock |
+| Image to Text (OCR) | Extract text from photos, screenshots and scans — 10+ languages, local Tesseract WASM |
+| Image Cropper | Crop with aspect presets (1:1/16:9/4:3), rotate, flip, zoom — full-res export |
 | Color Converter | HEX, RGB, HSL, HSV, CMYK — live preview, shades, named colors |
 | Contrast Checker | WCAG AA/AAA contrast ratios for color pairs — live preview |
 | Palette Extractor | Upload an image to extract dominant colors as HEX swatches |
+| Color Picker / Eyedropper | Pick HEX/RGB/HSL colors from any image with a magnified loupe — saved palette |
+| EXIF Viewer & Remover | View photo metadata incl. GPS, then download a stripped, privacy-safe copy (exifr) |
 | Screenshot Beautifier | Gradient backgrounds, padding, shadows, rounded corners — download PNG |
 | Character Map | Browse and copy symbols, arrows, math, currency, Greek and emoji |
 | YouTube Downloader | Download YouTube videos as MP4 or audio as MP3, including playlists |
@@ -204,7 +232,7 @@ Supports **Debian · Ubuntu · AlmaLinux · Rocky Linux · CentOS Stream**.
 2. No frameworks — vanilla HTML/CSS/JS only
 3. Each tool page must include the shared nav header and link back to the hub
 4. All tools must be **mobile-responsive**
-5. No cookies, no analytics, no localStorage abuse
+5. Tools must not add their own third-party trackers or cookies; no localStorage abuse (site-wide analytics is centralized in `js/common.js`)
 
 ---
 

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>URL Slug Generator — SEO-Friendly Slugs — Office Tools</title>
+  <meta name="description" content="Turn any title into a clean, SEO-friendly URL slug. Lowercases, transliterates accents, removes stop words optionally, and joins with hyphens or underscores. Bulk mode included.">
+  <meta name="keywords" content="slug generator, URL slug, SEO slug, permalink generator, slugify, make URL friendly, title to slug, hyphenate, kebab case URL">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="URL Slug Generator — Office Tools">
+  <meta property="og:description" content="Turn titles into clean SEO-friendly URL slugs. Transliterates accents, optional stop-word removal, bulk mode.">
+  <meta property="og:url" content="https://tools.grin.money/tools/slug-generator/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="URL Slug Generator — Office Tools">
+  <meta name="twitter:description" content="Title → clean URL slug, with bulk mode.">
+  <link rel="canonical" href="https://tools.grin.money/tools/slug-generator/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"URL Slug Generator","description":"Turn any title into a clean, SEO-friendly URL slug — lowercase, transliterated, hyphenated, with optional stop-word removal and bulk mode. Runs in your browser.","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/slug-generator/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .ta { width: 100%; box-sizing: border-box; min-height: 110px; resize: vertical;
+      font-family: 'Courier New', monospace; font-size: .92rem; line-height: 1.7;
+      background: var(--bg-secondary); color: var(--text); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .75rem 1rem; outline: none; }
+    .ta:focus { border-color: var(--primary); }
+    .field-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: .35rem; }
+    .opt-block { display: flex; gap: .5rem 1.1rem; flex-wrap: wrap; align-items: center; margin: 1rem 0; }
+    .opt-chk { display: inline-flex; align-items: center; gap: .4rem; font-size: .85rem; cursor: pointer; }
+    .slug-preview { font-family: 'Courier New', monospace; font-size: 1.1rem; color: var(--primary);
+      background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: .85rem 1rem; word-break: break-all; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">URL Slug Generator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔗 URL Slug Generator</h1>
+    <p>Turn titles into clean, SEO-friendly URL slugs. Single or bulk, with smart options.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About this tool</h2>
+    <p>A good <strong>URL slug</strong> is lowercase, readable, and free of spaces or special characters. Paste a title and get a tidy <strong>SEO-friendly slug</strong>: accents are transliterated (café → cafe), punctuation is stripped, and words are joined with hyphens. Options let you remove common <strong>stop words</strong> (a, the, of…), switch to underscores, or cap the length.</p>
+    <p>Enter multiple lines to generate slugs in <strong>bulk</strong> — one per line. Everything runs locally in your browser.</p>
+  </section>
+
+  <div class="card">
+    <label class="field-label">Title(s) — one per line for bulk</label>
+    <textarea id="inTa" class="ta" placeholder="10 Tips for Better SEO in 2026!">10 Tips for Better SEO in 2026!</textarea>
+
+    <div class="opt-block">
+      <label class="opt-chk"><input type="checkbox" id="optLower" checked> Lowercase</label>
+      <label class="opt-chk"><input type="checkbox" id="optStop"> Remove stop words</label>
+      <label class="opt-chk">Separator
+        <select id="optSep" class="form-input" style="max-width:110px">
+          <option value="-">hyphen -</option>
+          <option value="_">underscore _</option>
+        </select>
+      </label>
+      <label class="opt-chk">Max length
+        <input type="number" id="optMax" class="form-input" value="0" min="0" style="width:80px"> <span style="font-size:.78rem;color:var(--text-muted)">(0 = none)</span>
+      </label>
+    </div>
+
+    <label class="field-label">Slug</label>
+    <div class="slug-preview" id="single"></div>
+
+    <label class="field-label" style="margin-top:1rem">All slugs</label>
+    <textarea id="outTa" class="ta" readonly></textarea>
+
+    <div class="mt-2" style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <button class="btn btn-primary" id="copyBtn">📋 Copy slug</button>
+      <button class="btn" id="copyAllBtn">📋 Copy all</button>
+      <button class="btn" id="clearBtn">✕ Clear</button>
+    </div>
+  </div>
+
+  <div class="page-tags">
+    <span class="page-tag">slug generator</span>
+    <span class="page-tag">url slug</span>
+    <span class="page-tag">seo slug</span>
+    <span class="page-tag">slugify</span>
+    <span class="page-tag">permalink</span>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const STOP = new Set(['a','an','the','and','or','but','of','to','in','on','for','with','at','by','from','as','is','it']);
+
+function slugify(text) {
+  const sep = $('optSep').value;
+  const lower = $('optLower').checked;
+  const maxLen = parseInt($('optMax').value, 10) || 0;
+
+  let s = text.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');  // strip accents
+  if (lower) s = s.toLowerCase();
+  // split to words on any non-alphanumeric
+  let words = s.split(/[^a-zA-Z0-9]+/).filter(Boolean);
+  if ($('optStop').checked) {
+    const filtered = words.filter(w => !STOP.has(w.toLowerCase()));
+    if (filtered.length) words = filtered;   // never empty everything out
+  }
+  let slug = words.join(sep);
+  if (maxLen > 0 && slug.length > maxLen) {
+    slug = slug.slice(0, maxLen).replace(new RegExp(`\\${sep}+$`), '');
+  }
+  return slug;
+}
+
+function run() {
+  const lines = $('inTa').value.split('\n');
+  const slugs = lines.map(l => l.trim() ? slugify(l) : '');
+  const nonEmpty = slugs.filter(Boolean);
+  $('single').textContent = nonEmpty[0] || '—';
+  $('outTa').value = slugs.join('\n');
+}
+
+['inTa','optLower','optStop','optSep','optMax'].forEach(id => {
+  $(id).addEventListener('input', run);
+  $(id).addEventListener('change', run);
+});
+$('copyBtn').addEventListener('click', () => copyText($('single').textContent, $('copyBtn')));
+$('copyAllBtn').addEventListener('click', () => copyText($('outTa').value, $('copyAllBtn')));
+$('clearBtn').addEventListener('click', () => { $('inTa').value = ''; run(); });
+
+run();
+</script>
+</body>
+</html>

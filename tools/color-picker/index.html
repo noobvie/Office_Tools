@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Color Picker / Eyedropper from Image — Office Tools</title>
+  <meta name="description" content="Pick any color from an image with a magnified eyedropper. Get HEX, RGB and HSL values, zoom for pixel accuracy, and build a palette of saved colors. Runs locally — no upload.">
+  <meta name="keywords" content="color picker from image, image eyedropper, get color from photo, HEX from image, pixel color picker, eyedropper online, color grabber, find color in image">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Color Picker / Eyedropper from Image — Office Tools">
+  <meta property="og:description" content="Pick colors from any image with a magnified eyedropper. HEX, RGB, HSL + saved palette.">
+  <meta property="og:url" content="https://tools.grin.money/tools/color-picker/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Color Picker / Eyedropper from Image — Office Tools">
+  <meta name="twitter:description" content="Grab HEX/RGB/HSL colors from any image, pixel-accurate.">
+  <link rel="canonical" href="https://tools.grin.money/tools/color-picker/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Color Picker / Eyedropper from Image","description":"Pick any color from an image with a magnified eyedropper and get HEX, RGB and HSL values, plus a saved palette. Runs locally in your browser.","applicationCategory":"DesignApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/color-picker/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .drop { border: 2px dashed var(--border); border-radius: var(--radius); padding: 2.5rem 1rem; text-align: center;
+      color: var(--text-muted); cursor: pointer; transition: all var(--transition); }
+    .drop:hover, .drop.over { border-color: var(--primary); color: var(--primary); background: var(--bg-secondary); }
+    .stage { position: relative; display: inline-block; max-width: 100%; }
+    #imgCanvas { max-width: 100%; border: 1px solid var(--border); border-radius: var(--radius); cursor: crosshair; display: block; }
+    .magnifier { position: fixed; width: 120px; height: 120px; border: 2px solid #fff; border-radius: 50%;
+      box-shadow: 0 2px 10px rgba(0,0,0,.4); pointer-events: none; display: none; z-index: 50;
+      image-rendering: pixelated; background-repeat: no-repeat; }
+    .magnifier::after { content:''; position:absolute; inset:50% auto auto 50%; width:8px; height:8px; transform:translate(-50%,-50%);
+      border:1px solid #fff; box-shadow:0 0 0 1px #000; }
+    .io-grid { display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem; align-items: start; }
+    .field-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: .35rem; }
+    .swatch-big { width: 100%; height: 90px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: .75rem; }
+    .val-row { display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; }
+    .val-row input { flex: 1; font-family: 'Courier New', monospace; }
+    .palette { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .5rem; }
+    .pal-chip { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); cursor: pointer; position: relative; }
+    .pal-chip:hover::after { content: '✕'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,.5); color: #fff; border-radius: 8px; font-size: .8rem; }
+    @media (max-width: 760px) { .io-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Color Picker / Eyedropper</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🎨 Color Picker / Eyedropper from Image</h1>
+    <p>Pick any color from an image with a magnified loupe. Get HEX, RGB and HSL, and save a palette.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About this tool</h2>
+    <p>Upload an image and <strong>hover to magnify</strong>, then click to grab the exact pixel color. You get the value in <strong>HEX, RGB and HSL</strong>, a large preview swatch, and one-click copy. Keep clicking to <strong>build a palette</strong> of saved colors — handy for matching brand colors, sampling a photo, or recreating a design.</p>
+    <p>Everything is processed locally with the canvas API; your image is never uploaded.</p>
+  </section>
+
+  <div class="card" id="dropCard">
+    <div class="drop" id="drop">
+      <div style="font-size:2rem">🖼️</div>
+      <div><strong>Click or drop an image</strong> to pick colors from</div>
+      <div style="font-size:.8rem;margin-top:.3rem">Processed locally — never uploaded</div>
+    </div>
+    <input type="file" id="file" accept="image/*" hidden>
+  </div>
+
+  <div class="card mt-2" id="workCard" style="display:none">
+    <div class="io-grid">
+      <div>
+        <label class="field-label">Click anywhere on the image</label>
+        <div class="stage">
+          <canvas id="imgCanvas"></canvas>
+        </div>
+        <button class="btn mt-2" id="resetBtn">↺ Load another image</button>
+      </div>
+      <div>
+        <label class="field-label">Picked color</label>
+        <div class="swatch-big" id="swatch"></div>
+        <div class="val-row"><input type="text" id="hex" class="form-input" readonly><button class="btn btn-sm" data-copy="hex">Copy</button></div>
+        <div class="val-row"><input type="text" id="rgb" class="form-input" readonly><button class="btn btn-sm" data-copy="rgb">Copy</button></div>
+        <div class="val-row"><input type="text" id="hsl" class="form-input" readonly><button class="btn btn-sm" data-copy="hsl">Copy</button></div>
+        <label class="field-label" style="margin-top:1rem">Saved palette <span style="font-weight:400">(click chip to remove)</span></label>
+        <div class="palette" id="palette"></div>
+        <button class="btn btn-sm mt-2" id="copyPalette">📋 Copy palette HEX</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="magnifier" id="mag"></div>
+
+  <div class="page-tags">
+    <span class="page-tag">color picker</span>
+    <span class="page-tag">eyedropper</span>
+    <span class="page-tag">color from image</span>
+    <span class="page-tag">hex from photo</span>
+    <span class="page-tag">pixel color</span>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const cv = $('imgCanvas');
+const ctx = cv.getContext('2d', { willReadFrequently: true });
+let img = null;
+let palette = [];
+
+function toHex(r, g, b) { return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join(''); }
+function toHsl(r, g, b) {
+  r/=255; g/=255; b/=255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b); let h, s, l = (max+min)/2;
+  if (max === min) { h = s = 0; }
+  else {
+    const d = max - min;
+    s = l > .5 ? d/(2-max-min) : d/(max+min);
+    h = max === r ? (g-b)/d + (g<b?6:0) : max === g ? (b-r)/d+2 : (r-g)/d+4;
+    h /= 6;
+  }
+  return `hsl(${Math.round(h*360)}, ${Math.round(s*100)}%, ${Math.round(l*100)}%)`;
+}
+
+function loadImage(file) {
+  const im = new Image();
+  im.onload = () => {
+    img = im;
+    const maxW = 760;
+    const scale = im.width > maxW ? maxW / im.width : 1;
+    cv.width = Math.round(im.width * scale);
+    cv.height = Math.round(im.height * scale);
+    ctx.drawImage(im, 0, 0, cv.width, cv.height);
+    $('dropCard').style.display = 'none';
+    $('workCard').style.display = '';
+  };
+  im.src = URL.createObjectURL(file);
+}
+
+function pixelAt(e) {
+  const rect = cv.getBoundingClientRect();
+  const x = Math.floor((e.clientX - rect.left) * (cv.width / rect.width));
+  const y = Math.floor((e.clientY - rect.top) * (cv.height / rect.height));
+  const cx = Math.min(cv.width - 1, Math.max(0, x));
+  const cy = Math.min(cv.height - 1, Math.max(0, y));
+  return ctx.getImageData(cx, cy, 1, 1).data;
+}
+
+function setColor(r, g, b) {
+  const hex = toHex(r, g, b);
+  $('swatch').style.background = hex;
+  $('hex').value = hex.toUpperCase();
+  $('rgb').value = `rgb(${r}, ${g}, ${b})`;
+  $('hsl').value = toHsl(r, g, b);
+}
+
+cv.addEventListener('mousemove', e => {
+  const mag = $('mag');
+  mag.style.display = 'block';
+  mag.style.left = (e.clientX + 18) + 'px';
+  mag.style.top = (e.clientY + 18) + 'px';
+  const rect = cv.getBoundingClientRect();
+  const zoom = 6;
+  mag.style.backgroundImage = `url(${cv.toDataURL()})`;
+  mag.style.backgroundSize = (cv.width * zoom) + 'px ' + (cv.height * zoom) + 'px';
+  const bx = (e.clientX - rect.left) * (cv.width / rect.width) * zoom - 60;
+  const by = (e.clientY - rect.top) * (cv.height / rect.height) * zoom - 60;
+  mag.style.backgroundPosition = `-${bx}px -${by}px`;
+  const [r, g, b] = pixelAt(e);
+  mag.style.borderColor = (r*0.299+g*0.587+b*0.114) > 140 ? '#000' : '#fff';
+});
+cv.addEventListener('mouseleave', () => $('mag').style.display = 'none');
+cv.addEventListener('click', e => {
+  const [r, g, b] = pixelAt(e);
+  setColor(r, g, b);
+  const hex = toHex(r, g, b).toUpperCase();
+  if (!palette.includes(hex)) { palette.unshift(hex); if (palette.length > 24) palette.pop(); renderPalette(); }
+});
+
+function renderPalette() {
+  $('palette').innerHTML = '';
+  palette.forEach((hex, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'pal-chip'; chip.style.background = hex; chip.title = hex;
+    chip.onclick = () => { palette.splice(i, 1); renderPalette(); };
+    $('palette').appendChild(chip);
+  });
+}
+
+document.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => copyText($(b.dataset.copy).value, b)));
+$('copyPalette').addEventListener('click', () => copyText(palette.join(', '), $('copyPalette')));
+$('resetBtn').addEventListener('click', () => { $('workCard').style.display = 'none'; $('dropCard').style.display = ''; $('file').value = ''; });
+
+$('drop').addEventListener('click', () => $('file').click());
+$('drop').addEventListener('dragover', e => { e.preventDefault(); $('drop').classList.add('over'); });
+$('drop').addEventListener('dragleave', () => $('drop').classList.remove('over'));
+$('drop').addEventListener('drop', e => { e.preventDefault(); $('drop').classList.remove('over'); if (e.dataTransfer.files[0]) loadImage(e.dataTransfer.files[0]); });
+$('file').addEventListener('change', e => { if (e.target.files[0]) loadImage(e.target.files[0]); });
+</script>
+</body>
+</html>

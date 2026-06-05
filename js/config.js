@@ -15,4 +15,11 @@ window.OT_CONFIG = {
 
   /* Free guest usage limit per tool per day (soft, localStorage-based) */
   FREE_DAILY_LIMIT: 10,
+
+  /* Google Analytics 4 — OPTIONAL override only.
+     The authoritative ID lives in js/common.js (OT_GA_ID), because common.js is
+     the only script on every page; config.js is NOT loaded by client-only tools.
+     Uncomment to override the default, or set to '' to disable analytics on the
+     pages that DO load config.js. Leave commented to use the common.js default. */
+  // GA_MEASUREMENT_ID: 'G-4YG2V55YEY',
 };

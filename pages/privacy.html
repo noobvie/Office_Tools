@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy &amp; Cookie Notice — Office Tools</title>
+  <meta name="description" content="How Office Tools handles your data: what stays in your browser, what is sent to our server, the cookies we use (Google Analytics), third-party services, and how to opt out.">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Privacy &amp; Cookie Notice — Office Tools">
+  <meta property="og:description" content="What stays in your browser, what is sent to our server, the cookies we use, and how to opt out.">
+  <meta property="og:url" content="https://tools.grin.money/pages/privacy/">
+  <link rel="canonical" href="https://tools.grin.money/pages/privacy/">
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .legal { max-width: 820px; margin: 0 auto; }
+    .legal h2 { font-size: 1.25rem; margin: 2rem 0 .6rem; }
+    .legal h3 { font-size: 1rem; margin: 1.2rem 0 .4rem; color: var(--primary); }
+    .legal p, .legal li { line-height: 1.7; color: var(--text); }
+    .legal ul { margin: .4rem 0 .8rem 1.2rem; }
+    .legal table { width: 100%; border-collapse: collapse; margin: .8rem 0; font-size: .88rem; }
+    .legal th, .legal td { border: 1px solid var(--border); padding: .5rem .65rem; text-align: left; vertical-align: top; }
+    .legal th { background: var(--bg-secondary); }
+    .legal code { background: var(--bg-secondary); padding: .1rem .35rem; border-radius: 4px; font-size: .85em; }
+    .updated { font-size: .82rem; color: var(--text-muted); }
+    .callout { background: var(--bg-secondary); border-left: 3px solid var(--primary); border-radius: var(--radius); padding: .85rem 1rem; margin: 1rem 0; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Privacy &amp; Cookies</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔒 Privacy &amp; Cookie Notice</h1>
+    <p>Plain-English summary of what happens to your data when you use Office Tools.</p>
+  </div>
+
+<div class="legal">
+
+  <p class="updated">Last updated: 1 June 2026</p>
+
+  <div class="callout">
+    <strong>The short version:</strong> The content you type or drop into a tool (text, images, files)
+    is processed <strong>in your browser</strong> and is <strong>not uploaded</strong> — with the few
+    clearly-marked exceptions listed below (URL Shortener, Pastebin, File Share, the Network tools, and the
+    YouTube Downloader), which must send your input to a server to work. We use Google Analytics to count
+    visits, which sets cookies. We have no accounts, no logins, and we never sell data.
+  </div>
+
+  <h2>1. What stays in your browser</h2>
+  <p>The large majority of tools run <strong>100% client-side</strong>. Your input never leaves your device. This includes (among others) the password generator, hash generator, JSON/CSV/Base64/encoding tools, PDF Toolkit, Image Converter, Image Cropper, Image-to-PDF, OCR, calculators, and all games. For these tools we receive <strong>nothing</strong> about your content.</p>
+  <p>Some tools save small amounts of data in your browser's <code>localStorage</code> purely so the tool works (e.g. your theme choice, Notepad notes, prompt templates). This data stays on your device and is never transmitted to us.</p>
+
+  <h2>2. What is sent to our server (and why)</h2>
+  <p>A small number of tools cannot work without sending your input to a backend. When you use these, you are knowingly submitting that data:</p>
+  <table>
+    <thead><tr><th>Tool</th><th>What is sent</th><th>Retention</th></tr></thead>
+    <tbody>
+      <tr><td>URL Shortener</td><td>The URL you shorten + optional alias</td><td>Until expiry you set</td></tr>
+      <tr><td>Pastebin</td><td>The text/code you paste</td><td>Until expiry / burn-after-read</td></tr>
+      <tr><td>File Share</td><td>The file you upload</td><td>Auto-deleted (≈7 days)</td></tr>
+      <tr><td>Port Checker, Ping, Traceroute</td><td>The host/IP you enter</td><td>Not stored — run and discarded</td></tr>
+      <tr><td>Domain Checker</td><td>The domain you query (WHOIS/RDAP/DNS)</td><td>Not stored</td></tr>
+      <tr><td>DNS &amp; Reverse DNS Lookup</td><td>The domain/IP — resolved via Cloudflare DNS-over-HTTPS</td><td>Not stored by us</td></tr>
+      <tr><td>YouTube Downloader</td><td>The video/playlist URL — sent to our self-hosted cobalt server</td><td>Not stored</td></tr>
+      <tr><td>Feedback form</td><td>Your message + the page you sent it from</td><td>Stored so we can read it</td></tr>
+    </tbody>
+  </table>
+  <p>We also record an anonymous <strong>per-tool view count</strong> (the tool name only — no personal data) to know which tools are popular.</p>
+
+  <h2>3. Cookies &amp; analytics</h2>
+  <p>We use <strong>Google Analytics 4</strong> to understand how many people visit and which tools are used. To do this, Google sets cookies in your browser:</p>
+  <table>
+    <thead><tr><th>Cookie</th><th>Set by</th><th>Purpose</th><th>Typical lifetime</th></tr></thead>
+    <tbody>
+      <tr><td><code>_ga</code></td><td>Google Analytics</td><td>Distinguishes unique visitors</td><td>2 years</td></tr>
+      <tr><td><code>_ga_&lt;ID&gt;</code></td><td>Google Analytics</td><td>Maintains session state</td><td>2 years</td></tr>
+    </tbody>
+  </table>
+  <p>Google Analytics may process your approximate location (derived from your IP address), device, browser, and the pages you view. It does <strong>not</strong> receive the content you process inside the tools. See <a href="https://policies.google.com/privacy" target="_blank" rel="noopener" style="color:var(--primary)">Google's Privacy Policy</a>.</p>
+  <p>We do <strong>not</strong> use advertising cookies, retargeting pixels, or sell any data.</p>
+
+  <h2>4. Third-party services</h2>
+  <p>To keep the site fast and free, some tools load code or data from third parties. These providers may see your IP address as part of serving the request, but not your tool content:</p>
+  <ul>
+    <li><strong>Google Analytics</strong> — visit statistics (cookies, as above)</li>
+    <li><strong>CDNs (jsDelivr, unpkg, Cloudflare)</strong> — deliver libraries used by tools such as OCR, PDF, and image tools</li>
+    <li><strong>Cloudflare DNS-over-HTTPS</strong> — powers the DNS Lookup tool</li>
+    <li><strong>Public price / IP / geolocation APIs</strong> — power the Currency, What-Is-My-IP, and IP Location tools</li>
+  </ul>
+
+  <h2>5. How to opt out</h2>
+  <ul>
+    <li>Install Google's <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener" style="color:var(--primary)">Analytics Opt-out Browser Add-on</a>.</li>
+    <li>Block third-party cookies, or use a privacy extension / ad blocker — the tools still work.</li>
+    <li>Use your browser's "clear cookies and site data" to remove the analytics cookies at any time.</li>
+  </ul>
+
+  <h2>6. Children</h2>
+  <p>Office Tools is a general-purpose utility site and is not directed at children under 13. We do not knowingly collect personal information from children.</p>
+
+  <h2>7. Changes</h2>
+  <p>If we change what we collect, we will update this page and the "last updated" date above.</p>
+
+  <h2>8. Contact</h2>
+  <p>Questions about privacy? Reach out on the <a href="https://forum.grin.mw/u/hellogrin" target="_blank" rel="noopener" style="color:var(--primary)">Grin forum (@hellogrin)</a> or use the <strong>💬 Support</strong> button in the header.</p>
+
+</div>
+</main>
+
+<script src="../js/config.js"></script>
+<script src="../js/common.js"></script>
+</body>
+</html>

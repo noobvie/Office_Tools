@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Remove Duplicate Lines &amp; Sort Text — Office Tools</title>
+  <meta name="description" content="Remove duplicate lines, sort text alphabetically or numerically, trim whitespace, change case, shuffle, and reverse lines. Fast online text list tool — runs locally in your browser.">
+  <meta name="keywords" content="remove duplicate lines, sort text online, dedupe list, alphabetical sort, numeric sort, trim whitespace, reverse lines, sort lines, remove duplicates from list">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Remove Duplicate Lines &amp; Sort Text — Office Tools">
+  <meta property="og:description" content="Remove duplicate lines, sort A-Z/Z-A/numeric, trim, change case, shuffle and reverse text lines. Runs locally — nothing is uploaded.">
+  <meta property="og:url" content="https://tools.grin.money/tools/dedupe-sort/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Remove Duplicate Lines &amp; Sort Text — Office Tools">
+  <meta name="twitter:description" content="Dedupe, sort A-Z/Z-A/numeric, trim, case-fold and reverse text lines. 100% local.">
+  <link rel="canonical" href="https://tools.grin.money/tools/dedupe-sort/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Remove Duplicate Lines & Sort Text","description":"Remove duplicate lines, sort text alphabetically or numerically, trim whitespace, change case, shuffle and reverse lines. Runs locally in your browser.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/dedupe-sort/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .io-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .ds-textarea {
+      width: 100%; box-sizing: border-box; min-height: 320px; resize: vertical;
+      font-family: 'Courier New', monospace; font-size: .86rem; line-height: 1.6;
+      background: var(--bg-secondary); color: var(--text);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: .75rem 1rem; outline: none; transition: border-color var(--transition);
+    }
+    .ds-textarea:focus { border-color: var(--primary); }
+    .opt-block { display: flex; flex-wrap: wrap; gap: .5rem .9rem; align-items: center; }
+    .opt-chk { display: inline-flex; align-items: center; gap: .4rem; font-size: .85rem; cursor: pointer; }
+    .seg { display: inline-flex; border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .seg button { padding: .4rem .8rem; border: none; background: none; cursor: pointer;
+      font-size: .82rem; font-weight: 700; color: var(--text); }
+    .seg button.active { background: var(--primary); color: #fff; }
+    .stat-row { display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: .82rem; color: var(--text-muted); margin-top: .5rem; }
+    .stat-row b { color: var(--primary); }
+    .field-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); margin-bottom: .35rem; display: block; }
+    @media (max-width: 700px) { .io-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Remove Duplicate Lines &amp; Sort</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🧹 Remove Duplicate Lines &amp; Sort Text</h1>
+    <p>Dedupe, sort, trim, change case, shuffle and reverse a list of lines — instantly and locally.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About this tool</h2>
+    <p>Paste any list — emails, URLs, keywords, log lines — and clean it up in one pass. <strong>Remove duplicate lines</strong>, <strong>sort A→Z, Z→A or numerically</strong>, trim leading/trailing whitespace, drop blank lines, fold case, and reverse or shuffle the order. Every operation runs in your browser; nothing is uploaded to any server.</p>
+    <p>Options stack in a sensible order: trim and case changes are applied first, then blank/duplicate removal, then sorting. Useful for tidying mailing lists, deduping CSV columns, alphabetizing imports, or preparing word lists.</p>
+  </section>
+
+  <div class="card">
+    <div class="io-grid">
+      <div>
+        <span class="field-label">Input</span>
+        <textarea id="dsIn" class="ds-textarea" placeholder="Paste your lines here…&#10;banana&#10;apple&#10;banana&#10;Cherry"></textarea>
+        <div class="stat-row">
+          <span>Lines: <b id="inLines">0</b></span>
+          <span>Characters: <b id="inChars">0</b></span>
+        </div>
+      </div>
+      <div>
+        <span class="field-label">Output</span>
+        <textarea id="dsOut" class="ds-textarea" readonly placeholder="Result appears here…"></textarea>
+        <div class="stat-row">
+          <span>Lines: <b id="outLines">0</b></span>
+          <span>Removed: <b id="outRemoved">0</b></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-2">
+    <div class="opt-block" style="margin-bottom:.85rem">
+      <span class="field-label" style="margin:0">Sort</span>
+      <div class="seg" id="sortSeg">
+        <button data-sort="none" class="active">None</button>
+        <button data-sort="az">A → Z</button>
+        <button data-sort="za">Z → A</button>
+        <button data-sort="num">Numeric</button>
+        <button data-sort="len">Length</button>
+        <button data-sort="shuffle">Shuffle</button>
+      </div>
+    </div>
+    <div class="opt-block">
+      <label class="opt-chk"><input type="checkbox" id="optDedupe" checked> Remove duplicates</label>
+      <label class="opt-chk"><input type="checkbox" id="optTrim" checked> Trim each line</label>
+      <label class="opt-chk"><input type="checkbox" id="optBlank" checked> Remove blank lines</label>
+      <label class="opt-chk"><input type="checkbox" id="optCase"> Case-insensitive</label>
+      <label class="opt-chk"><input type="checkbox" id="optReverse"> Reverse order</label>
+    </div>
+    <div class="opt-block" style="margin-top:.85rem">
+      <span class="field-label" style="margin:0">Change case</span>
+      <div class="seg" id="caseSeg">
+        <button data-case="keep" class="active">Keep</button>
+        <button data-case="lower">lower</button>
+        <button data-case="upper">UPPER</button>
+        <button data-case="title">Title</button>
+      </div>
+    </div>
+    <div class="mt-2" style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <button class="btn btn-primary" id="copyBtn">📋 Copy output</button>
+      <button class="btn" id="swapBtn">↩ Use output as input</button>
+      <button class="btn" id="clearBtn">✕ Clear</button>
+    </div>
+  </div>
+
+  <div class="page-tags">
+    <span class="page-tag">remove duplicates</span>
+    <span class="page-tag">sort lines</span>
+    <span class="page-tag">dedupe list</span>
+    <span class="page-tag">alphabetize</span>
+    <span class="page-tag">trim whitespace</span>
+    <span class="page-tag">reverse lines</span>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+let sortMode = 'none';
+let caseMode = 'keep';
+
+function titleCase(s) {
+  return s.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+}
+
+function process() {
+  const raw = $('dsIn').value;
+  let lines = raw.split(/\r\n|\r|\n/);
+  const originalCount = raw.length ? lines.length : 0;
+
+  if ($('optTrim').checked) lines = lines.map(l => l.trim());
+
+  if (caseMode === 'lower') lines = lines.map(l => l.toLowerCase());
+  else if (caseMode === 'upper') lines = lines.map(l => l.toUpperCase());
+  else if (caseMode === 'title') lines = lines.map(titleCase);
+
+  if ($('optBlank').checked) lines = lines.filter(l => l.trim() !== '');
+
+  if ($('optDedupe').checked) {
+    const seen = new Set();
+    const ci = $('optCase').checked;
+    lines = lines.filter(l => {
+      const key = ci ? l.toLowerCase() : l;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  const ci = $('optCase').checked;
+  if (sortMode === 'az') {
+    lines.sort((a, b) => (ci ? a.toLowerCase() : a).localeCompare(ci ? b.toLowerCase() : b, undefined, { numeric: true }));
+  } else if (sortMode === 'za') {
+    lines.sort((a, b) => (ci ? b.toLowerCase() : b).localeCompare(ci ? a.toLowerCase() : a, undefined, { numeric: true }));
+  } else if (sortMode === 'num') {
+    lines.sort((a, b) => (parseFloat(a) || 0) - (parseFloat(b) || 0));
+  } else if (sortMode === 'len') {
+    lines.sort((a, b) => a.length - b.length);
+  } else if (sortMode === 'shuffle') {
+    for (let i = lines.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [lines[i], lines[j]] = [lines[j], lines[i]];
+    }
+  }
+
+  if ($('optReverse').checked) lines.reverse();
+
+  const out = lines.join('\n');
+  $('dsOut').value = out;
+
+  $('inLines').textContent  = originalCount;
+  $('inChars').textContent  = raw.length;
+  $('outLines').textContent = raw.length ? lines.length : 0;
+  $('outRemoved').textContent = Math.max(0, originalCount - lines.length);
+}
+
+document.querySelectorAll('#sortSeg button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#sortSeg button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active'); sortMode = b.dataset.sort; process();
+}));
+document.querySelectorAll('#caseSeg button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#caseSeg button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active'); caseMode = b.dataset.case; process();
+}));
+['dsIn','optDedupe','optTrim','optBlank','optCase','optReverse'].forEach(id => {
+  $(id).addEventListener('input', process);
+  $(id).addEventListener('change', process);
+});
+
+$('copyBtn').addEventListener('click', () => copyText($('dsOut').value, $('copyBtn')));
+$('swapBtn').addEventListener('click', () => { $('dsIn').value = $('dsOut').value; process(); });
+$('clearBtn').addEventListener('click', () => { $('dsIn').value = ''; process(); });
+
+process();
+</script>
+</body>
+</html>

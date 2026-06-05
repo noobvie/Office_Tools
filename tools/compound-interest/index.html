@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Compound Interest Calculator — Office Tools</title>
+  <meta name="description" content="Calculate compound interest with regular contributions. See your future balance, total interest earned, and a year-by-year growth chart. Free online investment calculator.">
+  <meta name="keywords" content="compound interest calculator, investment calculator, savings growth, future value, monthly contribution, interest compounding, retirement calculator, ROI">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Compound Interest Calculator — Office Tools">
+  <meta property="og:description" content="Project investment growth with compound interest and regular contributions. Year-by-year chart.">
+  <meta property="og:url" content="https://tools.grin.money/tools/compound-interest/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Compound Interest Calculator — Office Tools">
+  <meta name="twitter:description" content="Future value, total interest, and a growth chart — instantly.">
+  <link rel="canonical" href="https://tools.grin.money/tools/compound-interest/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Compound Interest Calculator","description":"Calculate compound interest with regular contributions, future value, total interest, and a year-by-year growth chart. Runs in your browser.","applicationCategory":"FinanceApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/compound-interest/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    .result-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .75rem; margin-top: .75rem; }
+    .res-stat { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: .85rem 1rem; }
+    .res-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+    .res-val { font-size: 1.55rem; font-weight: 800; color: var(--primary); margin-top: .15rem; }
+    .res-val.big { font-size: 2rem; }
+    #chart { width: 100%; height: 280px; display: block; }
+    .legend { display: flex; gap: 1.25rem; flex-wrap: wrap; font-size: .8rem; color: var(--text-muted); margin-top: .5rem; }
+    .legend span::before { content: ''; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: .4rem; vertical-align: middle; }
+    .lg-principal::before { background: var(--text-muted); }
+    .lg-interest::before { background: var(--primary); }
+    table.amort { width: 100%; border-collapse: collapse; font-size: .82rem; margin-top: .5rem; }
+    table.amort th, table.amort td { padding: .45rem .6rem; text-align: right; border-bottom: 1px solid var(--border); }
+    table.amort th:first-child, table.amort td:first-child { text-align: left; }
+    table.amort th { color: var(--text-muted); font-size: .72rem; text-transform: uppercase; }
+    @media (max-width: 600px) { .input-grid, .result-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Compound Interest Calculator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>📈 Compound Interest Calculator</h1>
+    <p>Project how your savings grow with compound interest and regular contributions.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About this tool</h2>
+    <p>See the power of compounding. Enter your <strong>starting principal</strong>, an <strong>annual interest rate</strong>, how long you'll invest, and any <strong>regular contribution</strong>. The calculator compounds at your chosen frequency and shows your <strong>future balance, total contributions, and total interest earned</strong>, plus a year-by-year growth chart and breakdown table.</p>
+    <p>Contributions are assumed at the start of each compounding period. All maths runs locally — results are estimates and do not account for tax, fees, or inflation.</p>
+  </section>
+
+  <div class="card">
+    <div class="input-grid">
+      <div>
+        <label class="form-label">Initial principal ($)</label>
+        <input type="number" id="principal" class="form-input" min="0" step="100" value="10000">
+      </div>
+      <div>
+        <label class="form-label">Annual interest rate (%)</label>
+        <input type="number" id="rate" class="form-input" min="0" step="0.1" value="7">
+      </div>
+      <div>
+        <label class="form-label">Years</label>
+        <input type="number" id="years" class="form-input" min="1" max="100" step="1" value="20">
+      </div>
+      <div>
+        <label class="form-label">Compounding</label>
+        <select id="compound" class="form-input">
+          <option value="1">Annually</option>
+          <option value="2">Semi-annually</option>
+          <option value="4">Quarterly</option>
+          <option value="12" selected>Monthly</option>
+          <option value="365">Daily</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Regular contribution ($)</label>
+        <input type="number" id="contrib" class="form-input" min="0" step="50" value="200">
+      </div>
+      <div>
+        <label class="form-label">Contribution frequency</label>
+        <select id="contribFreq" class="form-input">
+          <option value="12" selected>Monthly</option>
+          <option value="26">Bi-weekly</option>
+          <option value="52">Weekly</option>
+          <option value="1">Annually</option>
+          <option value="0">None</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-2">
+    <div class="result-grid">
+      <div class="res-stat" style="grid-column:1/-1">
+        <div class="res-label">Future balance</div>
+        <div class="res-val big" id="rFuture">$0.00</div>
+      </div>
+      <div class="res-stat">
+        <div class="res-label">Total contributions</div>
+        <div class="res-val" id="rContrib">$0.00</div>
+      </div>
+      <div class="res-stat">
+        <div class="res-label">Total interest</div>
+        <div class="res-val" id="rInterest">$0.00</div>
+      </div>
+      <div class="res-stat">
+        <div class="res-label">Total deposited</div>
+        <div class="res-val" id="rDeposited">$0.00</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-2">
+    <canvas id="chart"></canvas>
+    <div class="legend">
+      <span class="lg-principal">Contributions</span>
+      <span class="lg-interest">Interest</span>
+    </div>
+  </div>
+
+  <div class="card mt-2">
+    <details>
+      <summary style="cursor:pointer;font-weight:700;color:var(--primary)">Year-by-year breakdown</summary>
+      <div style="overflow-x:auto">
+        <table class="amort">
+          <thead><tr><th>Year</th><th>Deposited</th><th>Interest (cum.)</th><th>Balance</th></tr></thead>
+          <tbody id="amortBody"></tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+
+  <div class="card mt-2" style="border-left:3px solid var(--warning,#f59e0b)">
+    <p style="font-size:.78rem;color:var(--text-muted);margin:0;line-height:1.6">
+      <strong style="color:var(--text)">⚠ Disclaimer:</strong>
+      Projections are illustrative estimates assuming a constant rate. Actual returns vary and are not guaranteed.
+      Figures exclude tax, fees, and inflation. This is not financial advice.
+    </p>
+  </div>
+
+  <div class="page-tags">
+    <span class="page-tag">compound interest</span>
+    <span class="page-tag">investment growth</span>
+    <span class="page-tag">future value</span>
+    <span class="page-tag">savings calculator</span>
+    <span class="page-tag">monthly contribution</span>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = n => '$' + (isFinite(n) ? n : 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+let series = [];
+
+function compute() {
+  const P  = parseFloat($('principal').value) || 0;
+  const r  = (parseFloat($('rate').value) || 0) / 100;
+  const yr = Math.max(1, parseInt($('years').value) || 1);
+  const n  = parseInt($('compound').value) || 12;       // compounds per year
+  const pmt = parseFloat($('contrib').value) || 0;
+  const cf  = parseInt($('contribFreq').value);          // contributions per year (0 = none)
+
+  // Simulate period by period at compounding frequency.
+  // Contribution per compounding period derived from annual contribution total.
+  const annualContribution = cf > 0 ? pmt * cf : 0;
+  const perPeriodContribution = annualContribution / n;
+  const periodRate = r / n;
+
+  let balance = P;
+  let deposited = P;
+  series = [{ year: 0, deposited, interest: 0, balance }];
+
+  for (let y = 1; y <= yr; y++) {
+    for (let p = 0; p < n; p++) {
+      balance += perPeriodContribution;        // contribute at start of period
+      deposited += perPeriodContribution;
+      balance *= (1 + periodRate);             // then compound
+    }
+    series.push({ year: y, deposited, interest: balance - deposited, balance });
+  }
+
+  const last = series[series.length - 1];
+  $('rFuture').textContent    = fmt(last.balance);
+  $('rContrib').textContent   = fmt(deposited - P);
+  $('rInterest').textContent  = fmt(last.interest);
+  $('rDeposited').textContent = fmt(deposited);
+
+  renderTable();
+  drawChart();
+}
+
+function renderTable() {
+  $('amortBody').innerHTML = series.filter(s => s.year > 0).map(s =>
+    `<tr><td>${s.year}</td><td>${fmt(s.deposited)}</td><td>${fmt(s.interest)}</td><td>${fmt(s.balance)}</td></tr>`
+  ).join('');
+}
+
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#6366f1';
+}
+
+function drawChart() {
+  const cv = $('chart');
+  const ctx = cv.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = W * dpr; cv.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  const padL = 64, padB = 28, padT = 14, padR = 12;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const maxVal = Math.max(...series.map(s => s.balance), 1);
+  const n = series.length - 1;
+
+  const x = i => padL + (i / n) * plotW;
+  const y = v => padT + plotH - (v / maxVal) * plotH;
+
+  const muted = cssVar('--text-muted') || '#888';
+  const primary = cssVar('--primary') || '#6366f1';
+  const border = cssVar('--border') || '#ccc';
+
+  // gridlines + y labels
+  ctx.strokeStyle = border; ctx.fillStyle = muted;
+  ctx.font = '11px system-ui, sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (let g = 0; g <= 4; g++) {
+    const val = maxVal * g / 4;
+    const yy = y(val);
+    ctx.globalAlpha = .35; ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(W - padR, yy); ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.fillText('$' + Math.round(val).toLocaleString('en-US'), padL - 8, yy);
+  }
+
+  // deposited area (muted)
+  const fillArea = (key, color, alpha) => {
+    ctx.beginPath();
+    ctx.moveTo(x(0), y(0));
+    series.forEach((s, i) => ctx.lineTo(x(i), y(s[key])));
+    ctx.lineTo(x(n), y(0));
+    ctx.closePath();
+    ctx.fillStyle = color; ctx.globalAlpha = alpha; ctx.fill(); ctx.globalAlpha = 1;
+  };
+  // balance area = interest layer (primary), deposited area on top (muted)
+  fillArea('balance', primary, .22);
+  fillArea('deposited', muted, .30);
+
+  // balance line
+  ctx.beginPath();
+  series.forEach((s, i) => i ? ctx.lineTo(x(i), y(s.balance)) : ctx.moveTo(x(i), y(s.balance)));
+  ctx.strokeStyle = primary; ctx.lineWidth = 2; ctx.stroke();
+
+  // x labels (years)
+  ctx.fillStyle = muted; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  const step = Math.ceil(n / 8);
+  for (let i = 0; i <= n; i += step) ctx.fillText(series[i].year + 'y', x(i), H - padB + 6);
+}
+
+['principal','rate','years','compound','contrib','contribFreq'].forEach(id => {
+  $(id).addEventListener('input', compute);
+  $(id).addEventListener('change', compute);
+});
+window.addEventListener('resize', drawChart);
+compute();
+</script>
+</body>
+</html>

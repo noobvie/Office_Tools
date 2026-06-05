@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSS Gradient Generator — Office Tools</title>
+  <meta name="description" content="Create linear and radial CSS gradients visually. Add color stops, set the angle, pick colors, and copy the ready-to-use CSS. Free online gradient maker — runs in your browser.">
+  <meta name="keywords" content="CSS gradient generator, linear gradient, radial gradient, gradient maker, CSS background generator, color stops, gradient CSS, web design gradient">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="CSS Gradient Generator — Office Tools">
+  <meta property="og:description" content="Build linear & radial CSS gradients visually with color stops and angle control, then copy the CSS.">
+  <meta property="og:url" content="https://tools.grin.money/tools/gradient-generator/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="CSS Gradient Generator — Office Tools">
+  <meta name="twitter:description" content="Visual linear & radial CSS gradient maker. Copy ready CSS instantly.">
+  <link rel="canonical" href="https://tools.grin.money/tools/gradient-generator/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"CSS Gradient Generator","description":"Create linear and radial CSS gradients visually with color stops and angle control, then copy the CSS. Runs in your browser.","applicationCategory":"DesignApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/gradient-generator/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .gradient-preview {
+      width: 100%; height: 240px; border-radius: var(--radius);
+      border: 1px solid var(--border); margin-bottom: 1rem;
+    }
+    .seg { display: inline-flex; border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .seg button { padding: .45rem .95rem; border: none; background: none; cursor: pointer;
+      font-size: .85rem; font-weight: 700; color: var(--text); }
+    .seg button.active { background: var(--primary); color: #fff; }
+    .field-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: .35rem; }
+    .stop-row { display: flex; align-items: center; gap: .6rem; margin-bottom: .6rem; flex-wrap: wrap; }
+    .stop-row input[type=color] { width: 46px; height: 38px; border: 1px solid var(--border);
+      border-radius: 8px; background: none; cursor: pointer; padding: 2px; }
+    .stop-row input[type=range] { flex: 1; min-width: 120px; accent-color: var(--primary); }
+    .stop-pos { width: 58px; text-align: right; font-size: .82rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+    .stop-del { border: none; background: var(--danger-dim, rgba(220,38,38,.12)); color: var(--danger);
+      width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-weight: 700; }
+    .css-out { width: 100%; box-sizing: border-box; font-family: 'Courier New', monospace; font-size: .85rem;
+      background: var(--bg-secondary); color: var(--text); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .85rem 1rem; resize: vertical; min-height: 90px; }
+    .ctl-row { display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">CSS Gradient Generator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🌈 CSS Gradient Generator</h1>
+    <p>Build linear and radial gradients visually. Add stops, set the angle, and copy production-ready CSS.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About this tool</h2>
+    <p>Design beautiful <strong>CSS gradients</strong> without memorising syntax. Choose <strong>linear or radial</strong>, drag the angle, add as many <strong>color stops</strong> as you like, and watch the live preview update. When you're happy, copy the <code>background</code> CSS straight into your stylesheet.</p>
+    <p>Everything renders with native CSS in your browser — no images, no server. Use it for hero sections, buttons, cards, and backgrounds.</p>
+  </section>
+
+  <div class="card">
+    <div class="gradient-preview" id="preview"></div>
+
+    <div class="ctl-row">
+      <div>
+        <span class="field-label">Type</span>
+        <div class="seg" id="typeSeg">
+          <button data-type="linear" class="active">Linear</button>
+          <button data-type="radial">Radial</button>
+        </div>
+      </div>
+      <div id="angleWrap">
+        <span class="field-label">Angle: <span id="angleVal">90</span>°</span>
+        <input type="range" id="angle" min="0" max="360" value="90" style="width:200px;accent-color:var(--primary)">
+      </div>
+      <div id="shapeWrap" style="display:none">
+        <span class="field-label">Shape</span>
+        <select id="shapeSel" class="form-input" style="max-width:160px">
+          <option value="circle">Circle</option>
+          <option value="ellipse">Ellipse</option>
+        </select>
+      </div>
+      <button class="btn" id="randomBtn">🎲 Random</button>
+    </div>
+
+    <span class="field-label">Color stops</span>
+    <div id="stops"></div>
+    <button class="btn btn-sm" id="addStop" style="margin-top:.3rem">+ Add stop</button>
+  </div>
+
+  <div class="card mt-2">
+    <span class="field-label">CSS</span>
+    <textarea class="css-out" id="cssOut" readonly spellcheck="false"></textarea>
+    <div class="mt-2" style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <button class="btn btn-primary" id="copyBtn">📋 Copy CSS</button>
+      <button class="btn" id="copyBgBtn">📋 Copy background value</button>
+    </div>
+  </div>
+
+  <div class="page-tags">
+    <span class="page-tag">css gradient</span>
+    <span class="page-tag">linear gradient</span>
+    <span class="page-tag">radial gradient</span>
+    <span class="page-tag">background generator</span>
+    <span class="page-tag">color stops</span>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+let type = 'linear';
+let stops = [
+  { color: '#6366f1', pos: 0 },
+  { color: '#ec4899', pos: 100 },
+];
+
+function renderStops() {
+  const wrap = $('stops');
+  wrap.innerHTML = '';
+  stops.forEach((s, i) => {
+    const row = document.createElement('div');
+    row.className = 'stop-row';
+    row.innerHTML =
+      `<input type="color" value="${s.color}" data-i="${i}" data-k="color">` +
+      `<input type="range" min="0" max="100" value="${s.pos}" data-i="${i}" data-k="pos">` +
+      `<span class="stop-pos">${s.pos}%</span>` +
+      `<button class="stop-del" data-del="${i}" ${stops.length <= 2 ? 'disabled style="opacity:.35;cursor:not-allowed"' : ''}>✕</button>`;
+    wrap.appendChild(row);
+  });
+  wrap.querySelectorAll('input').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const i = +e.target.dataset.i, k = e.target.dataset.k;
+      stops[i][k] = k === 'pos' ? +e.target.value : e.target.value;
+      if (k === 'pos') e.target.parentElement.querySelector('.stop-pos').textContent = e.target.value + '%';
+      update();
+    });
+  });
+  wrap.querySelectorAll('.stop-del').forEach(btn => {
+    btn.addEventListener('click', e => {
+      if (stops.length <= 2) return;
+      stops.splice(+e.target.dataset.del, 1);
+      renderStops(); update();
+    });
+  });
+}
+
+function gradientCSS() {
+  const ordered = [...stops].sort((a, b) => a.pos - b.pos);
+  const stopStr = ordered.map(s => `${s.color} ${s.pos}%`).join(', ');
+  if (type === 'linear') {
+    return `linear-gradient(${$('angle').value}deg, ${stopStr})`;
+  }
+  return `radial-gradient(${$('shapeSel').value}, ${stopStr})`;
+}
+
+function update() {
+  const bg = gradientCSS();
+  $('preview').style.background = bg;
+  $('cssOut').value = `background: ${bg};`;
+}
+
+document.querySelectorAll('#typeSeg button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#typeSeg button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active'); type = b.dataset.type;
+  $('angleWrap').style.display = type === 'linear' ? '' : 'none';
+  $('shapeWrap').style.display = type === 'radial' ? '' : 'none';
+  update();
+}));
+$('angle').addEventListener('input', () => { $('angleVal').textContent = $('angle').value; update(); });
+$('shapeSel').addEventListener('change', update);
+$('addStop').addEventListener('click', () => {
+  const last = stops[stops.length - 1];
+  stops.push({ color: last.color, pos: Math.min(100, last.pos) });
+  renderStops(); update();
+});
+$('randomBtn').addEventListener('click', () => {
+  const rc = () => '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+  const n = 2 + Math.floor(Math.random() * 2);
+  stops = Array.from({ length: n }, (_, i) => ({ color: rc(), pos: Math.round((i / (n - 1)) * 100) }));
+  $('angle').value = Math.floor(Math.random() * 361);
+  $('angleVal').textContent = $('angle').value;
+  renderStops(); update();
+});
+$('copyBtn').addEventListener('click', () => copyText($('cssOut').value, $('copyBtn')));
+$('copyBgBtn').addEventListener('click', () => copyText(gradientCSS(), $('copyBgBtn')));
+
+renderStops();
+update();
+</script>
+</body>
+</html>

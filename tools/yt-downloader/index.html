@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="matrix">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,7 +24,7 @@
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "YouTube to MP3/MP4 Downloader",
-      "description": "Download YouTube videos as MP4 (up to 1080p) or audio as MP3. Supports full playlists. No login, no tracking. Powered by self-hosted cobalt.",
+      "description": "Download YouTube videos as MP4 (up to 1080p) or audio as MP3. Supports full playlists. No login required. Powered by self-hosted cobalt.",
       "applicationCategory": "WebApplication",
       "operatingSystem": "Any",
       "offers": {"@type":"Offer","price":"0","priceCurrency":"USD"},
@@ -55,7 +55,7 @@
   ]
   </script>
 
-  <script src="../../js/theme-init.js"></script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
   <link rel="stylesheet" href="../../css/style.css">
   <style>
     /* ── Mode toggle ── */

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Favicon Generator — From Image or Emoji — Office Tools</title>
+  <meta name="description" content="Generate favicons from an image, emoji, or text initials. Exports 16, 32, 48, 180 and 512px PNGs plus a ready-to-paste HTML link snippet. Free favicon generator, runs locally.">
+  <meta name="keywords" content="favicon generator, make favicon, favicon from image, emoji favicon, favicon png, apple touch icon, favicon html, favicon 32x32, site icon generator">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Favicon Generator — Office Tools">
+  <meta property="og:description" content="Generate favicons from an image, emoji or initials. Multi-size PNG export + HTML snippet.">
+  <meta property="og:url" content="https://tools.grin.money/tools/favicon-generator/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Favicon Generator — Office Tools">
+  <meta name="twitter:description" content="Image, emoji or initials → multi-size favicons + HTML.">
+  <link rel="canonical" href="https://tools.grin.money/tools/favicon-generator/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Favicon Generator","description":"Generate favicons from an image, emoji, or text initials. Exports multiple PNG sizes plus an HTML link snippet. Runs in your browser.","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/favicon-generator/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .io-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start; }
+    .field { margin-bottom: .85rem; }
+    .field-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: .3rem; }
+    .seg { display: inline-flex; border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 1rem; }
+    .seg button { padding: .45rem .9rem; border: none; background: none; cursor: pointer; font-size: .84rem; font-weight: 700; color: var(--text); }
+    .seg button.active { background: var(--primary); color: #fff; }
+    .drop { border: 2px dashed var(--border); border-radius: var(--radius); padding: 1.5rem; text-align: center;
+      color: var(--text-muted); cursor: pointer; font-size: .9rem; }
+    .drop:hover { border-color: var(--primary); color: var(--primary); }
+    .sizes { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
+    .size-item { text-align: center; }
+    .size-item canvas { border: 1px solid var(--border); border-radius: 6px; image-rendering: pixelated; background:
+      conic-gradient(#0001 90deg,#0000 0 180deg,#0001 0 270deg,#0000 0) 0 0/12px 12px; }
+    .size-item span { display: block; font-size: .72rem; color: var(--text-muted); margin-top: .25rem; }
+    .row2 { display: flex; gap: 1rem; flex-wrap: wrap; } .row2 > div { flex: 1; min-width: 120px; }
+    .code-out { width: 100%; box-sizing: border-box; min-height: 130px; resize: vertical; font-family: 'Courier New', monospace;
+      font-size: .8rem; line-height: 1.5; background: var(--bg-secondary); color: var(--text);
+      border: 1px solid var(--border); border-radius: var(--radius); padding: .75rem 1rem; white-space: pre; }
+    @media (max-width: 760px) { .io-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Favicon Generator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>⭐ Favicon Generator</h1>
+    <p>Make favicons from an image, an emoji, or text initials. Multi-size PNG export + HTML snippet.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About this tool</h2>
+    <p>Create a complete favicon set in seconds. Start from an <strong>uploaded image</strong>, a single <strong>emoji</strong>, or <strong>text initials</strong> with a background of your choice. The tool renders every common size — <strong>16, 32, 48, 180 (Apple touch) and 512px</strong> — which you can download individually, plus a ready-to-paste <code>&lt;link&gt;</code> snippet for your <code>&lt;head&gt;</code>.</p>
+    <p>All rendering uses the canvas API in your browser — your image never leaves your device.</p>
+  </section>
+
+  <div class="card">
+    <div class="seg" id="srcSeg">
+      <button data-src="emoji" class="active">Emoji</button>
+      <button data-src="text">Initials</button>
+      <button data-src="image">Image</button>
+    </div>
+
+    <div class="io-grid">
+      <div>
+        <div id="paneEmoji" class="field">
+          <label class="field-label">Emoji</label>
+          <input type="text" id="emoji" class="form-input" value="🚀" maxlength="4" style="font-size:1.4rem">
+        </div>
+        <div id="paneText" class="field" style="display:none">
+          <label class="field-label">Initials (1–3 chars)</label>
+          <input type="text" id="initials" class="form-input" value="OT" maxlength="3" style="text-transform:uppercase">
+          <label class="field-label" style="margin-top:.6rem">Text color</label>
+          <input type="color" id="textColor" class="form-input" value="#ffffff" style="height:42px;padding:3px">
+        </div>
+        <div id="paneImage" class="field" style="display:none">
+          <label class="field-label">Image</label>
+          <div class="drop" id="drop">Click or drop an image here (PNG/JPG/SVG)</div>
+          <input type="file" id="file" accept="image/*" hidden>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label class="field-label">Background</label>
+            <input type="color" id="bg" class="form-input" value="#6366f1" style="height:42px;padding:3px">
+          </div>
+          <div class="field">
+            <label class="field-label" style="display:inline-flex;align-items:center;gap:.4rem;margin-top:1.6rem">
+              <input type="checkbox" id="transparent"> Transparent background
+            </label>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">Corner radius: <span id="radVal">20</span>%</label>
+          <input type="range" id="radius" min="0" max="50" value="20" style="width:100%;accent-color:var(--primary)">
+        </div>
+      </div>
+
+      <div>
+        <label class="field-label">Preview &amp; download</label>
+        <div class="sizes" id="sizes"></div>
+        <div class="mt-2">
+          <button class="btn btn-primary" id="dlAll">⬇ Download all sizes</button>
+        </div>
+        <label class="field-label" style="margin-top:1rem">HTML for your &lt;head&gt;</label>
+        <textarea class="code-out" id="htmlOut" readonly spellcheck="false"></textarea>
+        <button class="btn mt-2" id="copyHtml">📋 Copy HTML</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-tags">
+    <span class="page-tag">favicon generator</span>
+    <span class="page-tag">emoji favicon</span>
+    <span class="page-tag">favicon from image</span>
+    <span class="page-tag">apple touch icon</span>
+    <span class="page-tag">site icon</span>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const SIZES = [16, 32, 48, 180, 512];
+let srcMode = 'emoji';
+let uploadedImg = null;
+
+function drawIcon(ctx, size) {
+  const r = (parseInt($('radius').value, 10) / 100) * size;
+  ctx.clearRect(0, 0, size, size);
+  ctx.save();
+  // rounded rect clip
+  ctx.beginPath();
+  ctx.moveTo(r, 0);
+  ctx.arcTo(size, 0, size, size, r);
+  ctx.arcTo(size, size, 0, size, r);
+  ctx.arcTo(0, size, 0, 0, r);
+  ctx.arcTo(0, 0, size, 0, r);
+  ctx.closePath();
+  ctx.clip();
+
+  if (!$('transparent').checked) { ctx.fillStyle = $('bg').value; ctx.fillRect(0, 0, size, size); }
+
+  if (srcMode === 'image' && uploadedImg) {
+    // cover fit
+    const s = Math.max(size / uploadedImg.width, size / uploadedImg.height);
+    const w = uploadedImg.width * s, h = uploadedImg.height * s;
+    ctx.drawImage(uploadedImg, (size - w) / 2, (size - h) / 2, w, h);
+  } else if (srcMode === 'text') {
+    ctx.fillStyle = $('textColor').value;
+    ctx.font = `bold ${size * 0.5}px system-ui, -apple-system, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(($('initials').value || 'O').toUpperCase().slice(0, 3), size / 2, size / 2 + size * 0.04);
+  } else {
+    // emoji
+    ctx.font = `${size * 0.72}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText($('emoji').value || '⭐', size / 2, size / 2 + size * 0.05);
+  }
+  ctx.restore();
+}
+
+function render() {
+  $('radVal').textContent = $('radius').value;
+  const wrap = $('sizes');
+  wrap.innerHTML = '';
+  SIZES.forEach(size => {
+    const disp = Math.min(size, 64);
+    const item = document.createElement('div');
+    item.className = 'size-item';
+    const cv = document.createElement('canvas');
+    cv.width = size; cv.height = size;
+    cv.style.width = disp + 'px'; cv.style.height = disp + 'px';
+    drawIcon(cv.getContext('2d'), size);
+    item.appendChild(cv);
+    const lbl = document.createElement('span'); lbl.textContent = size + 'px'; item.appendChild(lbl);
+    const dl = document.createElement('button');
+    dl.className = 'btn btn-sm'; dl.textContent = '⬇'; dl.title = 'Download ' + size + 'px';
+    dl.style.marginTop = '.25rem';
+    dl.onclick = () => downloadCanvas(cv, `favicon-${size}.png`);
+    item.appendChild(dl);
+    wrap.appendChild(item);
+  });
+  $('htmlOut').value =
+`<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/favicon-180.png">`;
+}
+
+function downloadCanvas(cv, name) {
+  const a = document.createElement('a');
+  a.href = cv.toDataURL('image/png'); a.download = name; a.click();
+}
+
+document.querySelectorAll('#srcSeg button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#srcSeg button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active'); srcMode = b.dataset.src;
+  $('paneEmoji').style.display = srcMode === 'emoji' ? '' : 'none';
+  $('paneText').style.display  = srcMode === 'text' ? '' : 'none';
+  $('paneImage').style.display = srcMode === 'image' ? '' : 'none';
+  render();
+}));
+
+$('drop').addEventListener('click', () => $('file').click());
+$('drop').addEventListener('dragover', e => { e.preventDefault(); $('drop').style.borderColor = 'var(--primary)'; });
+$('drop').addEventListener('dragleave', () => $('drop').style.borderColor = '');
+$('drop').addEventListener('drop', e => { e.preventDefault(); $('drop').style.borderColor = ''; if (e.dataTransfer.files[0]) loadImage(e.dataTransfer.files[0]); });
+$('file').addEventListener('change', e => { if (e.target.files[0]) loadImage(e.target.files[0]); });
+function loadImage(file) {
+  const img = new Image();
+  img.onload = () => { uploadedImg = img; $('drop').textContent = file.name; render(); };
+  img.src = URL.createObjectURL(file);
+}
+
+$('dlAll').addEventListener('click', () => {
+  SIZES.forEach((size, i) => {
+    const cv = document.createElement('canvas'); cv.width = size; cv.height = size;
+    drawIcon(cv.getContext('2d'), size);
+    setTimeout(() => downloadCanvas(cv, `favicon-${size}.png`), i * 250);
+  });
+});
+$('copyHtml').addEventListener('click', () => copyText($('htmlOut').value, $('copyHtml')));
+
+['emoji','initials','textColor','bg','transparent','radius'].forEach(id => {
+  $(id).addEventListener('input', render);
+  $(id).addEventListener('change', render);
+});
+
+render();
+</script>
+</body>
+</html>

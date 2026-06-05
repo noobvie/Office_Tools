@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EXIF Viewer &amp; Remover — Photo Metadata — Office Tools</title>
+  <meta name="description" content="View the EXIF metadata in your photos — camera, lens, exposure, date and GPS location — then download a clean copy with all metadata stripped. Private: runs locally, no upload.">
+  <meta name="keywords" content="EXIF viewer, EXIF remover, remove EXIF data, photo metadata, strip metadata, GPS location photo, remove GPS from photo, image metadata viewer, clean photo metadata">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="EXIF Viewer &amp; Remover — Office Tools">
+  <meta property="og:description" content="View photo EXIF metadata (incl. GPS) and download a stripped, privacy-safe copy. Runs locally.">
+  <meta property="og:url" content="https://tools.grin.money/tools/exif-viewer/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="EXIF Viewer &amp; Remover — Office Tools">
+  <meta name="twitter:description" content="Inspect and strip photo metadata, including GPS — privately.">
+  <link rel="canonical" href="https://tools.grin.money/tools/exif-viewer/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"EXIF Viewer & Remover","description":"View the EXIF metadata in photos — camera, exposure, date and GPS — and download a clean copy with metadata stripped. Runs locally in your browser.","applicationCategory":"MultimediaApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/exif-viewer/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .drop { border: 2px dashed var(--border); border-radius: var(--radius); padding: 2.5rem 1rem; text-align: center;
+      color: var(--text-muted); cursor: pointer; transition: all var(--transition); }
+    .drop:hover, .drop.over { border-color: var(--primary); color: var(--primary); background: var(--bg-secondary); }
+    .io-grid { display: grid; grid-template-columns: 280px 1fr; gap: 1.5rem; align-items: start; }
+    .preview-img { width: 100%; border-radius: var(--radius); border: 1px solid var(--border); }
+    .field-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: .35rem; }
+    table.exif { width: 100%; border-collapse: collapse; font-size: .84rem; }
+    table.exif td { padding: .4rem .6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    table.exif td:first-child { color: var(--text-muted); white-space: nowrap; width: 38%; }
+    table.exif td:last-child { word-break: break-word; }
+    .gps-warn { background: var(--danger-dim, rgba(220,38,38,.1)); border-left: 3px solid var(--danger);
+      padding: .7rem 1rem; border-radius: var(--radius); font-size: .84rem; margin-bottom: 1rem; }
+    .gps-warn a { color: var(--primary); }
+    .empty { color: var(--text-muted); font-size: .9rem; }
+    @media (max-width: 700px) { .io-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">EXIF Viewer &amp; Remover</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>📷 EXIF Viewer &amp; Remover</h1>
+    <p>Inspect photo metadata — including GPS location — then download a clean, metadata-free copy.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About this tool</h2>
+    <p>Photos quietly carry <strong>EXIF metadata</strong>: the camera and lens, exposure settings, the date taken, and often the exact <strong>GPS coordinates</strong> where the shot was captured. This tool reads all of it so you can see what you'd be sharing, and lets you <strong>download a stripped copy</strong> with every trace of metadata removed.</p>
+    <p>Reading uses the <code>exifr</code> library from a CDN; stripping is done by re-encoding through a canvas. Your image never leaves your browser — ideal before posting photos publicly.</p>
+  </section>
+
+  <div class="card">
+    <div class="drop" id="drop">
+      <div style="font-size:2rem">📷</div>
+      <div><strong>Click or drop a photo</strong> (JPG/PNG/HEIC/TIFF)</div>
+      <div style="font-size:.8rem;margin-top:.3rem">Processed locally — never uploaded</div>
+    </div>
+    <input type="file" id="file" accept="image/*" hidden>
+  </div>
+
+  <div class="card mt-2" id="resultCard" style="display:none">
+    <div id="gpsWarn"></div>
+    <div class="io-grid">
+      <div>
+        <label class="field-label">Preview</label>
+        <img id="prev" class="preview-img" alt="preview">
+        <div class="mt-2" style="display:flex;flex-direction:column;gap:.5rem">
+          <button class="btn btn-primary" id="stripBtn">⬇ Download without metadata</button>
+          <button class="btn" id="resetBtn">↺ Load another</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Metadata</label>
+        <div id="exifTable"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-tags">
+    <span class="page-tag">exif viewer</span>
+    <span class="page-tag">remove exif</span>
+    <span class="page-tag">photo metadata</span>
+    <span class="page-tag">strip gps</span>
+    <span class="page-tag">image privacy</span>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+function escHtml(s){ return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+let currentFile = null;
+
+const LABELS = {
+  Make:'Camera make', Model:'Camera model', LensModel:'Lens', FNumber:'Aperture (f)',
+  ExposureTime:'Shutter speed', ISO:'ISO', FocalLength:'Focal length', DateTimeOriginal:'Date taken',
+  Orientation:'Orientation', Software:'Software', Artist:'Artist', Copyright:'Copyright',
+  ImageWidth:'Width', ImageHeight:'Height', latitude:'GPS latitude', longitude:'GPS longitude',
+};
+
+function fmtVal(k, v) {
+  if (v instanceof Date) return v.toLocaleString();
+  if (k === 'ExposureTime' && typeof v === 'number' && v < 1) return '1/' + Math.round(1 / v) + ' s';
+  if (k === 'FNumber') return 'f/' + v;
+  if (k === 'FocalLength') return v + ' mm';
+  if (typeof v === 'number') return Math.round(v * 1e6) / 1e6;
+  return String(v);
+}
+
+async function handle(file) {
+  currentFile = file;
+  $('prev').src = URL.createObjectURL(file);
+  $('resultCard').style.display = '';
+  $('gpsWarn').innerHTML = '';
+  $('exifTable').innerHTML = '<div class="empty">Reading metadata…</div>';
+
+  if (typeof exifr === 'undefined') { $('exifTable').innerHTML = '<div class="empty">Metadata library failed to load (offline?).</div>'; return; }
+  let data = null;
+  try { data = await exifr.parse(file, { gps: true, tiff: true, exif: true, ifd0: true }); } catch {}
+
+  if (!data || Object.keys(data).length === 0) {
+    $('exifTable').innerHTML = '<div class="empty">✓ No EXIF metadata found — this image is already clean.</div>';
+    return;
+  }
+
+  if (data.latitude != null && data.longitude != null) {
+    const lat = data.latitude.toFixed(6), lon = data.longitude.toFixed(6);
+    $('gpsWarn').innerHTML =
+      `<div class="gps-warn">⚠ <strong>This photo contains GPS location:</strong> ${lat}, ${lon} ` +
+      `&nbsp;<a href="https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=15/${lat}/${lon}" target="_blank" rel="noopener">view on map ↗</a><br>` +
+      `Anyone you share the original with can see where it was taken. Download the stripped copy below to remove it.</div>`;
+  }
+
+  const order = ['Make','Model','LensModel','FNumber','ExposureTime','ISO','FocalLength','DateTimeOriginal','ImageWidth','ImageHeight','Orientation','Software','Artist','Copyright','latitude','longitude'];
+  const seen = new Set();
+  let rows = '';
+  const addRow = (k) => {
+    if (data[k] == null || seen.has(k)) return;
+    seen.add(k);
+    rows += `<tr><td>${escHtml(LABELS[k] || k)}</td><td>${escHtml(fmtVal(k, data[k]))}</td></tr>`;
+  };
+  order.forEach(addRow);
+  Object.keys(data).forEach(k => { if (!seen.has(k) && typeof data[k] !== 'object') addRow(k); });
+  $('exifTable').innerHTML = `<table class="exif"><tbody>${rows}</tbody></table>`;
+}
+
+$('stripBtn').addEventListener('click', () => {
+  if (!currentFile) return;
+  const img = new Image();
+  img.onload = () => {
+    const cv = document.createElement('canvas');
+    cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+    cv.getContext('2d').drawImage(img, 0, 0);
+    // re-encode as JPEG/PNG → drops all metadata
+    const isPng = /png$/i.test(currentFile.type);
+    cv.toBlob(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = (currentFile.name.replace(/\.[^.]+$/, '') || 'image') + '-clean.' + (isPng ? 'png' : 'jpg');
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }, isPng ? 'image/png' : 'image/jpeg', 0.95);
+  };
+  img.src = URL.createObjectURL(currentFile);
+});
+$('resetBtn').addEventListener('click', () => { $('resultCard').style.display = 'none'; $('file').value = ''; currentFile = null; });
+
+$('drop').addEventListener('click', () => $('file').click());
+$('drop').addEventListener('dragover', e => { e.preventDefault(); $('drop').classList.add('over'); });
+$('drop').addEventListener('dragleave', () => $('drop').classList.remove('over'));
+$('drop').addEventListener('drop', e => { e.preventDefault(); $('drop').classList.remove('over'); if (e.dataTransfer.files[0]) handle(e.dataTransfer.files[0]); });
+$('file').addEventListener('change', e => { if (e.target.files[0]) handle(e.target.files[0]); });
+</script>
+</body>
+</html>

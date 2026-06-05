@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Discount Calculator — Sale Price &amp; Percent Off — Office Tools</title>
+  <meta name="description" content="Calculate the sale price and amount saved from a percent-off discount. Stack multiple discounts, find the original price, or work out the discount percentage. Free online tool.">
+  <meta name="keywords" content="discount calculator, percent off calculator, sale price calculator, how much will I save, stacked discount, original price calculator, markdown calculator">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Discount Calculator — Office Tools">
+  <meta property="og:description" content="Find sale price and savings from a percent-off discount. Stack multiple discounts.">
+  <meta property="og:url" content="https://tools.grin.money/tools/discount-calculator/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Discount Calculator — Office Tools">
+  <meta name="twitter:description" content="Sale price, savings, and stacked discounts — instantly.">
+  <link rel="canonical" href="https://tools.grin.money/tools/discount-calculator/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Discount Calculator","description":"Calculate sale price, amount saved, and stacked percent-off discounts. Runs in your browser.","applicationCategory":"FinanceApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/discount-calculator/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    .quick-tips { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .5rem; }
+    .tip-btn { padding: .4rem .85rem; border: 1.5px solid var(--border); border-radius: 2rem;
+      background: none; cursor: pointer; font-size: .85rem; font-weight: 700; color: var(--text); }
+    .tip-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top: .75rem; }
+    .res-stat { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: .85rem 1rem; }
+    .res-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+    .res-val { font-size: 1.75rem; font-weight: 800; color: var(--primary); margin-top: .15rem; }
+    .res-val.big { font-size: 2.2rem; }
+    .stack-row { display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; }
+    .stack-row input { max-width: 120px; }
+    .stack-del { border: none; background: var(--danger-dim, rgba(220,38,38,.12)); color: var(--danger);
+      width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-weight: 700; }
+    @media (max-width: 560px) { .input-grid, .result-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Discount Calculator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🏷️ Discount Calculator</h1>
+    <p>Find the sale price and how much you save. Stack multiple discounts to see the true final price.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About this tool</h2>
+    <p>Enter the <strong>original price</strong> and a <strong>percent-off</strong> discount to instantly see the <strong>sale price and amount saved</strong>. Quick buttons cover common discounts from 10% to 70%. Add extra discounts to model <strong>stacked offers</strong> — each is applied to the running price, exactly how "extra 20% off sale items" really works.</p>
+    <p>All calculations happen locally in your browser. Results are estimates; tax and shipping are not included.</p>
+  </section>
+
+  <div class="card">
+    <div class="input-grid">
+      <div>
+        <label class="form-label">Original price ($)</label>
+        <input type="number" id="price" class="form-input" min="0" step="0.01" value="79.99" placeholder="0.00">
+      </div>
+      <div>
+        <label class="form-label">Discount (%)</label>
+        <input type="number" id="disc" class="form-input" min="0" max="100" step="1" value="25" placeholder="25">
+      </div>
+    </div>
+    <div class="quick-tips" id="quickTips">
+      <button class="tip-btn" data-d="10">10%</button>
+      <button class="tip-btn" data-d="15">15%</button>
+      <button class="tip-btn" data-d="20">20%</button>
+      <button class="tip-btn" data-d="25">25%</button>
+      <button class="tip-btn" data-d="30">30%</button>
+      <button class="tip-btn" data-d="50">50%</button>
+      <button class="tip-btn" data-d="70">70%</button>
+    </div>
+
+    <div style="margin-top:1rem">
+      <div style="font-size:.78rem;color:var(--text-muted);font-weight:600;margin-bottom:.5rem">Stack extra discounts (applied in order)</div>
+      <div id="stacks"></div>
+      <button class="btn btn-sm" id="addStack">+ Add another discount</button>
+    </div>
+  </div>
+
+  <div class="card mt-2">
+    <div class="result-grid">
+      <div class="res-stat" style="grid-column:1/-1">
+        <div class="res-label">Final price</div>
+        <div class="res-val big" id="rFinal">$0.00</div>
+      </div>
+      <div class="res-stat">
+        <div class="res-label">You save</div>
+        <div class="res-val" id="rSave">$0.00</div>
+      </div>
+      <div class="res-stat">
+        <div class="res-label">Effective discount</div>
+        <div class="res-val" id="rEff">0%</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-tags">
+    <span class="page-tag">discount calculator</span>
+    <span class="page-tag">percent off</span>
+    <span class="page-tag">sale price</span>
+    <span class="page-tag">stacked discount</span>
+    <span class="page-tag">how much you save</span>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const money = n => '$' + (isFinite(n) ? n : 0).toFixed(2);
+let extra = [];
+
+function renderStacks() {
+  const wrap = $('stacks');
+  wrap.innerHTML = '';
+  extra.forEach((v, i) => {
+    const row = document.createElement('div');
+    row.className = 'stack-row';
+    row.innerHTML =
+      `<span style="font-size:.85rem;color:var(--text-muted)">then</span>` +
+      `<input type="number" class="form-input" min="0" max="100" step="1" value="${v}" data-i="${i}"> ` +
+      `<span style="font-size:.85rem;color:var(--text-muted)">% off</span>` +
+      `<button class="stack-del" data-del="${i}">✕</button>`;
+    wrap.appendChild(row);
+  });
+  wrap.querySelectorAll('input').forEach(inp => inp.addEventListener('input', e => {
+    extra[+e.target.dataset.i] = parseFloat(e.target.value) || 0; compute();
+  }));
+  wrap.querySelectorAll('.stack-del').forEach(btn => btn.addEventListener('click', e => {
+    extra.splice(+e.target.dataset.del, 1); renderStacks(); compute();
+  }));
+}
+
+function compute() {
+  const price = parseFloat($('price').value) || 0;
+  const first = parseFloat($('disc').value) || 0;
+  let p = price * (1 - first / 100);
+  extra.forEach(d => { p = p * (1 - (d || 0) / 100); });
+  const save = price - p;
+  const eff = price > 0 ? (save / price) * 100 : 0;
+  $('rFinal').textContent = money(p);
+  $('rSave').textContent  = money(save);
+  $('rEff').textContent   = eff.toFixed(1) + '%';
+}
+
+document.querySelectorAll('.tip-btn').forEach(b => b.addEventListener('click', () => {
+  $('disc').value = b.dataset.d; compute();
+}));
+$('addStack').addEventListener('click', () => { extra.push(10); renderStacks(); compute(); });
+['price','disc'].forEach(id => $(id).addEventListener('input', compute));
+compute();
+</script>
+</body>
+</html>

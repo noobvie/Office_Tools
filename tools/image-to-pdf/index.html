@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image to PDF — JPG &amp; PNG to PDF Converter — Office Tools</title>
+  <meta name="description" content="Convert JPG, PNG, WebP and other images into a single PDF. Reorder pages, choose A4 or Letter size, set orientation and margins. Free, runs in your browser — no upload.">
+  <meta name="keywords" content="image to PDF, JPG to PDF, PNG to PDF, photo to PDF, convert image to PDF, combine images into PDF, pictures to PDF, JPEG to PDF online">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Image to PDF — JPG &amp; PNG to PDF Converter — Office Tools">
+  <meta property="og:description" content="Combine JPG, PNG and WebP images into one PDF. Reorder pages, pick page size, orientation and margins. Free, runs in your browser.">
+  <meta property="og:url" content="https://tools.grin.money/tools/image-to-pdf/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Image to PDF — JPG &amp; PNG to PDF — Office Tools">
+  <meta name="twitter:description" content="Combine images into one PDF. Reorder, set page size, orientation and margins. No upload.">
+  <link rel="canonical" href="https://tools.grin.money/tools/image-to-pdf/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Image to PDF","description":"Convert and combine JPG, PNG and WebP images into a single PDF. Reorder pages, choose page size, orientation and margins.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/image-to-pdf/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .drop-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 2.2rem 1rem;
+      text-align: center; cursor: pointer; color: var(--text-muted); transition: all var(--transition); }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
+    .drop-zone input[type=file] { display: none; }
+    .drop-icon { font-size: 2.2rem; }
+    .opts-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: .75rem; }
+    .thumb-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(120px,1fr)); gap: .75rem; margin-top: 1rem; }
+    .thumb { position: relative; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--bg-secondary); }
+    .thumb img { width: 100%; height: 110px; object-fit: contain; display: block; background: #fff; }
+    .thumb-bar { display: flex; justify-content: space-between; align-items: center; padding: .3rem .4rem; gap: .2rem; }
+    .thumb-idx { font-size: .72rem; font-weight: 700; color: var(--text-muted); }
+    .thumb-btns { display: flex; gap: .15rem; }
+    .tbtn { border: none; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px;
+      cursor: pointer; font-size: .8rem; line-height: 1; padding: .15rem .35rem; color: var(--text); }
+    .tbtn:hover { border-color: var(--primary); color: var(--primary); }
+    .tbtn.del:hover { border-color: var(--danger); color: var(--danger); }
+    @media (max-width: 480px) { .opts-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Image to PDF</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🖼️➜📄 Image to PDF</h1>
+    <p>Combine JPG, PNG and WebP images into one PDF — reorder pages, set size, orientation and margins.</p>
+  </div>
+
+<section class="tool-about">
+  <h2>About Image to PDF</h2>
+  <p>Turn a batch of <strong>photos, scans or screenshots into a single PDF document</strong>. Add as many images as you like, drag the order with the arrow buttons, choose <strong>A4, US Letter, or fit-to-image</strong> page sizing, set the orientation and margins, then download one tidy PDF. Great for submitting scanned forms, receipts, ID copies, or photo sets where one file is easier than many.</p>
+  <p>Everything is generated locally in your browser using the open-source pdf-lib engine &mdash; your images are <strong>never uploaded</strong>. WebP, GIF and BMP images are automatically re-encoded to fit cleanly into the PDF. No watermarks, no account, no size limits beyond your device's memory.</p>
+</section>
+
+  <div class="card">
+    <label class="drop-zone" id="dropZone">
+      <div class="drop-icon">🖼️</div>
+      <div><strong>Click to add images</strong> or drag &amp; drop</div>
+      <div style="font-size:.8rem;margin-top:.3rem">JPG · PNG · WebP · GIF · BMP — multiple allowed</div>
+      <input type="file" id="fileInput" accept="image/*" multiple>
+    </label>
+
+    <div class="thumb-grid" id="thumbGrid"></div>
+  </div>
+
+  <div class="card mt-2">
+    <div class="opts-grid">
+      <div>
+        <label class="form-label">Page Size</label>
+        <select id="pageSize" class="form-input">
+          <option value="a4">A4 (210 × 297 mm)</option>
+          <option value="letter">US Letter (8.5 × 11 in)</option>
+          <option value="fit">Fit to image</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Orientation</label>
+        <select id="orient" class="form-input">
+          <option value="auto">Auto (match image)</option>
+          <option value="portrait">Portrait</option>
+          <option value="landscape">Landscape</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Image Fit</label>
+        <select id="fitMode" class="form-input">
+          <option value="contain">Fit — keep aspect ratio</option>
+          <option value="stretch">Stretch — fill page</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Margin (mm)</label>
+        <input type="number" id="margin" class="form-input" min="0" max="50" step="1" value="10">
+      </div>
+    </div>
+    <button class="btn btn-primary btn-full mt-2" id="genBtn" disabled>Create PDF</button>
+    <p id="statusMsg" style="font-size:.82rem;color:var(--text-muted);margin:.6rem 0 0;text-align:center"></p>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">JPG to PDF</span>
+  <span class="page-tag">PNG to PDF</span>
+  <span class="page-tag">photo to PDF</span>
+  <span class="page-tag">combine images</span>
+  <span class="page-tag">pictures to PDF</span>
+</div>
+</main>
+
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const { PDFDocument } = PDFLib;
+const MM = 72 / 25.4;            // millimetres → PDF points
+const PAGE = { a4: [595.28, 841.89], letter: [612, 792] };
+
+let images = [];   // { file, url }
+
+const dropZone  = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const thumbGrid = document.getElementById('thumbGrid');
+const genBtn    = document.getElementById('genBtn');
+
+function addFiles(fileList) {
+  [...fileList].filter(f => f.type.startsWith('image/')).forEach(f => {
+    images.push({ file: f, url: URL.createObjectURL(f) });
+  });
+  render();
+}
+
+function render() {
+  thumbGrid.innerHTML = '';
+  images.forEach((img, i) => {
+    const div = document.createElement('div');
+    div.className = 'thumb';
+    div.innerHTML = `
+      <img src="${img.url}" alt="page ${i + 1}">
+      <div class="thumb-bar">
+        <span class="thumb-idx">#${i + 1}</span>
+        <span class="thumb-btns">
+          <button class="tbtn" data-act="up"   data-i="${i}" title="Move left"  ${i === 0 ? 'disabled' : ''}>◀</button>
+          <button class="tbtn" data-act="down" data-i="${i}" title="Move right" ${i === images.length - 1 ? 'disabled' : ''}>▶</button>
+          <button class="tbtn del" data-act="del" data-i="${i}" title="Remove">✕</button>
+        </span>
+      </div>`;
+    thumbGrid.appendChild(div);
+  });
+  genBtn.disabled = images.length === 0;
+}
+
+thumbGrid.addEventListener('click', e => {
+  const btn = e.target.closest('.tbtn');
+  if (!btn) return;
+  const i = +btn.dataset.i, act = btn.dataset.act;
+  if (act === 'del') { URL.revokeObjectURL(images[i].url); images.splice(i, 1); }
+  else if (act === 'up'   && i > 0)               { [images[i - 1], images[i]] = [images[i], images[i - 1]]; }
+  else if (act === 'down' && i < images.length-1) { [images[i + 1], images[i]] = [images[i], images[i + 1]]; }
+  render();
+});
+
+fileInput.addEventListener('change', e => { addFiles(e.target.files); fileInput.value = ''; });
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('dragover'); addFiles(e.dataTransfer.files);
+});
+
+// Re-encode any image to JPEG (white background) so pdf-lib can embed it uniformly
+function toJpegBytes(url) {
+  return new Promise((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = im.naturalWidth; c.height = im.naturalHeight;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(im, 0, 0);
+      c.toBlob(b => b.arrayBuffer().then(buf =>
+        resolve({ bytes: new Uint8Array(buf), w: im.naturalWidth, h: im.naturalHeight })
+      ), 'image/jpeg', 0.92);
+    };
+    im.onerror = () => reject(new Error('Could not load image'));
+    im.src = url;
+  });
+}
+
+genBtn.addEventListener('click', async () => {
+  if (!images.length) return;
+  genBtn.disabled = true;
+  const status = document.getElementById('statusMsg');
+  const pageSize = document.getElementById('pageSize').value;
+  const orient   = document.getElementById('orient').value;
+  const fitMode  = document.getElementById('fitMode').value;
+  const marginPt = (parseFloat(document.getElementById('margin').value) || 0) * MM;
+
+  try {
+    const pdf = await PDFDocument.create();
+    for (let i = 0; i < images.length; i++) {
+      status.textContent = `Processing image ${i + 1} of ${images.length}…`;
+      const { bytes, w, h } = await toJpegBytes(images[i].url);
+      const embedded = await pdf.embedJpg(bytes);
+
+      // Decide page dimensions
+      let pw, ph;
+      if (pageSize === 'fit') {
+        pw = w + marginPt * 2;
+        ph = h + marginPt * 2;
+      } else {
+        [pw, ph] = PAGE[pageSize];
+      }
+      // Orientation
+      const wantLandscape = orient === 'landscape' || (orient === 'auto' && w > h);
+      if (pageSize !== 'fit') {
+        const isLandscape = pw > ph;
+        if (wantLandscape !== isLandscape) [pw, ph] = [ph, pw];
+      }
+
+      const page = pdf.addPage([pw, ph]);
+      const availW = pw - marginPt * 2;
+      const availH = ph - marginPt * 2;
+
+      let dw, dh;
+      if (fitMode === 'stretch') {
+        dw = availW; dh = availH;
+      } else {
+        const scale = Math.min(availW / w, availH / h);
+        dw = w * scale; dh = h * scale;
+      }
+      page.drawImage(embedded, {
+        x: marginPt + (availW - dw) / 2,
+        y: marginPt + (availH - dh) / 2,
+        width: dw, height: dh,
+      });
+    }
+
+    status.textContent = 'Saving PDF…';
+    const out = await pdf.save();
+    const blob = new Blob([out], { type: 'application/pdf' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'images.pdf';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    status.textContent = `✓ Created PDF with ${images.length} page${images.length === 1 ? '' : 's'}.`;
+  } catch (err) {
+    status.textContent = 'Error: ' + (err.message || 'failed to create PDF');
+  } finally {
+    genBtn.disabled = images.length === 0;
+  }
+});
+
+render();
+</script>
+</body>
+</html>

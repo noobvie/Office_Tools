@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales Tax &amp; VAT Calculator — Add or Remove Tax — Office Tools</title>
+  <meta name="description" content="Calculate sales tax or VAT — add tax to a net price or remove tax from a gross price. Enter any rate or use country presets. See net, tax amount and gross instantly.">
+  <meta name="keywords" content="sales tax calculator, VAT calculator, add tax, remove VAT, reverse VAT, gross to net, net to gross, tax rate calculator, GST calculator">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Sales Tax &amp; VAT Calculator — Office Tools">
+  <meta property="og:description" content="Add tax to a net price or remove VAT from a gross price. Rate presets included.">
+  <meta property="og:url" content="https://tools.grin.money/tools/tax-calculator/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Sales Tax &amp; VAT Calculator — Office Tools">
+  <meta name="twitter:description" content="Add or remove sales tax / VAT with country rate presets.">
+  <link rel="canonical" href="https://tools.grin.money/tools/tax-calculator/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Sales Tax & VAT Calculator","description":"Calculate sales tax or VAT — add tax to a net price or remove tax from a gross price, with country rate presets. Runs in your browser.","applicationCategory":"FinanceApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/tax-calculator/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    .seg { display: inline-flex; border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .seg button { padding: .5rem 1rem; border: none; background: none; cursor: pointer;
+      font-size: .88rem; font-weight: 700; color: var(--text); }
+    .seg button.active { background: var(--primary); color: #fff; }
+    .preset-row { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .5rem; }
+    .preset-btn { padding: .4rem .8rem; border: 1.5px solid var(--border); border-radius: 2rem;
+      background: none; cursor: pointer; font-size: .82rem; font-weight: 600; color: var(--text); }
+    .preset-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .result-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .75rem; margin-top: .75rem; }
+    .res-stat { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: .85rem 1rem; }
+    .res-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+    .res-val { font-size: 1.65rem; font-weight: 800; color: var(--primary); margin-top: .15rem; }
+    @media (max-width: 560px) { .input-grid, .result-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Sales Tax &amp; VAT Calculator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🧾 Sales Tax &amp; VAT Calculator</h1>
+    <p>Add tax to a net price or work backwards to remove VAT from a gross total.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About this tool</h2>
+    <p>Two calculations in one. <strong>Add tax</strong> takes a net (pre-tax) amount and adds the tax to show the gross price a customer pays. <strong>Remove tax</strong> (reverse VAT) takes a gross amount that already includes tax and works out the original net price and the tax portion. Pick a country preset or type any rate.</p>
+    <p>All maths runs in your browser. Results are estimates — always confirm the exact rate and rounding rules that apply to your transaction.</p>
+  </section>
+
+  <div class="card">
+    <div style="margin-bottom:1rem">
+      <div class="seg" id="modeSeg">
+        <button data-mode="add" class="active">Add tax (net → gross)</button>
+        <button data-mode="remove">Remove tax (gross → net)</button>
+      </div>
+    </div>
+    <div class="input-grid">
+      <div>
+        <label class="form-label" id="amtLabel">Net amount</label>
+        <input type="number" id="amt" class="form-input" min="0" step="0.01" value="100" placeholder="0.00">
+      </div>
+      <div>
+        <label class="form-label">Tax rate (%)</label>
+        <input type="number" id="rate" class="form-input" min="0" step="0.1" value="20" placeholder="20">
+      </div>
+    </div>
+    <div class="preset-row" id="presets">
+      <button class="preset-btn" data-rate="5">5%</button>
+      <button class="preset-btn" data-rate="7.5">7.5% US avg</button>
+      <button class="preset-btn" data-rate="10">10% GST</button>
+      <button class="preset-btn" data-rate="20">20% UK VAT</button>
+      <button class="preset-btn" data-rate="19">19% DE</button>
+      <button class="preset-btn" data-rate="21">21% EU</button>
+      <button class="preset-btn" data-rate="25">25% Nordic</button>
+    </div>
+  </div>
+
+  <div class="card mt-2">
+    <div class="result-grid">
+      <div class="res-stat">
+        <div class="res-label">Net (excl. tax)</div>
+        <div class="res-val" id="rNet">$0.00</div>
+      </div>
+      <div class="res-stat">
+        <div class="res-label">Tax amount</div>
+        <div class="res-val" id="rTax">$0.00</div>
+      </div>
+      <div class="res-stat">
+        <div class="res-label">Gross (incl. tax)</div>
+        <div class="res-val" id="rGross">$0.00</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-2" style="border-left:3px solid var(--warning,#f59e0b)">
+    <p style="font-size:.78rem;color:var(--text-muted);margin:0;line-height:1.6">
+      <strong style="color:var(--text)">⚠ Disclaimer:</strong>
+      Results are estimates. Tax rates, exemptions, and rounding rules vary by jurisdiction and product.
+      Verify the applicable rate and totals with an official source or your accountant.
+    </p>
+  </div>
+
+  <div class="page-tags">
+    <span class="page-tag">sales tax</span>
+    <span class="page-tag">VAT calculator</span>
+    <span class="page-tag">reverse VAT</span>
+    <span class="page-tag">add tax</span>
+    <span class="page-tag">gross to net</span>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+let mode = 'add';
+const fmt = n => '$' + (isFinite(n) ? n : 0).toFixed(2);
+
+function compute() {
+  const amt  = parseFloat($('amt').value) || 0;
+  const rate = parseFloat($('rate').value) || 0;
+  let net, tax, gross;
+  if (mode === 'add') {
+    net = amt;
+    tax = amt * rate / 100;
+    gross = net + tax;
+  } else {
+    gross = amt;
+    net = amt / (1 + rate / 100);
+    tax = gross - net;
+  }
+  $('rNet').textContent   = fmt(net);
+  $('rTax').textContent   = fmt(tax);
+  $('rGross').textContent = fmt(gross);
+}
+
+document.querySelectorAll('#modeSeg button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#modeSeg button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active'); mode = b.dataset.mode;
+  $('amtLabel').textContent = mode === 'add' ? 'Net amount' : 'Gross amount (incl. tax)';
+  compute();
+}));
+document.querySelectorAll('.preset-btn').forEach(b => b.addEventListener('click', () => {
+  $('rate').value = b.dataset.rate; compute();
+}));
+['amt','rate'].forEach(id => $(id).addEventListener('input', compute));
+compute();
+</script>
+</body>
+</html>
