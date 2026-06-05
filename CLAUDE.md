@@ -80,17 +80,24 @@ Four themes: `light` → `dark` → `matrix` → `anime`. Set via `data-theme` o
 
 ### Network tools — backend endpoints
 
-| Endpoint | Feature |
-|---|---|
-| `GET /api/resolve?host=` | DNS A+AAAA resolve (IPv4+IPv6) |
-| `GET /api/portcheck?host=&port=` | TCP probe |
-| `GET /api/net/ping` | SSE-streamed ping (Windows/Linux) |
-| `GET /api/net/traceroute` | SSE-streamed traceroute |
-| `GET /api/net/ptr?ip=` | Reverse DNS via `dns.reverse()` |
-| `GET /api/domain/dns?domain=&type=` | DoH proxy — A/AAAA/MX/NS/TXT/CNAME/SOA/CAA |
-| `GET /api/domain/whois`, `rdap`, `availability` | Domain info |
+| Endpoint | Feature | Response |
+|---|---|---|
+| `GET /api/resolve?host=` | DNS A+AAAA resolve (IPv4+IPv6) | `{host, addresses:[{ip,family}]}` |
+| `GET /api/portcheck?host=&port=` | Single TCP probe | `{host, port, open}` |
+| `GET /api/portcheckbatch?host=&ports=` | Batch TCP probe (ports CSV, max 60) | `{host, results:[{port,open}]}` |
+| `GET /api/net/ping` | SSE-streamed ping (Windows/Linux) | SSE |
+| `GET /api/net/traceroute` | SSE-streamed traceroute | SSE |
+| `GET /api/net/ptr?ip=` | Reverse DNS via `dns.reverse()` | JSON |
+| `GET /api/domain/dns?domain=&type=` | DoH proxy — A/AAAA/MX/NS/TXT/CNAME/SOA/CAA | JSON |
+| `GET /api/domain/whois`, `rdap`, `availability` | Domain info | JSON |
 
 IPv6 addresses are accepted with or without brackets (`[::1]` and `::1`); strip brackets with `.replace(/^\[|\]$/g, '')` before use.
+
+**`portcheck` / `portcheckbatch` are a PUBLIC service** (open CORS `*`, not the `CORS_ORIGINS` allowlist that guards every other route) so any external page — e.g. a Grin solo-pool setup page on any domain — can verify its own stratum port. Two safeguards make this safe and must stay in place:
+- **SSRF guard** (`resolvePublicTarget` → `ipIsPublic`): rejects loopback/private/link-local/CGNAT/reserved/IPv4-mapped targets and resolves hostnames to a validated **public** IP *before* connecting, so the endpoint can't be used to probe the server's own internal network or cloud metadata (`169.254.169.254`). DNS-rebinding is defeated by connecting to the resolved IP, not the raw hostname.
+- **Rate limit** `probeRLMiddleware`: 40 req/min per IP (separate from `netRLMiddleware`'s 10/min on ping/resolve/ptr). Raising this is only safe while the SSRF guard is intact.
+
+Consumed by the Grin Node Toolkit solo-mining setup page (`web/07_mining_pool_solo/setup-solo-mining.html`, configured via its `data/config.json` → `portcheck_api`) to render live "🟢 reachable / 🔴 unreachable" pills.
 
 ### Two-server setup
 

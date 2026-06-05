@@ -252,6 +252,87 @@ app.get('/api/tools/popular', (req, res) => {
 const net = require('net');
 const dns = require('dns');
 
+// ── Public probe service (portcheck / portcheckbatch) ─────────
+// These GET routes are a PUBLIC service so any solo-pool setup page on any domain can
+// verify its own stratum port. Open CORS only on these read-only routes — the global
+// allowlist still guards every write route (uploads, pastes, payment, AI). No cookies
+// are used, so Access-Control-Allow-Origin:* is safe here.
+function publicCors(req, res, next) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET');
+  res.setHeader('Vary', 'Origin');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+}
+
+// SSRF guard: a public TCP-connect endpoint must never be usable to probe the server's
+// own internal network or cloud metadata. Reject loopback/private/link-local/reserved
+// targets; resolve hostnames first so we connect to the VALIDATED public IP — this
+// defeats DNS rebinding to 127.0.0.1 / 169.254.169.254 / 10.x etc.
+function ipIsPublic(ip) {
+  if (net.isIPv4(ip)) {
+    const o = ip.split('.').map(Number);
+    if (o.length !== 4 || o.some(n => isNaN(n) || n < 0 || n > 255)) return false;
+    if (o[0] === 0)   return false;                              // 0.0.0.0/8
+    if (o[0] === 10)  return false;                              // 10/8 private
+    if (o[0] === 127) return false;                              // loopback
+    if (o[0] === 169 && o[1] === 254) return false;             // link-local (metadata)
+    if (o[0] === 172 && o[1] >= 16 && o[1] <= 31) return false; // 172.16/12 private
+    if (o[0] === 192 && o[1] === 168) return false;             // 192.168/16 private
+    if (o[0] === 100 && o[1] >= 64 && o[1] <= 127) return false;// CGNAT 100.64/10
+    if (o[0] >= 224)  return false;                              // multicast/reserved
+    return true;
+  }
+  if (net.isIPv6(ip)) {
+    const a = ip.toLowerCase();
+    if (a === '::1' || a === '::') return false;       // loopback / unspecified
+    if (/^fe[89ab]/.test(a)) return false;             // link-local fe80::/10
+    if (/^f[cd]/.test(a))    return false;             // unique-local fc00::/7
+    const m = a.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/); // IPv4-mapped
+    if (m) return ipIsPublic(m[1]);
+    return true;
+  }
+  return false;
+}
+
+// Resolve host → a public IP to connect to, or throw. IP inputs are validated directly.
+function resolvePublicTarget(host) {
+  return new Promise((resolve, reject) => {
+    const clean = host.replace(/^\[|\]$/g, '');
+    if (net.isIP(clean)) {
+      if (!ipIsPublic(clean)) return reject(new Error('Target is a private or reserved address'));
+      return resolve(clean);
+    }
+    dns.lookup(clean, { all: true }, (err, addrs) => {
+      if (err || !addrs || !addrs.length) return reject(new Error('DNS resolution failed'));
+      const ok = addrs.find(a => ipIsPublic(a.address));
+      if (!ok) return reject(new Error('Host resolves only to private or reserved addresses'));
+      resolve(ok.address);
+    });
+  });
+}
+
+// Dedicated 40/min per-IP limiter for the public probe endpoints (a setup page may
+// check a few hosts × ports and reload). Kept separate from ping/resolve (netRL, 10/min).
+const _probeRateMap = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _probeRateMap) { if (now > v.resetAt) _probeRateMap.delete(k); }
+}, 300_000);
+function _probeAllow(ip) {
+  const now = Date.now();
+  let e = _probeRateMap.get(ip);
+  if (!e || now > e.resetAt) e = { count: 0, resetAt: now + 60_000 };
+  e.count++;
+  _probeRateMap.set(ip, e);
+  return e.count <= 40;
+}
+function probeRLMiddleware(req, res, next) {
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+  if (!_probeAllow(ip)) return res.status(429).json({ error: 'Rate limit: 40 requests/minute. Please wait.' });
+  next();
+}
+
 app.get('/api/resolve', netRLMiddleware, (req, res) => {
   const host = String(req.query.host || '').trim();
   if (!host) return res.status(400).json({ error: 'Missing host' });
@@ -280,15 +361,16 @@ app.get('/api/resolve', netRLMiddleware, (req, res) => {
   dns.resolve6(host, (err, addrs) => { v6 = err ? [] : addrs; finish(); });
 });
 
-app.get('/api/portcheck', netRLMiddleware, (req, res) => {
+app.get('/api/portcheck', publicCors, probeRLMiddleware, async (req, res) => {
   const hostInput = String(req.query.host || '').trim();
   const port = parseInt(req.query.port, 10);
   if (!hostInput || isNaN(port) || port < 1 || port > 65535) {
     return res.status(400).json({ error: 'Invalid host or port' });
   }
 
-  // Strip brackets from IPv6 addresses so both [::1] and ::1 work
-  const host = hostInput.replace(/^\[|\]$/g, '');
+  let target;
+  try { target = await resolvePublicTarget(hostInput); }
+  catch (e) { return res.status(400).json({ error: e.message }); }
 
   const TIMEOUT = 4000;
   const socket  = new net.Socket();
@@ -302,30 +384,11 @@ app.get('/api/portcheck', netRLMiddleware, (req, res) => {
   socket.once('connect', () => finish(true));
   socket.once('timeout',  () => finish(false));
   socket.once('error',    () => finish(false));
-  socket.connect(port, host);
+  socket.connect(port, target);
 });
 
-// Batch port checker — runs all ports concurrently, own rate limiter
-const _batchRateMap = new Map();
-setInterval(() => {
-  const now = Date.now();
-  for (const [k, v] of _batchRateMap) { if (now > v.resetAt) _batchRateMap.delete(k); }
-}, 300_000);
-function _batchAllow(ip) {
-  const now = Date.now();
-  let e = _batchRateMap.get(ip);
-  if (!e || now > e.resetAt) e = { count: 0, resetAt: now + 60_000 };
-  e.count++;
-  _batchRateMap.set(ip, e);
-  return e.count <= 30;
-}
-function batchRLMiddleware(req, res, next) {
-  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
-  if (!_batchAllow(ip)) return res.status(429).json({ error: 'Rate limit: 30 requests/minute. Please wait.' });
-  next();
-}
-
-app.get('/api/portcheckbatch', batchRLMiddleware, async (req, res) => {
+// Batch port checker — runs all ports concurrently (public, CORS-open, probe limiter)
+app.get('/api/portcheckbatch', publicCors, probeRLMiddleware, async (req, res) => {
   const hostInput = String(req.query.host || '').trim();
   const portsParam = String(req.query.ports || '').trim();
   if (!hostInput || !portsParam) return res.status(400).json({ error: 'Missing host or ports' });
@@ -336,9 +399,11 @@ app.get('/api/portcheckbatch', batchRLMiddleware, async (req, res) => {
   if (!portNums.length) return res.status(400).json({ error: 'No valid ports' });
   if (portNums.length > 60) return res.status(400).json({ error: 'Max 60 ports per batch' });
 
-  const host = hostInput.replace(/^\[|\]$/g, '');
-  const TIMEOUT = 4000;
+  let target;
+  try { target = await resolvePublicTarget(hostInput); }
+  catch (e) { return res.status(400).json({ error: e.message }); }
 
+  const TIMEOUT = 4000;
   function probePort(port) {
     return new Promise(resolve => {
       const socket = new net.Socket();
@@ -352,7 +417,7 @@ app.get('/api/portcheckbatch', batchRLMiddleware, async (req, res) => {
       socket.once('connect', () => finish(true));
       socket.once('timeout',  () => finish(false));
       socket.once('error',    () => finish(false));
-      socket.connect(port, host);
+      socket.connect(port, target);
     });
   }
 
