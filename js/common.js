@@ -313,6 +313,7 @@ const OT_TOOLS = [
   // 🌐 Network & Web
   { name: 'Currency Converter',      path: 'currency',              cat: '🌐 Network & Web',        icon: '💱', desc: 'Convert 40+ fiat currencies and crypto with live rates' },
   { name: 'What Is My IP?',          path: 'my-ip',                 cat: '🌐 Network & Web',        icon: '🌐', desc: 'Show your public IP, ISP, country and IPv6 status' },
+  { name: 'VPN / IP Leak Test',      path: 'vpn-leak-test',         cat: '🌐 Network & Web',        icon: '🛡️', desc: 'WebRTC + IPv6 leak check — is your VPN hiding your real IP?',  isNew: true },
   { name: 'IP Location Lookup',      path: 'ip-location',           cat: '🌐 Network & Web',        icon: '📍', desc: 'Country, city, ISP, ASN and map for any IP or domain' },
   { name: 'Campaign URL Builder',    path: 'utm-builder',           cat: '🌐 Network & Web',        icon: '📎', desc: 'Build UTM-tagged URLs for Google Analytics tracking' },
   { name: 'CSR Decoder',             path: 'csr-decoder',           cat: '🌐 Network & Web',        icon: '🔐', desc: 'Decode a CSR — subject, key size, SANs, fingerprints' },

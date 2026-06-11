@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VPN / IP Leak Test — WebRTC &amp; IPv6 Leak Check | Office Tools</title>
+  <meta name="description" content="Check whether your VPN is leaking your real IP. Tests your public IPv4/IPv6, detects WebRTC leaks that expose your true address, and flags IPv6 leaks — runs in your browser.">
+  <meta name="keywords" content="vpn leak test, webrtc leak test, ip leak test, check vpn, am i leaking my ip, ipv6 leak, webrtc ip leak, vpn security check, is my vpn working">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="VPN / IP Leak Test — WebRTC &amp; IPv6 Leak Check">
+  <meta property="og:description" content="Check whether your VPN is leaking your real IP. Tests public IPv4/IPv6, detects WebRTC leaks and IPv6 leaks — runs in your browser.">
+  <meta property="og:url" content="https://tools.grin.money/tools/vpn-leak-test/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="VPN / IP Leak Test — WebRTC &amp; IPv6 Leak Check">
+  <meta name="twitter:description" content="Check whether your VPN is leaking your real IP. Tests public IPv4/IPv6, detects WebRTC leaks and IPv6 leaks — runs in your browser.">
+  <link rel="canonical" href="https://tools.grin.money/tools/vpn-leak-test/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"VPN / IP Leak Test","description":"Check whether your VPN is leaking your real IP. Tests your public IPv4/IPv6, detects WebRTC leaks that expose your true address, and flags IPv6 leaks — runs in your browser.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/vpn-leak-test/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .verdict { border-radius: var(--radius); padding: 1.1rem 1.25rem; display: flex; gap: .9rem; align-items: center; border: 1.5px solid var(--border); }
+    .verdict .vIcon { font-size: 2rem; line-height: 1; flex-shrink: 0; }
+    .verdict .vTitle { font-weight: 800; font-size: 1.05rem; }
+    .verdict .vText { font-size: .86rem; color: var(--text-muted); margin-top: .15rem; }
+    .verdict.ok   { background: var(--success-dim, rgba(34,197,94,.12)); border-color: var(--success); }
+    .verdict.warn { background: var(--warning-dim, rgba(245,158,11,.12)); border-color: var(--warning); }
+    .verdict.bad  { background: var(--danger-dim, rgba(239,68,68,.12)); border-color: var(--danger); }
+    .verdict.pend { background: var(--bg-secondary); }
+
+    .iprow { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .75rem; margin-top: .25rem; }
+    .ipbox { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: .8rem 1rem; }
+    .ipbox .lbl { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+    .ipbox .ipv { font-family: 'Courier New', monospace; font-weight: 800; font-size: 1.05rem; word-break: break-all; color: var(--primary); margin: .25rem 0; }
+    .ipbox .meta { font-size: .8rem; color: var(--text-muted); }
+
+    .cand-list { display: flex; flex-direction: column; gap: .4rem; margin-top: .6rem; }
+    .cand { display: flex; align-items: center; gap: .6rem; background: var(--bg-secondary); border-radius: var(--radius); padding: .5rem .75rem; font-size: .85rem; }
+    .cand .ip { font-family: 'Courier New', monospace; font-weight: 700; word-break: break-all; flex: 1; }
+    .pill { font-size: .72rem; font-weight: 700; padding: .12rem .55rem; border-radius: 50px; white-space: nowrap; }
+    .pill.good { background: var(--success); color: #fff; }
+    .pill.info { background: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border); }
+    .pill.bad  { background: var(--danger); color: #fff; }
+
+    .loading-pulse { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); animation: pulse-anim .8s ease-in-out infinite alternate; margin-right: .4rem; }
+    @keyframes pulse-anim { to { opacity: .2; transform: scale(.7); } }
+    .sub { font-size: .82rem; color: var(--text-muted); margin-top: .5rem; }
+    .fixlist { margin: .5rem 0 0; padding-left: 1.2rem; font-size: .85rem; line-height: 1.7; color: var(--text-muted); }
+    .fixlist code { font-size: .82rem; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">VPN / IP Leak Test</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🛡️ VPN / IP Leak Test</h1>
+    <p>Check whether your VPN is hiding your real IP — public IP, WebRTC and IPv6 leak checks, all in your browser.</p>
+  </div>
+
+<section class="tool-about">
+  <h2>About the VPN / IP Leak Test</h2>
+  <p>A VPN is only doing its job if your <strong>real IP address stays hidden</strong>. Two common leaks defeat it even while the VPN looks "connected": a <strong>WebRTC leak</strong> (the browser's real-time API can reveal your true IP straight to a website, bypassing the tunnel) and an <strong>IPv6 leak</strong> (many VPNs only tunnel IPv4, so your ISP's IPv6 address slips out). This tool checks the public IP that websites see, runs a WebRTC probe, and inspects IPv6 exposure — then gives you a plain verdict. It all runs locally in your browser.</p>
+  <p style="font-size:.86rem;color:var(--text-muted)"><strong>How to read it:</strong> the tool can't know whether you're on a VPN or what your "real" IP is. What it flags is <em>inconsistency</em> — a different public IP or network (ASN) showing up via WebRTC or IPv6 than the one your VPN presents. That mismatch is the actual signal of a leak. Run it once with the VPN <em>off</em> and once <em>on</em> to compare.</p>
+</section>
+
+  <!-- Verdict -->
+  <div class="verdict pend" id="verdict">
+    <span class="vIcon" id="vIcon"><span class="loading-pulse"></span></span>
+    <div>
+      <div class="vTitle" id="vTitle">Running leak tests…</div>
+      <div class="vText" id="vText">Detecting your public IP, probing WebRTC, and checking IPv6.</div>
+    </div>
+  </div>
+
+  <!-- What sites see -->
+  <div class="card mt-2">
+    <strong>What websites see (your public IP)</strong>
+    <div class="iprow mt-2" id="pubRow">
+      <div class="ipbox"><div class="lbl">IPv4</div><div class="ipv"><span class="loading-pulse"></span></div><div class="meta">—</div></div>
+      <div class="ipbox"><div class="lbl">IPv6</div><div class="ipv"><span class="loading-pulse"></span></div><div class="meta">—</div></div>
+    </div>
+    <div class="sub" id="pubNote"></div>
+  </div>
+
+  <!-- WebRTC -->
+  <div class="card mt-2">
+    <strong>WebRTC leak probe</strong>
+    <p class="sub">WebRTC can expose IP addresses directly to a site. Below is every address your browser revealed via WebRTC.</p>
+    <div class="cand-list" id="candList"><div class="sub"><span class="loading-pulse"></span> Probing WebRTC…</div></div>
+    <div class="sub" id="rtcVerdict"></div>
+  </div>
+
+  <!-- IPv6 -->
+  <div class="card mt-2">
+    <strong>IPv6 exposure</strong>
+    <div class="sub" id="ipv6Verdict"><span class="loading-pulse"></span> Checking…</div>
+  </div>
+
+  <div class="btn-group mt-2">
+    <button class="btn btn-secondary btn-sm" id="rerunBtn">↺ Run again</button>
+  </div>
+
+  <!-- Fixes -->
+  <div class="card mt-2">
+    <strong>If you found a leak — how to fix it</strong>
+    <ul class="fixlist">
+      <li><b>WebRTC leak:</b> disable WebRTC in the browser, or install a WebRTC-blocking extension. Firefox: set <code>media.peerconnection.enabled</code> to <code>false</code> in <code>about:config</code>. Brave: Settings → Shields → WebRTC IP handling → "Disable non-proxied UDP". Some VPN clients block WebRTC leaks for you.</li>
+      <li><b>IPv6 leak:</b> use a VPN that tunnels or disables IPv6, enable your VPN's "IPv6 leak protection", or disable IPv6 on your OS/router while connected.</li>
+      <li><b>DNS leak</b> (a separate check this tool doesn't cover): use the VPN's own DNS and enable its "DNS leak protection".</li>
+    </ul>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">VPN leak test</span>
+  <span class="page-tag">WebRTC leak test</span>
+  <span class="page-tag">IP leak</span>
+  <span class="page-tag">IPv6 leak</span>
+  <span class="page-tag">is my VPN working</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+const $ = id => document.getElementById(id);
+
+function countryName(code) { try { return new Intl.DisplayNames(['en'], { type: 'region' }).of(code); } catch { return code; } }
+function fetchJson(url, ms = 6000) {
+  const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { signal: ctrl.signal }).then(r => { clearTimeout(t); return r.json(); }).catch(e => { clearTimeout(t); throw e; });
+}
+function fetchText(url, ms = 6000) {
+  const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { signal: ctrl.signal }).then(r => { clearTimeout(t); return r.text(); }).catch(e => { clearTimeout(t); throw e; });
+}
+
+async function detectIpv4() {
+  const re = /^\d+\.\d+\.\d+\.\d+$/;
+  const t4 = async fn => { try { const v = await fn(); const s = String(v || '').trim(); if (re.test(s)) return s; } catch {} return null; };
+  const r = await Promise.all([
+    t4(() => fetchJson('https://api4.ipify.org?format=json').then(d => d.ip)),
+    t4(() => fetchText('https://ipv4.icanhazip.com')),
+    t4(() => fetchText('https://checkip.amazonaws.com')),
+    t4(() => fetchText('https://v4.ident.me')),
+  ]);
+  return r.find(Boolean) || null;
+}
+async function detectIpv6() {
+  try { const d = await fetchJson('https://api6.ipify.org?format=json'); if (d.ip && d.ip.includes(':')) return d.ip; } catch {}
+  try { const t = await fetchText('https://v6.ident.me'); if (t.trim().includes(':')) return t.trim(); } catch {}
+  return null;
+}
+async function fetchGeo(ip) {
+  if (!ip) return null;
+  try { const d = await fetchJson(`${API}/api/ip/geo?ip=${encodeURIComponent(ip)}`); if (d.status === 'success') return d; } catch {}
+  return null;
+}
+
+// ── classify an address found via WebRTC or HTTP ────────────────────
+function classifyIp(ip) {
+  if (/\.local$/i.test(ip)) return 'masked';      // mDNS-masked local (good)
+  if (ip.includes(':')) {
+    const low = ip.toLowerCase();
+    if (low === '::1' || low.startsWith('fe80') || low.startsWith('fc') || low.startsWith('fd')) return 'private';
+    return 'public6';
+  }
+  if (/^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip)) return 'private';
+  return 'public4';
+}
+
+// ── WebRTC candidate gathering ──────────────────────────────────────
+function webrtcGather() {
+  return new Promise(resolve => {
+    let pc;
+    try {
+      const RTC = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
+      if (!RTC) return resolve({ supported: false, ips: [] });
+      pc = new RTC({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+    } catch { return resolve({ supported: false, ips: [] }); }
+
+    const ips = new Set();
+    const grab = txt => {
+      if (!txt) return;
+      const re = /([0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){2,7}|(?:\d{1,3}\.){3}\d{1,3}|[a-zA-Z0-9-]+\.local)/g;
+      let m; while ((m = re.exec(txt))) ips.add(m[1]);
+    };
+    try { pc.createDataChannel('probe'); } catch {}
+    pc.onicecandidate = e => { if (e.candidate) grab(e.candidate.candidate); else finish(); };
+    pc.createOffer().then(o => { grab(o.sdp); return pc.setLocalDescription(o); }).catch(() => {});
+
+    let done = false;
+    function finish() { if (done) return; done = true; try { pc.close(); } catch {} resolve({ supported: true, ips: [...ips] }); }
+    setTimeout(finish, 2600);
+  });
+}
+
+// ── Orchestration ───────────────────────────────────────────────────
+let state = {};
+async function run() {
+  // reset UI
+  setVerdict('pend', '<span class="loading-pulse"></span>', 'Running leak tests…', 'Detecting your public IP, probing WebRTC, and checking IPv6.');
+  $('pubRow').innerHTML = '<div class="ipbox"><div class="lbl">IPv4</div><div class="ipv"><span class="loading-pulse"></span></div><div class="meta">—</div></div><div class="ipbox"><div class="lbl">IPv6</div><div class="ipv"><span class="loading-pulse"></span></div><div class="meta">—</div></div>';
+  $('candList').innerHTML = '<div class="sub"><span class="loading-pulse"></span> Probing WebRTC…</div>';
+  $('rtcVerdict').textContent = ''; $('ipv6Verdict').innerHTML = '<span class="loading-pulse"></span> Checking…';
+
+  const [v4, v6, rtc] = await Promise.all([detectIpv4(), detectIpv6(), webrtcGather()]);
+  const [geo4, geo6] = await Promise.all([fetchGeo(v4), fetchGeo(v6)]);
+  state = { v4, v6, rtc, geo4, geo6 };
+
+  renderPublic(v4, v6, geo4, geo6);
+  const rtcInfo = renderWebRtc(rtc, v4, v6);
+  const v6Info = renderIpv6(v4, v6, geo4, geo6);
+  renderVerdict(rtcInfo, v6Info, v4, v6);
+}
+
+function geoLabel(g) {
+  if (!g) return '';
+  const loc = [g.city, g.regionName, g.country || countryName(g.countryCode)].filter(Boolean).join(', ');
+  const net = g.isp || g.org || g.as || '';
+  return [net, loc].filter(Boolean).join(' · ');
+}
+function asnOf(g) { return g ? (g.as || g.isp || g.org || '') : ''; }
+
+function renderPublic(v4, v6, geo4, geo6) {
+  const box = (lbl, ip, geo) => `<div class="ipbox">
+    <div class="lbl">${lbl}</div>
+    <div class="ipv">${ip ? escHtml(ip) : '<span style="color:var(--text-muted);font-size:.85rem">none detected</span>'}</div>
+    <div class="meta">${ip ? escHtml(geoLabel(geo) || '—') : 'Not reachable on this network'}</div>
+  </div>`;
+  $('pubRow').innerHTML = box('IPv4', v4, geo4) + box('IPv6', v6, geo6);
+  $('pubNote').innerHTML = (v4 && v6)
+    ? 'Your browser is reachable over both IPv4 and IPv6.'
+    : v4 ? 'IPv6 was not detected — only IPv4 is exposed.' : v6 ? 'Only IPv6 was detected.' : '';
+}
+
+function renderWebRtc(rtc, v4, v6) {
+  const list = $('candList');
+  if (!rtc.supported) {
+    list.innerHTML = '<div class="cand"><span class="ip">WebRTC is disabled or unavailable in this browser</span><span class="pill good">Can\'t leak ✓</span></div>';
+    $('rtcVerdict').innerHTML = '✓ WebRTC is off — it cannot expose your IP. This is the safest state.';
+    return { leak: false, publicFound: [], blocked: true };
+  }
+  if (!rtc.ips.length) {
+    list.innerHTML = '<div class="cand"><span class="ip">No candidates returned</span><span class="pill good">No leak ✓</span></div>';
+    $('rtcVerdict').innerHTML = '✓ WebRTC returned no addresses — nothing leaked.';
+    return { leak: false, publicFound: [], blocked: false };
+  }
+  const publicFound = [];
+  const rows = rtc.ips.map(ip => {
+    const cls = classifyIp(ip);
+    let pill, label;
+    if (cls === 'masked') { pill = 'good'; label = 'Masked (.local) ✓'; }
+    else if (cls === 'private') { pill = 'info'; label = 'Local / private'; }
+    else { // public4 / public6
+      const matchesVpn = ip === v4 || ip === v6;
+      publicFound.push({ ip, cls, matchesVpn });
+      pill = matchesVpn ? 'info' : 'bad';
+      label = matchesVpn ? 'Public (your VPN IP)' : 'Public — REAL IP leak ✗';
+    }
+    return `<div class="cand"><span class="ip">${escHtml(ip)}</span><span class="pill ${pill}">${label}</span></div>`;
+  }).join('');
+  list.innerHTML = rows;
+
+  const realLeaks = publicFound.filter(p => !p.matchesVpn);
+  if (realLeaks.length) {
+    $('rtcVerdict').innerHTML = `✗ WebRTC exposed a public address that is <b>not</b> your VPN's exit IP — your real IP may be leaking.`;
+    return { leak: true, publicFound, blocked: false };
+  }
+  if (publicFound.length) {
+    $('rtcVerdict').innerHTML = `⚠ WebRTC exposed a public IP, but it matches your VPN's exit IP — no real-IP leak, though the address is visible to sites.`;
+    return { leak: false, publicFound, blocked: false, exposedVpn: true };
+  }
+  $('rtcVerdict').innerHTML = '✓ Only local/masked addresses were exposed — your public IP did not leak via WebRTC.';
+  return { leak: false, publicFound: [], blocked: false };
+}
+
+function renderIpv6(v4, v6, geo4, geo6) {
+  const el = $('ipv6Verdict');
+  if (!v6) {
+    el.innerHTML = '✓ No IPv6 address is exposed. If your VPN only tunnels IPv4, there is nothing to leak here.';
+    return { leak: false };
+  }
+  if (!v4) {
+    el.innerHTML = '• Only IPv6 is in use. Make sure your VPN actually tunnels IPv6 (check the network below matches your VPN).';
+    return { leak: false, ipv6Only: true };
+  }
+  // Both present — compare networks
+  const a4 = asnOf(geo4), a6 = asnOf(geo6);
+  if (a4 && a6 && a4 !== a6) {
+    el.innerHTML = `✗ Your IPv6 (<code>${escHtml(a6)}</code>) is on a <b>different network</b> than your IPv4 (<code>${escHtml(a4)}</code>). If IPv4 is your VPN, your IPv6 is likely leaking outside the tunnel.`;
+    return { leak: true };
+  }
+  el.innerHTML = `⚠ Both IPv4 and IPv6 are exposed${a4 ? ` and appear to be on the same network (<code>${escHtml(a4)}</code>)` : ''}. That's consistent, but IPv6 is still visible to sites — confirm it is your VPN's network, not your ISP's.`;
+  return { leak: false, exposed: true };
+}
+
+function setVerdict(cls, icon, title, text) {
+  const v = $('verdict'); v.className = 'verdict ' + cls;
+  $('vIcon').innerHTML = icon; $('vTitle').textContent = title; $('vText').innerHTML = text;
+}
+function renderVerdict(rtc, v6, v4, v6addr) {
+  if (rtc.leak || v6.leak) {
+    setVerdict('bad', '⛔', 'Leak detected', 'A public address outside your VPN was exposed (see the flagged items below). Your real IP may be visible to websites.');
+  } else if (rtc.exposedVpn || v6.exposed || v6.ipv6Only) {
+    setVerdict('warn', '⚠️', 'No real-IP leak, but review', 'No address outside your VPN leaked, but a public IP is visible to sites. Confirm the network shown is your VPN, then you\'re fine.');
+  } else if (!v4 && !v6addr) {
+    setVerdict('warn', '🛰️', 'Could not detect your public IP', 'IP detection services were unreachable — check your connection or any blocking extensions, then run again.');
+  } else {
+    setVerdict('ok', '✅', 'No obvious leaks', 'WebRTC exposed only local/masked addresses and IPv6 is not leaking. If you\'re on a VPN, it appears to be holding.');
+  }
+}
+
+$('rerunBtn').addEventListener('click', run);
+run();
+</script>
+</body>
+</html>
