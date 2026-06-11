@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF to Images — Convert PDF Pages to PNG or JPG | Office Tools</title>
+  <meta name="description" content="Convert each page of a PDF into PNG or JPG images. Choose resolution, pick a page range, and download individually or as a ZIP — all in your browser, no upload.">
+  <meta name="keywords" content="pdf to images, pdf to jpg, pdf to png, convert pdf to image, export pdf pages, pdf page to picture, pdf to jpeg online, extract pdf images">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Free PDF to Images — Convert PDF Pages to PNG or JPG">
+  <meta property="og:description" content="Convert each page of a PDF into PNG or JPG images. Choose resolution, pick a page range, and download individually or as a ZIP — no upload.">
+  <meta property="og:url" content="https://tools.grin.money/tools/pdf-to-images/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Free PDF to Images — Convert PDF Pages to PNG or JPG">
+  <meta name="twitter:description" content="Convert each page of a PDF into PNG or JPG images. Choose resolution, pick a page range, and download individually or as a ZIP — no upload.">
+  <link rel="canonical" href="https://tools.grin.money/tools/pdf-to-images/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"PDF to Images","description":"Convert each page of a PDF into PNG or JPG images. Choose resolution, pick a page range, and download individually or as a ZIP — all in your browser, no upload.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/pdf-to-images/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .drop-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 2rem 1.5rem; text-align: center; color: var(--text-muted); cursor: pointer; transition: all .15s; }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
+    .drop-zone input[type=file] { display: none; }
+    .ctl-grid { display: flex; gap: .65rem; align-items: flex-end; flex-wrap: wrap; margin-top: .85rem; }
+    .img-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .75rem; margin-top: 1rem; }
+    .img-cell { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem; text-align: center; }
+    .img-cell img { max-width: 100%; height: auto; border: 1px solid var(--border); background: #fff; border-radius: 4px; }
+    .img-cell .cap { font-size: .76rem; color: var(--text-muted); margin: .35rem 0; }
+    .img-cell a.btn { padding: .25rem .5rem; font-size: .78rem; }
+    .status { font-size: .84rem; color: var(--text-muted); margin-top: .6rem; min-height: 1.2em; }
+    .progress-track { height: 8px; background: var(--bg-secondary); border-radius: 8px; overflow: hidden; margin-top: .5rem; display: none; }
+    .progress-fill { height: 100%; width: 0; background: var(--primary); transition: width .2s; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">PDF to Images</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🖼️ PDF to Images</h1>
+    <p>Turn every page of a PDF into a PNG or JPG image — pick the resolution and page range, then download.</p>
+  </div>
+
+<section class="tool-about">
+  <h2>About PDF to Images</h2>
+  <p>Need the pages of a PDF as <strong>image files</strong> — to drop into a slide, post online, or edit in a photo app? This tool renders each page to a crisp <strong>PNG or JPG</strong> at the resolution you choose, lets you grab a <strong>specific page range</strong>, and downloads them one by one or bundled in a <strong>ZIP</strong>. Everything runs locally in your browser — your PDF is never uploaded.</p>
+</section>
+
+  <div class="card">
+    <div class="drop-zone" id="drop">
+      Drop a PDF here or <strong>click to browse</strong>
+      <input type="file" id="file" accept="application/pdf,.pdf">
+    </div>
+
+    <div id="controls" style="display:none">
+      <div class="ctl-grid">
+        <div class="form-group" style="margin:0;min-width:110px">
+          <label>Format</label>
+          <select id="fmt"><option value="png">PNG</option><option value="jpg">JPG</option><option value="webp">WebP</option></select>
+        </div>
+        <div class="form-group" style="margin:0;min-width:140px">
+          <label>Resolution</label>
+          <select id="res"><option value="1.5">Standard (≈108 DPI)</option><option value="2" selected>High (≈144 DPI)</option><option value="3">Max (≈216 DPI)</option></select>
+        </div>
+        <div class="form-group" style="margin:0;flex:1;min-width:150px;display:none" id="qGroup">
+          <label>Quality: <span id="qVal">90</span>%</label>
+          <input type="range" id="q" min="40" max="100" value="90">
+        </div>
+      </div>
+      <div class="form-group" style="margin:.6rem 0 0">
+        <label>Pages <span style="color:var(--text-muted);font-weight:400">(e.g. <code>1-3, 5, 8-10</code> — blank = all)</span></label>
+        <input type="text" id="pages" placeholder="all pages">
+      </div>
+      <div class="ctl-grid">
+        <button class="btn btn-primary" id="runBtn">Convert to Images</button>
+        <button class="btn btn-secondary" id="zipBtn" style="display:none">Download All (ZIP)</button>
+      </div>
+      <div class="status" id="status"></div>
+      <div class="progress-track" id="progressTrack"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="img-grid" id="grid"></div>
+    </div>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">PDF to JPG</span>
+  <span class="page-tag">PDF to PNG</span>
+  <span class="page-tag">convert PDF to image</span>
+  <span class="page-tag">export PDF pages</span>
+  <span class="page-tag">PDF page to picture</span>
+</div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let pdfDoc = null, pdfBytes = null, srcName = 'document', results = [];
+
+const el = id => document.getElementById(id);
+const drop = el('drop'), fileEl = el('file'), controls = el('controls');
+const fmtEl = el('fmt'), resEl = el('res'), qEl = el('q'), qVal = el('qVal'), qGroup = el('qGroup');
+const pagesEl = el('pages'), runBtn = el('runBtn'), zipBtn = el('zipBtn');
+const statusEl = el('status'), grid = el('grid');
+const progressTrack = el('progressTrack'), progressFill = el('progressFill');
+
+function noExt(n) { return n.replace(/\.[^.]+$/, ''); }
+function fmtMime(f) { return f === 'jpg' ? 'image/jpeg' : f === 'webp' ? 'image/webp' : 'image/png'; }
+
+function bindDrop(zone, input, cb) {
+  zone.addEventListener('click', () => input.click());
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragover'); cb(e.dataTransfer.files); });
+  input.addEventListener('change', () => cb(input.files));
+}
+fmtEl.addEventListener('change', () => qGroup.style.display = fmtEl.value === 'png' ? 'none' : '');
+qEl.addEventListener('input', () => qVal.textContent = qEl.value);
+
+bindDrop(drop, fileEl, async files => {
+  const f = files[0]; if (!f) return;
+  if (f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name)) { alert('Please choose a PDF file.'); return; }
+  srcName = noExt(f.name);
+  pdfBytes = new Uint8Array(await f.arrayBuffer());
+  try { pdfDoc = await pdfjsLib.getDocument({ data: pdfBytes.slice() }).promise; }
+  catch (e) { alert('Could not open this PDF — it may be encrypted or corrupt.'); return; }
+  controls.style.display = '';
+  grid.innerHTML = ''; zipBtn.style.display = 'none'; results = [];
+  statusEl.textContent = `Loaded ${pdfDoc.numPages} page${pdfDoc.numPages > 1 ? 's' : ''}.`;
+});
+
+// Parse "1-3, 5" into a sorted unique array of 1-based page numbers within bounds.
+function parseRange(str, max) {
+  str = (str || '').trim();
+  if (!str) return Array.from({ length: max }, (_, i) => i + 1);
+  const set = new Set();
+  for (const part of str.split(',')) {
+    const m = part.trim().match(/^(\d+)\s*(?:-\s*(\d+))?$/);
+    if (!m) continue;
+    let a = +m[1], b = m[2] ? +m[2] : a;
+    if (a > b) [a, b] = [b, a];
+    for (let n = a; n <= b; n++) if (n >= 1 && n <= max) set.add(n);
+  }
+  return [...set].sort((x, y) => x - y);
+}
+
+async function run() {
+  if (!pdfDoc) return;
+  const pages = parseRange(pagesEl.value, pdfDoc.numPages);
+  if (!pages.length) { alert('No valid pages in that range.'); return; }
+  const fmt = fmtEl.value, mime = fmtMime(fmt), scale = parseFloat(resEl.value), q = +qEl.value / 100;
+  runBtn.disabled = true; runBtn.textContent = 'Converting…';
+  progressTrack.style.display = 'block'; grid.innerHTML = ''; results = [];
+
+  try {
+    for (let i = 0; i < pages.length; i++) {
+      const n = pages[i];
+      statusEl.textContent = `Rendering page ${n} (${i + 1}/${pages.length})…`;
+      progressFill.style.width = (i / pages.length * 100) + '%';
+      await new Promise(r => setTimeout(r, 5));
+
+      const page = await pdfDoc.getPage(n);
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.floor(viewport.width); canvas.height = Math.floor(viewport.height);
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: ctx, viewport }).promise;
+
+      const blob = await new Promise(res => canvas.toBlob(res, mime, fmt === 'png' ? undefined : q));
+      const name = `${srcName}_page-${String(n).padStart(3, '0')}.${fmt}`;
+      results.push({ name, blob });
+
+      const url = URL.createObjectURL(blob);
+      const cell = document.createElement('div');
+      cell.className = 'img-cell';
+      cell.innerHTML = `<img src="${url}" alt="page ${n}"><div class="cap">Page ${n} · ${(blob.size / 1024).toFixed(0)} KB</div>`;
+      const a = document.createElement('a');
+      a.className = 'btn btn-secondary'; a.href = url; a.download = name; a.textContent = 'Download';
+      cell.appendChild(a);
+      grid.appendChild(cell);
+    }
+    progressFill.style.width = '100%';
+    statusEl.textContent = `✓ ${results.length} image${results.length > 1 ? 's' : ''} ready.`;
+    zipBtn.style.display = results.length > 1 ? '' : 'none';
+  } catch (e) {
+    statusEl.textContent = '✗ ' + (e.message || 'Failed.');
+  } finally {
+    runBtn.disabled = false; runBtn.textContent = 'Convert to Images';
+    setTimeout(() => { progressTrack.style.display = 'none'; progressFill.style.width = '0'; }, 800);
+  }
+}
+runBtn.addEventListener('click', run);
+
+zipBtn.addEventListener('click', async () => {
+  if (!results.length) return;
+  zipBtn.disabled = true; zipBtn.textContent = 'Zipping…';
+  try {
+    const zip = new JSZip();
+    for (const r of results) zip.file(r.name, r.blob);
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = `${srcName}_images.zip`; a.click();
+  } finally { zipBtn.disabled = false; zipBtn.textContent = 'Download All (ZIP)'; }
+});
+</script>
+</body>
+</html>

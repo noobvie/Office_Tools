@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Photo Collage &amp; Grid Maker — Combine Images | Office Tools</title>
+  <meta name="description" content="Combine several photos into one collage or grid. Choose columns, spacing, background color, corner rounding and output size, then download a single image — no upload.">
+  <meta name="keywords" content="photo collage maker, image grid maker, combine images, merge photos into one, picture collage, photo grid, join images, montage maker">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Free Photo Collage &amp; Grid Maker — Combine Images Online">
+  <meta property="og:description" content="Combine several photos into one collage or grid. Choose columns, spacing, background color and output size, then download — no upload.">
+  <meta property="og:url" content="https://tools.grin.money/tools/image-collage/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Free Photo Collage &amp; Grid Maker — Combine Images Online">
+  <meta name="twitter:description" content="Combine several photos into one collage or grid. Choose columns, spacing, background color and output size, then download — no upload.">
+  <link rel="canonical" href="https://tools.grin.money/tools/image-collage/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Photo Collage & Grid Maker","description":"Combine several photos into one collage or grid. Choose columns, spacing, background color, corner rounding and output size, then download a single image — all in your browser, no upload.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/image-collage/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .drop-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 2rem 1.5rem; text-align: center; color: var(--text-muted); cursor: pointer; transition: all .15s; }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
+    .drop-zone input[type=file] { display: none; }
+    .thumbs { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+    .thumb { position: relative; width: 76px; height: 76px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); cursor: grab; background: var(--bg-secondary); }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+    .thumb .rm { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,.6); color: #fff; border: 0; border-radius: 50%; width: 18px; height: 18px; font-size: .7rem; cursor: pointer; line-height: 1; }
+    .thumb .ord { position: absolute; bottom: 2px; left: 3px; background: rgba(0,0,0,.6); color: #fff; font-size: .68rem; padding: 0 .3rem; border-radius: 8px; }
+    .thumb.dragging { opacity: .4; }
+    .ctl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .65rem; margin-top: .85rem; }
+    .slider-row { display: flex; align-items: center; gap: .6rem; }
+    .slider-row label { font-size: .82rem; min-width: 5.2rem; }
+    .slider-row input[type=range] { flex: 1; }
+    .slider-row .sv { font-size: .82rem; font-weight: 700; min-width: 2.6rem; text-align: right; }
+    #preview { max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: var(--radius); margin-top: .9rem; display: none; background: var(--bg-secondary); }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Collage &amp; Grid Maker</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🧩 Photo Collage &amp; Grid Maker</h1>
+    <p>Combine several photos into one image — choose columns, spacing, background and rounded corners.</p>
+  </div>
+
+<section class="tool-about">
+  <h2>About the Collage &amp; Grid Maker</h2>
+  <p>Drop in a handful of photos and arrange them into a tidy <strong>grid collage</strong> in seconds. Pick how many <strong>columns</strong>, the <strong>spacing</strong> between tiles, a <strong>background color</strong>, and optional <strong>rounded corners</strong>. Reorder by dragging the thumbnails, then download a single combined image. Great for product line-ups, before/after sets, mood boards and social posts. Runs entirely in your browser — no upload.</p>
+</section>
+
+  <div class="card">
+    <div class="drop-zone" id="drop">
+      Drop images here or <strong>click to browse</strong>
+      <p style="font-size:.77rem;margin:.25rem 0 0">Add several — drag thumbnails to reorder</p>
+      <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple>
+    </div>
+
+    <div class="thumbs" id="thumbs"></div>
+
+    <div id="controls" style="display:none">
+      <div class="ctl-grid">
+        <div class="form-group" style="margin:0">
+          <label>Columns</label>
+          <select id="cols"><option value="auto">Auto</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Tile fit</label>
+          <select id="fit"><option value="cover">Crop to fill (cover)</option><option value="contain">Fit whole (contain)</option></select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Output width (px)</label>
+          <input type="number" id="outW" value="1200" min="200" max="6000">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Background</label>
+          <input type="color" id="bg" value="#ffffff" style="width:100%;height:34px;padding:0;border:1px solid var(--border);border-radius:6px">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Format</label>
+          <select id="fmt"><option value="png">PNG</option><option value="jpg">JPG</option><option value="webp">WebP</option></select>
+        </div>
+      </div>
+      <div class="ctl-grid">
+        <div class="slider-row"><label>Spacing</label><input type="range" id="gap" min="0" max="60" value="10"><span class="sv" id="gapV">10</span></div>
+        <div class="slider-row"><label>Corner radius</label><input type="range" id="radius" min="0" max="50" value="0"><span class="sv" id="radiusV">0</span></div>
+      </div>
+      <button class="btn btn-primary" id="dlBtn" style="margin-top:.7rem">Download Collage</button>
+      <img id="preview" alt="collage preview">
+    </div>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">photo collage maker</span>
+  <span class="page-tag">image grid maker</span>
+  <span class="page-tag">combine images</span>
+  <span class="page-tag">merge photos</span>
+  <span class="page-tag">picture montage</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const el = id => document.getElementById(id);
+let imgs = []; // { img, url }
+const drop = el('drop'), fileEl = el('file'), thumbs = el('thumbs'), controls = el('controls'), preview = el('preview');
+
+function loadImg(src) { return new Promise((ok, e) => { const i = new Image(); i.onload = () => ok(i); i.onerror = e; i.src = src; }); }
+function fmtMime(f) { return f === 'jpg' ? 'image/jpeg' : f === 'webp' ? 'image/webp' : 'image/png'; }
+function bindDrop(zone, input, cb) {
+  zone.addEventListener('click', () => input.click());
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragover'); cb(e.dataTransfer.files); });
+  input.addEventListener('change', () => cb(input.files));
+}
+
+bindDrop(drop, fileEl, async files => {
+  for (const f of files) {
+    if (!/^image\//.test(f.type)) continue;
+    const url = URL.createObjectURL(f);
+    imgs.push({ img: await loadImg(url), url });
+  }
+  renderThumbs();
+  controls.style.display = imgs.length ? '' : 'none';
+  render();
+});
+
+function renderThumbs() {
+  thumbs.innerHTML = '';
+  imgs.forEach((it, i) => {
+    const d = document.createElement('div');
+    d.className = 'thumb'; d.draggable = true; d.dataset.i = i;
+    d.innerHTML = `<img src="${it.url}"><button class="rm" title="Remove">✕</button><span class="ord">${i + 1}</span>`;
+    d.querySelector('.rm').addEventListener('click', e => { e.stopPropagation(); URL.revokeObjectURL(it.url); imgs.splice(i, 1); renderThumbs(); controls.style.display = imgs.length ? '' : 'none'; render(); });
+    d.addEventListener('dragstart', () => { d.classList.add('dragging'); dragIdx = i; });
+    d.addEventListener('dragend', () => d.classList.remove('dragging'));
+    d.addEventListener('dragover', e => e.preventDefault());
+    d.addEventListener('drop', e => { e.preventDefault(); reorder(dragIdx, i); });
+    thumbs.appendChild(d);
+  });
+}
+let dragIdx = -1;
+function reorder(from, to) {
+  if (from === to || from < 0) return;
+  const [m] = imgs.splice(from, 1);
+  imgs.splice(to, 0, m);
+  renderThumbs(); render();
+}
+
+function drawCover(ctx, img, x, y, w, h, mode, radius) {
+  ctx.save();
+  if (radius > 0) { roundRect(ctx, x, y, w, h, radius); ctx.clip(); }
+  const ir = img.naturalWidth / img.naturalHeight, cr = w / h;
+  let dw, dh, dx, dy;
+  if (mode === 'contain') {
+    if (ir > cr) { dw = w; dh = w / ir; } else { dh = h; dw = h * ir; }
+    dx = x + (w - dw) / 2; dy = y + (h - dh) / 2;
+  } else { // cover
+    if (ir > cr) { dh = h; dw = h * ir; } else { dw = w; dh = w / ir; }
+    dx = x + (w - dw) / 2; dy = y + (h - dh) / 2;
+  }
+  ctx.drawImage(img, dx, dy, dw, dh);
+  ctx.restore();
+}
+function roundRect(ctx, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+let outCanvas = null;
+function render() {
+  if (!imgs.length) { preview.style.display = 'none'; return; }
+  const n = imgs.length;
+  let cols = el('cols').value === 'auto' ? Math.ceil(Math.sqrt(n)) : Math.min(+el('cols').value, n);
+  cols = Math.max(1, cols);
+  const rows = Math.ceil(n / cols);
+  const gap = +el('gap').value, radius = +el('radius').value, fit = el('fit').value;
+  const outW = Math.max(200, Math.min(6000, +el('outW').value || 1200));
+  // square-ish cells
+  const cellW = (outW - gap * (cols + 1)) / cols;
+  const cellH = cellW; // square tiles
+  const outH = Math.round(cellH * rows + gap * (rows + 1));
+
+  const c = document.createElement('canvas');
+  c.width = Math.round(outW); c.height = outH;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = el('bg').value; ctx.fillRect(0, 0, c.width, c.height);
+
+  imgs.forEach((it, i) => {
+    const r = Math.floor(i / cols), col = i % cols;
+    const x = gap + col * (cellW + gap);
+    const y = gap + r * (cellH + gap);
+    drawCover(ctx, it.img, x, y, cellW, cellH, fit, radius);
+  });
+
+  outCanvas = c;
+  preview.src = c.toDataURL('image/png');
+  preview.style.display = 'block';
+}
+
+['cols', 'fit', 'outW', 'bg', 'gap', 'radius'].forEach(id => el(id).addEventListener('input', render));
+el('gap').addEventListener('input', () => el('gapV').textContent = el('gap').value);
+el('radius').addEventListener('input', () => el('radiusV').textContent = el('radius').value);
+
+el('dlBtn').addEventListener('click', () => {
+  if (!outCanvas) return;
+  const fmt = el('fmt').value, mime = fmtMime(fmt);
+  outCanvas.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = `collage.${fmt}`; a.click();
+  }, mime, mime === 'image/png' ? undefined : 0.92);
+});
+</script>
+</body>
+</html>
