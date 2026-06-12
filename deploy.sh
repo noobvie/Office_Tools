@@ -201,7 +201,12 @@ install_base_packages() {
 }
 
 install_nodejs() {
-    local MIN=18 VER=20
+    # Node 26+ by choice. The hard requirement is only 24+ (the backend uses the
+    # built-in node:sqlite module, unflagged from Node 24), but Office Tools is a
+    # single-user deploy so we run the newer line for a more mature node:sqlite.
+    # MIN = accept-as-is floor, VER = version installed when Node is missing/too old.
+    # Note: 26 >= 24, so a box also running the mining pool (needs >=24) stays happy.
+    local MIN=26 VER=26
     if command -v node &>/dev/null; then
         local cur
         cur=$(node -e 'process.stdout.write(process.version.slice(1).split(".")[0])' 2>/dev/null || echo 0)
