@@ -163,7 +163,7 @@
 <script src="../../js/common.js"></script>
 <script>
 const $ = id => document.getElementById(id);
-const fmt = n => '$' + (isFinite(n) ? n : 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtUSD = n => '$' + (isFinite(n) ? n : 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 let series = [];
 
 function compute() {
@@ -194,10 +194,10 @@ function compute() {
   }
 
   const last = series[series.length - 1];
-  $('rFuture').textContent    = fmt(last.balance);
-  $('rContrib').textContent   = fmt(deposited - P);
-  $('rInterest').textContent  = fmt(last.interest);
-  $('rDeposited').textContent = fmt(deposited);
+  $('rFuture').textContent    = fmtUSD(last.balance);
+  $('rContrib').textContent   = fmtUSD(deposited - P);
+  $('rInterest').textContent  = fmtUSD(last.interest);
+  $('rDeposited').textContent = fmtUSD(deposited);
 
   renderTable();
   drawChart();
@@ -205,7 +205,7 @@ function compute() {
 
 function renderTable() {
   $('amortBody').innerHTML = series.filter(s => s.year > 0).map(s =>
-    `<tr><td>${s.year}</td><td>${fmt(s.deposited)}</td><td>${fmt(s.interest)}</td><td>${fmt(s.balance)}</td></tr>`
+    `<tr><td>${s.year}</td><td>${fmtUSD(s.deposited)}</td><td>${fmtUSD(s.interest)}</td><td>${fmtUSD(s.balance)}</td></tr>`
   ).join('');
 }
 
