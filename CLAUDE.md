@@ -116,8 +116,12 @@ Most tools are 100% browser-local. Backend is only required for: URL Shortener, 
 
 1. Create `tools/<name>/index.html` — copy the header/footer pattern from any existing tool
 2. Add a card to the correct `<section class="category-section">` in `index.html` with `data-keywords` and `data-name` for search
-3. If it needs backend APIs, add routes to `office-tools-server.js` before `// ── Start ──`
-4. Tools must be mobile-responsive, use CSS variables (not hardcoded colors), and include no external analytics or cookies
+3. **Register the tool in the `OT_TOOLS` array in `js/common.js`** (`{ name, path, cat, icon, desc }`, plus `isNew: true` for the New-Tools panel). This single registration is what powers the **left sidebar, header search, breadcrumb name, and the auto-injected "Related Tools" section** (`autoRelatedTools()`) — a tool missing from `OT_TOOLS` silently gets none of these. Related tools need no per-page markup: `autoRelatedTools()` injects them at runtime for any registered tool that has a `.page-tags` anchor (only ~8 of 115 tools override with an explicit `id="related-tools"`; the rest rely on auto). The `cat` string (emoji + label) must **exactly match** an existing category's string, or the tool lands in a category of one.
+4. Add a `<url>` entry to `sitemap.xml` (`https://tools.grin.money/tools/<name>/`, today's date as `lastmod`)
+5. If it needs backend APIs, add routes to `office-tools-server.js` before `// ── Start ──`
+6. Tools must be mobile-responsive, use CSS variables (not hardcoded colors), and include no external analytics or cookies
+
+> **If Related Tools / sidebar / search are missing on a deployed tool page**, the usual cause is a **stale `js/common.js`** (cached or not redeployed) whose `OT_TOOLS` predates the tool — `autoRelatedTools()` can't find the current path and bails. Hard-refresh / redeploy `common.js`, don't add manual markup.
 
 **Standard page structure every tool follows:**
 ```html

@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF Watermark &amp; Page Numbers — Stamp a PDF Free | Office Tools</title>
+  <meta name="description" content="Add a text watermark and page numbers to a PDF. Control opacity, rotation, color, position and page range, then download — all in your browser, no upload.">
+  <meta name="keywords" content="pdf watermark, add watermark to pdf, pdf page numbers, stamp pdf, watermark pdf online, number pdf pages, confidential watermark, draft stamp pdf">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Free PDF Watermark &amp; Page Numbers — Stamp a PDF Online">
+  <meta property="og:description" content="Add a text watermark and page numbers to a PDF. Control opacity, rotation, color, position and page range, then download — no upload.">
+  <meta property="og:url" content="https://tools.grin.money/tools/pdf-watermark/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Free PDF Watermark &amp; Page Numbers — Stamp a PDF Online">
+  <meta name="twitter:description" content="Add a text watermark and page numbers to a PDF. Control opacity, rotation, color, position and page range, then download — no upload.">
+  <link rel="canonical" href="https://tools.grin.money/tools/pdf-watermark/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"PDF Watermark & Page Numbers","description":"Add a text watermark and page numbers to a PDF. Control opacity, rotation, color, position and page range, then download — all in your browser, no upload.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/pdf-watermark/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .drop-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 2rem 1.5rem; text-align: center; color: var(--text-muted); cursor: pointer; transition: all .15s; }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
+    .drop-zone input[type=file] { display: none; }
+    .wm-layout { display: grid; grid-template-columns: 320px 1fr; gap: 1rem; margin-top: .85rem; }
+    @media (max-width: 760px) { .wm-layout { grid-template-columns: 1fr; } }
+    .seg { font-size: .78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; margin: .6rem 0 .3rem; font-weight: 700; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+    .slider-row { display: flex; align-items: center; gap: .6rem; margin: .3rem 0; }
+    .slider-row label { font-size: .82rem; min-width: 4.4rem; }
+    .slider-row input[type=range] { flex: 1; }
+    .slider-row .sv { font-size: .82rem; font-weight: 700; min-width: 2.6rem; text-align: right; }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .35rem 0; font-size: .88rem; }
+    .switch { position: relative; width: 38px; height: 21px; flex-shrink: 0; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch .sl { position: absolute; inset: 0; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 21px; transition: .15s; cursor: pointer; }
+    .switch .sl::before { content: ''; position: absolute; height: 15px; width: 15px; left: 2px; top: 2px; background: var(--text-muted); border-radius: 50%; transition: .15s; }
+    .switch input:checked + .sl { background: var(--primary-dim); border-color: var(--primary); }
+    .switch input:checked + .sl::before { transform: translateX(17px); background: var(--primary); }
+    .stage { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: .6rem; display: flex; flex-direction: column; align-items: center; }
+    #pageCanvas { border: 1px solid var(--border); background: #fff; max-width: 100%; }
+    .pager { display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; font-size: .85rem; }
+    .pager button { padding: .25rem .6rem; }
+    .status { font-size: .84rem; color: var(--text-muted); margin-top: .6rem; min-height: 1.2em; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">PDF Watermark &amp; Page Numbers</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>💧 PDF Watermark &amp; Page Numbers</h1>
+    <p>Stamp a text watermark and add page numbers to a PDF — control opacity, rotation, color and position.</p>
+  </div>
+
+<section class="tool-about">
+  <h2>About PDF Watermark &amp; Page Numbers</h2>
+  <p>Mark a PDF as <strong>Confidential</strong>, <strong>Draft</strong> or with your company name, and add clean <strong>page numbers</strong> — without any desktop software. Set the watermark text, opacity, rotation, color and whether it sits in the centre or tiles across the page, then choose a page-number style and position. Preview page one, then download. It all runs locally — your PDF is never uploaded.</p>
+</section>
+
+  <div class="card">
+    <div class="drop-zone" id="drop">
+      Drop a PDF here or <strong>click to browse</strong>
+      <input type="file" id="file" accept="application/pdf,.pdf">
+    </div>
+
+    <div id="workspace" style="display:none">
+      <div class="wm-layout">
+        <!-- Controls -->
+        <div>
+          <div class="toggle-row">
+            <span><b>Watermark</b></span>
+            <label class="switch"><input type="checkbox" id="wmOn" checked><span class="sl"></span></label>
+          </div>
+          <div id="wmCtl">
+            <input type="text" id="wmText" value="CONFIDENTIAL" maxlength="60" placeholder="Watermark text">
+            <div class="row2" style="margin-top:.5rem">
+              <div class="form-group" style="margin:0">
+                <label>Position</label>
+                <select id="wmPos"><option value="diagonal">Diagonal centre</option><option value="center">Centre (flat)</option><option value="tiled">Tiled</option></select>
+              </div>
+              <div class="form-group" style="margin:0">
+                <label>Color</label>
+                <input type="color" id="wmColor" value="#ff0000" style="width:100%;height:34px;padding:0;border:1px solid var(--border);border-radius:6px">
+              </div>
+            </div>
+            <div class="slider-row"><label>Opacity</label><input type="range" id="wmOpacity" min="5" max="100" value="20"><span class="sv" id="wmOpacityV">20%</span></div>
+            <div class="slider-row"><label>Size</label><input type="range" id="wmSize" min="10" max="140" value="60"><span class="sv" id="wmSizeV">60</span></div>
+            <div class="slider-row"><label>Rotation</label><input type="range" id="wmRot" min="-90" max="90" value="45"><span class="sv" id="wmRotV">45°</span></div>
+          </div>
+
+          <div class="toggle-row" style="margin-top:.5rem;border-top:1px solid var(--border);padding-top:.6rem">
+            <span><b>Page numbers</b></span>
+            <label class="switch"><input type="checkbox" id="pnOn"><span class="sl"></span></label>
+          </div>
+          <div id="pnCtl" style="display:none">
+            <div class="row2">
+              <div class="form-group" style="margin:0">
+                <label>Position</label>
+                <select id="pnPos">
+                  <option value="bc">Bottom centre</option>
+                  <option value="br">Bottom right</option>
+                  <option value="bl">Bottom left</option>
+                  <option value="tc">Top centre</option>
+                  <option value="tr">Top right</option>
+                  <option value="tl">Top left</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0">
+                <label>Format</label>
+                <select id="pnFmt">
+                  <option value="n">1</option>
+                  <option value="n_of_N">1 of N</option>
+                  <option value="page_n">Page 1</option>
+                  <option value="page_n_of_N">Page 1 of N</option>
+                  <option value="dash">- 1 -</option>
+                </select>
+              </div>
+            </div>
+            <div class="row2" style="margin-top:.5rem">
+              <div class="form-group" style="margin:0"><label>Start at</label><input type="number" id="pnStart" value="1" min="1"></div>
+              <div class="form-group" style="margin:0"><label>Font size</label><input type="number" id="pnFontSize" value="11" min="6" max="48"></div>
+            </div>
+          </div>
+
+          <div class="seg">Apply to</div>
+          <input type="text" id="pages" placeholder="all pages (e.g. 1-3, 5)">
+
+          <button class="btn btn-primary" id="applyBtn" style="width:100%;margin-top:.7rem">Apply &amp; Download</button>
+          <div class="status" id="status"></div>
+        </div>
+
+        <!-- Preview -->
+        <div class="stage">
+          <div class="pager">
+            <button class="btn btn-secondary" id="prevPg">‹</button>
+            <span id="pgLabel">Page 1 / 1</span>
+            <button class="btn btn-secondary" id="nextPg">›</button>
+            <span style="color:var(--text-muted);font-size:.78rem">live preview</span>
+          </div>
+          <canvas id="pageCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">PDF watermark</span>
+  <span class="page-tag">add page numbers to PDF</span>
+  <span class="page-tag">stamp PDF</span>
+  <span class="page-tag">confidential watermark</span>
+  <span class="page-tag">number PDF pages</span>
+</div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const el = id => document.getElementById(id);
+let pdfDoc = null, pdfBytes = null, srcName = 'document', curPage = 1, pageScale = 1.4;
+
+const drop = el('drop'), fileEl = el('file'), workspace = el('workspace');
+const pageCanvas = el('pageCanvas'), pgLabel = el('pgLabel'), statusEl = el('status');
+const applyBtn = el('applyBtn');
+
+function noExt(n) { return n.replace(/\.[^.]+$/, ''); }
+function hexToRgb(hex) {
+  const m = hex.replace('#', ''); const n = parseInt(m, 16);
+  return { r: ((n >> 16) & 255) / 255, g: ((n >> 8) & 255) / 255, b: (n & 255) / 255 };
+}
+function bindDrop(zone, input, cb) {
+  zone.addEventListener('click', () => input.click());
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragover'); cb(e.dataTransfer.files); });
+  input.addEventListener('change', () => cb(input.files));
+}
+
+bindDrop(drop, fileEl, async files => {
+  const f = files[0]; if (!f) return;
+  if (f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name)) { alert('Please choose a PDF file.'); return; }
+  srcName = noExt(f.name);
+  pdfBytes = new Uint8Array(await f.arrayBuffer());
+  try { pdfDoc = await pdfjsLib.getDocument({ data: pdfBytes.slice() }).promise; }
+  catch { alert('Could not open this PDF — it may be encrypted or corrupt.'); return; }
+  curPage = 1; workspace.style.display = '';
+  await renderPreview();
+});
+
+function parseRange(str, max) {
+  str = (str || '').trim();
+  if (!str) return Array.from({ length: max }, (_, i) => i + 1);
+  const set = new Set();
+  for (const part of str.split(',')) {
+    const m = part.trim().match(/^(\d+)\s*(?:-\s*(\d+))?$/);
+    if (!m) continue;
+    let a = +m[1], b = m[2] ? +m[2] : a; if (a > b) [a, b] = [b, a];
+    for (let n = a; n <= b; n++) if (n >= 1 && n <= max) set.add(n);
+  }
+  return [...set].sort((x, y) => x - y);
+}
+
+function pnText(fmt, num, total) {
+  switch (fmt) {
+    case 'n_of_N': return `${num} of ${total}`;
+    case 'page_n': return `Page ${num}`;
+    case 'page_n_of_N': return `Page ${num} of ${total}`;
+    case 'dash': return `- ${num} -`;
+    default: return `${num}`;
+  }
+}
+
+// ── Live preview: render page with pdf.js, then draw the same stamps on the canvas ──
+async function renderPreview() {
+  if (!pdfDoc) return;
+  pgLabel.textContent = `Page ${curPage} / ${pdfDoc.numPages}`;
+  const page = await pdfDoc.getPage(curPage);
+  const viewport = page.getViewport({ scale: pageScale });
+  pageCanvas.width = Math.floor(viewport.width);
+  pageCanvas.height = Math.floor(viewport.height);
+  const ctx = pageCanvas.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+  await page.render({ canvasContext: ctx, viewport }).promise;
+
+  const W = pageCanvas.width, H = pageCanvas.height;
+  // Watermark
+  if (el('wmOn').checked && el('wmText').value.trim()) {
+    const text = el('wmText').value.trim();
+    const size = +el('wmSize').value * (pageScale / 1.4);
+    ctx.save();
+    ctx.globalAlpha = +el('wmOpacity').value / 100;
+    ctx.fillStyle = el('wmColor').value;
+    ctx.font = `bold ${size}px Helvetica, Arial, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const pos = el('wmPos').value;
+    if (pos === 'tiled') {
+      const step = size * 5;
+      ctx.translate(0, 0);
+      for (let y = step / 2; y < H + step; y += step)
+        for (let x = step / 2; x < W + step; x += step) {
+          ctx.save(); ctx.translate(x, y); ctx.rotate(-(+el('wmRot').value) * Math.PI / 180);
+          ctx.fillText(text, 0, 0); ctx.restore();
+        }
+    } else {
+      ctx.translate(W / 2, H / 2);
+      if (pos === 'diagonal') ctx.rotate(-(+el('wmRot').value) * Math.PI / 180);
+      ctx.fillText(text, 0, 0);
+    }
+    ctx.restore();
+  }
+  // Page number
+  if (el('pnOn').checked) {
+    const start = +el('pnStart').value || 1;
+    const num = start + (curPage - 1);
+    const txt = pnText(el('pnFmt').value, num, pdfDoc.numPages + start - 1);
+    const fs = +el('pnFontSize').value * (pageScale / 1.4);
+    ctx.save();
+    ctx.fillStyle = '#222'; ctx.font = `${fs}px Helvetica, Arial, sans-serif`; ctx.textBaseline = 'alphabetic';
+    drawPnCanvas(ctx, txt, el('pnPos').value, W, H, fs);
+    ctx.restore();
+  }
+}
+function drawPnCanvas(ctx, txt, pos, W, H, fs) {
+  const m = 24 * (pageScale / 1.4);
+  const w = ctx.measureText(txt).width;
+  let x, y;
+  const top = pos[0] === 't';
+  y = top ? m + fs : H - m;
+  if (pos[1] === 'l') { x = m; ctx.textAlign = 'left'; }
+  else if (pos[1] === 'r') { x = W - m; ctx.textAlign = 'right'; }
+  else { x = W / 2; ctx.textAlign = 'center'; }
+  ctx.fillText(txt, x, y);
+}
+
+el('prevPg').addEventListener('click', () => { if (curPage > 1) { curPage--; renderPreview(); } });
+el('nextPg').addEventListener('click', () => { if (pdfDoc && curPage < pdfDoc.numPages) { curPage++; renderPreview(); } });
+
+// control wiring → preview + labels + toggle panes
+[['wmOpacity', 'wmOpacityV', '%'], ['wmSize', 'wmSizeV', ''], ['wmRot', 'wmRotV', '°']].forEach(([id, vid, suf]) => {
+  el(id).addEventListener('input', () => { el(vid).textContent = el(id).value + suf; renderPreview(); });
+});
+['wmText', 'wmPos', 'wmColor', 'pnPos', 'pnFmt', 'pnStart', 'pnFontSize'].forEach(id => {
+  el(id).addEventListener('input', renderPreview);
+});
+el('wmOn').addEventListener('change', () => { el('wmCtl').style.display = el('wmOn').checked ? '' : 'none'; renderPreview(); });
+el('pnOn').addEventListener('change', () => { el('pnCtl').style.display = el('pnOn').checked ? '' : 'none'; renderPreview(); });
+
+// ── Apply with pdf-lib ──────────────────────────────────────────────
+function pnXY(pos, ptW, ptH, textW, fs) {
+  const m = 24;
+  const top = pos[0] === 't';
+  const y = top ? ptH - m - fs : m;
+  let x;
+  if (pos[1] === 'l') x = m;
+  else if (pos[1] === 'r') x = ptW - m - textW;
+  else x = (ptW - textW) / 2;
+  return { x, y };
+}
+
+applyBtn.addEventListener('click', async () => {
+  if (!pdfDoc) return;
+  applyBtn.disabled = true; applyBtn.textContent = 'Applying…';
+  try {
+    const doc = await PDFLib.PDFDocument.load(pdfBytes);
+    const font = await doc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+    const fontReg = await doc.embedFont(PDFLib.StandardFonts.Helvetica);
+    const pages = doc.getPages();
+    const apply = new Set(parseRange(el('pages').value, pages.length));
+
+    const wmOn = el('wmOn').checked, wmText = el('wmText').value.trim();
+    const wmColor = hexToRgb(el('wmColor').value);
+    const wmOpacity = +el('wmOpacity').value / 100;
+    const wmSize = +el('wmSize').value;
+    const wmRot = +el('wmRot').value;
+    const wmPos = el('wmPos').value;
+
+    const pnOn = el('pnOn').checked;
+    const pnStart = +el('pnStart').value || 1;
+    const pnFmt = el('pnFmt').value;
+    const pnFs = +el('pnFontSize').value;
+
+    pages.forEach((page, i) => {
+      if (!apply.has(i + 1)) return;
+      const { width: ptW, height: ptH } = page.getSize();
+
+      if (wmOn && wmText) {
+        const tw = font.widthOfTextAtSize(wmText, wmSize);
+        const opts = { size: wmSize, font, color: PDFLib.rgb(wmColor.r, wmColor.g, wmColor.b), opacity: wmOpacity };
+        if (wmPos === 'tiled') {
+          const step = wmSize * 5;
+          for (let y = step / 2; y < ptH + step; y += step)
+            for (let x = step / 2; x < ptW + step; x += step)
+              page.drawText(wmText, { ...opts, x: x - tw / 2, y, rotate: PDFLib.degrees(wmRot) });
+        } else {
+          const rot = wmPos === 'diagonal' ? wmRot : 0;
+          // place so the text is centred on the page
+          const rad = rot * Math.PI / 180;
+          const cx = ptW / 2 - (tw / 2) * Math.cos(rad);
+          const cy = ptH / 2 - (tw / 2) * Math.sin(rad);
+          page.drawText(wmText, { ...opts, x: cx, y: cy, rotate: PDFLib.degrees(rot) });
+        }
+      }
+
+      if (pnOn) {
+        const num = pnStart + i;
+        const total = pnStart + pages.length - 1;
+        const txt = pnText(pnFmt, num, total);
+        const tw = fontReg.widthOfTextAtSize(txt, pnFs);
+        const { x, y } = pnXY(el('pnPos').value, ptW, ptH, tw, pnFs);
+        page.drawText(txt, { x, y, size: pnFs, font: fontReg, color: PDFLib.rgb(0.13, 0.13, 0.13) });
+      }
+    });
+
+    const out = await doc.save();
+    const blob = new Blob([out], { type: 'application/pdf' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = `${srcName}_stamped.pdf`; a.click();
+    statusEl.textContent = '✓ Stamped PDF downloaded.';
+  } catch (e) {
+    statusEl.textContent = '✗ ' + (e.message || 'Failed.');
+    alert('Could not stamp this PDF: ' + (e.message || e));
+  } finally {
+    applyBtn.disabled = false; applyBtn.textContent = 'Apply & Download';
+  }
+});
+</script>
+</body>
+</html>

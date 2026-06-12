@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF Enhance &amp; Clean — Sharpen Scanned PDFs | Office Tools</title>
+  <meta name="description" content="Clean up blurry, skewed or low-contrast scanned PDFs. Deskew, sharpen, boost contrast and binarize pages, then add a searchable OCR text layer — all in your browser, no upload.">
+  <meta name="keywords" content="pdf enhance, clean scanned pdf, deskew pdf, sharpen pdf, binarize pdf, improve pdf scan quality, pdf ocr text layer, make pdf searchable, fix blurry pdf, pdfclean">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Free PDF Enhance &amp; Clean — Sharpen Scanned PDFs Online">
+  <meta property="og:description" content="Clean up blurry, skewed or low-contrast scanned PDFs. Deskew, sharpen, boost contrast and binarize pages, then add a searchable OCR text layer — no upload.">
+  <meta property="og:url" content="https://tools.grin.money/tools/pdf-enhance/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Free PDF Enhance &amp; Clean — Sharpen Scanned PDFs Online">
+  <meta name="twitter:description" content="Clean up blurry, skewed or low-contrast scanned PDFs. Deskew, sharpen, boost contrast and binarize pages, then add a searchable OCR text layer — no upload.">
+  <link rel="canonical" href="https://tools.grin.money/tools/pdf-enhance/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"PDF Enhance & Clean","description":"Clean up blurry, skewed or low-contrast scanned PDFs. Deskew, sharpen, boost contrast and binarize pages, then add a searchable OCR text layer — all in your browser, no upload.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/pdf-enhance/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
+    .drop-zone input[type=file] { display: none; }
+
+    .pe-layout { display: grid; grid-template-columns: 280px 1fr; gap: 1rem; margin-top: .85rem; }
+    @media (max-width: 760px) { .pe-layout { grid-template-columns: 1fr; } }
+
+    .pe-controls .form-group { margin-bottom: .7rem; }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .4rem 0; font-size: .88rem; border-bottom: 1px solid var(--border); }
+    .toggle-row:last-child { border-bottom: 0; }
+    .switch { position: relative; width: 38px; height: 21px; flex-shrink: 0; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch .sl { position: absolute; inset: 0; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 21px; transition: .15s; cursor: pointer; }
+    .switch .sl::before { content: ''; position: absolute; height: 15px; width: 15px; left: 2px; top: 2px; background: var(--text-muted); border-radius: 50%; transition: .15s; }
+    .switch input:checked + .sl { background: var(--primary-dim); border-color: var(--primary); }
+    .switch input:checked + .sl::before { transform: translateX(17px); background: var(--primary); }
+
+    .slider-row { display: flex; align-items: center; gap: .6rem; margin: .35rem 0; }
+    .slider-row label { font-size: .82rem; white-space: nowrap; min-width: 4.6rem; }
+    .slider-row input[type=range] { flex: 1; }
+    .slider-row .sv { font-size: .82rem; font-weight: 700; min-width: 2.4rem; text-align: right; }
+    .sub-ctl { padding: .25rem 0 .5rem; border-bottom: 1px solid var(--border); }
+
+    .pe-preview { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: .65rem; min-height: 240px; display: flex; flex-direction: column; }
+    .pe-canvas-wrap { flex: 1; display: flex; align-items: center; justify-content: center; overflow: auto; }
+    #preCanvas { max-width: 100%; height: auto; border: 1px solid var(--border); background: #fff; }
+    .pe-prev-bar { display: flex; align-items: center; gap: .5rem; justify-content: space-between; margin-bottom: .5rem; flex-wrap: wrap; }
+    .pe-prev-bar .pager { display: flex; align-items: center; gap: .4rem; font-size: .84rem; }
+    .pe-prev-bar button { padding: .25rem .6rem; }
+
+    .pe-status { font-size: .84rem; color: var(--text-muted); margin-top: .6rem; min-height: 1.2em; }
+    .progress-track { height: 8px; background: var(--bg-secondary); border-radius: 8px; overflow: hidden; margin-top: .5rem; display: none; }
+    .progress-fill { height: 100%; width: 0; background: var(--primary); transition: width .2s; }
+    .seg { font-size: .78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; margin: .4rem 0 .2rem; font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">PDF Enhance &amp; Clean</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🧼 PDF Enhance &amp; Clean</h1>
+    <p>Sharpen, straighten and clean up blurry or low-contrast scanned PDFs — and make them searchable — all in your browser.</p>
+  </div>
+
+<section class="tool-about">
+  <h2>About PDF Enhance &amp; Clean</h2>
+  <p>Scanned a document and ended up with a <strong>blurry, skewed or grey, washed-out PDF</strong>? This tool re-renders each page at a higher resolution, then runs a clean-up pipeline: <strong>auto-deskew</strong> (straighten tilted scans), <strong>contrast &amp; brightness</strong>, <strong>sharpen</strong>, and <strong>adaptive binarization</strong> (turn a dingy scan into crisp black-on-white). You can also add a <strong>searchable OCR text layer</strong> so you can select and search the text. Everything runs locally — your PDF is never uploaded.</p>
+  <p><strong>An honest note:</strong> this <em>enhances legibility</em> — it makes a poor scan much cleaner and sharper. It cannot recover detail that the scan never captured, and it does not repair a structurally <em>corrupt</em> PDF file (that needs different, server-side tooling). Tune the settings on the page-1 preview before processing the whole document.</p>
+</section>
+
+  <div class="card">
+    <div class="drop-zone" id="drop">
+      Drop a PDF here or <strong>click to browse</strong>
+      <p style="font-size:.77rem;margin:.25rem 0 0">Works best on scanned / image-based PDFs</p>
+      <input type="file" id="file" accept="application/pdf,.pdf">
+    </div>
+
+    <div id="workspace" style="display:none">
+      <div class="pe-layout">
+        <!-- ── Controls ── -->
+        <div class="pe-controls">
+          <div class="form-group">
+            <label>Output resolution</label>
+            <select id="res">
+              <option value="1.5">Standard (≈108 DPI)</option>
+              <option value="2" selected>High (≈144 DPI)</option>
+              <option value="3">Max (≈216 DPI) — slower</option>
+            </select>
+          </div>
+
+          <div class="seg">Clean-up</div>
+          <div class="toggle-row">
+            <span>Auto-deskew</span>
+            <label class="switch"><input type="checkbox" id="deskew"><span class="sl"></span></label>
+          </div>
+          <div class="toggle-row">
+            <span>Grayscale</span>
+            <label class="switch"><input type="checkbox" id="gray" checked><span class="sl"></span></label>
+          </div>
+
+          <div class="sub-ctl">
+            <div class="slider-row"><label>Brightness</label><input type="range" id="bright" min="-100" max="100" value="0"><span class="sv" id="brightV">0</span></div>
+            <div class="slider-row"><label>Contrast</label><input type="range" id="contrast" min="-100" max="100" value="25"><span class="sv" id="contrastV">25</span></div>
+            <div class="slider-row"><label>Sharpen</label><input type="range" id="sharp" min="0" max="150" value="60"><span class="sv" id="sharpV">60</span></div>
+          </div>
+
+          <div class="toggle-row">
+            <span>Binarize (B&amp;W scan)</span>
+            <label class="switch"><input type="checkbox" id="binarize"><span class="sl"></span></label>
+          </div>
+          <div class="sub-ctl" id="binCtl" style="display:none">
+            <div class="slider-row"><label>Threshold</label><input type="range" id="binK" min="2" max="30" value="12"><span class="sv" id="binKV">12</span></div>
+          </div>
+
+          <div class="seg">Searchable text</div>
+          <div class="toggle-row">
+            <span>Add OCR text layer</span>
+            <label class="switch"><input type="checkbox" id="ocr"><span class="sl"></span></label>
+          </div>
+          <div class="form-group" id="ocrLangGroup" style="display:none;margin-top:.5rem">
+            <label>OCR language</label>
+            <select id="ocrLang">
+              <option value="eng">English</option>
+              <option value="fra">French</option>
+              <option value="spa">Spanish</option>
+              <option value="deu">German</option>
+              <option value="ita">Italian</option>
+              <option value="por">Portuguese</option>
+              <option value="nld">Dutch</option>
+            </select>
+            <p style="font-size:.76rem;color:var(--text-muted);margin:.3rem 0 0">OCR is slower and downloads a language file on first use.</p>
+          </div>
+
+          <div class="form-group" id="qGroup" style="margin-top:.7rem">
+            <label>Image quality: <span id="qV">85</span>%</label>
+            <input type="range" id="q" min="40" max="100" value="85">
+          </div>
+
+          <button class="btn btn-primary" id="runBtn" style="width:100%;margin-top:.4rem">Enhance &amp; Download PDF</button>
+        </div>
+
+        <!-- ── Preview ── -->
+        <div class="pe-preview">
+          <div class="pe-prev-bar">
+            <div class="pager">
+              <button class="btn btn-secondary" id="prevPg">‹</button>
+              <span id="pgLabel">Page 1 / 1</span>
+              <button class="btn btn-secondary" id="nextPg">›</button>
+            </div>
+            <label style="font-size:.84rem;display:flex;align-items:center;gap:.35rem;cursor:pointer">
+              <input type="checkbox" id="showOrig"> Show original
+            </label>
+          </div>
+          <div class="pe-canvas-wrap">
+            <canvas id="preCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="pe-status" id="status"></div>
+      <div class="progress-track" id="progressTrack"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+  </div>
+
+  <div class="card mt-2" style="font-size:.84rem">
+    <strong>Tips</strong>
+    <ul style="margin:.5rem 0 0;padding-left:1.2rem;color:var(--text-muted);font-size:.82rem;line-height:1.6">
+      <li><b>Text documents:</b> turn on <em>Grayscale</em> + <em>Binarize</em> for a crisp black-on-white scan, and add the <em>OCR text layer</em> to make it searchable.</li>
+      <li><b>Photos / mixed pages:</b> keep <em>Grayscale</em> and <em>Binarize</em> off; use <em>Contrast</em> and <em>Sharpen</em> only.</li>
+      <li><b>Tilted scans:</b> enable <em>Auto-deskew</em> — check the page-1 preview to confirm it straightened correctly before processing.</li>
+    </ul>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">enhance pdf</span>
+  <span class="page-tag">clean scanned pdf</span>
+  <span class="page-tag">deskew pdf</span>
+  <span class="page-tag">sharpen pdf</span>
+  <span class="page-tag">make pdf searchable</span>
+  <span class="page-tag">pdf ocr</span>
+</div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let pdfDoc = null;          // pdf.js document
+let pdfBytes = null;        // original file bytes
+let srcName = 'document';
+let previewPage = 1;
+let renderCache = new Map(); // page → rendered (scale-1-preview) base canvas
+
+const el = id => document.getElementById(id);
+const drop = el('drop'), fileEl = el('file'), workspace = el('workspace');
+const preCanvas = el('preCanvas'), pgLabel = el('pgLabel');
+const statusEl = el('status'), progressTrack = el('progressTrack'), progressFill = el('progressFill');
+const runBtn = el('runBtn');
+
+// Controls
+const ctl = {
+  res: el('res'), deskew: el('deskew'), gray: el('gray'),
+  bright: el('bright'), contrast: el('contrast'), sharp: el('sharp'),
+  binarize: el('binarize'), binK: el('binK'),
+  ocr: el('ocr'), ocrLang: el('ocrLang'), q: el('q'), showOrig: el('showOrig'),
+};
+
+function noExt(n) { return n.replace(/\.[^.]+$/, ''); }
+
+function bindDrop(zone, input, cb) {
+  zone.addEventListener('click', () => input.click());
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragover'); cb(e.dataTransfer.files); });
+  input.addEventListener('change', () => cb(input.files));
+}
+
+// ── Load PDF ────────────────────────────────────────────────────────────
+bindDrop(drop, fileEl, async files => {
+  const f = files[0]; if (!f) return;
+  if (f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name)) { alert('Please choose a PDF file.'); return; }
+  srcName = noExt(f.name);
+  pdfBytes = new Uint8Array(await f.arrayBuffer());
+  try {
+    pdfDoc = await pdfjsLib.getDocument({ data: pdfBytes.slice() }).promise;
+  } catch (e) {
+    alert('Could not open this PDF — it may be encrypted or corrupt. ' + (e.message || ''));
+    return;
+  }
+  renderCache.clear();
+  previewPage = 1;
+  workspace.style.display = '';
+  statusEl.textContent = `Loaded ${pdfDoc.numPages} page${pdfDoc.numPages > 1 ? 's' : ''}. Adjust settings, then enhance.`;
+  await renderPreview();
+});
+
+// ── Image-processing primitives (operate on a canvas) ───────────────────
+function toGray(data) {
+  for (let i = 0; i < data.length; i += 4) {
+    const g = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    data[i] = data[i + 1] = data[i + 2] = g;
+  }
+}
+function applyBrightContrast(data, brightness, contrast) {
+  // brightness/contrast in -100..100
+  const b = brightness * 2.55;
+  const c = (259 * (contrast + 255)) / (255 * (259 - contrast));
+  for (let i = 0; i < data.length; i += 4) {
+    for (let k = 0; k < 3; k++) {
+      let v = c * (data[i + k] - 128) + 128 + b;
+      data[i + k] = v < 0 ? 0 : v > 255 ? 255 : v;
+    }
+  }
+}
+function unsharpMask(canvas, amount) {
+  if (amount <= 0) return;
+  const w = canvas.width, h = canvas.height, ctx = canvas.getContext('2d');
+  const orig = ctx.getImageData(0, 0, w, h);
+  const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h;
+  const tctx = tmp.getContext('2d');
+  // cheap 3×3 box blur as the unsharp reference (separable, fast)
+  tctx.putImageData(orig, 0, 0);
+  boxBlur3(tmp);
+  const blur = tctx.getImageData(0, 0, w, h);
+  const o = orig.data, bl = blur.data;
+  for (let i = 0; i < o.length; i += 4) {
+    for (let k = 0; k < 3; k++) {
+      const v = o[i + k] + amount * (o[i + k] - bl[i + k]);
+      o[i + k] = v < 0 ? 0 : v > 255 ? 255 : v;
+    }
+  }
+  ctx.putImageData(orig, 0, 0);
+}
+function boxBlur3(canvas) {
+  const w = canvas.width, h = canvas.height, ctx = canvas.getContext('2d');
+  const src = ctx.getImageData(0, 0, w, h), s = src.data;
+  const out = ctx.createImageData(w, h), d = out.data;
+  const idx = (x, y) => (y * w + x) * 4;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    for (let k = 0; k < 3; k++) {
+      let sum = 0, n = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const xx = x + dx, yy = y + dy;
+        if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+        sum += s[idx(xx, yy) + k]; n++;
+      }
+      d[idx(x, y) + k] = sum / n;
+    }
+    d[idx(x, y) + 3] = 255;
+  }
+  ctx.putImageData(out, 0, 0);
+}
+// Adaptive (local-mean) threshold via integral image — good for uneven lighting
+function adaptiveBinarize(canvas, windowSize, kPercent) {
+  const w = canvas.width, h = canvas.height, ctx = canvas.getContext('2d');
+  const img = ctx.getImageData(0, 0, w, h), data = img.data;
+  const gray = new Float32Array(w * h);
+  for (let i = 0, p = 0; i < data.length; i += 4, p++)
+    gray[p] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+  const iw = w + 1;
+  const integ = new Float64Array(iw * (h + 1));
+  for (let y = 1; y <= h; y++) {
+    let rs = 0;
+    for (let x = 1; x <= w; x++) {
+      rs += gray[(y - 1) * w + (x - 1)];
+      integ[y * iw + x] = integ[(y - 1) * iw + x] + rs;
+    }
+  }
+  const r = Math.max(1, Math.floor(windowSize / 2));
+  const k = kPercent / 100;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const x1 = Math.max(0, x - r), y1 = Math.max(0, y - r), x2 = Math.min(w - 1, x + r), y2 = Math.min(h - 1, y + r);
+    const count = (x2 - x1 + 1) * (y2 - y1 + 1);
+    const sum = integ[(y2 + 1) * iw + (x2 + 1)] - integ[y1 * iw + (x2 + 1)] - integ[(y2 + 1) * iw + x1] + integ[y1 * iw + x1];
+    const mean = sum / count;
+    const p = y * w + x;
+    const val = gray[p] < mean * (1 - k) ? 0 : 255;
+    const di = p * 4;
+    data[di] = data[di + 1] = data[di + 2] = val;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+// Projection-profile skew detection (returns correction angle in degrees)
+function detectSkew(canvas) {
+  const maxW = 600, scale = Math.min(1, maxW / canvas.width);
+  const w = Math.round(canvas.width * scale), h = Math.round(canvas.height * scale);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  c.getContext('2d').drawImage(canvas, 0, 0, w, h);
+  const d = c.getContext('2d').getImageData(0, 0, w, h).data;
+  let mean = 0;
+  for (let i = 0; i < d.length; i += 4) mean += (d[i] + d[i + 1] + d[i + 2]) / 3;
+  mean /= (w * h);
+  const th = mean * 0.75;
+  const pts = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = (y * w + x) * 4;
+    if ((d[i] + d[i + 1] + d[i + 2]) / 3 < th) pts.push(x, y);
+  }
+  if (pts.length < 100) return 0;
+  let best = 0, bestScore = -1;
+  for (let aDeg = -8; aDeg <= 8; aDeg += 0.5) {
+    const a = aDeg * Math.PI / 180, sin = Math.sin(a), cos = Math.cos(a);
+    const off = Math.ceil(w * Math.abs(sin)) + 1;
+    const buckets = new Float64Array(h + 2 * off + 2);
+    for (let p = 0; p < pts.length; p += 2) {
+      const ry = Math.round(pts[p] * sin + pts[p + 1] * cos) + off;
+      if (ry >= 0 && ry < buckets.length) buckets[ry]++;
+    }
+    let score = 0;
+    for (let i = 0; i < buckets.length; i++) score += buckets[i] * buckets[i];
+    if (score > bestScore) { bestScore = score; best = aDeg; }
+  }
+  return best;
+}
+function rotateCanvas(canvas, deg) {
+  if (Math.abs(deg) < 0.2) return canvas;
+  const w = canvas.width, h = canvas.height;
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+  ctx.translate(w / 2, h / 2);
+  ctx.rotate(deg * Math.PI / 180);
+  ctx.drawImage(canvas, -w / 2, -h / 2);
+  return c;
+}
+
+// Apply the full enhancement pipeline to a freshly rendered page canvas.
+function enhanceCanvas(canvas) {
+  if (ctl.deskew.checked) canvas = rotateCanvas(canvas, detectSkew(canvas));
+  const ctx = canvas.getContext('2d');
+  const binarizing = ctl.binarize.checked;
+  if (ctl.gray.checked || binarizing) {
+    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    toGray(img.data);
+    ctx.putImageData(img, 0, 0);
+  }
+  const bright = +ctl.bright.value, contrast = +ctl.contrast.value;
+  if (bright !== 0 || contrast !== 0) {
+    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    applyBrightContrast(img.data, bright, contrast);
+    ctx.putImageData(img, 0, 0);
+  }
+  unsharpMask(canvas, +ctl.sharp.value / 100);
+  if (binarizing) {
+    const win = Math.max(15, Math.round(canvas.width / 45)); // window scales with page width
+    adaptiveBinarize(canvas, win, +ctl.binK.value);
+  }
+  return canvas;
+}
+
+// Render a page to a canvas at the given pdf.js scale.
+async function renderPageCanvas(pageNum, scale) {
+  const page = await pdfDoc.getPage(pageNum);
+  const viewport = page.getViewport({ scale });
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.floor(viewport.width);
+  canvas.height = Math.floor(viewport.height);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  await page.render({ canvasContext: ctx, viewport }).promise;
+  return { canvas, page, viewport };
+}
+
+// ── Live preview (page 1 by default), debounced ─────────────────────────
+let prevTimer = null;
+function schedulePreview() { clearTimeout(prevTimer); prevTimer = setTimeout(renderPreview, 250); }
+
+async function renderPreview() {
+  if (!pdfDoc) return;
+  pgLabel.textContent = `Page ${previewPage} / ${pdfDoc.numPages}`;
+  // Render at a modest preview scale for speed
+  const { canvas } = await renderPageCanvas(previewPage, 1.5);
+  if (!ctl.showOrig.checked) enhanceCanvas(canvas);
+  const pctx = preCanvas.getContext('2d');
+  preCanvas.width = canvas.width; preCanvas.height = canvas.height;
+  pctx.drawImage(canvas, 0, 0);
+}
+
+el('prevPg').addEventListener('click', () => { if (previewPage > 1) { previewPage--; renderPreview(); } });
+el('nextPg').addEventListener('click', () => { if (pdfDoc && previewPage < pdfDoc.numPages) { previewPage++; renderPreview(); } });
+ctl.showOrig.addEventListener('change', renderPreview);
+
+// Wire control changes → debounced preview + label updates
+[['bright', 'brightV'], ['contrast', 'contrastV'], ['sharp', 'sharpV'], ['binK', 'binKV']].forEach(([id, vid]) => {
+  el(id).addEventListener('input', () => { el(vid).textContent = el(id).value; schedulePreview(); });
+});
+el('q').addEventListener('input', () => el('qV').textContent = el('q').value);
+['res', 'deskew', 'gray', 'binarize'].forEach(id => ctl[id].addEventListener('change', schedulePreview));
+ctl.binarize.addEventListener('change', () => el('binCtl').style.display = ctl.binarize.checked ? '' : 'none');
+ctl.ocr.addEventListener('change', () => el('ocrLangGroup').style.display = ctl.ocr.checked ? '' : 'none');
+
+// ── Build the enhanced PDF ──────────────────────────────────────────────
+function setProgress(done, total, label) {
+  progressTrack.style.display = 'block';
+  progressFill.style.width = (done / total * 100) + '%';
+  statusEl.textContent = label;
+}
+
+async function canvasToBytes(canvas, binarized, quality) {
+  const mime = binarized ? 'image/png' : 'image/jpeg';
+  const blob = await new Promise(r => canvas.toBlob(r, mime, binarized ? undefined : quality / 100));
+  return { bytes: new Uint8Array(await blob.arrayBuffer()), png: binarized };
+}
+
+async function run() {
+  if (!pdfDoc) return;
+  runBtn.disabled = true; runBtn.textContent = 'Processing…';
+  const total = pdfDoc.numPages;
+  const scale = parseFloat(ctl.res.value);
+  const quality = +ctl.q.value;
+  const useOcr = ctl.ocr.checked;
+  let worker = null;
+
+  try {
+    const outDoc = await PDFLib.PDFDocument.create();
+    const font = useOcr ? await outDoc.embedFont(PDFLib.StandardFonts.Helvetica) : null;
+
+    if (useOcr) {
+      setProgress(0, total, 'Loading OCR engine…');
+      worker = await Tesseract.createWorker(ctl.ocrLang.value);
+    }
+
+    for (let n = 1; n <= total; n++) {
+      setProgress(n - 1, total, `Enhancing page ${n} of ${total}…`);
+      await new Promise(r => setTimeout(r, 10)); // let the UI update
+
+      const { canvas, viewport } = await renderPageCanvas(n, scale);
+      enhanceCanvas(canvas);
+
+      // Page size in PDF points = the page's natural size at scale 1
+      const ptW = viewport.width / scale;
+      const ptH = viewport.height / scale;
+      const ratio = ptW / canvas.width; // px → pt
+
+      const { bytes, png } = await canvasToBytes(canvas, ctl.binarize.checked, quality);
+      const embedded = png ? await outDoc.embedPng(bytes) : await outDoc.embedJpg(bytes);
+      const pg = outDoc.addPage([ptW, ptH]);
+      pg.drawImage(embedded, { x: 0, y: 0, width: ptW, height: ptH });
+
+      if (useOcr) {
+        setProgress(n - 1, total, `Reading text on page ${n} of ${total}…`);
+        const { data } = await worker.recognize(canvas);
+        for (const word of (data.words || [])) {
+          const text = (word.text || '').trim();
+          if (!text || (word.confidence != null && word.confidence < 40)) continue;
+          const bb = word.bbox; if (!bb) continue;
+          const size = Math.max(4, (bb.y1 - bb.y0) * ratio * 0.92);
+          const x = bb.x0 * ratio;
+          const y = ptH - bb.y1 * ratio;
+          try {
+            pg.drawText(text, { x, y, size, font, opacity: 0 }); // invisible but selectable
+          } catch { /* skip glyphs the standard font can't encode */ }
+        }
+      }
+    }
+
+    setProgress(total, total, 'Finishing PDF…');
+    const out = await outDoc.save();
+    const blob = new Blob([out], { type: 'application/pdf' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${srcName}_enhanced.pdf`;
+    a.click();
+    statusEl.textContent = `✓ Done — ${total} page${total > 1 ? 's' : ''} enhanced (${(blob.size / 1048576).toFixed(2)} MB).`;
+  } catch (e) {
+    statusEl.textContent = '✗ ' + (e.message || 'Processing failed.');
+    alert('Enhancement failed: ' + (e.message || e));
+  } finally {
+    if (worker) { try { await worker.terminate(); } catch {} }
+    progressFill.style.width = '100%';
+    setTimeout(() => { progressTrack.style.display = 'none'; progressFill.style.width = '0'; }, 800);
+    runBtn.disabled = false; runBtn.textContent = 'Enhance & Download PDF';
+  }
+}
+runBtn.addEventListener('click', run);
+</script>
+</body>
+</html>

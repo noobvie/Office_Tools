@@ -3,7 +3,7 @@
 100+ free, browser-based utilities for everyday office, productivity, and AI development work.
 No build step, no framework — everything runs locally in your browser.
 
-**Live site:** [https://tools.grin.money/](https://tools.grin.money/)
+**Live site:** [https://tools.grin.money/](https://tools.grin.money/) — browse and try every tool there.
 
 ```bash
 git clone https://github.com/noobvie/Office_Tools.git
@@ -14,149 +14,25 @@ sudo bash Office_Tools/deploy.sh
 
 ## Tools
 
-### ⏱️ Productivity & Time
-| Tool | Description |
-|------|-------------|
-| Pomodoro Timer | 25-min focus cycles with breaks, session counter and desktop notifications |
-| Date & Time Calculator | Date difference, add/subtract days, age, countdown, time unit converter, Excel serial↔datetime, decimal hours↔HH:MM:SS, duration adder |
-| World Calendar | Gregorian, Chinese Lunar (农历), and Islamic Hijri calendars side by side |
-| Stopwatch & Timer | Stopwatch with lap times and countdown timer with alarm |
-| Time Zone Converter | Convert times between time zones — world clock for 40+ cities |
+**⏱️ Productivity & Time** — Pomodoro Timer · Date & Time Calculator · World Calendar · Stopwatch & Timer · Time Zone Converter
 
-### ✨ Generators
-| Tool | Description |
-|------|-------------|
-| Password Generator | Secure random passwords — custom length, character sets |
-| QR Code Generator | QR codes for URL, text, WiFi, vCard — download PNG |
-| UUID Generator | UUID v4 and v7 — single or bulk, one-click copy |
-| Random Number Generator | Random integers or decimals in any range — no-duplicates option |
-| Lorem Ipsum Generator | Placeholder text by paragraphs, sentences, words, or list items |
-| Fake Data Generator | Realistic test data — names, emails, phones, addresses. Download CSV/JSON/**JSONL AI training pairs** |
-| Wheel of Names | Animated spinning wheel to randomly pick a winner from your list |
-| Barcode Generator | Code 128, EAN-13, EAN-8, UPC-A, Code 39, ITF — customize size/colors, download PNG or SVG (JsBarcode) |
+**✨ Generators** — Password Generator · QR Code Generator · UUID Generator · Random Number Generator · Lorem Ipsum Generator · Fake Data Generator · Wheel of Names · Barcode Generator
 
-### 📝 PDF & Text
-| Tool | Description |
-|------|-------------|
-| PDF Toolkit | Merge, split, extract pages, reorder with drag-and-drop thumbnails |
-| PDF to Text | Extract text per-page, copy or download as .txt / Word .docx |
-| Image to PDF | Combine JPG/PNG/WebP images into one PDF — reorder, A4/Letter, orientation, margins |
-| Word Counter | Words, characters, sentences, reading time and keyword density |
-| Markdown Editor | Live split-pane editor with HTML preview, toolbar and export |
-| Text Diff | Side-by-side diff with color-highlighted additions/deletions |
-| Typing Speed Test | WPM and accuracy with real-time error tracking |
-| Text Case Converter | UPPERCASE, lowercase, Title Case, camelCase, snake_case, kebab-case |
-| Notepad | Auto-saving scratch pad with up to 5 named notes in localStorage |
-| Remove Duplicate Lines & Sort | Dedupe, sort A–Z/Z–A/numeric/length/shuffle, trim, change case, reverse — single pass |
-| Markdown ↔ HTML Converter | Two-way Markdown/HTML conversion with live rendered preview (marked + turndown) |
+**📝 PDF & Text** — PDF Toolkit · PDF to Text · Image to PDF · PDF Enhance & Clean · PDF to Images · Sign PDF · PDF Watermark & Page Numbers · Word Counter · Markdown Editor · Text Diff · Typing Speed Test · Text Case Converter · Notepad · Remove Duplicate Lines & Sort · Markdown ↔ HTML Converter
 
-### 🔒 Encoding & Crypto
-| Tool | Description |
-|------|-------------|
-| Base64 Converter | Encode/decode text or files to/from Base64 |
-| URL Encoder / Decoder | Percent-encode and decode URLs with diff view |
-| Unix Timestamp | Convert Unix timestamps ↔ human-readable dates, live current time |
-| Hash Generator | SHA-1/256/384/512 and HMAC from text or files — Web Crypto API, 100% local |
-| HTML Entity Encoder | Encode & decode HTML entities — includes entity reference table |
-| JWT Decoder | Decode JSON Web Tokens — header, payload, expiry, claims. Fully local |
-| Number Base Converter | Convert between binary, octal, decimal, hex — bit-length and ranges |
-| Binary ↔ Text Converter | Text ↔ 8-bit binary with hex and decimal views — full UTF-8/Unicode support |
-| Morse Code Translator | Text ↔ Morse with audio beeps, visual flash, adjustable WPM (Web Audio) |
-| ROT13 & Caesar Cipher | Encode/decode ROT13 or any shift — brute-force panel shows all 25 shifts |
+**🔒 Encoding & Crypto** — Base64 Converter · URL Encoder / Decoder · Unix Timestamp · Hash Generator · HTML Entity Encoder · JWT Decoder · Number Base Converter · Binary ↔ Text Converter · Morse Code Translator · ROT13 & Caesar Cipher
 
-### 🧮 Calculators
-| Tool | Description |
-|------|-------------|
-| Percentage Calculator | X% of Y · X is what % of Y · percentage change |
-| Aspect Ratio Calculator | Find missing dimension from ratio — common presets |
-| Unit Converter | Length, weight, temperature, volume, area, speed, data — all results at once |
-| Loan Calculator | Monthly payment, total interest, and amortization schedule |
-| Tip Calculator | Tip and bill split — quick buttons for 10%–25%, per-person total |
-| Number to Words | Spell out any number in English — ordinal and currency modes |
-| BMI Calculator | Body Mass Index in metric or imperial — weight category and healthy weight range |
-| Age Calculator | Exact age in years/months/days, total time lived, next-birthday countdown |
-| Sales Tax & VAT Calculator | Add tax to a net price or remove VAT from a gross total — country rate presets |
-| Discount Calculator | Sale price, savings and effective % — stack multiple discounts in order |
-| Compound Interest Calculator | Future value with regular contributions — year-by-year growth chart and table |
-| Scientific Calculator | Trig, logs, powers, roots, factorial, π, e, memory — deg/rad, safe expression parser (no eval) |
-| Roman Numeral Converter | Numbers ↔ Roman numerals both directions — overline notation up to 3,999,999 |
+**🧮 Calculators** — Percentage Calculator · Aspect Ratio Calculator · Unit Converter · Loan Calculator · Tip Calculator · Number to Words · BMI Calculator · Age Calculator · Sales Tax & VAT Calculator · Discount Calculator · Compound Interest Calculator · Scientific Calculator · Roman Numeral Converter
 
-### 💻 Development
-| Tool | Description |
-|------|-------------|
-| JSON Editor | Validate, format, minify JSON with syntax highlighting and tree view |
-| CSV ↔ JSON | Convert CSV and JSON — table preview, file upload, download, **JSONL output** |
-| Crontab Explainer | Parse cron expressions into plain English — next 10 run times |
-| Regex Tester | Live regex match highlighting with capture groups, flag toggles, **named group explainer** |
-| SQL Formatter | Beautify and minify SQL — uppercase keywords, configurable indent |
-| File Compressor | Create ZIP archives or extract ZIPs — 100% in your browser |
-| AI Token Counter | Estimate token count and API cost for GPT-4, Claude, Llama, Gemini — context window usage bar |
-| AI Prompt Template Builder | Write prompts with `{{variable}}` placeholders, fill in, preview, save to browser |
-| AI JSON Schema Builder | Auto-generate JSON Schema from any JSON or build visually — export for OpenAI/Anthropic tool calling |
-| Code Beautifier & Minifier | Beautify or minify HTML, CSS and JavaScript — per-language toggle, byte-savings (js-beautify) |
-| JSON ↔ YAML Converter | Two-way JSON/YAML conversion with live validation and clear parse errors (js-yaml) |
-| XML Formatter | Pretty-print, minify and validate XML — configurable indent, well-formedness check (DOMParser) |
-| CSS Gradient Generator | Build linear/radial gradients visually — color stops, angle, copy production CSS |
-| Meta Tag Generator | SEO `<head>` tags (title/desc/canonical/robots) with a live Google SERP preview |
-| Open Graph & Twitter Card | OG + Twitter Card tags with a live social-share card preview |
-| Robots.txt Generator | Per-user-agent allow/disallow rules, crawl-delay, sitemap line — copy or download |
-| Schema.org JSON-LD Generator | Structured data for rich results — Article, Product, FAQ, LocalBusiness, Organization, WebSite |
-| URL Slug Generator | Title → SEO-friendly slug — accent transliteration, stop-word removal, bulk mode |
-| Favicon Generator | From image, emoji or initials — multi-size PNG export (16–512px) + HTML link snippet |
+**💻 Development** — JSON Editor · CSV ↔ JSON · Crontab Explainer · Regex Tester · SQL Formatter · File Compressor · AI Token Counter · AI Prompt Template Builder · AI JSON Schema Builder · Code Beautifier & Minifier · JSON ↔ YAML Converter · XML Formatter · CSS Gradient Generator · Meta Tag Generator · Open Graph & Twitter Card · Robots.txt Generator · Schema.org JSON-LD Generator · URL Slug Generator · Favicon Generator
 
-### 🌐 Network & Security
-| Tool | Description |
-|------|-------------|
-| Currency & Crypto | 40+ currencies + BTC/ETH/XMR/GRIN with live rates |
-| What Is My IP? | Public IP, ISP, country, city, coordinates, IPv6 status |
-| IP Location Lookup | IPv4/IPv6/domain — country, city, ISP, ASN, VPN/proxy detection, map |
-| Campaign URL Builder | Build UTM-tagged URLs for Google Analytics with QR code |
-| CSR Decoder | Decode a CSR — subject, key size, SANs, fingerprints. Fully local |
-| Port Checker | Check if TCP ports are open on any host — IPv4 and IPv6, common services presets (SSH, RDP, HTTP, MySQL…) + all Grin mainnet & testnet ports |
-| Domain Checker | WHOIS / RDAP lookup, DNS records, availability across 8 TLDs (.com .net .org .io .app .dev…), and AI-powered domain name suggestions |
-| Online Ping Test | Ping any IP or hostname from our server with live ICMP output — configurable count, IPv4 and IPv6 |
-| Online Traceroute | Trace the full network path hop by hop with live streaming output — IPv4 and IPv6 |
-| DNS Lookup | Query A, AAAA, MX, NS, TXT, CNAME, SOA and CAA records via Cloudflare DoH — instant results |
-| Reverse DNS Lookup | Resolve any IPv4 or IPv6 address to its hostname via PTR record (rDNS) |
-| IPv6 Analyzer | Expand or compress any IPv6 address and identify its type (global unicast, link-local, ULA, multicast…). Fully local |
-| Subnet Calculator | IPv4 and IPv6 CIDR — network address, broadcast, mask, host range, total addresses. Fully local |
+**🌐 Network & Security** — Currency & Crypto · What Is My IP? · VPN / IP Leak Test · IP Location Lookup · Campaign URL Builder · CSR Decoder · Port Checker · Domain Checker · Online Ping Test · Online Traceroute · DNS Lookup · Reverse DNS Lookup · IPv6 Analyzer · Subnet Calculator
 
-### 🖼️ Media
-| Tool | Description |
-|------|-------------|
-| Image Converter | Convert HEIC/HEIF → JPG/PNG/WebP, compress, resize with aspect-ratio lock |
-| Image to Text (OCR) | Extract text from photos, screenshots and scans — 10+ languages, local Tesseract WASM |
-| Image Cropper | Crop with aspect presets (1:1/16:9/4:3), rotate, flip, zoom — full-res export |
-| Color Converter | HEX, RGB, HSL, HSV, CMYK — live preview, shades, named colors |
-| Contrast Checker | WCAG AA/AAA contrast ratios for color pairs — live preview |
-| Palette Extractor | Upload an image to extract dominant colors as HEX swatches |
-| Color Picker / Eyedropper | Pick HEX/RGB/HSL colors from any image with a magnified loupe — saved palette |
-| EXIF Viewer & Remover | View photo metadata incl. GPS, then download a stripped, privacy-safe copy (exifr) |
-| Screenshot Beautifier | Gradient backgrounds, padding, shadows, rounded corners — download PNG |
-| Character Map | Browse and copy symbols, arrows, math, currency, Greek and emoji |
-| YouTube Downloader | Download YouTube videos as MP4 or audio as MP3, including playlists |
-| Speech & Voice | Transcribe mic or audio files to text (EN/FR/ES, Whisper AI) · Text to speech |
-| Photo Editor | Remove backgrounds (AI), resize for social media, color adjust, add text, replace colors |
+**🖼️ Media** — Image Converter · Image to Text (OCR) · Image Cropper · Image Upscaler · Image Redaction · Collage & Grid Maker · SVG to PNG · Color Converter · Contrast Checker · Palette Extractor · Color Picker / Eyedropper · EXIF Viewer & Remover · Screenshot Beautifier · Character Map · YouTube Downloader · Speech & Voice · Photo Editor
 
-### 📤 Share
-| Tool | Description |
-|------|-------------|
-| URL Shortener | Short links with optional custom alias and expiry — self-hosted |
-| Pastebin | Share text/code with syntax label, expiry, and burn-after-read |
-| File Share | Upload .zip/.tar/.rar (up to 1 GB) and share a download link |
+**📤 Share** — URL Shortener · Pastebin · File Share
 
-### 🎮 Relax
-| Tool | Description |
-|------|-------------|
-| 2048 | Slide and merge tiles to reach 2048. Undo, best score, swipe on mobile |
-| Sudoku | 9×9 Sudoku — Easy / Medium / Hard, pencil mode, timer, check and solve |
-| Gomoku | 5-in-a-row on a 15×15 board. Heuristic AI or two-player local |
-| Memory Match | Flip emoji cards to find matching pairs — 3 grid sizes, star rating |
-| Chess | Full-rules chess (castling, en passant, promotion) vs AI or friend |
-| Simon Says | Watch the color/sound sequence and repeat it — grows each round |
-| Number Memory | Memorize a number before it vanishes, then type it back — gets longer |
-| Visual Memory | Recall which grid squares were highlighted — grid expands each round |
-| Word Memory | Study a word list, then identify which words you actually saw |
+**🎮 Relax** — 2048 · Sudoku · Gomoku · Memory Match · Chess · Simon Says · Number Memory · Visual Memory · Word Memory
 
 ---
 

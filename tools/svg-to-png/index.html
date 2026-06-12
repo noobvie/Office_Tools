@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SVG to PNG Converter — Rasterize SVG | Office Tools</title>
+  <meta name="description" content="Convert SVG to PNG, JPG or WebP at any resolution. Paste SVG code or drop a file, set the scale and background, then download a raster image — all in your browser, no upload.">
+  <meta name="keywords" content="svg to png, convert svg, rasterize svg, svg to jpg, svg to image, export svg, svg converter online, svg to webp">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Free SVG to PNG Converter — Rasterize SVG Online">
+  <meta property="og:description" content="Convert SVG to PNG, JPG or WebP at any resolution. Paste SVG code or drop a file, set scale and background, then download — no upload.">
+  <meta property="og:url" content="https://tools.grin.money/tools/svg-to-png/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Free SVG to PNG Converter — Rasterize SVG Online">
+  <meta name="twitter:description" content="Convert SVG to PNG, JPG or WebP at any resolution. Paste SVG code or drop a file, set scale and background, then download — no upload.">
+  <link rel="canonical" href="https://tools.grin.money/tools/svg-to-png/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"SVG to PNG Converter","description":"Convert SVG to PNG, JPG or WebP at any resolution. Paste SVG code or drop a file, set the scale and background, then download a raster image — all in your browser, no upload.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/svg-to-png/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .drop-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 1.6rem 1.5rem; text-align: center; color: var(--text-muted); cursor: pointer; transition: all .15s; }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
+    .drop-zone input[type=file] { display: none; }
+    textarea#svgCode { width: 100%; min-height: 140px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .82rem; resize: vertical; }
+    .ctl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .65rem; margin-top: .85rem; }
+    .checker { background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%); background-size: 18px 18px; background-position: 0 0, 0 9px, 9px -9px, -9px 0; }
+    #preview { max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: var(--radius); margin-top: .9rem; display: none; }
+    .dim-info { font-size: .84rem; color: var(--text-muted); margin-top: .4rem; }
+    .dim-info b { color: var(--text); }
+    .status { font-size: .84rem; color: var(--danger); margin-top: .5rem; min-height: 1.1em; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">SVG to PNG</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🖌️ SVG to PNG Converter</h1>
+    <p>Rasterize an SVG into PNG, JPG or WebP at any size — paste the code or drop a file.</p>
+  </div>
+
+<section class="tool-about">
+  <h2>About the SVG to PNG Converter</h2>
+  <p>SVG is perfect for the web, but plenty of apps still want a <strong>raster image</strong>. Drop an <strong>.svg file</strong> or paste the markup, set a <strong>scale</strong> (or exact dimensions) and a <strong>background</strong> (transparent for PNG/WebP, or a solid color), then download a crisp <strong>PNG, JPG or WebP</strong>. Because SVG is vector, you can export at <strong>2×, 4× or higher</strong> with no quality loss. Conversion runs locally — nothing is uploaded.</p>
+  <p style="font-size:.86rem;color:var(--text-muted)">Note: external resources referenced by the SVG (remote images, web fonts) may not render — embed them in the SVG for a faithful result.</p>
+</section>
+
+  <div class="card">
+    <div class="drop-zone" id="drop">
+      Drop an <strong>.svg</strong> file here or <strong>click to browse</strong>
+      <input type="file" id="file" accept="image/svg+xml,.svg">
+    </div>
+    <p style="text-align:center;color:var(--text-muted);font-size:.82rem;margin:.6rem 0 .4rem">— or paste SVG code —</p>
+    <textarea id="svgCode" placeholder="&lt;svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'&gt;…&lt;/svg&gt;"></textarea>
+
+    <div class="ctl-grid">
+      <div class="form-group" style="margin:0">
+        <label>Scale</label>
+        <select id="scale"><option value="1">1×</option><option value="2" selected>2×</option><option value="3">3×</option><option value="4">4×</option><option value="custom">Custom width…</option></select>
+      </div>
+      <div class="form-group" style="margin:0;display:none" id="customWGroup">
+        <label>Width (px)</label>
+        <input type="number" id="customW" value="1024" min="1" max="10000">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Background</label>
+        <select id="bgMode"><option value="transparent">Transparent</option><option value="white">White</option><option value="custom">Custom color…</option></select>
+      </div>
+      <div class="form-group" style="margin:0;display:none" id="bgColorGroup">
+        <label>Color</label>
+        <input type="color" id="bgColor" value="#ffffff" style="width:100%;height:34px;padding:0;border:1px solid var(--border);border-radius:6px">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Format</label>
+        <select id="fmt"><option value="png">PNG</option><option value="jpg">JPG</option><option value="webp">WebP</option></select>
+      </div>
+    </div>
+
+    <div class="ctl-grid">
+      <button class="btn btn-primary" id="renderBtn">Convert</button>
+      <button class="btn btn-secondary" id="dlBtn" style="display:none">Download</button>
+    </div>
+    <div class="dim-info" id="dimInfo"></div>
+    <div class="status" id="status"></div>
+    <img id="preview" class="checker" alt="rendered preview">
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">SVG to PNG</span>
+  <span class="page-tag">rasterize SVG</span>
+  <span class="page-tag">SVG to JPG</span>
+  <span class="page-tag">export SVG</span>
+  <span class="page-tag">SVG converter</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const el = id => document.getElementById(id);
+let svgText = '', outCanvas = null;
+const drop = el('drop'), fileEl = el('file'), codeEl = el('svgCode'), statusEl = el('status'), preview = el('preview'), dlBtn = el('dlBtn');
+
+function fmtMime(f) { return f === 'jpg' ? 'image/jpeg' : f === 'webp' ? 'image/webp' : 'image/png'; }
+function bindDrop(zone, input, cb) {
+  zone.addEventListener('click', () => input.click());
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragover'); cb(e.dataTransfer.files); });
+  input.addEventListener('change', () => cb(input.files));
+}
+
+bindDrop(drop, fileEl, async files => {
+  const f = files[0]; if (!f) return;
+  if (!/\.svg$/i.test(f.name) && f.type !== 'image/svg+xml') { alert('Please choose an .svg file.'); return; }
+  codeEl.value = await f.text();
+});
+
+el('scale').addEventListener('change', () => el('customWGroup').style.display = el('scale').value === 'custom' ? '' : 'none');
+el('bgMode').addEventListener('change', () => el('bgColorGroup').style.display = el('bgMode').value === 'custom' ? '' : 'none');
+
+// Parse intrinsic SVG dimensions from width/height or viewBox.
+function svgIntrinsicSize(svg) {
+  const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
+  const node = doc.querySelector('svg');
+  if (!node || doc.querySelector('parsererror')) return null;
+  const num = v => { const m = String(v || '').match(/[\d.]+/); return m ? parseFloat(m[0]) : 0; };
+  let w = num(node.getAttribute('width')), h = num(node.getAttribute('height'));
+  const vb = (node.getAttribute('viewBox') || '').split(/[\s,]+/).map(parseFloat).filter(n => !isNaN(n));
+  if ((!w || !h) && vb.length === 4) { w = w || vb[2]; h = h || vb[3]; }
+  if (!w || !h) { w = w || 300; h = h || 150; } // SVG default
+  return { w, h };
+}
+
+async function render() {
+  svgText = codeEl.value.trim();
+  statusEl.textContent = ''; dlBtn.style.display = 'none'; preview.style.display = 'none';
+  if (!svgText) { statusEl.textContent = 'Paste SVG code or drop an .svg file first.'; return; }
+  if (!/<svg[\s>]/i.test(svgText)) { statusEl.textContent = 'That does not look like SVG markup.'; return; }
+
+  const size = svgIntrinsicSize(svgText);
+  if (!size) { statusEl.textContent = 'Could not parse the SVG (invalid markup).'; return; }
+
+  let targetW, targetH;
+  if (el('scale').value === 'custom') {
+    targetW = Math.max(1, +el('customW').value || size.w);
+    targetH = Math.round(targetW * (size.h / size.w));
+  } else {
+    const s = +el('scale').value;
+    targetW = Math.round(size.w * s); targetH = Math.round(size.h * s);
+  }
+  if (targetW * targetH > 60_000_000) { statusEl.textContent = 'Output too large (over 60 MP) — lower the scale.'; return; }
+
+  el('renderBtn').disabled = true; el('renderBtn').textContent = 'Converting…';
+  try {
+    const blob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = await new Promise((ok, err) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => err(new Error('The browser could not render this SVG.')); i.src = url; });
+
+    const c = document.createElement('canvas');
+    c.width = targetW; c.height = targetH;
+    const ctx = c.getContext('2d');
+    const bgMode = el('bgMode').value, fmt = el('fmt').value;
+    if (bgMode === 'white' || fmt === 'jpg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, targetW, targetH); }
+    else if (bgMode === 'custom') { ctx.fillStyle = el('bgColor').value; ctx.fillRect(0, 0, targetW, targetH); }
+    ctx.drawImage(img, 0, 0, targetW, targetH);
+    URL.revokeObjectURL(url);
+
+    outCanvas = c;
+    preview.src = c.toDataURL('image/png');
+    preview.style.display = 'block';
+    el('dimInfo').innerHTML = `Source <b>${Math.round(size.w)} × ${Math.round(size.h)}</b> → output <b>${targetW} × ${targetH}</b> px`;
+    dlBtn.style.display = '';
+  } catch (e) {
+    statusEl.textContent = '✗ ' + (e.message || 'Render failed.');
+  } finally {
+    el('renderBtn').disabled = false; el('renderBtn').textContent = 'Convert';
+  }
+}
+el('renderBtn').addEventListener('click', render);
+
+dlBtn.addEventListener('click', () => {
+  if (!outCanvas) return;
+  const fmt = el('fmt').value, mime = fmtMime(fmt);
+  outCanvas.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = `image.${fmt}`; a.click();
+  }, mime, mime === 'image/png' ? undefined : 0.92);
+});
+</script>
+</body>
+</html>

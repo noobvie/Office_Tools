@@ -23,7 +23,12 @@ const express   = require('express');
 const cors      = require('cors');
 const fs        = require('fs');
 const path      = require('path');
-const Database  = require('better-sqlite3');
+// Node's built-in SQLite (Node 24+). Replaced better-sqlite3 to drop the native
+// addon: its prebuilt .node is ABI-locked to a Node version, so a Node upgrade on
+// this box (the co-located Grin mining pool requires Node 24+) broke `require` with
+// ERR_DLOPEN_FAILED / NODE_MODULE_VERSION mismatch and crash-looped the service.
+// DatabaseSync exposes the same exec()/prepare()/run/get/all subset this file uses.
+const { DatabaseSync } = require('node:sqlite');
 const multer    = require('multer');
 
 const app  = express();
@@ -38,7 +43,7 @@ const UPLOADS_DIR   = process.env.UPLOADS_DIR || '/opt/office-tools/data/uploads
 fs.mkdirSync(path.dirname(TOOLS_DB_PATH), { recursive: true });
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
-const db = new Database(TOOLS_DB_PATH);
+const db = new DatabaseSync(TOOLS_DB_PATH);
 db.exec(`
   CREATE TABLE IF NOT EXISTS short_urls (
     code     TEXT PRIMARY KEY,

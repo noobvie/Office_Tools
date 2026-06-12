@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Upscaler — Enlarge &amp; Sharpen Photos | Office Tools</title>
+  <meta name="description" content="Upscale and sharpen images 2×, 3× or 4× in your browser. High-quality stepped resampling with unsharp masking and denoise — enlarge low-resolution photos with no upload.">
+  <meta name="keywords" content="image upscaler, upscale image, enlarge image, increase image resolution, sharpen photo, photo enhancer, make image bigger, 2x 4x upscale, image enlarger online">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Free Image Upscaler — Enlarge &amp; Sharpen Photos Online">
+  <meta property="og:description" content="Upscale and sharpen images 2×, 3× or 4× in your browser. High-quality stepped resampling with unsharp masking and denoise — no upload.">
+  <meta property="og:url" content="https://tools.grin.money/tools/image-upscale/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Free Image Upscaler — Enlarge &amp; Sharpen Photos Online">
+  <meta name="twitter:description" content="Upscale and sharpen images 2×, 3× or 4× in your browser. High-quality stepped resampling with unsharp masking and denoise — no upload.">
+  <link rel="canonical" href="https://tools.grin.money/tools/image-upscale/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Image Upscaler","description":"Upscale and sharpen images 2×, 3× or 4× in your browser. High-quality stepped resampling with unsharp masking and denoise — no upload.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/image-upscale/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
+    .drop-zone input[type=file] { display: none; }
+
+    .ctl-grid { display: flex; gap: .65rem; align-items: flex-end; flex-wrap: wrap; margin-top: .75rem; }
+    .scale-row { display: flex; gap: .4rem; flex-wrap: wrap; }
+    .scale-btn {
+      background: var(--bg-secondary); border: 1.5px solid var(--border);
+      border-radius: var(--radius); cursor: pointer; padding: .4rem .8rem;
+      font-size: .9rem; font-weight: 600; color: var(--text); transition: all .15s;
+    }
+    .scale-btn.active { color: var(--primary); border-color: var(--primary); background: var(--primary-dim); }
+
+    .slider-row { display: flex; align-items: center; gap: .75rem; }
+    .slider-row label { font-size: .84rem; white-space: nowrap; flex-shrink: 0; min-width: 6.5rem; }
+    .slider-row input[type=range] { flex: 1; }
+    .slider-val { font-weight: 700; min-width: 2.6rem; text-align: right; font-size: .9rem; }
+
+    .dim-info { font-size: .84rem; color: var(--text-muted); margin-top: .35rem; }
+    .dim-info b { color: var(--text); }
+
+    /* Before / After compare */
+    .cmp-wrap { position: relative; margin-top: .9rem; max-width: 100%; overflow: hidden; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-secondary); user-select: none; touch-action: none; display: none; }
+    .cmp-wrap img { display: block; width: 100%; height: auto; }
+    .cmp-after { position: absolute; inset: 0; overflow: hidden; width: 50%; }
+    .cmp-after img { width: auto; height: 100%; max-width: none; }
+    .cmp-after-inner { position: absolute; inset: 0; }
+    .cmp-handle { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--primary); left: 50%; transform: translateX(-50%); cursor: ew-resize; z-index: 3; }
+    .cmp-handle::after {
+      content: '⇆'; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      width: 30px; height: 30px; border-radius: 50%; background: var(--primary); color: #fff;
+      display: flex; align-items: center; justify-content: center; font-size: .95rem; box-shadow: var(--shadow-md);
+    }
+    .cmp-label { position: absolute; top: .5rem; padding: .15rem .55rem; font-size: .72rem; font-weight: 700; border-radius: 20px; background: rgba(0,0,0,.6); color: #fff; z-index: 2; }
+    .cmp-label.l { left: .5rem; } .cmp-label.r { right: .5rem; }
+
+    .busy-note { font-size: .84rem; color: var(--warning); margin-top: .6rem; display: none; }
+    @media (max-width: 580px) { .slider-row label { min-width: 5rem; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Image Upscaler</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔬 Image Upscaler</h1>
+    <p>Enlarge and sharpen low-resolution images 2×, 3× or 4× — all locally in your browser, with no upload.</p>
+  </div>
+
+<section class="tool-about">
+  <h2>About the Image Upscaler</h2>
+  <p>Got a photo that's <strong>too small or too soft</strong> to use? This tool enlarges images using <strong>high-quality stepped resampling</strong> (smooth bicubic-style scaling done in stages, which looks noticeably better than a single jump), then applies an optional <strong>unsharp mask</strong> to crisp up edges and a light <strong>denoise</strong> pass to clean up grain. Everything runs in your browser &mdash; your images never leave your device.</p>
+  <p>Two engines are available. <strong>Fast</strong> is the classical enlarger above &mdash; instant, no download. <strong>AI</strong> uses an ESRGAN super-resolution model that <em>reconstructs</em> plausible detail and runs on your device's GPU (nothing is uploaded; a small model downloads on first use).</p>
+  <p><strong>An honest note:</strong> even AI can only synthesise <em>plausible</em> detail &mdash; it doesn't recover the true original, so don't treat an upscaled document, face or licence plate as factual evidence. For everyday photos it looks great; for forensic accuracy it does not.</p>
+</section>
+
+  <div class="card">
+    <div class="drop-zone" id="drop">
+      Drop an image here or <strong>click to browse</strong>
+      <p style="font-size:.77rem;margin:.25rem 0 0">JPG · PNG · WebP · BMP · GIF</p>
+      <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/bmp,image/gif">
+    </div>
+
+    <div id="controls" style="display:none">
+      <div class="dim-info" id="srcInfo"></div>
+
+      <div class="form-group" style="margin:.85rem 0 0">
+        <label>Method</label>
+        <select id="method">
+          <option value="fast">Fast — classic resampling (instant, no download)</option>
+          <option value="ai">AI — ESRGAN super-resolution (best quality)</option>
+        </select>
+      </div>
+      <div class="alert alert-info" id="aiNote" style="display:none;font-size:.82rem;padding:.5rem .8rem;margin-top:.5rem">
+        Runs an AI model on <b>your device's GPU</b> (via WebGL) — nothing is uploaded. First use downloads a small model (~a few MB) and is slower; large images are processed in tiles. The chosen factor is applied to the AI result.
+      </div>
+
+      <div class="form-group" style="margin:.85rem 0 0">
+        <label>Upscale factor</label>
+        <div class="scale-row" id="scaleRow">
+          <button class="scale-btn active" data-scale="2">2×</button>
+          <button class="scale-btn" data-scale="3">3×</button>
+          <button class="scale-btn" data-scale="4">4×</button>
+        </div>
+      </div>
+      <div class="dim-info" id="targetInfo"></div>
+
+      <div class="slider-row" style="margin-top:.85rem">
+        <label>Sharpen</label>
+        <input type="range" id="sharpen" min="0" max="150" value="45">
+        <span class="slider-val" id="sharpenVal">45%</span>
+      </div>
+      <div class="slider-row" style="margin-top:.5rem">
+        <label>Denoise</label>
+        <input type="range" id="denoise" min="0" max="100" value="0">
+        <span class="slider-val" id="denoiseVal">0%</span>
+      </div>
+
+      <div class="ctl-grid">
+        <div class="form-group" style="margin:0;min-width:120px">
+          <label>Output format</label>
+          <select id="fmt">
+            <option value="png">PNG</option>
+            <option value="jpg">JPG</option>
+            <option value="webp">WebP</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0;flex:1;min-width:160px;display:none" id="qGroup">
+          <label>Quality: <span id="qVal">92</span>%</label>
+          <input type="range" id="q" min="1" max="100" value="92">
+        </div>
+        <button class="btn btn-primary" id="runBtn">Upscale</button>
+      </div>
+
+      <div class="busy-note" id="busy">Processing… large images at 4× can take a few seconds.</div>
+      <div class="progress-track" id="progressTrack" style="display:none;height:8px;background:var(--bg-secondary);border-radius:8px;overflow:hidden;margin-top:.6rem">
+        <div id="progressFill" style="height:100%;width:0;background:var(--primary);transition:width .2s"></div>
+      </div>
+
+      <div class="cmp-wrap" id="cmp">
+        <span class="cmp-label l">Original (enlarged)</span>
+        <span class="cmp-label r">Upscaled</span>
+        <img id="cmpBefore" alt="original enlarged">
+        <div class="cmp-after" id="cmpAfter">
+          <div class="cmp-after-inner"><img id="cmpAfterImg" alt="upscaled result"></div>
+        </div>
+        <div class="cmp-handle" id="cmpHandle"></div>
+      </div>
+
+      <div id="resultRow" style="display:none;margin-top:.85rem;display:flex;gap:.65rem;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-primary" id="dlBtn">Download Upscaled Image</button>
+        <span class="dim-info" id="resultInfo" style="margin:0"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-2" style="font-size:.84rem">
+    <strong>How it works</strong>
+    <p class="text-muted mt-2" style="font-size:.82rem">The image is enlarged in repeated ×2 steps using the browser's high-quality smoothing (this avoids the blockiness of a single big jump). An <em>unsharp mask</em> then restores edge contrast lost to interpolation, and an optional <em>denoise</em> blur smooths sensor grain before sharpening. All processing is done on a <code>&lt;canvas&gt;</code> in your browser — nothing is uploaded.</p>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">upscale image</span>
+  <span class="page-tag">enlarge photo</span>
+  <span class="page-tag">increase resolution</span>
+  <span class="page-tag">sharpen image</span>
+  <span class="page-tag">photo enhancer</span>
+  <span class="page-tag">2x 4x upscaler</span>
+</div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/stackblur-canvas@2.7.0/dist/stackblur.min.js"></script>
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const MAX_OUT_PIXELS = 40_000_000; // 40 MP output cap to stay safe in-browser
+
+let srcImg = null, srcName = 'image', scale = 2, resultBlob = null;
+
+const drop      = document.getElementById('drop');
+const fileEl    = document.getElementById('file');
+const controls  = document.getElementById('controls');
+const srcInfo   = document.getElementById('srcInfo');
+const targetInfo= document.getElementById('targetInfo');
+const scaleRow  = document.getElementById('scaleRow');
+const sharpenEl = document.getElementById('sharpen');
+const sharpenVal= document.getElementById('sharpenVal');
+const denoiseEl = document.getElementById('denoise');
+const denoiseVal= document.getElementById('denoiseVal');
+const fmtEl     = document.getElementById('fmt');
+const qGroup    = document.getElementById('qGroup');
+const qEl       = document.getElementById('q');
+const qVal      = document.getElementById('qVal');
+const runBtn    = document.getElementById('runBtn');
+const busy      = document.getElementById('busy');
+const cmp       = document.getElementById('cmp');
+const cmpBefore = document.getElementById('cmpBefore');
+const cmpAfter  = document.getElementById('cmpAfter');
+const cmpAfterImg = document.getElementById('cmpAfterImg');
+const cmpHandle = document.getElementById('cmpHandle');
+const resultRow = document.getElementById('resultRow');
+const dlBtn     = document.getElementById('dlBtn');
+const resultInfo= document.getElementById('resultInfo');
+const methodEl  = document.getElementById('method');
+const aiNote    = document.getElementById('aiNote');
+const progressTrack = document.getElementById('progressTrack');
+const progressFill  = document.getElementById('progressFill');
+
+function noExt(n) { return n.replace(/\.[^.]+$/, ''); }
+function loadImg(src) { return new Promise((ok, err) => { const i = new Image(); i.onload = () => ok(i); i.onerror = err; i.src = src; }); }
+function fmtMime(f) { return f === 'jpg' ? 'image/jpeg' : f === 'webp' ? 'image/webp' : 'image/png'; }
+
+function bindDrop(zone, input, cb) {
+  zone.addEventListener('click', () => input.click());
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragover'); cb(e.dataTransfer.files); });
+  input.addEventListener('change', () => cb(input.files));
+}
+
+function updateTargetInfo() {
+  if (!srcImg) return;
+  let tw = srcImg.naturalWidth * scale, th = srcImg.naturalHeight * scale;
+  let capped = false;
+  if (tw * th > MAX_OUT_PIXELS) {
+    const f = Math.sqrt(MAX_OUT_PIXELS / (tw * th));
+    tw = Math.round(tw * f); th = Math.round(th * f); capped = true;
+  }
+  targetInfo.innerHTML = `Output: <b>${tw} × ${th}</b> px` + (capped ? ' <span style="color:var(--warning)">(capped at 40 MP)</span>' : '');
+}
+
+bindDrop(drop, fileEl, async files => {
+  const f = files[0]; if (!f) return;
+  srcName = noExt(f.name);
+  const url = URL.createObjectURL(f);
+  srcImg = await loadImg(url);
+  srcInfo.innerHTML = `Source: <b>${srcImg.naturalWidth} × ${srcImg.naturalHeight}</b> px`;
+  controls.style.display = '';
+  cmp.style.display = 'none';
+  resultRow.style.display = 'none';
+  updateTargetInfo();
+});
+
+scaleRow.addEventListener('click', e => {
+  const btn = e.target.closest('.scale-btn'); if (!btn) return;
+  scaleRow.querySelectorAll('.scale-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  scale = parseInt(btn.dataset.scale, 10);
+  updateTargetInfo();
+});
+
+sharpenEl.addEventListener('input', () => sharpenVal.textContent = sharpenEl.value + '%');
+denoiseEl.addEventListener('input', () => denoiseVal.textContent = denoiseEl.value + '%');
+qEl.addEventListener('input', () => qVal.textContent = qEl.value);
+fmtEl.addEventListener('change', () => { qGroup.style.display = fmtEl.value === 'png' ? 'none' : ''; });
+
+// ── Core image processing ───────────────────────────────────────────────
+function imgToCanvas(img) {
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth; c.height = img.naturalHeight;
+  c.getContext('2d').drawImage(img, 0, 0);
+  return c;
+}
+
+// Stepped high-quality upscale (≤2× per step) for cleaner enlargement
+function stepUpscale(src, targetW, targetH) {
+  let cur = src;
+  while (cur.width < targetW || cur.height < targetH) {
+    const nw = Math.min(targetW, cur.width * 2);
+    const nh = Math.min(targetH, cur.height * 2);
+    const c = document.createElement('canvas'); c.width = nw; c.height = nh;
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(cur, 0, 0, nw, nh);
+    cur = c;
+  }
+  if (cur.width !== targetW || cur.height !== targetH) {
+    const c = document.createElement('canvas'); c.width = targetW; c.height = targetH;
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(cur, 0, 0, targetW, targetH);
+    cur = c;
+  }
+  return cur;
+}
+
+function denoiseCanvas(canvas, amount) {
+  if (amount <= 0) return;
+  const radius = Math.max(1, Math.round(amount / 100 * 3)); // up to ~3px blur
+  StackBlur.canvasRGBA(canvas, 0, 0, canvas.width, canvas.height, radius);
+}
+
+// Unsharp mask: result = orig + amount × (orig − blurred)
+function unsharp(canvas, amount) {
+  if (amount <= 0) return;
+  const w = canvas.width, h = canvas.height;
+  const ctx = canvas.getContext('2d');
+  const orig = ctx.getImageData(0, 0, w, h);
+  const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h;
+  const tctx = tmp.getContext('2d');
+  tctx.drawImage(canvas, 0, 0);
+  StackBlur.canvasRGBA(tmp, 0, 0, w, h, 2);
+  const blur = tctx.getImageData(0, 0, w, h);
+  const o = orig.data, b = blur.data;
+  for (let i = 0; i < o.length; i += 4) {
+    for (let k = 0; k < 3; k++) {
+      const v = o[i + k] + amount * (o[i + k] - b[i + k]);
+      o[i + k] = v < 0 ? 0 : v > 255 ? 255 : v;
+    }
+  }
+  ctx.putImageData(orig, 0, 0);
+}
+
+function canvasToBlob(canvas, mime, q) {
+  return new Promise(res => canvas.toBlob(res, mime, mime === 'image/png' ? undefined : q / 100));
+}
+
+// ── AI super-resolution (ESRGAN via UpscalerJS + TensorFlow.js) ──────────
+// Runs entirely on the user's device — TF.js uses the WebGL (GPU) backend,
+// falling back to CPU. Model weights are fetched from a CDN on first use and
+// then cached by the browser. UpscalerJS handles tiling so large images don't
+// exhaust browser memory. Nothing is uploaded.
+const AI_CDN = {
+  tf:    'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js',
+  ups:   'https://cdn.jsdelivr.net/npm/upscaler@1.0.0-beta.19/dist/browser/umd/upscaler.min.js',
+  model: 'https://cdn.jsdelivr.net/npm/@upscalerjs/esrgan-slim@1.0.0-beta.19/dist/umd/x4.min.js',
+  // UMD global the model script exposes — first match wins; if none, the
+  // Upscaler default model is used instead.
+  modelGlobals: ['ESRGANSlim4x', 'ESRGANSlim', 'esrganSlim4x', 'esrganSlim'],
+};
+let _aiUpscaler = null, _aiLoading = null;
+
+function loadScript(src) {
+  return new Promise((ok, err) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = ok; s.onerror = () => err(new Error('Failed to load ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+async function ensureAI(onStatus) {
+  if (_aiUpscaler) return _aiUpscaler;
+  if (_aiLoading) return _aiLoading;
+  _aiLoading = (async () => {
+    onStatus && onStatus('Loading AI engine…');
+    if (!window.tf)       await loadScript(AI_CDN.tf);
+    if (!window.Upscaler) await loadScript(AI_CDN.ups);
+    let model = null;
+    try {
+      await loadScript(AI_CDN.model);
+      for (const g of AI_CDN.modelGlobals) { if (window[g]) { model = window[g]; break; } }
+    } catch { /* fall back to Upscaler's bundled default model */ }
+    try { if (window.tf && window.tf.ready) await window.tf.ready(); } catch {}
+    const Up = window.Upscaler;
+    if (!Up) throw new Error('Upscaler library did not load');
+    _aiUpscaler = model ? new Up({ model }) : new Up();
+    return _aiUpscaler;
+  })();
+  return _aiLoading;
+}
+
+// Upscale a canvas by the model's native factor (≈4×). Returns a canvas.
+async function aiUpscaleToCanvas(srcCanvas, onProgress, onStatus) {
+  const up = await ensureAI(onStatus);
+  onStatus && onStatus('Upscaling with AI… large images are tiled.');
+  const dataUrl = await up.upscale(srcCanvas, {
+    output: 'base64',
+    patchSize: 64,
+    padding: 4,
+    progress: p => onProgress && onProgress(typeof p === 'number' ? p : 0),
+  });
+  const img = await loadImg(dataUrl);
+  return imgToCanvas(img);
+}
+
+function targetDims() {
+  let tw = srcImg.naturalWidth * scale, th = srcImg.naturalHeight * scale;
+  if (tw * th > MAX_OUT_PIXELS) {
+    const f = Math.sqrt(MAX_OUT_PIXELS / (tw * th));
+    tw = Math.round(tw * f); th = Math.round(th * f);
+  }
+  return { tw, th };
+}
+function showProgress(show) { progressTrack.style.display = show ? 'block' : 'none'; if (!show) progressFill.style.width = '0'; }
+function setProgress(p) { progressFill.style.width = Math.round(Math.max(0, Math.min(1, p)) * 100) + '%'; }
+
+async function run() {
+  if (!srcImg) return;
+  const isAI = methodEl.value === 'ai';
+  runBtn.disabled = true; runBtn.textContent = 'Working…'; busy.style.display = 'block';
+  busy.textContent = isAI
+    ? 'Loading AI model and processing… the first run downloads the model.'
+    : 'Processing… large images at 4× can take a few seconds.';
+  // Yield so the busy state paints before the heavy work.
+  await new Promise(r => setTimeout(r, 30));
+  try {
+    const { tw, th } = targetDims();
+
+    // Denoise the source BEFORE enlarging, so grain isn't magnified
+    const srcCanvas = imgToCanvas(srcImg);
+    denoiseCanvas(srcCanvas, parseInt(denoiseEl.value, 10));
+
+    let out, usedAI = false;
+    if (isAI) {
+      showProgress(true);
+      let aiCanvas = null;
+      try {
+        aiCanvas = await aiUpscaleToCanvas(srcCanvas, setProgress, m => busy.textContent = m);
+      } catch (e) {
+        alert('AI engine unavailable (' + (e.message || e) + ').\nFalling back to fast resampling.');
+      }
+      showProgress(false);
+      if (aiCanvas) {
+        usedAI = true;
+        // Resize the model's native-scale output to the requested dimensions
+        out = document.createElement('canvas'); out.width = tw; out.height = th;
+        const octx = out.getContext('2d');
+        octx.imageSmoothingEnabled = true; octx.imageSmoothingQuality = 'high';
+        octx.drawImage(aiCanvas, 0, 0, tw, th);
+      } else {
+        out = stepUpscale(srcCanvas, tw, th); // graceful fallback
+      }
+    } else {
+      out = stepUpscale(srcCanvas, tw, th);
+    }
+
+    unsharp(out, parseInt(sharpenEl.value, 10) / 100);
+
+    // Before image = original scaled up with NO smoothing (shows the raw pixels)
+    const before = document.createElement('canvas');
+    before.width = tw; before.height = th;
+    const bctx = before.getContext('2d');
+    bctx.imageSmoothingEnabled = false;
+    bctx.drawImage(srcImg, 0, 0, tw, th);
+
+    const mime = fmtMime(fmtEl.value), q = parseInt(qEl.value, 10);
+    resultBlob = await canvasToBlob(out, mime, q);
+
+    cmpBefore.src = before.toDataURL('image/png');
+    cmpAfterImg.src = URL.createObjectURL(resultBlob);
+    // Match the clipped "after" image to the displayed width of the wrapper
+    const syncAfterWidth = () => { cmpAfterImg.style.width = cmp.clientWidth + 'px'; };
+    cmpBefore.onload = syncAfterWidth;
+    cmpAfterImg.onload = syncAfterWidth;
+    setCompare(50);
+    cmp.style.display = 'block';
+    syncAfterWidth();
+    window.addEventListener('resize', syncAfterWidth);
+
+    resultInfo.innerHTML = `<b>${tw} × ${th}</b> px · ${(resultBlob.size / 1048576).toFixed(2)} MB · ${fmtEl.value.toUpperCase()}` + (usedAI ? ' · AI' : '');
+    resultRow.style.display = 'flex';
+  } catch (e) {
+    alert('Upscale failed: ' + (e.message || e));
+  } finally {
+    showProgress(false);
+    runBtn.disabled = false; runBtn.textContent = 'Upscale'; busy.style.display = 'none';
+  }
+}
+runBtn.addEventListener('click', run);
+
+methodEl.addEventListener('change', () => {
+  aiNote.style.display = methodEl.value === 'ai' ? '' : 'none';
+});
+
+dlBtn.addEventListener('click', () => {
+  if (!resultBlob) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(resultBlob);
+  a.download = `${srcName}_upscaled_${scale}x.${fmtEl.value}`;
+  a.click();
+});
+
+// ── Before/after slider ─────────────────────────────────────────────────
+function setCompare(pct) {
+  pct = Math.max(0, Math.min(100, pct));
+  cmpAfter.style.width = pct + '%';
+  cmpHandle.style.left = pct + '%';
+}
+function compareFromEvent(e) {
+  const rect = cmp.getBoundingClientRect();
+  const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+  setCompare(x / rect.width * 100);
+}
+let dragging = false;
+cmpHandle.addEventListener('mousedown', () => dragging = true);
+cmpHandle.addEventListener('touchstart', () => dragging = true, { passive: true });
+window.addEventListener('mouseup', () => dragging = false);
+window.addEventListener('touchend', () => dragging = false);
+window.addEventListener('mousemove', e => { if (dragging) compareFromEvent(e); });
+window.addEventListener('touchmove', e => { if (dragging) compareFromEvent(e); }, { passive: true });
+cmp.addEventListener('click', e => { if (e.target !== cmpHandle) compareFromEvent(e); });
+</script>
+</body>
+</html>

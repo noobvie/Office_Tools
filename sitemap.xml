@@ -32,6 +32,10 @@
   <url><loc>https://tools.grin.money/tools/pdf-toolkit/</loc><lastmod>2026-03-21</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/pdf-to-text/</loc><lastmod>2026-03-21</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/image-to-pdf/</loc><lastmod>2026-06-01</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://tools.grin.money/tools/pdf-enhance/</loc><lastmod>2026-06-10</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://tools.grin.money/tools/pdf-to-images/</loc><lastmod>2026-06-10</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://tools.grin.money/tools/pdf-sign/</loc><lastmod>2026-06-10</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://tools.grin.money/tools/pdf-watermark/</loc><lastmod>2026-06-10</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/word-counter/</loc><lastmod>2026-03-21</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/markdown-editor/</loc><lastmod>2026-03-21</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/text-diff/</loc><lastmod>2026-03-21</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
@@ -92,6 +96,7 @@
   <!-- ── Network & Security ── -->
   <url><loc>https://tools.grin.money/tools/currency/</loc><lastmod>2026-03-21</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/my-ip/</loc><lastmod>2026-03-21</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://tools.grin.money/tools/vpn-leak-test/</loc><lastmod>2026-06-11</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/ip-location/</loc><lastmod>2026-03-21</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/utm-builder/</loc><lastmod>2026-03-21</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/csr-decoder/</loc><lastmod>2026-03-21</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
@@ -120,6 +125,10 @@
   <url><loc>https://tools.grin.money/tools/yt-downloader/</loc><lastmod>2026-03-21</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/speech-voice/</loc><lastmod>2026-03-21</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/photo-editor/</loc><lastmod>2026-03-21</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://tools.grin.money/tools/image-upscale/</loc><lastmod>2026-06-10</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://tools.grin.money/tools/image-redact/</loc><lastmod>2026-06-10</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://tools.grin.money/tools/image-collage/</loc><lastmod>2026-06-10</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://tools.grin.money/tools/svg-to-png/</loc><lastmod>2026-06-10</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
 
   <!-- ── Share ── -->
   <url><loc>https://tools.grin.money/tools/url-shortener/</loc><lastmod>2026-03-21</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>

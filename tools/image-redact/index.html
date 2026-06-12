@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Redaction — Blur or Black Out Parts of a Photo | Office Tools</title>
+  <meta name="description" content="Permanently blur, pixelate or black-box faces, names, account numbers and other sensitive areas in a photo. Redactions are flattened and metadata is stripped — no upload.">
+  <meta name="keywords" content="redact image, blur part of photo, pixelate face, black out text in image, hide sensitive info, censor photo, remove personal data image, redact screenshot">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Free Image Redaction — Blur or Black Out Parts of a Photo">
+  <meta property="og:description" content="Permanently blur, pixelate or black-box sensitive areas in a photo. Redactions are flattened and metadata is stripped — no upload.">
+  <meta property="og:url" content="https://tools.grin.money/tools/image-redact/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Free Image Redaction — Blur or Black Out Parts of a Photo">
+  <meta name="twitter:description" content="Permanently blur, pixelate or black-box sensitive areas in a photo. Redactions are flattened and metadata is stripped — no upload.">
+  <link rel="canonical" href="https://tools.grin.money/tools/image-redact/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Image Redaction","description":"Permanently blur, pixelate or black-box faces, names and sensitive areas in a photo. Redactions are flattened and metadata is stripped — all in your browser, no upload.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/image-redact/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .drop-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 2rem 1.5rem; text-align: center; color: var(--text-muted); cursor: pointer; transition: all .15s; }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
+    .drop-zone input[type=file] { display: none; }
+    .ctl-grid { display: flex; gap: .65rem; align-items: flex-end; flex-wrap: wrap; margin-top: .85rem; }
+    .stage { position: relative; margin-top: .9rem; display: inline-block; max-width: 100%; line-height: 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    #viewCanvas { max-width: 100%; height: auto; display: block; background: #fff; }
+    #drawLayer { position: absolute; inset: 0; cursor: crosshair; }
+    .hint { font-size: .82rem; color: var(--text-muted); margin-top: .5rem; }
+    .mode-row { display: flex; gap: .4rem; flex-wrap: wrap; }
+    .mode-btn { background: var(--bg-secondary); border: 1.5px solid var(--border); border-radius: var(--radius); cursor: pointer; padding: .4rem .8rem; font-size: .88rem; font-weight: 600; color: var(--text); }
+    .mode-btn.active { color: var(--primary); border-color: var(--primary); background: var(--primary-dim); }
+    .slider-row { display: flex; align-items: center; gap: .6rem; }
+    .slider-row label { font-size: .82rem; min-width: 4.5rem; }
+    .slider-row input[type=range] { flex: 1; max-width: 220px; }
+    .status { font-size: .84rem; color: var(--text-muted); margin-top: .6rem; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Image Redaction</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🚫 Image Redaction</h1>
+    <p>Blur, pixelate or black out faces and sensitive details in a photo — permanently, with metadata stripped.</p>
+  </div>
+
+<section class="tool-about">
+  <h2>About Image Redaction</h2>
+  <p>Before sharing a screenshot or photo, hide the parts you don't want seen &mdash; a <strong>face</strong>, a <strong>name</strong>, an <strong>account or card number</strong>, an <strong>address</strong>. Drag boxes over the areas and choose <strong>blur</strong>, <strong>pixelate</strong> or a solid <strong>black box</strong>. The redaction is <strong>baked into the pixels</strong> (not just an overlay you can peel off), and the saved file is re-encoded so the original <strong>EXIF metadata is stripped</strong> too. Everything runs locally &mdash; nothing is uploaded.</p>
+  <p style="font-size:.86rem;color:var(--text-muted)">Tip: blur and pixelate can sometimes be partially reversed on low settings — for truly sensitive data use the <strong>black box</strong> mode.</p>
+</section>
+
+  <div class="card">
+    <div class="drop-zone" id="drop">
+      Drop an image here or <strong>click to browse</strong>
+      <p style="font-size:.77rem;margin:.25rem 0 0">JPG · PNG · WebP</p>
+      <input type="file" id="file" accept="image/png,image/jpeg,image/webp">
+    </div>
+
+    <div id="controls" style="display:none">
+      <div class="ctl-grid">
+        <div class="form-group" style="margin:0">
+          <label>Redaction style</label>
+          <div class="mode-row" id="modeRow">
+            <button class="mode-btn active" data-mode="blur">Blur</button>
+            <button class="mode-btn" data-mode="pixelate">Pixelate</button>
+            <button class="mode-btn" data-mode="black">Black box</button>
+          </div>
+        </div>
+        <div class="form-group" style="margin:0;flex:1;min-width:200px" id="strengthGroup">
+          <div class="slider-row"><label>Strength</label><input type="range" id="strength" min="5" max="60" value="22"><span id="strengthV" style="font-weight:700;min-width:2.4rem">22</span></div>
+        </div>
+      </div>
+
+      <div class="hint">Drag on the image to add redaction boxes. Each box is applied immediately.</div>
+
+      <div class="stage" id="stage">
+        <canvas id="viewCanvas"></canvas>
+        <canvas id="drawLayer"></canvas>
+      </div>
+
+      <div class="ctl-grid">
+        <button class="btn btn-secondary" id="undoBtn" disabled>Undo last</button>
+        <button class="btn btn-secondary" id="resetBtn">Reset image</button>
+        <div class="form-group" style="margin:0;min-width:110px">
+          <label>Save as</label>
+          <select id="fmt"><option value="png">PNG</option><option value="jpg">JPG</option><option value="webp">WebP</option></select>
+        </div>
+        <button class="btn btn-primary" id="dlBtn">Download Redacted</button>
+      </div>
+      <div class="status" id="status"></div>
+    </div>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">redact image</span>
+  <span class="page-tag">blur face</span>
+  <span class="page-tag">pixelate photo</span>
+  <span class="page-tag">black out text</span>
+  <span class="page-tag">censor screenshot</span>
+</div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/stackblur-canvas@2.7.0/dist/stackblur.min.js"></script>
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const el = id => document.getElementById(id);
+let baseImg = null, srcName = 'image';
+let mode = 'blur';
+const history = []; // stack of full-res ImageData snapshots for undo
+
+const drop = el('drop'), fileEl = el('file'), controls = el('controls');
+const view = el('viewCanvas'), draw = el('drawLayer'), stage = el('stage');
+const undoBtn = el('undoBtn'), statusEl = el('status');
+
+function noExt(n) { return n.replace(/\.[^.]+$/, ''); }
+function fmtMime(f) { return f === 'jpg' ? 'image/jpeg' : f === 'webp' ? 'image/webp' : 'image/png'; }
+function loadImg(src) { return new Promise((ok, e) => { const i = new Image(); i.onload = () => ok(i); i.onerror = e; i.src = src; }); }
+function bindDrop(zone, input, cb) {
+  zone.addEventListener('click', () => input.click());
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragover'); cb(e.dataTransfer.files); });
+  input.addEventListener('change', () => cb(input.files));
+}
+
+el('modeRow').addEventListener('click', e => {
+  const b = e.target.closest('.mode-btn'); if (!b) return;
+  el('modeRow').querySelectorAll('.mode-btn').forEach(x => x.classList.remove('active'));
+  b.classList.add('active'); mode = b.dataset.mode;
+  el('strengthGroup').style.visibility = mode === 'black' ? 'hidden' : 'visible';
+});
+el('strength').addEventListener('input', () => el('strengthV').textContent = el('strength').value);
+
+bindDrop(drop, fileEl, async files => {
+  const f = files[0]; if (!f) return;
+  srcName = noExt(f.name);
+  baseImg = await loadImg(URL.createObjectURL(f));
+  view.width = baseImg.naturalWidth; view.height = baseImg.naturalHeight;
+  view.getContext('2d').drawImage(baseImg, 0, 0);
+  // overlay canvas matches the view's intrinsic size; CSS scales both equally
+  draw.width = view.width; draw.height = view.height;
+  controls.style.display = '';
+  history.length = 0; undoBtn.disabled = true;
+  statusEl.textContent = `Loaded ${view.width} × ${view.height} px.`;
+});
+
+// Map a pointer event to full-resolution canvas coordinates
+function evtToCanvas(e) {
+  const r = view.getBoundingClientRect();
+  const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+  const cy = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+  return { x: cx * (view.width / r.width), y: cy * (view.height / r.height) };
+}
+
+// ── Draw rubber-band rectangle on the overlay ───────────────────────
+let dragging = false, startP = null;
+function drawRect(a, b) {
+  const ctx = draw.getContext('2d');
+  ctx.clearRect(0, 0, draw.width, draw.height);
+  const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y), w = Math.abs(a.x - b.x), h = Math.abs(a.y - b.y);
+  ctx.strokeStyle = '#ff3b3b'; ctx.lineWidth = Math.max(2, view.width / 400); ctx.setLineDash([8, 6]);
+  ctx.strokeRect(x, y, w, h);
+}
+function pointerDown(e) { dragging = true; startP = evtToCanvas(e); e.preventDefault(); }
+function pointerMove(e) { if (dragging) { drawRect(startP, evtToCanvas(e)); e.preventDefault(); } }
+function pointerUp(e) {
+  if (!dragging) return;
+  dragging = false;
+  const end = evtToCanvas(e);
+  draw.getContext('2d').clearRect(0, 0, draw.width, draw.height);
+  const x = Math.round(Math.min(startP.x, end.x)), y = Math.round(Math.min(startP.y, end.y));
+  const w = Math.round(Math.abs(startP.x - end.x)), h = Math.round(Math.abs(startP.y - end.y));
+  if (w < 4 || h < 4) return; // ignore tiny taps
+  applyRedaction(x, y, w, h);
+}
+draw.addEventListener('mousedown', pointerDown);
+window.addEventListener('mousemove', pointerMove);
+window.addEventListener('mouseup', pointerUp);
+draw.addEventListener('touchstart', pointerDown, { passive: false });
+draw.addEventListener('touchmove', pointerMove, { passive: false });
+draw.addEventListener('touchend', pointerUp);
+
+// ── Apply a redaction destructively to the view canvas ──────────────
+function applyRedaction(x, y, w, h) {
+  x = Math.max(0, x); y = Math.max(0, y);
+  w = Math.min(w, view.width - x); h = Math.min(h, view.height - y);
+  if (w <= 0 || h <= 0) return;
+  const ctx = view.getContext('2d');
+  // snapshot for undo
+  history.push(ctx.getImageData(0, 0, view.width, view.height));
+  if (history.length > 20) history.shift();
+  undoBtn.disabled = false;
+
+  if (mode === 'black') {
+    ctx.fillStyle = '#000'; ctx.fillRect(x, y, w, h);
+  } else if (mode === 'pixelate') {
+    const block = Math.max(3, Math.round(Math.min(w, h) / (65 - +el('strength').value)));
+    const tmp = document.createElement('canvas');
+    const sw = Math.max(1, Math.round(w / block)), sh = Math.max(1, Math.round(h / block));
+    tmp.width = sw; tmp.height = sh;
+    const tctx = tmp.getContext('2d');
+    tctx.imageSmoothingEnabled = false;
+    tctx.drawImage(view, x, y, w, h, 0, 0, sw, sh);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(tmp, 0, 0, sw, sh, x, y, w, h);
+    ctx.imageSmoothingEnabled = true;
+  } else { // blur
+    const radius = +el('strength').value;
+    StackBlur.canvasRGBA(view, x, y, w, h, radius);
+  }
+  statusEl.textContent = `Redacted a ${w} × ${h}px region (${mode}).`;
+}
+
+undoBtn.addEventListener('click', () => {
+  if (!history.length) return;
+  view.getContext('2d').putImageData(history.pop(), 0, 0);
+  undoBtn.disabled = history.length === 0;
+});
+el('resetBtn').addEventListener('click', () => {
+  if (!baseImg) return;
+  view.getContext('2d').drawImage(baseImg, 0, 0);
+  history.length = 0; undoBtn.disabled = true;
+  statusEl.textContent = 'Image reset.';
+});
+
+el('dlBtn').addEventListener('click', () => {
+  if (!baseImg) return;
+  const fmt = el('fmt').value, mime = fmtMime(fmt);
+  // Re-encode via toBlob → strips original EXIF/metadata
+  view.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = `${srcName}_redacted.${fmt}`; a.click();
+  }, mime, mime === 'image/png' ? undefined : 0.92);
+});
+</script>
+</body>
+</html>
