@@ -404,7 +404,7 @@ _patch_domain() {
     local dir="$1" domain="$2"
     local cfg="$dir/js/config.js"
     if [[ -f "$cfg" ]]; then
-        sed -i "s|https://pay\.yourdomain\.com|https://${domain}/pay-api|g" "$cfg"
+        sed -i "s|https://api\.yourdomain\.com|https://${domain}/tools-api|g" "$cfg"
         sed -i "s|https://yourdomain\.com|https://${domain}|g"              "$cfg"
     fi
     find "$dir" -name "*.html" -not -path "*/.git/*" \
@@ -451,7 +451,7 @@ server {
 
     location / { try_files \$uri/index.html \$uri \$uri.html =404; }
 
-    location ^~ /pay-api/ {
+    location ^~ /tools-api/ {
         proxy_pass            http://127.0.0.1:3001/;
         proxy_http_version    1.1;
         proxy_set_header      Host              \$host;
@@ -548,7 +548,7 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
-    location ^~ /pay-api/ {
+    location ^~ /tools-api/ {
         proxy_pass            http://127.0.0.1:3001/;
         proxy_http_version    1.1;
         proxy_set_header      Host              \$host;
@@ -1277,7 +1277,7 @@ _admin_list_urls() {
     echo ""
 
     echo -e "  ${BOLD}Reverse-proxy routes (nginx)${RESET}"
-    echo -e "  ${CYAN}·${RESET} API             : ${base}/pay-api/            → 127.0.0.1:3001"
+    echo -e "  ${CYAN}·${RESET} API             : ${base}/tools-api/          → 127.0.0.1:3001"
     [[ -d "$YT_SERVER_DIR" ]] && \
     echo -e "  ${CYAN}·${RESET} YT Download API : ${base}/yt-api/             → 127.0.0.1:9000"
     echo ""
@@ -1309,7 +1309,7 @@ _admin_list_urls() {
     echo ""
 
     echo -e "  ${BOLD}API health checks${RESET}"
-    echo -e "  ${DIM}·${RESET} api server      : ${base}/pay-api/health"
+    echo -e "  ${DIM}·${RESET} api server      : ${base}/tools-api/health"
     [[ -d "$YT_SERVER_DIR" ]] && \
     echo -e "  ${DIM}·${RESET} yt-server       : ${base}/yt-api/health"
     echo ""

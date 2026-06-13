@@ -106,7 +106,7 @@ Consumed by the Grin Node Toolkit solo-mining setup page (`web/07_mining_pool_so
 | `backend/office-tools-server.js` | 3001 | systemd `office-tools-api.service` |
 | `yt-server/server.js` | 9000 | systemd `office-tools-cobalt.service` |
 
-nginx proxies `/pay-api/*` → 3001 and `/yt-api/*` → 9000. The `backend/` directory is excluded from the public web root (`rsync --exclude=backend/`).
+nginx proxies `/tools-api/*` → 3001 and `/yt-api/*` → 9000. The `backend/` directory is excluded from the public web root (`rsync --exclude=backend/`).
 
 ### What needs the backend vs. what doesn't
 
