@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resistor Color Code Calculator (4/5/6 Band) — Office Tools</title>
+  <meta name="description" content="Decode resistor color bands to resistance, or convert a resistance value to color bands. Supports 4, 5 and 6-band resistors with tolerance and temperature coefficient. Free online tool.">
+  <meta name="keywords" content="resistor color code, resistor calculator, 4 band resistor, 5 band resistor, 6 band resistor, color code chart, ohm color bands, resistance to color, tolerance">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Resistor Color Code Calculator (4/5/6 Band)">
+  <meta property="og:description" content="Decode resistor color bands to resistance, or convert a value to color bands. 4, 5 and 6-band support.">
+  <meta property="og:url" content="https://tools.grin.money/tools/resistor-calculator/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Resistor Color Code Calculator">
+  <meta name="twitter:description" content="Decode resistor color bands to resistance, or convert a value to color bands.">
+  <link rel="canonical" href="https://tools.grin.money/tools/resistor-calculator/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Resistor Color Code Calculator","description":"Decode resistor color bands to resistance, or convert a resistance value to color bands.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/resistor-calculator/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .band-count { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .band-count .cat-btn { padding: .4rem .85rem; border-radius: 2rem; border: 1.5px solid var(--border);
+      background: none; cursor: pointer; font-size: .85rem; color: var(--text); }
+    .band-count .cat-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 700; }
+    .resistor { display: flex; align-items: center; justify-content: center; gap: 2px; height: 60px;
+      background: linear-gradient(var(--bg-secondary), var(--bg)); border: 1.5px solid var(--border);
+      border-radius: 8px; margin: 1rem 0; padding: 0 30px; position: relative; }
+    .resistor::before, .resistor::after { content:''; position:absolute; top:50%; width:30px; height:3px;
+      background: var(--text-muted); transform: translateY(-50%); }
+    .resistor::before { left: 0; } .resistor::after { right: 0; }
+    .rband { width: 14px; height: 100%; border-radius: 2px; }
+    .band-selects { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px,1fr)); gap: .6rem; }
+    .band-selects label { font-size: .78rem; }
+    .result-val { font-size: 1.6rem; font-weight: 800; color: var(--primary); font-family: 'Courier New', monospace; }
+    .result-sub { color: var(--text-muted); font-size: .9rem; margin-top: .2rem; }
+    .mode-tabs { display: flex; gap: .5rem; margin-bottom: 1rem; border-bottom: 2px solid var(--border); }
+    .mode-tab { padding: .5rem 1rem; cursor: pointer; border: none; background: none; color: var(--text-muted);
+      font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+    .mode-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .pane { display: none; } .pane.active { display: block; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Resistor Calculator</span>
+  <div class="header-actions"><button class="theme-toggle" id="themeToggle"></button></div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🎨 Resistor Color Code Calculator</h1>
+    <p>Decode color bands into a resistance value, or turn a value back into bands. Supports 4, 5 and 6-band resistors.</p>
+  </div>
+
+<section class="tool-about">
+  <h2>About resistor color codes</h2>
+  <p>Through-hole resistors print their value as colored bands. The first bands are <strong>significant digits</strong>, the next is a <strong>multiplier</strong>, then a <strong>tolerance</strong> band, and on 6-band parts a final <strong>temperature coefficient</strong>. A <em>4-band</em> resistor has 2 digit bands; a <em>5/6-band</em> has 3. This tool reads in both directions &mdash; pick the band colors to get the resistance, or type a resistance to see the band colors.</p>
+  <p>Read the resistor with the tolerance band (often gold or silver) on the <strong>right</strong>. Gold/silver are never used for the first band, which removes the ambiguity about which end to start from.</p>
+</section>
+
+  <div class="card">
+    <div class="mode-tabs">
+      <button class="mode-tab active" data-mode="decode">Bands → Value</button>
+      <button class="mode-tab" data-mode="encode">Value → Bands</button>
+    </div>
+
+    <!-- DECODE -->
+    <div class="pane active" id="pane-decode">
+      <div class="band-count" id="bandCount"></div>
+      <div class="resistor" id="resistorView"></div>
+      <div class="band-selects" id="bandSelects"></div>
+      <div class="result-box" style="margin-top:1rem;display:block;">
+        <div class="result-val" id="decodeVal">—</div>
+        <div class="result-sub" id="decodeSub"></div>
+      </div>
+    </div>
+
+    <!-- ENCODE -->
+    <div class="pane" id="pane-encode">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="ohmInput">Resistance value</label>
+          <input type="number" id="ohmInput" placeholder="e.g. 4700" step="any" value="4700">
+        </div>
+        <div class="form-group">
+          <label for="ohmUnit">Unit</label>
+          <select id="ohmUnit">
+            <option value="1">Ω (ohms)</option>
+            <option value="1000">kΩ</option>
+            <option value="1000000">MΩ</option>
+          </select>
+        </div>
+      </div>
+      <div class="resistor" id="resistorViewE"></div>
+      <div class="result-box" style="display:block;">
+        <div class="result-val" id="encodeVal">—</div>
+        <div class="result-sub" id="encodeSub"></div>
+      </div>
+    </div>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">4 band resistor</span>
+  <span class="page-tag">5 band resistor</span>
+  <span class="page-tag">color code chart</span>
+  <span class="page-tag">ohm bands</span>
+  <span class="page-tag">tolerance</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+// color: [digit, multiplier, tolerance%, tempco ppm, hex]
+const COLORS = {
+  black:  { d:0,  m:1,            hex:'#000000' },
+  brown:  { d:1,  m:10,           tol:1,    tc:100, hex:'#7B3F00' },
+  red:    { d:2,  m:100,          tol:2,    tc:50,  hex:'#E00000' },
+  orange: { d:3,  m:1000,         tc:15,    hex:'#FF7F00' },
+  yellow: { d:4,  m:10000,        tc:25,    hex:'#FFD400' },
+  green:  { d:5,  m:100000,       tol:0.5,  hex:'#00A000' },
+  blue:   { d:6,  m:1000000,      tol:0.25, tc:10,  hex:'#0050E0' },
+  violet: { d:7,  m:10000000,     tol:0.1,  tc:5,   hex:'#8000FF' },
+  grey:   { d:8,  m:100000000,    tol:0.05, hex:'#808080' },
+  white:  { d:9,  m:1000000000,   hex:'#F0F0F0' },
+  gold:   { m:0.1,  tol:5,  hex:'#C8A000' },
+  silver: { m:0.01, tol:10, hex:'#B0B0B0' }
+};
+const DIGIT_COLORS = ['black','brown','red','orange','yellow','green','blue','violet','grey','white'];
+const MULT_COLORS  = ['silver','gold','black','brown','red','orange','yellow','green','blue','violet','grey','white'];
+const TOL_COLORS   = ['brown','red','green','blue','violet','grey','gold','silver'];
+const TC_COLORS    = ['brown','red','orange','yellow','blue','violet'];
+
+let bands = 4;
+// default selections per band position
+let sel = { d1:'yellow', d2:'violet', d3:'black', mult:'red', tol:'gold', tc:'brown' };
+
+const bandCount = document.getElementById('bandCount');
+[4,5,6].forEach(n => {
+  const b = document.createElement('button');
+  b.className = 'cat-btn' + (n===bands?' active':'');
+  b.textContent = n + '-band';
+  b.addEventListener('click', () => { bands = n; document.querySelectorAll('#bandCount .cat-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); buildSelects(); decode(); });
+  bandCount.appendChild(b);
+});
+
+function makeSelect(id, options, current, labelText) {
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `<label for="${id}">${labelText}</label>`;
+  const s = document.createElement('select');
+  s.id = id;
+  options.forEach(c => { const o=document.createElement('option'); o.value=c; o.textContent=c.charAt(0).toUpperCase()+c.slice(1); if(c===current)o.selected=true; s.appendChild(o); });
+  s.addEventListener('change', () => { sel[id] = s.value; decode(); });
+  wrap.appendChild(s);
+  return wrap;
+}
+
+function buildSelects() {
+  const c = document.getElementById('bandSelects');
+  c.innerHTML = '';
+  c.appendChild(makeSelect('d1', DIGIT_COLORS, sel.d1, 'Band 1 (digit)'));
+  c.appendChild(makeSelect('d2', DIGIT_COLORS, sel.d2, 'Band 2 (digit)'));
+  if (bands >= 5) c.appendChild(makeSelect('d3', DIGIT_COLORS, sel.d3, 'Band 3 (digit)'));
+  c.appendChild(makeSelect('mult', MULT_COLORS, sel.mult, 'Multiplier'));
+  c.appendChild(makeSelect('tol', TOL_COLORS, sel.tol, 'Tolerance'));
+  if (bands === 6) c.appendChild(makeSelect('tc', TC_COLORS, sel.tc, 'Temp. coeff.'));
+}
+
+function fmtOhms(v) {
+  if (v >= 1e9) return (v/1e9).toString().replace(/\.?0+$/,'') + ' GΩ';
+  if (v >= 1e6) return (v/1e6).toString().replace(/\.?0+$/,'') + ' MΩ';
+  if (v >= 1e3) return (v/1e3).toString().replace(/\.?0+$/,'') + ' kΩ';
+  return (+v.toPrecision(6)).toString() + ' Ω';
+}
+
+function renderResistor(view, colorList) {
+  view.innerHTML = colorList.map(c => `<div class="rband" style="background:${COLORS[c]?COLORS[c].hex:'transparent'}"></div>`).join('');
+}
+
+function decode() {
+  const d1 = COLORS[sel.d1].d, d2 = COLORS[sel.d2].d;
+  let digits, list;
+  if (bands >= 5) { const d3 = COLORS[sel.d3].d; digits = d1*100 + d2*10 + d3; }
+  else { digits = d1*10 + d2; }
+  const value = digits * COLORS[sel.mult].m;
+  const tol = COLORS[sel.tol].tol;
+
+  document.getElementById('decodeVal').textContent = fmtOhms(value);
+  let sub = (tol!=null ? `±${tol}% tolerance` : 'tolerance n/a');
+  if (bands === 6 && COLORS[sel.tc].tc) sub += ` · ${COLORS[sel.tc].tc} ppm/°C`;
+  document.getElementById('decodeSub').textContent = sub;
+
+  list = bands >= 5 ? [sel.d1,sel.d2,sel.d3,sel.mult,sel.tol] : [sel.d1,sel.d2,sel.mult,sel.tol];
+  if (bands === 6) list.push(sel.tc);
+  renderResistor(document.getElementById('resistorView'), list);
+}
+
+// ---- ENCODE: value -> 4-band colors ----
+function encode() {
+  const raw = parseFloat(document.getElementById('ohmInput').value);
+  const mult = parseFloat(document.getElementById('ohmUnit').value);
+  const out = document.getElementById('encodeVal');
+  const sub = document.getElementById('encodeSub');
+  if (isNaN(raw) || raw <= 0) { out.textContent='—'; sub.textContent='Enter a positive value.'; renderResistor(document.getElementById('resistorViewE'),[]); return; }
+  let ohms = raw * mult;
+
+  // normalise to 2 significant digits + multiplier (4-band style)
+  let exp = Math.floor(Math.log10(ohms));
+  let sig = Math.round(ohms / Math.pow(10, exp - 1)); // 2 sig digits => 10..99
+  if (sig >= 100) { sig = Math.round(sig/10); exp++; }
+  let d1 = Math.floor(sig/10), d2 = sig % 10;
+  let multPow = exp - 1; // because we kept 2 digits
+
+  const nameByDigit = n => DIGIT_COLORS[n];
+  const multColor = Object.keys(COLORS).find(k => COLORS[k].m === Math.pow(10, multPow));
+
+  const actual = sig * Math.pow(10, multPow);
+  out.textContent = fmtOhms(actual);
+  if (!multColor) {
+    sub.textContent = 'Value out of standard band range (1 Ω – 99 GΩ).';
+    renderResistor(document.getElementById('resistorViewE'),[]);
+    return;
+  }
+  const bandNames = [nameByDigit(d1), nameByDigit(d2), multColor, 'gold'];
+  sub.textContent = `4-band: ${bandNames.map(n=>n.charAt(0).toUpperCase()+n.slice(1)).join(' · ')} (±5%)` +
+    (Math.abs(actual-ohms) > 1e-9 ? ` — nearest to ${fmtOhms(ohms)}` : '');
+  renderResistor(document.getElementById('resistorViewE'), bandNames);
+}
+
+// mode tabs
+document.querySelectorAll('.mode-tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.mode-tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.pane').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('pane-' + t.dataset.mode).classList.add('active');
+}));
+document.getElementById('ohmInput').addEventListener('input', encode);
+document.getElementById('ohmUnit').addEventListener('change', encode);
+
+buildSelects();
+decode();
+encode();
+</script>
+</body>
+</html>

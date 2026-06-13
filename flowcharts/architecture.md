@@ -14,7 +14,7 @@ Browser
           ▼                           ▼
        NGINX :443 / :80
           │                           │
-          │ /pay-api/*                │ /yt-api/*
+          │ /tools-api/*              │ /yt-api/*
           ▼                           ▼
    Node.js :3001              yt-server :9000
    office-tools-server.js     yt-dlp proxy
@@ -44,7 +44,7 @@ Browser
 | Path | Destination |
 |------|-------------|
 | `/` | Static files `/var/www/office-tools/` |
-| `/pay-api/*` | Node.js :3001 |
+| `/tools-api/*` | Node.js :3001 |
 | `/yt-api/*` | yt-server :9000 |
 | `/backend/` | 403 DENIED |
 | `*.env` `*.sh` `*.md` | 403 DENIED |

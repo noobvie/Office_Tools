@@ -76,7 +76,7 @@ systemctl enable --now office-tools-api
 ## Nginx Reverse Proxy
 
 ```nginx
-location /pay-api/ {
+location /tools-api/ {
     proxy_pass http://127.0.0.1:3001/api/;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
@@ -85,7 +85,7 @@ location /pay-api/ {
 
 Then update `js/config.js`:
 ```js
-API_SERVER_URL: 'https://yourdomain.com/pay-api',
+API_SERVER_URL: 'https://yourdomain.com/tools-api',
 ```
 
 ---

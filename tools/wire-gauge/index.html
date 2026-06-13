@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wire Gauge Calculator — AWG to mm, mm² & Amps — Office Tools</title>
+  <meta name="description" content="Convert AWG wire gauge to diameter (mm), cross-section (mm²) and typical current rating. Or enter the amps you need and find the right gauge. Free online AWG calculator.">
+  <meta name="keywords" content="wire gauge calculator, AWG to mm, AWG to mm2, wire gauge chart, amps to wire gauge, AWG ampacity, wire size calculator, AWG diameter, cable size">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Wire Gauge Calculator — AWG to mm, mm² & Amps">
+  <meta property="og:description" content="Convert AWG to diameter, cross-section and current rating, or find the gauge for a given current.">
+  <meta property="og:url" content="https://tools.grin.money/tools/wire-gauge/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Wire Gauge Calculator (AWG)">
+  <meta name="twitter:description" content="Convert AWG to diameter, cross-section and current rating.">
+  <link rel="canonical" href="https://tools.grin.money/tools/wire-gauge/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Wire Gauge Calculator","description":"Convert AWG wire gauge to diameter, cross-section and current rating, or find the gauge for a given current.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/wire-gauge/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .mode-tabs { display:flex; gap:.5rem; margin-bottom:1rem; border-bottom:2px solid var(--border); }
+    .mode-tab { padding:.5rem 1rem; cursor:pointer; border:none; background:none; color:var(--text-muted); font-weight:600; border-bottom:2px solid transparent; margin-bottom:-2px; }
+    .mode-tab.active { color:var(--primary); border-bottom-color:var(--primary); }
+    .pane { display:none; } .pane.active { display:block; }
+    .spec-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:.75rem; margin-top:1rem; }
+    .spec { background:var(--bg-secondary); border:1.5px solid var(--border); border-radius:var(--radius); padding:.75rem; }
+    .spec .k { font-size:.78rem; color:var(--text-muted); }
+    .spec .v { font-size:1.25rem; font-weight:800; color:var(--primary); font-family:'Courier New',monospace; }
+    .awg-table { width:100%; border-collapse:collapse; font-size:.88rem; margin-top:1rem; }
+    .awg-table th { text-align:left; padding:.4rem .55rem; color:var(--text-muted); font-weight:600; border-bottom:2px solid var(--border); position:sticky; top:0; background:var(--bg); }
+    .awg-table td { padding:.4rem .55rem; border-bottom:1px solid var(--border); }
+    .awg-table tr.hl td { background:color-mix(in srgb,var(--primary) 16%,transparent); font-weight:700; }
+    .table-wrap { max-height:380px; overflow:auto; border:1px solid var(--border); border-radius:var(--radius); margin-top:1rem; }
+    .note { font-size:.82rem; color:var(--text-muted); margin-top:.7rem; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Wire Gauge</span>
+  <div class="header-actions"><button class="theme-toggle" id="themeToggle"></button></div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔌 Wire Gauge Calculator (AWG)</h1>
+    <p>Convert American Wire Gauge to diameter, cross-section and a typical current rating — or work backwards from the amps you need.</p>
+  </div>
+
+<section class="tool-about">
+  <h2>About wire gauge (AWG)</h2>
+  <p><strong>American Wire Gauge (AWG)</strong> is a logarithmic scale: a <em>smaller</em> number means a <em>thicker</em> wire. Each 6-gauge step roughly doubles the diameter, and each 3-gauge step doubles the cross-sectional area. Diameter follows a fixed formula, so this tool computes <strong>mm and mm²</strong> exactly; the <strong>current rating (ampacity)</strong> shown is a common reference figure.</p>
+  <p class="note" style="margin-top:.4rem;"><strong>Safety:</strong> ampacity depends on insulation type, ambient temperature, bundling and length (voltage drop). These figures are a guide only — always follow your local electrical code (NEC, IEC) and the wire/insulation rating for real installations.</p>
+</section>
+
+  <div class="card">
+    <div class="mode-tabs">
+      <button class="mode-tab active" data-mode="gauge">Gauge → specs</button>
+      <button class="mode-tab" data-mode="amps">Amps → gauge</button>
+    </div>
+
+    <div class="pane active" id="pane-gauge">
+      <div class="form-group">
+        <label for="awgSel">Wire gauge (AWG)</label>
+        <select id="awgSel"></select>
+      </div>
+      <div class="spec-grid" id="specGrid"></div>
+    </div>
+
+    <div class="pane" id="pane-amps">
+      <div class="form-group">
+        <label for="ampNeed">Current you need to carry (amps)</label>
+        <input type="number" id="ampNeed" value="15" min="0" step="any">
+      </div>
+      <div class="result-box" style="display:block;">
+        <div id="ampResult" style="color:var(--primary);font-weight:700;">—</div>
+      </div>
+      <p class="note">Picks the smallest gauge whose reference ampacity meets your current. Add margin for long runs (voltage drop) and high ambient temperature.</p>
+    </div>
+
+    <div class="table-wrap"><table class="awg-table" id="awgTable"></table></div>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">AWG to mm</span>
+  <span class="page-tag">AWG to mm²</span>
+  <span class="page-tag">amps to wire gauge</span>
+  <span class="page-tag">wire size chart</span>
+  <span class="page-tag">cable size</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+// Reference ampacity (A) — typical chassis/general wiring guide values for copper.
+const AMPACITY = { '0000':380,'000':328,'00':283,'0':245,1:211,2:181,3:158,4:135,6:101,8:73,10:55,12:41,14:32,16:22,18:16,20:11,22:7,24:3.5 };
+// gauge list (AWG). 0000=-3, 000=-2, 00=-1, 0=0
+const GAUGES = ['0000','000','00','0',1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,18,20,22,24,26,28,30];
+
+function awgToN(g){ if(g==='0000')return -3; if(g==='000')return -2; if(g==='00')return -1; if(g==='0')return 0; return parseInt(g,10); }
+function diaMm(g){ return 0.127 * Math.pow(92, (36 - awgToN(g)) / 39); }
+function areaMm2(g){ const d=diaMm(g); return Math.PI/4 * d*d; }
+function fmt(n,p){ return (+n.toPrecision(p||4)).toString(); }
+
+const awgSel = document.getElementById('awgSel');
+GAUGES.forEach(g => { const o=document.createElement('option'); o.value=String(g); o.textContent='AWG '+g; awgSel.appendChild(o); });
+awgSel.value = '12';
+
+function ampOf(g){ return AMPACITY[g] !== undefined ? AMPACITY[g] : null; }
+
+function showSpecs() {
+  const g = awgSel.value;
+  const d = diaMm(g), a = areaMm2(g), amp = ampOf(g);
+  document.getElementById('specGrid').innerHTML = `
+    <div class="spec"><div class="k">Diameter</div><div class="v">${fmt(d,4)} mm</div></div>
+    <div class="spec"><div class="k">Diameter</div><div class="v">${fmt(d/25.4,4)} in</div></div>
+    <div class="spec"><div class="k">Cross-section</div><div class="v">${fmt(a,4)} mm²</div></div>
+    <div class="spec"><div class="k">Ampacity (ref.)</div><div class="v">${amp!=null?amp+' A':'—'}</div></div>`;
+  highlight(g);
+}
+
+function suggest() {
+  const need = parseFloat(document.getElementById('ampNeed').value);
+  const out = document.getElementById('ampResult');
+  if (isNaN(need) || need <= 0) { out.textContent='Enter a current in amps.'; highlight(null); return; }
+  // smallest gauge number with ampacity >= need => iterate thickest-first list already ordered thick->thin
+  const ordered = GAUGES.filter(g => ampOf(g) != null);
+  let pick = null;
+  // find thinnest (largest AWG) that still handles it = iterate thin->thick
+  for (let i = ordered.length - 1; i >= 0; i--) {
+    if (ampOf(ordered[i]) >= need) pick = ordered[i];
+  }
+  if (!pick) { out.innerHTML = `No listed gauge handles ${need} A — use a thicker conductor / busbar than AWG 0000.`; highlight(null); return; }
+  out.innerHTML = `Use <strong>AWG ${pick}</strong> or thicker — rated ≈ ${ampOf(pick)} A (${fmt(areaMm2(pick),3)} mm²).`;
+  highlight(pick);
+}
+
+function buildTable() {
+  const head = '<thead><tr><th>AWG</th><th>mm</th><th>mm²</th><th>Ampacity (ref.)</th></tr></thead>';
+  const body = GAUGES.map(g => `<tr data-g="${g}"><td>${g}</td><td>${fmt(diaMm(g),4)}</td><td>${fmt(areaMm2(g),4)}</td><td>${ampOf(g)!=null?ampOf(g)+' A':'—'}</td></tr>`).join('');
+  document.getElementById('awgTable').innerHTML = head + '<tbody>' + body + '</tbody>';
+}
+function highlight(g){
+  document.querySelectorAll('#awgTable tr').forEach(tr => tr.classList.toggle('hl', g!=null && tr.dataset.g === String(g)));
+  const row = g!=null ? document.querySelector(`#awgTable tr[data-g="${g}"]`) : null;
+  if (row) row.scrollIntoView({ block:'nearest' });
+}
+
+document.querySelectorAll('.mode-tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.mode-tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.pane').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('pane-' + t.dataset.mode).classList.add('active');
+  if (t.dataset.mode === 'gauge') showSpecs(); else suggest();
+}));
+awgSel.addEventListener('change', showSpecs);
+document.getElementById('ampNeed').addEventListener('input', suggest);
+
+buildTable();
+showSpecs();
+</script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TDEE & Calorie Calculator (BMR) — Office Tools</title>
+  <meta name="description" content="Calculate your BMR and TDEE — daily calories to maintain, lose or gain weight. Uses the Mifflin-St Jeor formula with metric or imperial units and activity level. Free online calorie calculator.">
+  <meta name="keywords" content="TDEE calculator, BMR calculator, calorie calculator, daily calories, maintenance calories, Mifflin-St Jeor, weight loss calories, macros, basal metabolic rate">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="TDEE & Calorie Calculator (BMR)">
+  <meta property="og:description" content="Calculate BMR and TDEE — daily calories to maintain, lose or gain weight. Metric or imperial.">
+  <meta property="og:url" content="https://tools.grin.money/tools/tdee-calculator/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="TDEE & Calorie Calculator">
+  <meta name="twitter:description" content="Calculate BMR and TDEE — daily calories to maintain, lose or gain weight.">
+  <link rel="canonical" href="https://tools.grin.money/tools/tdee-calculator/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"TDEE & Calorie Calculator","description":"Calculate BMR and TDEE — daily calories to maintain, lose or gain weight, using Mifflin-St Jeor.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/tdee-calculator/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .seg { display:inline-flex; border:1.5px solid var(--border); border-radius:2rem; overflow:hidden; }
+    .seg button { padding:.4rem 1rem; border:none; background:none; cursor:pointer; color:var(--text); font-size:.85rem; }
+    .seg button.active { background:var(--primary); color:#fff; font-weight:700; }
+    .pair { display:grid; grid-template-columns:1fr 80px; gap:.4rem; }
+    .big-out { text-align:center; padding:1rem; background:var(--bg-secondary); border:1.5px solid var(--border); border-radius:var(--radius); margin-top:1rem; }
+    .big-out .v { font-size:2.4rem; font-weight:800; color:var(--primary); font-family:'Courier New',monospace; line-height:1.1; }
+    .big-out .k { color:var(--text-muted); font-size:.85rem; }
+    .goal-table { width:100%; border-collapse:collapse; margin-top:1rem; font-size:.92rem; }
+    .goal-table th { text-align:left; padding:.45rem .6rem; color:var(--text-muted); font-weight:600; border-bottom:2px solid var(--border); }
+    .goal-table td { padding:.45rem .6rem; border-bottom:1px solid var(--border); }
+    .goal-table tr:last-child td { border-bottom:none; }
+    .goal-table .val { font-weight:700; color:var(--primary); font-family:'Courier New',monospace; }
+    .imperial-h { display:none; } .units-imp .imperial-h { display:grid; } .units-imp .metric-h { display:none; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">TDEE Calculator</span>
+  <div class="header-actions"><button class="theme-toggle" id="themeToggle"></button></div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🔥 TDEE &amp; Calorie Calculator</h1>
+    <p>Find your <strong>BMR</strong> and <strong>TDEE</strong> — the daily calories to maintain, lose or gain weight.</p>
+  </div>
+
+<section class="tool-about">
+  <h2>About BMR &amp; TDEE</h2>
+  <p><strong>BMR (Basal Metabolic Rate)</strong> is the energy your body burns at complete rest. <strong>TDEE (Total Daily Energy Expenditure)</strong> multiplies that by an activity factor to estimate the calories you burn in a typical day — your <em>maintenance</em> calories. Eat below it to lose weight, above it to gain. This uses the <strong>Mifflin-St Jeor equation</strong>, the most accurate common formula.</p>
+  <p>These are estimates — real needs vary with body composition, genetics and exact activity. Use the maintenance figure as a starting point and adjust based on a few weeks of real results.</p>
+</section>
+
+  <div class="card" id="card">
+    <div class="form-group">
+      <label>Units</label>
+      <div class="seg" id="unitSeg">
+        <button data-u="metric" class="active">Metric</button>
+        <button data-u="imperial">Imperial</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Sex</label>
+      <div class="seg" id="sexSeg">
+        <button data-s="male" class="active">Male</button>
+        <button data-s="female">Female</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="age">Age (years)</label>
+        <input type="number" id="age" value="30" min="1" max="120">
+      </div>
+      <div class="form-group">
+        <label>Height</label>
+        <div class="metric-h"><input type="number" id="htCm" value="175" min="1" step="any" placeholder="cm"></div>
+        <div class="imperial-h pair"><input type="number" id="htFt" value="5" min="0" placeholder="ft"><input type="number" id="htIn" value="9" min="0" placeholder="in"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Weight</label>
+      <div class="metric-h"><input type="number" id="wtKg" value="75" min="1" step="any" placeholder="kg"></div>
+      <div class="imperial-h"><input type="number" id="wtLb" value="165" min="1" step="any" placeholder="lb"></div>
+    </div>
+    <div class="form-group">
+      <label for="activity">Activity level</label>
+      <select id="activity">
+        <option value="1.2">Sedentary — little or no exercise</option>
+        <option value="1.375">Light — exercise 1–3 days/week</option>
+        <option value="1.55" selected>Moderate — exercise 3–5 days/week</option>
+        <option value="1.725">Active — exercise 6–7 days/week</option>
+        <option value="1.9">Very active — hard daily training / physical job</option>
+      </select>
+    </div>
+
+    <div class="big-out">
+      <div class="v" id="tdeeOut">—</div>
+      <div class="k">calories/day to maintain weight · BMR <span id="bmrOut">—</span></div>
+    </div>
+
+    <table class="goal-table">
+      <thead><tr><th>Goal</th><th>Calories/day</th></tr></thead>
+      <tbody id="goalBody"></tbody>
+    </table>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">TDEE</span>
+  <span class="page-tag">BMR</span>
+  <span class="page-tag">maintenance calories</span>
+  <span class="page-tag">weight loss</span>
+  <span class="page-tag">Mifflin-St Jeor</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+let units = 'metric', sex = 'male';
+
+document.getElementById('unitSeg').addEventListener('click', e => {
+  if (!e.target.dataset.u) return;
+  units = e.target.dataset.u;
+  document.querySelectorAll('#unitSeg button').forEach(b=>b.classList.toggle('active', b===e.target));
+  document.getElementById('card').classList.toggle('units-imp', units==='imperial');
+  calc();
+});
+document.getElementById('sexSeg').addEventListener('click', e => {
+  if (!e.target.dataset.s) return;
+  sex = e.target.dataset.s;
+  document.querySelectorAll('#sexSeg button').forEach(b=>b.classList.toggle('active', b===e.target));
+  calc();
+});
+
+function round(n){ return Math.round(n); }
+
+function calc() {
+  const age = parseFloat(document.getElementById('age').value);
+  let cm, kg;
+  if (units === 'metric') {
+    cm = parseFloat(document.getElementById('htCm').value);
+    kg = parseFloat(document.getElementById('wtKg').value);
+  } else {
+    const ft = parseFloat(document.getElementById('htFt').value) || 0;
+    const inch = parseFloat(document.getElementById('htIn').value) || 0;
+    cm = (ft*12 + inch) * 2.54;
+    kg = (parseFloat(document.getElementById('wtLb').value)) * 0.453592;
+  }
+  const act = parseFloat(document.getElementById('activity').value);
+  const tdeeOut = document.getElementById('tdeeOut'), bmrOut = document.getElementById('bmrOut');
+  if ([age,cm,kg].some(v=>isNaN(v)||v<=0)) { tdeeOut.textContent='—'; bmrOut.textContent='—'; document.getElementById('goalBody').innerHTML=''; return; }
+
+  // Mifflin-St Jeor
+  let bmr = 10*kg + 6.25*cm - 5*age + (sex==='male' ? 5 : -161);
+  const tdee = bmr * act;
+  bmrOut.textContent = round(bmr) + ' kcal';
+  tdeeOut.textContent = round(tdee).toLocaleString();
+
+  const goals = [
+    ['Mild weight loss (−0.25 kg/wk)', tdee - 275],
+    ['Weight loss (−0.5 kg/wk)',       tdee - 550],
+    ['Aggressive loss (−1 kg/wk)',     tdee - 1100],
+    ['Maintain',                       tdee],
+    ['Mild gain (+0.25 kg/wk)',        tdee + 275],
+    ['Weight gain (+0.5 kg/wk)',       tdee + 550]
+  ];
+  document.getElementById('goalBody').innerHTML = goals.map(([n,v]) =>
+    `<tr><td>${escHtml(n)}</td><td class="val">${v>0?round(v).toLocaleString():'—'}</td></tr>`).join('');
+}
+
+document.querySelectorAll('#card input, #card select').forEach(el => el.addEventListener('input', calc));
+calc();
+</script>
+</body>
+</html>

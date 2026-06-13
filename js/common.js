@@ -228,6 +228,7 @@ const OT_TOOLS = [
   { name: 'World Calendar',          path: 'calendar',              cat: '⏱️ Productivity & Time', icon: '🗓️', desc: 'Gregorian, Chinese Lunar and Islamic Hijri calendar' },
   { name: 'Stopwatch & Timer',       path: 'timer',                 cat: '⏱️ Productivity & Time', icon: '⏱️', desc: 'Precise stopwatch with lap times and countdown timer' },
   { name: 'Time Zone Converter',     path: 'timezone',              cat: '⏱️ Productivity & Time', icon: '🌐', desc: 'Convert times between any two time zones' },
+  { name: 'Work Hours & Timesheet',  path: 'timesheet-calculator',  cat: '⏱️ Productivity & Time', icon: '⏲️', desc: 'Weekly hours from clock in/out and breaks, with overtime and pay',    isNew: true },
   // ✨ Generators
   { name: 'Password Generator',      path: 'password-generator',    cat: '✨ Generators',           icon: '🔑', desc: 'Generate secure random passwords with custom options' },
   { name: 'QR & Barcode Generator',  path: 'qr-generator',          cat: '✨ Generators',           icon: '📱', desc: 'Generate QR codes with logo or barcodes — URL, WiFi, vCard' },
@@ -271,6 +272,13 @@ const OT_TOOLS = [
   { name: 'Compound Interest Calculator', path: 'compound-interest', cat: '🧮 Calculators',         icon: '📈', desc: 'Project savings growth with contributions and a yearly chart',         isNew: true },
   { name: 'Scientific Calculator',   path: 'scientific-calculator', cat: '🧮 Calculators',          icon: '🔬', desc: 'Trig, logs, powers, roots, factorial and memory — deg or rad',         isNew: true },
   { name: 'Roman Numeral Converter', path: 'roman-numerals',        cat: '🧮 Calculators',          icon: '🏛️', desc: 'Convert numbers to Roman numerals and back, both directions',          isNew: true },
+  { name: 'Watts / Volts / Amps Calculator', path: 'electrical-calculator', cat: '🧮 Calculators',   icon: '⚡', desc: "Ohm's Law — enter any two of watts, volts, amps, ohms; get the rest",     isNew: true },
+  { name: 'Clothing & Shoe Size Converter', path: 'clothing-size',     cat: '🧮 Calculators',          icon: '👕', desc: 'Convert clothing and shoe sizes between US, UK and EU',                isNew: true },
+  { name: 'Resistor Color Code Calculator', path: 'resistor-calculator', cat: '🧮 Calculators',        icon: '🎨', desc: '4/5/6-band resistor colors to resistance and back',                    isNew: true },
+  { name: 'Recipe & Cooking Converter', path: 'recipe-converter',      cat: '🧮 Calculators',          icon: '🍳', desc: 'Cups, grams, ounces, tbsp and ml per ingredient, plus a recipe scaler', isNew: true },
+  { name: 'Wire Gauge Calculator',   path: 'wire-gauge',            cat: '🧮 Calculators',          icon: '🔌', desc: 'AWG to mm, mm² and ampacity, or find the gauge for a given current',  isNew: true },
+  { name: 'Fuel & Trip Cost Calculator', path: 'fuel-cost',         cat: '🧮 Calculators',          icon: '⛽', desc: 'Trip fuel cost from distance, economy and price — mpg or L/100km',     isNew: true },
+  { name: 'TDEE & Calorie Calculator', path: 'tdee-calculator',     cat: '🧮 Calculators',          icon: '🔥', desc: 'BMR and daily maintenance calories with weight-goal targets',          isNew: true },
   // 💻 Development
   { name: 'JSON Editor',             path: 'json-editor',           cat: '💻 Development',          icon: '📋', desc: 'Validate, format and minify JSON with interactive tree view' },
   { name: 'CSV ↔ JSON',              path: 'csv-json',              cat: '💻 Development',          icon: '⇄',  desc: 'Convert between CSV and JSON with table preview' },

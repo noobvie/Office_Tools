@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fuel & Trip Cost Calculator — Office Tools</title>
+  <meta name="description" content="Work out the fuel cost of a trip from distance, fuel economy and fuel price. Supports miles/km, US/UK mpg or L/100km, and per-gallon or per-litre pricing. Split the cost between passengers. Free online tool.">
+  <meta name="keywords" content="fuel cost calculator, trip cost calculator, gas cost calculator, fuel economy, mpg, L/100km, cost per mile, fuel price, road trip cost, petrol cost">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Fuel & Trip Cost Calculator">
+  <meta property="og:description" content="Estimate the fuel cost of any trip from distance, economy and fuel price. Miles/km, mpg or L/100km.">
+  <meta property="og:url" content="https://tools.grin.money/tools/fuel-cost/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Fuel & Trip Cost Calculator">
+  <meta name="twitter:description" content="Estimate the fuel cost of any trip from distance, economy and fuel price.">
+  <link rel="canonical" href="https://tools.grin.money/tools/fuel-cost/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Fuel & Trip Cost Calculator","description":"Estimate the fuel cost of a trip from distance, fuel economy and fuel price.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/fuel-cost/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .pair { display:grid; grid-template-columns: 1fr 130px; gap:.5rem; }
+    .out-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.75rem; margin-top:1rem; }
+    .out { background:var(--bg-secondary); border:1.5px solid var(--border); border-radius:var(--radius); padding:.85rem; }
+    .out .k { font-size:.78rem; color:var(--text-muted); }
+    .out .v { font-size:1.35rem; font-weight:800; color:var(--primary); font-family:'Courier New',monospace; }
+    .out.big .v { font-size:1.7rem; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Fuel Cost</span>
+  <div class="header-actions"><button class="theme-toggle" id="themeToggle"></button></div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>⛽ Fuel &amp; Trip Cost Calculator</h1>
+    <p>Estimate what a journey costs in fuel — works with <strong>miles or km</strong>, <strong>US/UK mpg or L/100km</strong>, and per-gallon or per-litre prices.</p>
+  </div>
+
+<section class="tool-about">
+  <h2>About this calculator</h2>
+  <p>Enter how far you're driving, your car's fuel economy and the price of fuel, and this works out the <strong>fuel needed, total cost, and cost per mile/km</strong>. It mixes unit systems freely, so you can use US gallons with miles, or litres with kilometres, or anything in between — handy for road-trip budgeting and comparing cars. You can also <strong>split the cost between passengers</strong>.</p>
+</section>
+
+  <div class="card">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="dist">Distance</label>
+        <div class="pair">
+          <input type="number" id="dist" value="300" min="0" step="any">
+          <select id="distUnit"><option value="mi">miles</option><option value="km">km</option></select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="eff">Fuel economy</label>
+        <div class="pair">
+          <input type="number" id="eff" value="35" min="0" step="any">
+          <select id="effUnit">
+            <option value="mpgUS">mpg (US)</option>
+            <option value="mpgUK">mpg (UK)</option>
+            <option value="lph">L/100km</option>
+            <option value="kpl">km/L</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="price">Fuel price</label>
+        <div class="pair">
+          <input type="number" id="price" value="3.50" min="0" step="any">
+          <select id="priceUnit">
+            <option value="galUS">per gal (US)</option>
+            <option value="galUK">per gal (UK)</option>
+            <option value="l">per litre</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="people">Split between (people)</label>
+        <input type="number" id="people" value="1" min="1" step="1">
+      </div>
+    </div>
+    <label class="checkbox-row" style="margin-top:.2rem;"><input type="checkbox" id="roundTrip"> <span>Round trip (double the distance)</span></label>
+
+    <div class="out-grid" id="outGrid"></div>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">trip cost</span>
+  <span class="page-tag">gas cost</span>
+  <span class="page-tag">cost per mile</span>
+  <span class="page-tag">mpg L/100km</span>
+  <span class="page-tag">road trip</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const L_PER_GAL_US = 3.785411, L_PER_GAL_UK = 4.54609, KM_PER_MI = 1.609344;
+
+function fmt(n){ if(!isFinite(n)) return '—'; return (+n.toPrecision(5)).toString(); }
+function money(n){ if(!isFinite(n)) return '—'; return n.toFixed(2); }
+
+function calc() {
+  let dist = parseFloat(document.getElementById('dist').value);
+  const distUnit = document.getElementById('distUnit').value;
+  const eff = parseFloat(document.getElementById('eff').value);
+  const effUnit = document.getElementById('effUnit').value;
+  const price = parseFloat(document.getElementById('price').value);
+  const priceUnit = document.getElementById('priceUnit').value;
+  let people = parseInt(document.getElementById('people').value, 10); if (!(people>=1)) people = 1;
+  const round = document.getElementById('roundTrip').checked;
+
+  const grid = document.getElementById('outGrid');
+  if ([dist,eff,price].some(isNaN) || dist<0 || eff<=0 || price<0) { grid.innerHTML = '<div class="out"><div class="k">Result</div><div class="v">—</div></div>'; return; }
+
+  if (round) dist *= 2;
+  // distance -> km
+  const distKm = distUnit === 'mi' ? dist * KM_PER_MI : dist;
+  // economy -> L/100km
+  let lph;
+  if (effUnit === 'lph') lph = eff;
+  else if (effUnit === 'kpl') lph = 100 / eff;
+  else if (effUnit === 'mpgUS') lph = 235.2145 / eff;
+  else lph = 282.4809 / eff; // mpgUK
+  // price -> per litre
+  let pricePerL;
+  if (priceUnit === 'l') pricePerL = price;
+  else if (priceUnit === 'galUS') pricePerL = price / L_PER_GAL_US;
+  else pricePerL = price / L_PER_GAL_UK;
+
+  const litres = distKm * lph / 100;
+  const total = litres * pricePerL;
+  const distOrig = distUnit === 'mi' ? distKm / KM_PER_MI : distKm;
+  const perUnit = total / distOrig;
+  const galUS = litres / L_PER_GAL_US;
+
+  grid.innerHTML = `
+    <div class="out big"><div class="k">Total fuel cost</div><div class="v">${money(total)}</div></div>
+    <div class="out"><div class="k">Fuel needed</div><div class="v">${fmt(litres)} L</div><div class="k">${fmt(galUS)} gal (US)</div></div>
+    <div class="out"><div class="k">Cost per ${distUnit}</div><div class="v">${money(perUnit)}</div></div>
+    ${people>1 ? `<div class="out"><div class="k">Per person (${people})</div><div class="v">${money(total/people)}</div></div>` : ''}`;
+}
+
+['dist','distUnit','eff','effUnit','price','priceUnit','people','roundTrip'].forEach(id =>
+  document.getElementById(id).addEventListener('input', calc));
+['distUnit','effUnit','priceUnit'].forEach(id => document.getElementById(id).addEventListener('change', calc));
+
+calc();
+</script>
+</body>
+</html>

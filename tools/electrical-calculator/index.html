@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Watts / Volts / Amps Calculator (Ohm's Law) — Office Tools</title>
+  <meta name="description" content="Convert between watts, volts, amps and ohms using Ohm's Law. Enter any two values and instantly calculate power (W), voltage (V), current (A) and resistance (Ω). Free online electrical calculator.">
+  <meta name="keywords" content="watts to amps, amps to watts, volts to watts, ohms law calculator, watt volt amp calculator, power calculator, voltage current resistance, electrical calculator, W=VxI, P=VI">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Watts / Volts / Amps Calculator (Ohm's Law) — Office Tools">
+  <meta property="og:description" content="Enter any two of watts, volts, amps or ohms and instantly get the other two. Free online Ohm's Law calculator.">
+  <meta property="og:url" content="https://tools.grin.money/tools/electrical-calculator/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Watts / Volts / Amps Calculator (Ohm's Law)">
+  <meta name="twitter:description" content="Enter any two of watts, volts, amps or ohms and instantly get the other two. Free online Ohm's Law calculator.">
+  <link rel="canonical" href="https://tools.grin.money/tools/electrical-calculator/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Watts / Volts / Amps Calculator","description":"Convert between watts, volts, amps and ohms using Ohm's Law. Enter any two values to calculate the other two.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/electrical-calculator/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .elec-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .9rem; margin-bottom: 1rem; }
+    @media (max-width: 520px) { .elec-grid { grid-template-columns: 1fr; } }
+    .elec-field label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: .3rem; }
+    .elec-field label .sym { color: var(--primary); font-family: 'Courier New', monospace; }
+    .elec-field .form-input { width: 100%; }
+    .elec-field.solved .form-input { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, transparent); }
+    .elec-hint { font-size: .85rem; color: var(--text-muted); margin: .25rem 0 1rem; min-height: 1.2em; }
+    .elec-actions { display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: .5rem; }
+    .results-table { width: 100%; border-collapse: collapse; margin-top: .25rem; font-size: .95rem; }
+    .results-table th { text-align: left; padding: .5rem .65rem; color: var(--text-muted); font-weight: 600; border-bottom: 2px solid var(--border); }
+    .results-table td { padding: .5rem .65rem; border-bottom: 1px solid var(--border); }
+    .results-table tr:last-child td { border-bottom: none; }
+    .results-table .val { font-weight: 700; color: var(--primary); font-family: 'Courier New', monospace; }
+    .results-table .copy-cell { text-align: right; }
+    .formula-box { margin-top: 1rem; font-size: .85rem; }
+    .formula-box code { background: var(--bg-alt, rgba(127,127,127,.12)); padding: .12rem .4rem; border-radius: .3rem; font-family: 'Courier New', monospace; }
+    .formula-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: .4rem .9rem; margin-top: .5rem; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Electrical Calculator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>⚡ Watts / Volts / Amps Calculator</h1>
+    <p>Enter any <strong>two</strong> values and Ohm's Law fills in the other two — power, voltage, current and resistance.</p>
+  </div>
+
+<section class="tool-about">
+  <h2>About this calculator</h2>
+  <p>Watts, volts and amps are <strong>different quantities, not interchangeable units</strong> — you can't convert one directly without a second known value. They are tied together by <strong>Ohm's Law</strong> and the <strong>power equation</strong>: power equals voltage times current (<code>P = V × I</code>), and voltage equals current times resistance (<code>V = I × R</code>). Give this tool any two of the four values and it solves the rest.</p>
+  <p>Handy for sizing a power supply, picking a fuse or wire gauge, checking an LED resistor, working out how many amps an appliance draws from its wattage, or any basic <strong>DC / resistive electronics</strong> question. For AC loads with a power factor (motors, transformers), see the note below the results.</p>
+</section>
+
+  <div class="card">
+    <div class="elec-grid">
+      <div class="elec-field" id="f-V">
+        <label>Voltage &mdash; <span class="sym">V</span> (volts)</label>
+        <input type="number" id="in-V" class="form-input" placeholder="e.g. 120" step="any">
+      </div>
+      <div class="elec-field" id="f-I">
+        <label>Current &mdash; <span class="sym">I</span> (amps)</label>
+        <input type="number" id="in-I" class="form-input" placeholder="e.g. 0.5" step="any">
+      </div>
+      <div class="elec-field" id="f-R">
+        <label>Resistance &mdash; <span class="sym">R</span> (ohms Ω)</label>
+        <input type="number" id="in-R" class="form-input" placeholder="e.g. 240" step="any">
+      </div>
+      <div class="elec-field" id="f-P">
+        <label>Power &mdash; <span class="sym">P</span> (watts)</label>
+        <input type="number" id="in-P" class="form-input" placeholder="e.g. 60" step="any">
+      </div>
+    </div>
+    <div class="elec-hint" id="elecHint">Fill in exactly two fields.</div>
+    <div class="elec-actions">
+      <button class="btn btn-secondary btn-sm" id="clearBtn">Clear all</button>
+    </div>
+    <div id="elecResults"></div>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">watts to amps</span>
+  <span class="page-tag">amps to watts</span>
+  <span class="page-tag">volts to watts</span>
+  <span class="page-tag">Ohm's Law</span>
+  <span class="page-tag">P = V × I</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const FIELDS = ['V','I','R','P'];
+const LABEL = { V: 'Voltage (V)', I: 'Current (A)', R: 'Resistance (Ω)', P: 'Power (W)' };
+
+function fmtNum(n) {
+  if (!isFinite(n)) return '—';
+  if (n === 0) return '0';
+  if (Math.abs(n) < 1e-9) return n.toExponential(4);
+  if (Math.abs(n) >= 1e12) return n.toExponential(4);
+  return parseFloat(n.toPrecision(8)).toString();
+}
+
+// Solve all four from any two known values. Returns object or null if unsolvable.
+function solve(known) {
+  let { V, I, R, P } = known;
+  const has = k => known[k] !== undefined;
+
+  // Derive V & I first (everything else follows), per which pair is given.
+  if (has('V') && has('I'))       { R = I !== 0 ? V / I : Infinity; P = V * I; }
+  else if (has('V') && has('R'))  { if (R === 0) return null; I = V / R; P = V * V / R; }
+  else if (has('V') && has('P'))  { if (V === 0) return null; I = P / V; R = I !== 0 ? V / I : Infinity; }
+  else if (has('I') && has('R'))  { V = I * R; P = I * I * R; }
+  else if (has('I') && has('P'))  { if (I === 0) return null; V = P / I; R = V / I; }
+  else if (has('R') && has('P'))  { if (R < 0) return null; V = Math.sqrt(P * R); I = R !== 0 ? Math.sqrt(P / R) : Infinity; }
+  else return null;
+
+  return { V, I, R, P };
+}
+
+function compute() {
+  const known = {};
+  FIELDS.forEach(k => {
+    const v = parseFloat(document.getElementById('in-' + k).value);
+    if (!isNaN(v)) known[k] = v;
+    document.getElementById('f-' + k).classList.remove('solved');
+  });
+
+  const keys = Object.keys(known);
+  const hint = document.getElementById('elecHint');
+  const res = document.getElementById('elecResults');
+
+  if (keys.length < 2) { hint.textContent = 'Fill in exactly two fields.'; res.innerHTML = ''; return; }
+  if (keys.length > 2) { hint.textContent = 'Too many values — leave exactly two filled (clear the others).'; res.innerHTML = ''; return; }
+
+  // basic sanity
+  if (known.R !== undefined && known.R < 0) { hint.textContent = 'Resistance cannot be negative.'; res.innerHTML = ''; return; }
+  if (known.P !== undefined && known.P < 0) { hint.textContent = 'Power cannot be negative.'; res.innerHTML = ''; return; }
+
+  const out = solve(known);
+  if (!out) { hint.textContent = 'Those two values give a division by zero — try different inputs.'; res.innerHTML = ''; return; }
+
+  hint.textContent = 'Solved from ' + keys.map(k => LABEL[k]).join(' + ') + '.';
+
+  const units = { V: 'V', I: 'A', R: 'Ω', P: 'W' };
+  let rows = '';
+  FIELDS.forEach(k => {
+    const givenFlag = known[k] !== undefined;
+    if (!givenFlag) document.getElementById('f-' + k).classList.add('solved');
+    const valStr = fmtNum(out[k]);
+    rows += `<tr>
+      <td>${escHtml(LABEL[k])}${givenFlag ? ' <span style="font-size:.72rem;color:var(--text-muted)">(given)</span>' : ''}</td>
+      <td class="val">${valStr} ${escHtml(units[k])}</td>
+      <td class="copy-cell"><button class="btn btn-sm btn-secondary" onclick="copyText('${valStr}', this)">Copy</button></td>
+    </tr>`;
+  });
+
+  res.innerHTML = `<table class="results-table"><thead><tr><th>Quantity</th><th>Value</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="formula-box">
+      <strong>Formulas used (Ohm's Law)</strong>
+      <div class="formula-grid">
+        <span><code>P = V × I</code></span>
+        <span><code>V = I × R</code></span>
+        <span><code>I = V / R</code></span>
+        <span><code>R = V / I</code></span>
+        <span><code>P = I² × R</code></span>
+        <span><code>P = V² / R</code></span>
+      </div>
+      <p style="margin-top:.7rem;color:var(--text-muted);">Assumes DC or a purely resistive load. For AC motors/transformers, real power also depends on the <em>power factor</em>: <code>P = V × I × PF</code> (single-phase) or <code>P = √3 × V × I × PF</code> (three-phase line-to-line).</p>
+    </div>`;
+}
+
+FIELDS.forEach(k => document.getElementById('in-' + k).addEventListener('input', compute));
+document.getElementById('clearBtn').addEventListener('click', () => {
+  FIELDS.forEach(k => { document.getElementById('in-' + k).value = ''; });
+  compute();
+  document.getElementById('in-V').focus();
+});
+
+compute();
+</script>
+</body>
+</html>
