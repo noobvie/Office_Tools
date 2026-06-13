@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Work Hours & Timesheet Calculator — Office Tools</title>
+  <meta name="description" content="Add up your weekly work hours from clock-in and clock-out times, minus breaks. Get daily and weekly totals, overtime over 40 hours, and gross pay from an hourly rate. Free online timesheet calculator.">
+  <meta name="keywords" content="timesheet calculator, work hours calculator, time card calculator, hours worked, clock in clock out, overtime calculator, weekly hours, payroll hours, hourly pay">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Work Hours & Timesheet Calculator">
+  <meta property="og:description" content="Add up weekly work hours from clock in/out minus breaks, with overtime and gross pay.">
+  <meta property="og:url" content="https://tools.grin.money/tools/timesheet-calculator/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Work Hours & Timesheet Calculator">
+  <meta name="twitter:description" content="Add up weekly work hours from clock in/out minus breaks, with overtime and gross pay.">
+  <link rel="canonical" href="https://tools.grin.money/tools/timesheet-calculator/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Work Hours & Timesheet Calculator","description":"Add up weekly work hours from clock in/out minus breaks, with overtime and gross pay.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/timesheet-calculator/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .ts-table { width:100%; border-collapse:collapse; font-size:.9rem; }
+    .ts-table th { text-align:left; padding:.4rem .45rem; color:var(--text-muted); font-weight:600; border-bottom:2px solid var(--border); font-size:.8rem; }
+    .ts-table td { padding:.35rem .45rem; border-bottom:1px solid var(--border); }
+    .ts-table input[type="time"] { padding:.4rem .5rem; min-width:0; }
+    .ts-table input[type="number"] { padding:.4rem .5rem; }
+    .ts-table .day { font-weight:600; white-space:nowrap; }
+    .ts-table .hrs { font-weight:700; color:var(--primary); font-family:'Courier New',monospace; white-space:nowrap; }
+    .ts-wrap { overflow-x:auto; }
+    .totals { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:.75rem; margin-top:1.2rem; }
+    .tot { background:var(--bg-secondary); border:1.5px solid var(--border); border-radius:var(--radius); padding:.85rem; }
+    .tot .k { font-size:.78rem; color:var(--text-muted); }
+    .tot .v { font-size:1.4rem; font-weight:800; color:var(--primary); font-family:'Courier New',monospace; }
+    .pay-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:.75rem; margin-top:1rem; }
+    @media (max-width:560px){ .pay-row { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Timesheet</span>
+  <div class="header-actions"><button class="theme-toggle" id="themeToggle"></button></div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>⏲️ Work Hours &amp; Timesheet Calculator</h1>
+    <p>Enter clock-in and clock-out times for the week, subtract breaks, and get daily and weekly totals — plus overtime and gross pay.</p>
+  </div>
+
+<section class="tool-about">
+  <h2>About this calculator</h2>
+  <p>Fill in when you started and finished each day and how many minutes of unpaid break you took. The tool adds up <strong>hours worked per day</strong> and for the <strong>whole week</strong>, handles shifts that run <strong>past midnight</strong>, and splits the total into regular and <strong>overtime</strong> hours (over 40/week at 1.5×). Add an hourly rate to see your <strong>gross pay</strong>. Everything stays in your browser — nothing is uploaded.</p>
+</section>
+
+  <div class="card">
+    <div class="ts-wrap">
+      <table class="ts-table">
+        <thead><tr><th>Day</th><th>Start</th><th>End</th><th>Break (min)</th><th>Hours</th></tr></thead>
+        <tbody id="tsBody"></tbody>
+      </table>
+    </div>
+
+    <div class="pay-row">
+      <div class="form-group" style="margin:0;">
+        <label for="rate">Hourly rate (optional)</label>
+        <input type="number" id="rate" value="0" min="0" step="any" placeholder="e.g. 20">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label for="otThresh">Overtime after (hrs/week)</label>
+        <input type="number" id="otThresh" value="40" min="0" step="any">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label for="otMult">Overtime multiplier</label>
+        <input type="number" id="otMult" value="1.5" min="1" step="any">
+      </div>
+    </div>
+
+    <div class="totals" id="totals"></div>
+    <button class="btn btn-secondary btn-sm" id="clearBtn" style="margin-top:1rem;">Clear all</button>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">work hours</span>
+  <span class="page-tag">time card</span>
+  <span class="page-tag">clock in out</span>
+  <span class="page-tag">overtime</span>
+  <span class="page-tag">weekly hours</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const tbody = document.getElementById('tsBody');
+
+DAYS.forEach((d, i) => {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td class="day">${d}</td>
+    <td><input type="time" id="start-${i}"></td>
+    <td><input type="time" id="end-${i}"></td>
+    <td><input type="number" id="brk-${i}" min="0" step="5" value="0" style="width:80px;"></td>
+    <td class="hrs" id="hrs-${i}">0.00</td>`;
+  tbody.appendChild(tr);
+});
+
+function dayHours(i) {
+  const s = document.getElementById('start-'+i).value;
+  const e = document.getElementById('end-'+i).value;
+  const brk = parseFloat(document.getElementById('brk-'+i).value) || 0;
+  if (!s || !e) return 0;
+  const [sh,sm] = s.split(':').map(Number);
+  const [eh,em] = e.split(':').map(Number);
+  let mins = (eh*60+em) - (sh*60+sm);
+  if (mins < 0) mins += 24*60; // crossed midnight
+  mins -= brk;
+  return Math.max(0, mins/60);
+}
+
+function fmtHrs(h){ return h.toFixed(2); }
+function money(n){ return n.toFixed(2); }
+
+function calc() {
+  let total = 0;
+  DAYS.forEach((d,i) => {
+    const h = dayHours(i);
+    document.getElementById('hrs-'+i).textContent = fmtHrs(h);
+    total += h;
+  });
+  const rate = parseFloat(document.getElementById('rate').value) || 0;
+  const otThresh = parseFloat(document.getElementById('otThresh').value);
+  const otMult = parseFloat(document.getElementById('otMult').value) || 1.5;
+  const thresh = isFinite(otThresh) ? otThresh : Infinity;
+
+  const reg = Math.min(total, thresh);
+  const ot = Math.max(0, total - thresh);
+  const pay = rate>0 ? (reg*rate + ot*rate*otMult) : 0;
+
+  let cards = `
+    <div class="tot"><div class="k">Total hours</div><div class="v">${fmtHrs(total)}</div></div>
+    <div class="tot"><div class="k">Regular hours</div><div class="v">${fmtHrs(reg)}</div></div>
+    <div class="tot"><div class="k">Overtime hours</div><div class="v">${fmtHrs(ot)}</div></div>`;
+  if (rate > 0) cards += `<div class="tot"><div class="k">Gross pay</div><div class="v">${money(pay)}</div></div>`;
+  document.getElementById('totals').innerHTML = cards;
+}
+
+document.querySelectorAll('.ts-table input, #rate, #otThresh, #otMult').forEach(el => el.addEventListener('input', calc));
+document.getElementById('clearBtn').addEventListener('click', () => {
+  DAYS.forEach((d,i) => { document.getElementById('start-'+i).value=''; document.getElementById('end-'+i).value=''; document.getElementById('brk-'+i).value='0'; });
+  calc();
+});
+
+calc();
+</script>
+</body>
+</html>

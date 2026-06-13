@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recipe & Cooking Converter (Cups ↔ Grams) — Office Tools</title>
+  <meta name="description" content="Convert recipe measurements between cups, grams, ounces, tablespoons and millilitres — per ingredient, since flour and sugar weigh differently. Plus a recipe scaler. Free online cooking converter.">
+  <meta name="keywords" content="cups to grams, grams to cups, recipe converter, cooking measurement converter, flour cups to grams, sugar cups to grams, tablespoons to ml, oz to grams, recipe scaler">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Recipe & Cooking Converter (Cups ↔ Grams)">
+  <meta property="og:description" content="Convert cups, grams, ounces, tablespoons and ml per ingredient, plus scale a recipe up or down.">
+  <meta property="og:url" content="https://tools.grin.money/tools/recipe-converter/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Recipe & Cooking Converter">
+  <meta name="twitter:description" content="Convert cups, grams, ounces, tablespoons and ml per ingredient.">
+  <link rel="canonical" href="https://tools.grin.money/tools/recipe-converter/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Recipe & Cooking Converter","description":"Convert recipe measurements between cups, grams, ounces, tablespoons and ml per ingredient, plus scale recipes.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/recipe-converter/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .conv-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .6rem; align-items: end; }
+    @media (max-width:560px){ .conv-row { grid-template-columns: 1fr; } }
+    .results-table { width:100%; border-collapse:collapse; margin-top:.9rem; font-size:.92rem; }
+    .results-table th { text-align:left; padding:.45rem .6rem; color:var(--text-muted); font-weight:600; border-bottom:2px solid var(--border); }
+    .results-table td { padding:.45rem .6rem; border-bottom:1px solid var(--border); }
+    .results-table tr:last-child td { border-bottom:none; }
+    .results-table .val { font-weight:700; color:var(--primary); font-family:'Courier New',monospace; }
+    .results-table .copy-cell { text-align:right; }
+    .note { font-size:.82rem; color:var(--text-muted); margin-top:.6rem; }
+    h2.sec { margin: 1.6rem 0 .5rem; font-size: 1.1rem; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Recipe Converter</span>
+  <div class="header-actions"><button class="theme-toggle" id="themeToggle"></button></div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🍳 Recipe &amp; Cooking Converter</h1>
+    <p>Convert between cups, grams, ounces, tablespoons and millilitres — <strong>per ingredient</strong>, because a cup of flour and a cup of sugar weigh very differently.</p>
+  </div>
+
+<section class="tool-about">
+  <h2>About this converter</h2>
+  <p>US recipes measure by <strong>volume (cups, tablespoons)</strong> while most of the world measures dry ingredients by <strong>weight (grams)</strong>. You can't convert between them with a single number — it depends on the ingredient's density. A cup of <strong>all-purpose flour is ~120 g</strong> but a cup of <strong>granulated sugar is ~200 g</strong>. Pick your ingredient and this tool uses the right density for each conversion.</p>
+  <p>Below the converter there's also a <strong>recipe scaler</strong> to multiply or divide every quantity when you change the number of servings.</p>
+</section>
+
+  <div class="card">
+    <h2 class="sec" style="margin-top:0;">Ingredient converter</h2>
+    <div class="conv-row">
+      <div class="form-group">
+        <label for="ingSel">Ingredient</label>
+        <select id="ingSel"></select>
+      </div>
+      <div class="form-group">
+        <label for="amtInput">Amount</label>
+        <input type="number" id="amtInput" value="1" step="any">
+      </div>
+      <div class="form-group">
+        <label for="unitSel">Unit</label>
+        <select id="unitSel"></select>
+      </div>
+    </div>
+    <div id="convResults"></div>
+    <div class="note" id="densityNote"></div>
+  </div>
+
+  <div class="card" style="margin-top:1.25rem;">
+    <h2 class="sec" style="margin-top:0;">Recipe scaler</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="origServ">Original servings</label>
+        <input type="number" id="origServ" value="4" min="0" step="any">
+      </div>
+      <div class="form-group">
+        <label for="newServ">New servings</label>
+        <input type="number" id="newServ" value="6" min="0" step="any">
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="scaleAmt">Quantity to scale</label>
+      <input type="number" id="scaleAmt" value="250" step="any" placeholder="e.g. 250">
+    </div>
+    <div class="result-box" style="display:block;">
+      <span style="color:var(--text-muted);font-size:.85rem;">Scaled quantity (×<span id="factorOut">1.5</span>): </span>
+      <strong style="color:var(--primary);font-size:1.2rem;" id="scaleOut">375</strong>
+    </div>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">cups to grams</span>
+  <span class="page-tag">grams to cups</span>
+  <span class="page-tag">flour sugar butter</span>
+  <span class="page-tag">tbsp to ml</span>
+  <span class="page-tag">recipe scaler</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+// grams per US cup for each ingredient
+const INGREDIENTS = {
+  'All-purpose flour': 120,
+  'Bread flour': 127,
+  'Cake flour': 114,
+  'Whole wheat flour': 130,
+  'Granulated sugar': 200,
+  'Brown sugar (packed)': 220,
+  'Powdered sugar': 120,
+  'Butter': 227,
+  'Milk': 240,
+  'Water': 237,
+  'Vegetable oil': 218,
+  'Honey': 340,
+  'Cocoa powder': 100,
+  'Cornstarch': 120,
+  'Rolled oats': 90,
+  'White rice (uncooked)': 185,
+  'Chocolate chips': 170,
+  'Salt (table)': 273
+};
+// volume units in ml (weight units handled separately)
+const VOL_ML = { cup: 236.588, tbsp: 14.7868, tsp: 4.92892, ml: 1, 'fl oz': 29.5735 };
+const WEIGHT_G = { g: 1, oz: 28.3495, lb: 453.592 };
+const ALL_UNITS = [...Object.keys(VOL_ML), ...Object.keys(WEIGHT_G)];
+
+const ingSel = document.getElementById('ingSel');
+Object.keys(INGREDIENTS).forEach(n => { const o=document.createElement('option'); o.value=n; o.textContent=n; ingSel.appendChild(o); });
+const unitSel = document.getElementById('unitSel');
+ALL_UNITS.forEach(u => { const o=document.createElement('option'); o.value=u; o.textContent=u; unitSel.appendChild(o); });
+unitSel.value = 'cup';
+
+function fmtNum(n){ if(!isFinite(n)) return '—'; if(n===0) return '0'; return parseFloat(n.toPrecision(6)).toString(); }
+
+function convert() {
+  const ing = ingSel.value;
+  const gPerCup = INGREDIENTS[ing];
+  const amt = parseFloat(document.getElementById('amtInput').value);
+  const unit = unitSel.value;
+  const res = document.getElementById('convResults');
+  document.getElementById('densityNote').textContent = `Density used: 1 cup ${ing.toLowerCase()} ≈ ${gPerCup} g. Values are approximate — densities vary with how you pack and measure.`;
+  if (isNaN(amt)) { res.innerHTML=''; return; }
+
+  // convert input to grams (canonical)
+  let grams;
+  if (unit in WEIGHT_G) grams = amt * WEIGHT_G[unit];
+  else grams = (amt * VOL_ML[unit] / VOL_ML.cup) * gPerCup; // volume -> cups -> grams
+
+  let rows = '';
+  // volume outputs
+  Object.keys(VOL_ML).forEach(u => {
+    const cups = grams / gPerCup;
+    const v = cups * VOL_ML.cup / VOL_ML[u];
+    rows += row(u, v);
+  });
+  Object.keys(WEIGHT_G).forEach(u => { rows += row(u, grams / WEIGHT_G[u]); });
+
+  res.innerHTML = `<table class="results-table"><thead><tr><th>Unit</th><th>Amount</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+
+  function row(u, v){
+    const s = fmtNum(v);
+    return `<tr><td>${escHtml(u)}</td><td class="val">${s}</td><td class="copy-cell"><button class="btn btn-sm btn-secondary" onclick="copyText('${s}', this)">Copy</button></td></tr>`;
+  }
+}
+
+ingSel.addEventListener('change', convert);
+document.getElementById('amtInput').addEventListener('input', convert);
+unitSel.addEventListener('change', convert);
+
+// ---- scaler ----
+function scale() {
+  const o = parseFloat(document.getElementById('origServ').value);
+  const n = parseFloat(document.getElementById('newServ').value);
+  const a = parseFloat(document.getElementById('scaleAmt').value);
+  const factor = (o>0 && isFinite(n)) ? n/o : NaN;
+  document.getElementById('factorOut').textContent = isFinite(factor) ? parseFloat(factor.toPrecision(4)) : '—';
+  document.getElementById('scaleOut').textContent = (isFinite(factor) && isFinite(a)) ? fmtNum(a*factor) : '—';
+}
+['origServ','newServ','scaleAmt'].forEach(id => document.getElementById(id).addEventListener('input', scale));
+
+convert();
+scale();
+</script>
+</body>
+</html>

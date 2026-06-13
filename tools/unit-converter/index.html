@@ -4,19 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Unit Converter — Office Tools</title>
-  <meta name="description" content="Convert length, weight, temperature, volume, area, speed, and data units instantly. Supports metric and imperial. Free online unit converter — no login needed.">
-  <meta name="keywords" content="unit converter, length converter, weight converter, temperature converter, metric imperial, km to miles, kg to lbs, celsius fahrenheit">
+  <meta name="description" content="Convert length, weight, temperature, volume, area, speed, pressure, power, energy, fuel economy and data units instantly. Metric, US and UK imperial. Free online unit converter — no login needed.">
+  <meta name="keywords" content="unit converter, length converter, weight converter, temperature converter, metric imperial, km to miles, kg to lbs, celsius fahrenheit, psi to bar, hp to watts, mpg to L/100km, UK US gallon, pressure power energy fuel economy">
   <meta name="robots" content="index, follow">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Office Tools">
   <meta property="og:title" content="Unit Converter — Office Tools">
-  <meta property="og:description" content="Convert length, weight, temperature, volume, area, speed, and data units instantly. Supports metric and imperial. Free online unit converter — no login needed.">
+  <meta property="og:description" content="Convert length, weight, temperature, volume, area, speed, pressure, power, energy, fuel economy and data units instantly. Metric, US and UK imperial. Free online unit converter — no login needed.">
   <meta property="og:url" content="https://tools.grin.money/tools/unit-converter/">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Unit Converter — Office Tools">
-  <meta name="twitter:description" content="Convert length, weight, temperature, volume, area, speed, and data units instantly. Supports metric and imperial. Free online unit converter — no login needed.">
+  <meta name="twitter:description" content="Convert length, weight, temperature, volume, area, speed, pressure, power, energy, fuel economy and data units instantly. Metric, US and UK imperial. Free online unit converter — no login needed.">
   <link rel="canonical" href="https://tools.grin.money/tools/unit-converter/">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Unit Converter","description":"Convert length, weight, temperature, volume, area, speed, and data units instantly. Supports metric and imperial. Free online unit converter — no login needed.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/unit-converter/"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Unit Converter","description":"Convert length, weight, temperature, volume, area, speed, pressure, power, energy, fuel economy and data units instantly. Metric, US and UK imperial. Free online unit converter — no login needed.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/unit-converter/"}</script>
   <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
   <link rel="stylesheet" href="../../css/style.css">
   <style>
@@ -47,13 +47,13 @@
 <main class="tool-main">
   <div class="tool-header">
     <h1>📐 Unit Converter</h1>
-    <p>Convert length, weight, temperature, volume, area, speed, and data units. All results shown at once.</p>
+    <p>Convert length, weight, temperature, volume, area, speed, pressure, power, energy, fuel economy and data units. All results shown at once.</p>
   </div>
 
 <section class="tool-about">
   <h2>About Unit Converter</h2>
   <p>Unit conversions come up constantly &mdash; <strong>centimeters to inches, kilograms to pounds, Celsius to Fahrenheit, liters to gallons, megabytes to gigabytes</strong>. This converter handles <strong>length, weight, temperature, volume, area, speed, and data storage units</strong> all in one place, showing results across all units simultaneously so you can pick whichever one you need.</p>
-  <p>No need to remember conversion formulas or switch between multiple calculators. Type a value in any field and all others update instantly. Great for <strong>cooking with international recipes, shopping from stores in other countries, travel, science and engineering work, and everyday measurement questions</strong>.</p>
+  <p>It also handles the conversions that trip people up between Europe and the US: <strong>tyre pressure (psi ↔ bar), engine power (hp ↔ kW ↔ metric PS), fuel economy (US mpg ↔ UK mpg ↔ L/100km), and US vs UK gallons and pints</strong>. Type a value in any field and all others update instantly — no need to remember formulas or switch calculators. Great for <strong>cooking with international recipes, car specs, shopping from overseas stores, travel, and science or engineering work</strong>.</p>
 </section>
 
   <div class="card">
@@ -97,10 +97,32 @@ const CATEGORIES = {
     base: 'l',
     units: {
       ml: 0.001, l: 1, 'm³': 1000,
-      tsp: 0.00492892, tbsp: 0.0147868, 'fl oz': 0.0295735,
-      cup: 0.236588, pt: 0.473176, qt: 0.946353, 'gal(US)': 3.78541
+      tsp: 0.00492892, tbsp: 0.0147868, 'fl oz(US)': 0.0295735,
+      cup: 0.236588, 'pt(US)': 0.473176, qt: 0.946353, 'gal(US)': 3.78541,
+      'fl oz(UK)': 0.0284131, 'pt(UK)': 0.568261, 'gal(UK)': 4.54609
     }
   },
+  Pressure: {
+    base: 'Pa',
+    units: {
+      Pa: 1, kPa: 1000, bar: 1e5, psi: 6894.757, atm: 101325,
+      mmHg: 133.322, inHg: 3386.389
+    }
+  },
+  Power: {
+    base: 'W',
+    units: {
+      W: 1, kW: 1000, MW: 1e6, hp: 745.6999, 'PS': 735.49875, 'BTU/h': 0.2930711
+    }
+  },
+  Energy: {
+    base: 'J',
+    units: {
+      J: 1, kJ: 1000, cal: 4.184, kcal: 4184, Wh: 3600, kWh: 3.6e6,
+      BTU: 1055.06, 'ft·lb': 1.355818
+    }
+  },
+  'Fuel economy': { special: 'fuel', units: ['mpg(US)','mpg(UK)','L/100km','km/L'] },
   Area: {
     base: 'm²',
     units: {
@@ -123,6 +145,7 @@ function getUnitNames(cat) {
   const c = CATEGORIES[cat];
   if (c.special === true) return c.units;
   if (c.special === 'data') return c.units;
+  if (c.special === 'fuel') return c.units;
   return Object.keys(c.units);
 }
 
@@ -162,6 +185,25 @@ function convertTemp(val, from, to) {
   return celsius + 273.15;
 }
 
+// Fuel economy: pivot through L/100km. Consumption units (L/100km) are the
+// inverse of economy units (mpg, km/L), so a straight ratio table won't work.
+function convertFuel(val, from, to) {
+  if (val <= 0) return NaN;
+  // step 1: any unit -> L/100km
+  let lphk;
+  if (from === 'L/100km')      lphk = val;
+  else if (from === 'km/L')    lphk = 100 / val;
+  else if (from === 'mpg(US)') lphk = 235.2145 / val;
+  else if (from === 'mpg(UK)') lphk = 282.4809 / val;
+  else return NaN;
+  // step 2: L/100km -> target
+  if (to === 'L/100km')      return lphk;
+  if (to === 'km/L')         return 100 / lphk;
+  if (to === 'mpg(US)')      return 235.2145 / lphk;
+  if (to === 'mpg(UK)')      return 282.4809 / lphk;
+  return NaN;
+}
+
 function convertData(val, from, to, base1024) {
   const idx1024 = ['B','KB','MB','GB','TB','PB'];
   const fromI = idx1024.indexOf(from);
@@ -193,6 +235,15 @@ function compute() {
     // Temperature
     cat.units.forEach(to => {
       const val = to === fromUnit ? raw : convertTemp(raw, fromUnit, to);
+      rows += `<tr>
+        <td>${escHtml(to)}</td>
+        <td class="val">${fmtNum(val)}</td>
+        <td class="copy-cell"><button class="btn btn-sm btn-secondary" onclick="copyText('${fmtNum(val)}', this)">Copy</button></td>
+      </tr>`;
+    });
+  } else if (cat.special === 'fuel') {
+    cat.units.forEach(to => {
+      const val = to === fromUnit ? raw : convertFuel(raw, fromUnit, to);
       rows += `<tr>
         <td>${escHtml(to)}</td>
         <td class="val">${fmtNum(val)}</td>
