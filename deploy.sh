@@ -1091,8 +1091,8 @@ opt_5_update_repo() {
     # ── Self-update FIRST, OUTSIDE the subshell so we can exit the whole program ──
     # bash runs the in-memory copy of this script parsed at launch; a freshly pulled
     # deploy.sh does NOT hot-reload. If we kept going in this same process, the apply
-    # steps below (write_nginx_https, sync_*) would still call the OLD functions —
-    # exactly the /pay-api → /tools-api rename trap that wrote the stale nginx config.
+    # steps below (write_nginx_https, sync_*) would still call the OLD functions, so a
+    # just-pulled fix to any config writer would silently not take effect this run.
     # So: pull the dir the running script lives in, and if THIS file's commit changed,
     # stop and make the operator re-launch; the new code then applies on the next run.
     # Watch SCRIPT_DIR unconditionally (even when == REPO_DIR) — it's where $0 lives.
@@ -1114,7 +1114,7 @@ opt_5_update_repo() {
             warn "deploy.sh itself changed: ${_self_before:0:7} → ${_self_after:0:7}"
             echo -e "  ${BOLD}Bash is still running the old in-memory copy.${RESET} Re-launch deploy.sh and run"
             echo -e "  Option 5 again to apply the new code (sync frontend/backend/nginx)."
-            echo -e "  ${DIM}Continuing now would re-write the OLD config — the cause of the /pay-api bug.${RESET}"
+            echo -e "  ${DIM}Continuing now would apply with the old code instead of what was just pulled.${RESET}"
             press_enter
             exit 0
         fi
