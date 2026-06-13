@@ -1088,18 +1088,42 @@ opt_5_update_repo() {
     local logf="$LOG_DIR/update_$(date +%Y%m%d_%H%M%S).log"
     info "Logging to: $logf"
 
+    # ── Self-update FIRST, OUTSIDE the subshell so we can exit the whole program ──
+    # bash runs the in-memory copy of this script parsed at launch; a freshly pulled
+    # deploy.sh does NOT hot-reload. If we kept going in this same process, the apply
+    # steps below (write_nginx_https, sync_*) would still call the OLD functions —
+    # exactly the /pay-api → /tools-api rename trap that wrote the stale nginx config.
+    # So: pull the dir the running script lives in, and if THIS file's commit changed,
+    # stop and make the operator re-launch; the new code then applies on the next run.
+    # Watch SCRIPT_DIR unconditionally (even when == REPO_DIR) — it's where $0 lives.
+    if [[ -d "$SCRIPT_DIR/.git" ]]; then
+        local _self_before _self_after
+        _self_before=$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null || echo none)
+        info "Pulling script directory: $SCRIPT_DIR"
+        if git -C "$SCRIPT_DIR" fetch origin \
+           && git -C "$SCRIPT_DIR" checkout "$target_branch" \
+           && git -C "$SCRIPT_DIR" reset --hard "origin/$target_branch"; then
+            success "Script dir updated: $(git -C "$SCRIPT_DIR" log -1 --format='%h %s')"
+        else
+            warn "Could not update script dir — check connectivity / branch name."
+            press_enter; return 0
+        fi
+        _self_after=$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null || echo none)
+        if [[ "$_self_before" != "$_self_after" ]]; then
+            echo ""
+            warn "deploy.sh itself changed: ${_self_before:0:7} → ${_self_after:0:7}"
+            echo -e "  ${BOLD}Bash is still running the old in-memory copy.${RESET} Re-launch deploy.sh and run"
+            echo -e "  Option 5 again to apply the new code (sync frontend/backend/nginx)."
+            echo -e "  ${DIM}Continuing now would re-write the OLD config — the cause of the /pay-api bug.${RESET}"
+            press_enter
+            exit 0
+        fi
+        info "deploy.sh unchanged — applying with the current code."
+    fi
+
     (
         set -euo pipefail
         exec > >(tee "$logf") 2>&1
-
-        # ── Pull SCRIPT_DIR (the directory deploy.sh was run from) ─────────────
-        if [[ -d "$SCRIPT_DIR/.git" ]] && [[ "$SCRIPT_DIR" != "$REPO_DIR" ]]; then
-            info "Pulling script directory: $SCRIPT_DIR"
-            git -C "$SCRIPT_DIR" fetch origin
-            git -C "$SCRIPT_DIR" checkout "$target_branch"
-            git -C "$SCRIPT_DIR" reset --hard "origin/$target_branch"
-            success "Script dir updated: $(git -C "$SCRIPT_DIR" log -1 --format='%h %s')"
-        fi
 
         # ── Pull server repo: /opt/office-tools/repo ───────────────────────────
         if [[ -d "$REPO_DIR/.git" ]]; then
