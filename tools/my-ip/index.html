@@ -100,6 +100,20 @@
       margin-right: .4rem;
     }
     @keyframes pulse-anim { to { opacity: .2; transform: scale(.7); } }
+
+    .api-endpoint-list { display: flex; flex-direction: column; gap: .6rem; }
+    .api-endpoint {
+      display: flex; align-items: center; gap: .6rem;
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .55rem .75rem;
+    }
+    .api-endpoint .ep-meta { flex: 0 0 auto; min-width: 90px; }
+    .api-endpoint .ep-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+    .api-endpoint code {
+      flex: 1 1 auto; font-family: 'Courier New', monospace; font-size: .82rem;
+      word-break: break-all; color: var(--primary);
+    }
+    .api-endpoint .btn { flex: 0 0 auto; }
   </style>
 </head>
 <body>
@@ -165,6 +179,22 @@
     <strong>Verify with other services</strong>
     <div class="detail-grid mt-2" id="verifyGrid"></div>
     <button class="btn btn-secondary btn-sm mt-2" id="verifyBtn">Check All Sources</button>
+  </div>
+
+  <!-- Plain-text API endpoint (ipify-style) -->
+  <div class="card mt-2">
+    <strong>🔌 Use it as an API</strong>
+    <p class="text-muted mt-1" style="font-size:.85rem">
+      Get the public IP of <em>whoever calls it</em> as raw text — perfect for scripts,
+      cron jobs, routers, or other tools (just like <code>api.ipify.org</code>). No key, no signup,
+      open CORS so any page can fetch it.
+    </p>
+    <div class="api-endpoint-list mt-2" id="apiEndpointList"></div>
+    <p class="text-muted mt-2" style="font-size:.78rem">
+      ℹ️ Whether you get IPv4 or IPv6 depends on how your client connects. For a guaranteed
+      family, force it with <code>curl -4</code> / <code>curl -6</code>, or use the v4-only /
+      v6-only public services shown above.
+    </p>
   </div>
 
 <div class="page-tags">
@@ -381,8 +411,29 @@ document.getElementById('verifyBtn').addEventListener('click', async () => {
   });
 });
 
+// ── Plain-text API endpoint reference (ipify-style) ───────────────
+function renderApiEndpoints() {
+  const base = `${API}/api/ip`;
+  const rows = [
+    { label: 'Plain text', url: base,                 hint: 'curl ' + base },
+    { label: 'JSON',       url: `${base}?format=json`, hint: 'curl ' + base + '?format=json' },
+  ];
+  const list = document.getElementById('apiEndpointList');
+  list.innerHTML = rows.map((r, i) => `
+    <div class="api-endpoint">
+      <div class="ep-meta"><div class="ep-label">${r.label}</div></div>
+      <code>${escHtml(r.url)}</code>
+      <button class="btn btn-secondary btn-sm" id="copyEp${i}" title="Copy ${escHtml(r.hint)}">📋 Copy</button>
+    </div>`).join('');
+  rows.forEach((r, i) => {
+    const btn = document.getElementById('copyEp' + i);
+    if (btn) btn.onclick = () => copyText(r.url, btn);
+  });
+}
+
 document.getElementById('refreshIpBtn').addEventListener('click', fetchIp);
 
+renderApiEndpoints();
 fetchIp().then(() => showIpv6Status());
 </script>
 </body>

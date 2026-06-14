@@ -973,6 +973,57 @@ app.get('/api/ip/geo', async (req, res) => {
   }
 });
 
+// ── Public IP echo (ipify-style) ──────────────────────────────
+// GET /api/ip returns ONLY the caller's public IP — the address the request
+// arrived from, as seen server-side. Like api.ipify.org, so other tools / scripts
+// can fetch their public IP in one line (`curl https://tools.grin.money/tools-api/ip`).
+// Open CORS (publicCors) + plain-text default so it's usable from any page or shell.
+//
+//   GET /api/ip                 → "203.0.113.7"          (text/plain, no newline)
+//   GET /api/ip?format=json     → {"ip":"203.0.113.7"}
+//   GET /api/ip?format=jsonp&callback=fn → fn({"ip":"203.0.113.7"});
+//
+// IPv4 vs IPv6: this echoes whichever family the client connected over — there is
+// no way to force one from a single hostname. To pin a family, hit a v4-only or
+// v6-only host (the front-end uses api4./api6.ipify.org for the split display).
+const _ipEchoRateMap = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _ipEchoRateMap) { if (now > v.resetAt) _ipEchoRateMap.delete(k); }
+}, 300_000);
+function _ipEchoAllow(ip) {
+  const now = Date.now();
+  let s = _ipEchoRateMap.get(ip);
+  if (!s || now > s.resetAt) { s = { count: 0, resetAt: now + 60_000 }; _ipEchoRateMap.set(ip, s); }
+  s.count++;
+  return s.count <= 60;
+}
+
+function _clientIp(req) {
+  let ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
+  // Normalise IPv4-mapped IPv6 (::ffff:1.2.3.4 → 1.2.3.4) for a clean, expected answer.
+  const m = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
+  return m ? m[1] : ip;
+}
+
+app.get('/api/ip', publicCors, (req, res) => {
+  const ip = _clientIp(req);
+  if (!_ipEchoAllow(ip || 'unknown')) return res.status(429).json({ error: 'Rate limit: 60 requests/minute. Please wait.' });
+
+  res.setHeader('Cache-Control', 'no-store');
+  const format = String(req.query.format || '').toLowerCase();
+
+  if (format === 'json') return res.json({ ip });
+  if (format === 'jsonp') {
+    const cb = String(req.query.callback || 'callback');
+    // Only allow a safe JS identifier as the callback name.
+    const safe = /^[A-Za-z_$][A-Za-z0-9_$.]{0,63}$/.test(cb) ? cb : 'callback';
+    res.setHeader('Content-Type', 'application/javascript');
+    return res.send(`${safe}(${JSON.stringify({ ip })});`);
+  }
+  res.type('text/plain').send(ip);
+});
+
 // ── Web Proxy & Website Status ────────────────────────────────
 //
 //   GET /api/net/uptime?url=        is a site up? status, latency, redirect, SSL expiry
