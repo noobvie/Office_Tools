@@ -702,7 +702,7 @@ show_banner() {
     clear
     echo ""
     echo -e "${BOLD}${CYAN}╔═══════════════════════════════════════════════════════╗${RESET}"
-    echo -e "${BOLD}${CYAN}║       Office Tools — Deploy Manager  v2026.06.02      ║${RESET}"
+    echo -e "${BOLD}${CYAN}║       Office Tools — Deploy Manager  v2026.06.14      ║${RESET}"
     echo -e "${BOLD}${CYAN}║       github.com/noobvie/Office_Tools                 ║${RESET}"
     echo -e "${BOLD}${CYAN}╚═══════════════════════════════════════════════════════╝${RESET}"
     echo ""
