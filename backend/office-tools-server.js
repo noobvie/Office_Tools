@@ -317,8 +317,16 @@ function resolvePublicTarget(host) {
   });
 }
 
-// Dedicated 40/min per-IP limiter for the public probe endpoints (a setup page may
-// check a few hosts × ports and reload). Kept separate from ping/resolve (netRL, 10/min).
+// Per-IP limiter for the public probe endpoints (a setup page may check a few hosts ×
+// ports and reload). Kept separate from ping/resolve (netRL, 10/min). The cap keys on the
+// VISITOR's IP (x-forwarded-for first hop), so it's per browsing user — NOT per pool
+// deployment; many solo/public-pool sites do not share one bucket. Default 600/min
+// comfortably covers many miners behind a single shared NAT/VPN while keeping this
+// CORS-open TCP-connect endpoint from becoming a high-throughput port scanner. Tune
+// in production without a code change via env PROBE_RATE_PER_MIN — no redeploy needed.
+// Clamped to a sane floor/ceiling.
+const PROBE_RATE_PER_MIN = Math.min(2000, Math.max(10,
+  parseInt(process.env.PROBE_RATE_PER_MIN, 10) || 600));
 const _probeRateMap = new Map();
 setInterval(() => {
   const now = Date.now();
@@ -330,11 +338,11 @@ function _probeAllow(ip) {
   if (!e || now > e.resetAt) e = { count: 0, resetAt: now + 60_000 };
   e.count++;
   _probeRateMap.set(ip, e);
-  return e.count <= 40;
+  return e.count <= PROBE_RATE_PER_MIN;
 }
 function probeRLMiddleware(req, res, next) {
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
-  if (!_probeAllow(ip)) return res.status(429).json({ error: 'Rate limit: 40 requests/minute. Please wait.' });
+  if (!_probeAllow(ip)) return res.status(429).json({ error: 'Rate limit: ' + PROBE_RATE_PER_MIN + ' requests/minute. Please wait.' });
   next();
 }
 
