@@ -88,6 +88,7 @@ Four themes: `light` → `dark` → `matrix` → `anime`. Set via `data-theme` o
 | `GET /api/net/ping` | SSE-streamed ping (Windows/Linux) | SSE |
 | `GET /api/net/traceroute` | SSE-streamed traceroute | SSE |
 | `GET /api/net/ptr?ip=` | Reverse DNS via `dns.reverse()` | JSON |
+| `GET /api/ip` | Public IP echo (ipify-style, **open CORS** `publicCors`, 60/min) — the caller's source IP only | `text/plain` default; `?format=json` → `{ip}`; `?format=jsonp&callback=` |
 | `GET /api/domain/dns?domain=&type=` | DoH proxy — A/AAAA/MX/NS/TXT/CNAME/SOA/CAA | JSON |
 | `GET /api/domain/whois`, `rdap`, `availability` | Domain info | JSON |
 

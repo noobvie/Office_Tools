@@ -629,6 +629,9 @@ PORT=3001
 CORS_ORIGINS=https://${domain}
 NOTIFY_EMAIL=${notify_email}
 NOTIFY_EMAIL_2=${notify_email2}
+# Per-IP/min cap for the public port-check probe endpoints (default 600, clamp 10–2000).
+# Raise for many miners behind one shared NAT/VPN (e.g. 1000); restart the service after.
+PROBE_RATE_PER_MIN=600
 ENVEOF
     chmod 600 "$BACKEND_DIR/.env"
 
@@ -699,7 +702,7 @@ show_banner() {
     clear
     echo ""
     echo -e "${BOLD}${CYAN}╔═══════════════════════════════════════════════════════╗${RESET}"
-    echo -e "${BOLD}${CYAN}║       Office Tools — Deploy Manager  v2026.06.02      ║${RESET}"
+    echo -e "${BOLD}${CYAN}║       Office Tools — Deploy Manager  v2026.06.14      ║${RESET}"
     echo -e "${BOLD}${CYAN}║       github.com/noobvie/Office_Tools                 ║${RESET}"
     echo -e "${BOLD}${CYAN}╚═══════════════════════════════════════════════════════╝${RESET}"
     echo ""
