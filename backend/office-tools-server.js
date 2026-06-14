@@ -989,8 +989,9 @@ app.get('/api/ip/geo', async (req, res) => {
 // Open CORS (publicCors) + plain-text default so it's usable from any page or shell.
 //
 //   GET /ip                 → "203.0.113.7"          (text/plain, no newline)
-//   GET /ip?format=json     → {"ip":"203.0.113.7"}
-//   GET /ip?format=jsonp&callback=fn → fn({"ip":"203.0.113.7"});
+//   GET /ip?format=json     → {"ip":"203.0.113.7","family":"ipv4","ipv4":"203.0.113.7","ipv6":null}
+//   GET /ip?format=jsonp&callback=fn → fn({...same object...});
+//   (only the connected family is filled; the other is null — see note below)
 //
 // IPv4 vs IPv6: this echoes whichever family the client physically connected over —
 // a path/hostname cannot force a family the connection didn't use. From a shell, pin
@@ -1023,13 +1024,23 @@ app.get(['/ip', '/api/ip'], publicCors, (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   const format = String(req.query.format || '').toLowerCase();
 
-  if (format === 'json') return res.json({ ip });
-  if (format === 'jsonp') {
+  if (format === 'json' || format === 'jsonp') {
+    // Only the family the request physically arrived on can be known here; the
+    // other stays null (filling both needs v4-only/v6-only hostnames). `family`
+    // says which, so callers can read .ipv4 / .ipv6 without parsing the string.
+    const family = net.isIPv6(ip) ? 'ipv6' : (net.isIPv4(ip) ? 'ipv4' : null);
+    const payload = {
+      ip,
+      family,
+      ipv4: family === 'ipv4' ? ip : null,
+      ipv6: family === 'ipv6' ? ip : null,
+    };
+    if (format === 'json') return res.json(payload);
     const cb = String(req.query.callback || 'callback');
     // Only allow a safe JS identifier as the callback name.
     const safe = /^[A-Za-z_$][A-Za-z0-9_$.]{0,63}$/.test(cb) ? cb : 'callback';
     res.setHeader('Content-Type', 'application/javascript');
-    return res.send(`${safe}(${JSON.stringify({ ip })});`);
+    return res.send(`${safe}(${JSON.stringify(payload)});`);
   }
   res.type('text/plain').send(ip);
 });

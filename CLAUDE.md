@@ -88,7 +88,7 @@ Four themes: `light` → `dark` → `matrix` → `anime`. Set via `data-theme` o
 | `GET /api/net/ping` | SSE-streamed ping (Windows/Linux) | SSE |
 | `GET /api/net/traceroute` | SSE-streamed traceroute | SSE |
 | `GET /api/net/ptr?ip=` | Reverse DNS via `dns.reverse()` | JSON |
-| `GET /ip` (alias `/api/ip`) | Public IP echo (ipify-style, **open CORS** `publicCors`, 60/min) — the caller's source IP only. Short public URL `…/tools-api/ip` (nginx strips `/tools-api/`). Echoes whichever family the connection used; `curl -4`/`-6` to pin one | `text/plain` default; `?format=json` → `{ip}`; `?format=jsonp&callback=` |
+| `GET /ip` (alias `/api/ip`) | Public IP echo (ipify-style, **open CORS** `publicCors`, 60/min) — the caller's source IP only. Short public URL `…/tools-api/ip` (nginx strips `/tools-api/`). Echoes whichever family the connection used; `curl -4`/`-6` to pin one | `text/plain` default; `?format=json` → `{ip,family,ipv4,ipv6}` (only the connected family filled, other `null`); `?format=jsonp&callback=` (same object) |
 | `GET /api/domain/dns?domain=&type=` | DoH proxy — A/AAAA/MX/NS/TXT/CNAME/SOA/CAA | JSON |
 | `GET /api/domain/whois`, `rdap`, `availability` | Domain info | JSON |
 
