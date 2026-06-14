@@ -404,7 +404,10 @@ _patch_domain() {
     local dir="$1" domain="$2"
     local cfg="$dir/js/config.js"
     if [[ -f "$cfg" ]]; then
+        local apex; apex="$(_ipecho_apex "$domain")"
         sed -i "s|https://api\.yourdomain\.com|https://${domain}/tools-api|g" "$cfg"
+        sed -i "s|https://ip4\.yourdomain\.com|https://ip4.${apex}|g"         "$cfg"
+        sed -i "s|https://ip6\.yourdomain\.com|https://ip6.${apex}|g"         "$cfg"
         sed -i "s|https://yourdomain\.com|https://${domain}|g"              "$cfg"
     fi
     find "$dir" -name "*.html" -not -path "*/.git/*" \
@@ -593,6 +596,106 @@ get_ssl() {
         --non-interactive --agree-tos \
         -m "$email" --redirect
     success "SSL certificate issued"
+}
+
+# ─── IP-echo subdomains (ip4. / ip6.) — Option-2 "both v4+v6" feature ───────────
+# Two family-pinned hostnames let a browser learn BOTH its IPv4 and IPv6 by fetching
+# each one: ip4.<apex> must be A-only DNS, ip6.<apex> AAAA-only. A single hostname
+# can never return both (one connection = one family), so this is the only real way.
+# Kept in an ISOLATED conf file with BEST-EFFORT certbot: any failure here warns and
+# returns 0 — it can never break the main site or fail the deploy.
+
+# Derive the apex (last two labels) so tools.grin.money → grin.money → ip4.grin.money.
+# Good for single-label TLDs (.com/.money/.io); set the hosts by hand for .co.uk etc.
+_ipecho_apex() { echo "$1" | awk -F. '{ if (NF>=2) print $(NF-1)"."$NF; else print $0 }'; }
+
+_ipecho_conf_path() {
+    if [[ "$OS_FAMILY" == "debian" ]]; then
+        echo "/etc/nginx/sites-available/office-tools-ipecho"
+    else
+        echo "/etc/nginx/conf.d/office-tools-ipecho.conf"
+    fi
+}
+
+setup_ip_echo() {
+    local domain="$1" email="$2"
+    local apex h4 h6 conf
+    apex="$(_ipecho_apex "$domain")"
+    h4="ip4.${apex}"; h6="ip6.${apex}"
+    conf="$(_ipecho_conf_path)"
+
+    section "IP-echo subdomains — ${h4} / ${h6} (best-effort)"
+
+    # Two SEPARATE server blocks + two SEPARATE certs on purpose: if the server has no
+    # public IPv6, ip6's cert can't validate — decoupling keeps ip4 working regardless.
+    # HTTP-only first so certbot can validate + inject SSL (avoids the cert chicken-and-egg).
+    cat > "$conf" << IPEOF
+# Office Tools — IP-echo subdomains (managed by deploy.sh)
+# ip4.<apex> = A-only DNS, ip6.<apex> = AAAA-only → each forces one family so a
+# browser can read BOTH addresses. Every path returns the caller's IP via backend /ip
+# (query strings like ?format=json pass through). Open CORS comes from the backend.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${h4};
+    location / {
+        proxy_pass            http://127.0.0.1:3001/ip;
+        proxy_http_version    1.1;
+        proxy_set_header      Host              \$host;
+        proxy_set_header      X-Real-IP         \$remote_addr;
+        proxy_set_header      X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header      X-Forwarded-Proto \$scheme;
+    }
+}
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${h6};
+    location / {
+        proxy_pass            http://127.0.0.1:3001/ip;
+        proxy_http_version    1.1;
+        proxy_set_header      Host              \$host;
+        proxy_set_header      X-Real-IP         \$remote_addr;
+        proxy_set_header      X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header      X-Forwarded-Proto \$scheme;
+    }
+}
+IPEOF
+
+    [[ "$OS_FAMILY" == "debian" ]] && ln -sf "$conf" "/etc/nginx/sites-enabled/office-tools-ipecho"
+
+    if ! nginx -t 2>/dev/null; then
+        warn "IP-echo nginx test failed — removing its conf, main site untouched. (check $conf)"
+        rm -f "$conf"
+        [[ "$OS_FAMILY" == "debian" ]] && rm -f "/etc/nginx/sites-enabled/office-tools-ipecho"
+        return 0
+    fi
+    systemctl reload nginx
+
+    # Independent certs — ip4 needs its A record live; ip6 needs a working public IPv6 (AAAA).
+    if certbot --nginx -d "$h4" --non-interactive --agree-tos -m "$email" --redirect; then
+        success "IPv4 host live: https://${h4}"
+    else
+        warn "certbot could not issue ${h4} — DNS for ip4. not propagated yet. Re-run Option 2 later."
+    fi
+    if certbot --nginx -d "$h6" --non-interactive --agree-tos -m "$email" --redirect; then
+        success "IPv6 host live: https://${h6}"
+    else
+        warn "certbot could not issue ${h6} — no public IPv6 on this server, or ip6. AAAA not propagated."
+        warn "ip4 still works; the 'Both at once' card will show ipv6:null until ip6. has a cert."
+    fi
+}
+
+remove_ip_echo() {
+    local conf; conf="$(_ipecho_conf_path)"
+    [[ -e "$conf" ]] || return 0
+    local apex h4 h6
+    apex="$(_ipecho_apex "${1:-$DOMAIN}")"; h4="ip4.${apex}"; h6="ip6.${apex}"
+    rm -f "$conf"
+    [[ "$OS_FAMILY" == "debian" ]] && rm -f "/etc/nginx/sites-enabled/office-tools-ipecho"
+    certbot delete --cert-name "$h4" --non-interactive 2>/dev/null || true
+    nginx -t 2>/dev/null && systemctl reload nginx || true
+    success "IP-echo subdomains removed (${h4} / ${h6})"
 }
 
 # ─── Backend ──────────────────────────────────────────────────────────────────
@@ -905,6 +1008,9 @@ opt_2_add_domain() {
             _update_notify_env "$_notify_email" "$_notify_email2"
             systemctl restart office-tools-api 2>/dev/null || true
         fi
+
+        # Optional ip4./ip6. subdomains (best-effort; never fails the deploy)
+        setup_ip_echo "$DOMAIN" "$EMAIL" || true
     ) || { warn "Errors during setup — check $logf"; press_enter; return 0; }
 
     save_conf
@@ -948,6 +1054,10 @@ opt_3_remove_switch() {
             rm -f "$NGINX_ENABLED_PATH"
             success "Removed symlink: $NGINX_ENABLED_PATH"
         fi
+
+        # Remove the optional ip4./ip6. echo subdomains too
+        remove_ip_echo "$DOMAIN" || true
+
         if nginx -t 2>/dev/null; then
             systemctl reload nginx
             success "nginx reloaded"
@@ -998,6 +1108,7 @@ opt_3_remove_switch() {
             rm -f "$NGINX_CONF_PATH" 2>/dev/null || true
             [[ -n "$NGINX_ENABLED_PATH" ]] && rm -f "$NGINX_ENABLED_PATH" 2>/dev/null || true
             certbot delete --cert-name "$DOMAIN" --non-interactive 2>/dev/null || true
+            remove_ip_echo "$DOMAIN" || true
             nginx -t 2>/dev/null && systemctl reload nginx || true
             success "Old domain removed"
 
@@ -1009,6 +1120,7 @@ opt_3_remove_switch() {
             get_ssl "$DOMAIN" "$EMAIL"
             write_nginx_https "$DOMAIN"
             [[ -d "$BACKEND_DIR" ]] && sync_backend || true
+            setup_ip_echo "$DOMAIN" "$EMAIL" || true
         ) || { warn "Errors during switch — check $logf"; press_enter; return 0; }
 
         DOMAIN="$_new"

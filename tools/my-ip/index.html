@@ -114,6 +114,13 @@
       word-break: break-all; color: var(--primary);
     }
     .api-endpoint .btn { flex: 0 0 auto; }
+
+    .combined-json {
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .75rem 1rem; margin: .5rem 0;
+      font-family: 'Courier New', monospace; font-size: .9rem;
+      color: var(--primary); overflow-x: auto; white-space: pre;
+    }
   </style>
 </head>
 <body>
@@ -195,6 +202,22 @@
       family, force it with <code>curl -4</code> / <code>curl -6</code>, or use the v4-only /
       v6-only public services shown above.
     </p>
+  </div>
+
+  <!-- Both at once (only shown when ip4./ip6. family-pinned hosts are configured) -->
+  <div class="card mt-2 hidden" id="combinedCard">
+    <strong>🔀 Both at once (IPv4 + IPv6)</strong>
+    <p class="text-muted mt-1" style="font-size:.85rem">
+      A single host can only report the family you connect on, so this merges two
+      family-pinned hosts (<code id="cmbV4Host"></code> / <code id="cmbV6Host"></code>)
+      into one object. A field is <code>null</code> if your network has no address of that family.
+    </p>
+    <pre class="combined-json" id="combinedJson">…</pre>
+    <div class="btn-group">
+      <button class="btn btn-secondary btn-sm" id="copyCombinedBtn">📋 Copy JSON</button>
+      <button class="btn btn-secondary btn-sm" id="refreshCombinedBtn">↺ Refresh</button>
+    </div>
+    <div class="api-endpoint-list mt-2" id="combinedEndpointList"></div>
   </div>
 
 <div class="page-tags">
@@ -432,9 +455,62 @@ function renderApiEndpoints() {
   });
 }
 
+// ── Both-at-once via family-pinned hosts (Option 2) ───────────────
+// Only active when ip4./ip6. subdomains are configured (production). A single host
+// can't return both families, so we fetch each pinned host and merge client-side.
+const IP4_URL = window.OT_CONFIG?.IP_ECHO_V4 || '';
+const IP6_URL = window.OT_CONFIG?.IP_ECHO_V6 || '';
+let combinedObj = null;
+
+function renderCombinedEndpoints() {
+  const rows = [
+    { label: 'IPv4 host', url: IP4_URL },
+    { label: 'IPv6 host', url: IP6_URL },
+  ];
+  const list = document.getElementById('combinedEndpointList');
+  list.innerHTML = rows.map((r, i) => `
+    <div class="api-endpoint">
+      <div class="ep-meta"><div class="ep-label">${r.label}</div></div>
+      <code>${escHtml(r.url)}</code>
+      <a class="btn btn-secondary btn-sm" href="${escHtml(r.url)}" target="_blank" rel="noopener" title="Open in a new tab">↗ Open</a>
+      <button class="btn btn-secondary btn-sm" id="copyCmb${i}" title="Copy this URL">📋 Copy</button>
+    </div>`).join('');
+  rows.forEach((r, i) => {
+    const btn = document.getElementById('copyCmb' + i);
+    if (btn) btn.onclick = () => copyText(r.url, btn);
+  });
+}
+
+async function fetchCombined() {
+  const pre = document.getElementById('combinedJson');
+  pre.textContent = 'Fetching both families…';
+  const [v4, v6] = await Promise.all([
+    fetchText(IP4_URL).then(s => String(s || '').trim()).catch(() => ''),
+    fetchText(IP6_URL).then(s => String(s || '').trim()).catch(() => ''),
+  ]);
+  combinedObj = {
+    ipv4: /^\d+\.\d+\.\d+\.\d+$/.test(v4) ? v4 : null,
+    ipv6: v6.includes(':') ? v6 : null,
+  };
+  pre.textContent = JSON.stringify(combinedObj, null, 2);
+}
+
+function initCombined() {
+  if (!IP4_URL || !IP6_URL) return;          // hidden unless configured
+  document.getElementById('combinedCard').classList.remove('hidden');
+  document.getElementById('cmbV4Host').textContent = IP4_URL;
+  document.getElementById('cmbV6Host').textContent = IP6_URL;
+  renderCombinedEndpoints();
+  document.getElementById('copyCombinedBtn').onclick = (e) =>
+    copyText(JSON.stringify(combinedObj), e.currentTarget);
+  document.getElementById('refreshCombinedBtn').onclick = fetchCombined;
+  fetchCombined();
+}
+
 document.getElementById('refreshIpBtn').addEventListener('click', fetchIp);
 
 renderApiEndpoints();
+initCombined();
 fetchIp().then(() => showIpv6Status());
 </script>
 </body>
