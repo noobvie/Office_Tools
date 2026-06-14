@@ -413,17 +413,18 @@ document.getElementById('verifyBtn').addEventListener('click', async () => {
 
 // ── Plain-text API endpoint reference (ipify-style) ───────────────
 function renderApiEndpoints() {
-  const base = `${API}/api/ip`;
+  const base = `${API}/ip`;
   const rows = [
-    { label: 'Plain text', url: base,                 hint: 'curl ' + base },
-    { label: 'JSON',       url: `${base}?format=json`, hint: 'curl ' + base + '?format=json' },
+    { label: 'Plain text', url: base },
+    { label: 'JSON',       url: `${base}?format=json` },
   ];
   const list = document.getElementById('apiEndpointList');
   list.innerHTML = rows.map((r, i) => `
     <div class="api-endpoint">
       <div class="ep-meta"><div class="ep-label">${r.label}</div></div>
       <code>${escHtml(r.url)}</code>
-      <button class="btn btn-secondary btn-sm" id="copyEp${i}" title="Copy ${escHtml(r.hint)}">📋 Copy</button>
+      <a class="btn btn-secondary btn-sm" href="${escHtml(r.url)}" target="_blank" rel="noopener" title="Open in a new tab">↗ Open</a>
+      <button class="btn btn-secondary btn-sm" id="copyEp${i}" title="Copy this URL">📋 Copy</button>
     </div>`).join('');
   rows.forEach((r, i) => {
     const btn = document.getElementById('copyEp' + i);

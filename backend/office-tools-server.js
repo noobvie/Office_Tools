@@ -982,18 +982,20 @@ app.get('/api/ip/geo', async (req, res) => {
 });
 
 // ── Public IP echo (ipify-style) ──────────────────────────────
-// GET /api/ip returns ONLY the caller's public IP — the address the request
-// arrived from, as seen server-side. Like api.ipify.org, so other tools / scripts
-// can fetch their public IP in one line (`curl https://tools.grin.money/tools-api/ip`).
+// Returns ONLY the caller's public IP — the address the request arrived from, as
+// seen server-side. Like api.ipify.org, so other tools / scripts can fetch their
+// public IP in one line. Served at the short path /tools-api/ip (nginx strips the
+// /tools-api/ prefix → backend /ip); /api/ip is kept as a back-compat alias.
 // Open CORS (publicCors) + plain-text default so it's usable from any page or shell.
 //
-//   GET /api/ip                 → "203.0.113.7"          (text/plain, no newline)
-//   GET /api/ip?format=json     → {"ip":"203.0.113.7"}
-//   GET /api/ip?format=jsonp&callback=fn → fn({"ip":"203.0.113.7"});
+//   GET /ip                 → "203.0.113.7"          (text/plain, no newline)
+//   GET /ip?format=json     → {"ip":"203.0.113.7"}
+//   GET /ip?format=jsonp&callback=fn → fn({"ip":"203.0.113.7"});
 //
-// IPv4 vs IPv6: this echoes whichever family the client connected over — there is
-// no way to force one from a single hostname. To pin a family, hit a v4-only or
-// v6-only host (the front-end uses api4./api6.ipify.org for the split display).
+// IPv4 vs IPv6: this echoes whichever family the client physically connected over —
+// a path/hostname cannot force a family the connection didn't use. From a shell, pin
+// it with `curl -4`/`curl -6`; for a per-family hostname you need v4-only / v6-only
+// DNS (the front-end's split display borrows api4./api6.ipify.org for this).
 const _ipEchoRateMap = new Map();
 setInterval(() => {
   const now = Date.now();
@@ -1014,7 +1016,7 @@ function _clientIp(req) {
   return m ? m[1] : ip;
 }
 
-app.get('/api/ip', publicCors, (req, res) => {
+app.get(['/ip', '/api/ip'], publicCors, (req, res) => {
   const ip = _clientIp(req);
   if (!_ipEchoAllow(ip || 'unknown')) return res.status(429).json({ error: 'Rate limit: 60 requests/minute. Please wait.' });
 
