@@ -88,11 +88,27 @@ Four themes: `light` → `dark` → `matrix` → `anime`. Set via `data-theme` o
 | `GET /api/net/ping` | SSE-streamed ping (Windows/Linux) | SSE |
 | `GET /api/net/traceroute` | SSE-streamed traceroute | SSE |
 | `GET /api/net/ptr?ip=` | Reverse DNS via `dns.reverse()` | JSON |
-| `GET /api/ip` | Public IP echo (ipify-style, **open CORS** `publicCors`, 60/min) — the caller's source IP only | `text/plain` default; `?format=json` → `{ip}`; `?format=jsonp&callback=` |
+| `GET /ip` (alias `/api/ip`) | Public IP echo (ipify-style, **open CORS** `publicCors`, 60/min) — the caller's source IP only. Short public URL `…/tools-api/ip` (nginx strips `/tools-api/`). Echoes whichever family the connection used; `curl -4`/`-6` to pin one | `text/plain` default; `?format=json` → `{ip,family,ipv4,ipv6}` (only the connected family filled, other `null`); `?format=jsonp&callback=` (same object) |
 | `GET /api/domain/dns?domain=&type=` | DoH proxy — A/AAAA/MX/NS/TXT/CNAME/SOA/CAA | JSON |
 | `GET /api/domain/whois`, `rdap`, `availability` | Domain info | JSON |
 
 IPv6 addresses are accepted with or without brackets (`[::1]` and `::1`); strip brackets with `.replace(/^\[|\]$/g, '')` before use.
+
+**IP-echo family-pinned subdomains (`ip4.<apex>` / `ip6.<apex>`) — the "both v4+v6" feature.**
+A single hostname can only ever report the address family the connection physically arrived on
+(one TCP connection = one family). To let a browser learn BOTH its IPv4 and IPv6, `deploy.sh`
+optionally provisions two extra hostnames whose DNS is family-restricted: `ip4.<apex>` (**A-only**)
+forces IPv4, `ip6.<apex>` (**AAAA-only**) forces IPv6. Each is an isolated nginx vhost
+(`/etc/nginx/sites-available/office-tools-ipecho`, separate from the main site) that proxies all
+paths to the backend `/ip`. The my-ip tool fetches both and merges them into one `{ipv4, ipv6}`
+object (the "Both at once" card), where a family with no connectivity reads `null`.
+- **Apex** = last two labels of the site domain (`tools.grin.money` → `grin.money` → `ip4.grin.money`);
+  `_ipecho_apex` in deploy.sh. Wrong for multi-label TLDs (`.co.uk`) — set the hosts by hand there.
+- **Setup is best-effort:** `setup_ip_echo` writes the conf, `nginx -t`, then certbot for both names;
+  any failure warns and returns 0 so it can NEVER break the main site or fail the deploy. Re-run
+  Option 2 once DNS has propagated. **`ip6.` needs a working public IPv6 (AAAA) on the server** or its
+  cert won't validate. Frontend gates on `OT_CONFIG.IP_ECHO_V4/V6` (patched by `_patch_domain`); the
+  card stays hidden until both are set.
 
 **`portcheck` / `portcheckbatch` are a PUBLIC service** (open CORS `*`, not the `CORS_ORIGINS` allowlist that guards every other route) so any external page — e.g. a Grin solo-pool setup page on any domain — can verify its own stratum port. Two safeguards make this safe and must stay in place:
 - **SSRF guard** (`resolvePublicTarget` → `ipIsPublic`): rejects loopback/private/link-local/CGNAT/reserved/IPv4-mapped targets and resolves hostnames to a validated **public** IP *before* connecting, so the endpoint can't be used to probe the server's own internal network or cloud metadata (`169.254.169.254`). DNS-rebinding is defeated by connecting to the resolved IP, not the raw hostname.

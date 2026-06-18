@@ -10,6 +10,14 @@ window.OT_CONFIG = {
     ? 'http://localhost:3001'
     : 'https://api.yourdomain.com',  // ← patched by deploy.sh → https://<domain>/tools-api
 
+  /* IP-echo family-pinned hosts (Option 2 "both v4+v6"). Patched by deploy.sh to
+     https://ip4.<apex> / https://ip6.<apex>. Empty on localhost and until those
+     subdomains exist → the "Both at once" card on the my-ip tool stays hidden. */
+  IP_ECHO_V4: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? '' : 'https://ip4.yourdomain.com',
+  IP_ECHO_V6: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? '' : 'https://ip6.yourdomain.com',
+
   /* Donation wallet address (TOR direct send) */
   GRIN_ADDRESS: 'grin16fevn3sr48j8hp863qxknvhtuxc9geg8fpvlz0v9f3fgatzu5fasvz609j',
 
