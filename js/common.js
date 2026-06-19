@@ -47,7 +47,12 @@ function initThemeToggle(btnId = 'themeToggle') {
   if (!btn) return;
   function update() {
     const current = document.documentElement.getAttribute('data-theme');
-    btn.textContent = OT_LABELS[current] || '🌙 Dark';
+    const label = OT_LABELS[current] || '🌙 Dark';
+    const sp  = label.indexOf(' ');
+    const ico = sp >= 0 ? label.slice(0, sp) : label;
+    const txt = sp >= 0 ? label.slice(sp + 1) : '';
+    // Emoji + label as separate spans so the label can be hidden on mobile (icon-only circle)
+    btn.innerHTML = `<span class="btn-ico">${ico}</span><span class="btn-label">${escHtml(txt)}</span>`;
   }
   update();
   btn.addEventListener('click', () => {
@@ -126,41 +131,59 @@ function escHtml(s) {
 function initHeaderSearch() {
   const header = document.querySelector('.site-header');
   if (!header) return;
-  // Main index already has the search box in HTML — don't add a second one
-  if (header.querySelector('.header-search-wrap')) return;
-  // Only run on tool pages
-  const currentPath = window.location.pathname.match(/\/tools\/([^\/]+)/)?.[1];
-  if (!currentPath) return;
 
   const root = _otRootPath();
-  const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+  const currentPath = window.location.pathname.match(/\/tools\/([^\/]+)/)?.[1] || null;
 
-  const wrap = document.createElement('div');
-  wrap.className = 'header-search-wrap';
-  wrap.innerHTML = `<input type="text" id="headerSearch" placeholder="Search tools…" autocomplete="off" aria-label="Search tools"><span class="hs-kbd" id="hsKbd"><kbd>Ctrl</kbd><kbd>K</kbd></span><span class="header-search-icon">${SVG}</span><div class="header-search-drop" id="headerSearchDrop" hidden></div>`;
-
-  // Replace .header-tool-name if it exists, otherwise insert before .header-actions
-  const toolNameEl = header.querySelector('.header-tool-name');
-  if (toolNameEl) {
-    toolNameEl.replaceWith(wrap);
+  // Two cases:
+  //  • A search box is already in the markup (e.g. the homepage) — just bolt the
+  //    quick-pick dropdown onto it so mobile users can tap a tool directly.
+  //  • No search box (tool pages) — build the whole thing, but only on tool pages.
+  let wrap = header.querySelector('.header-search-wrap');
+  if (wrap) {
+    if (wrap.querySelector('.header-search-drop')) return; // already wired
   } else {
-    const actions = header.querySelector('.header-actions');
-    header.insertBefore(wrap, actions || null);
+    if (!currentPath) return;
+    const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+    wrap = document.createElement('div');
+    wrap.className = 'header-search-wrap';
+    wrap.innerHTML = `<input type="text" id="headerSearch" placeholder="Search tools…" autocomplete="off" aria-label="Search tools"><span class="hs-kbd" id="hsKbd"><kbd>Ctrl</kbd><kbd>K</kbd></span><span class="header-search-icon">${SVG}</span>`;
+    // Replace .header-tool-name if it exists, otherwise insert before .header-actions
+    const toolNameEl = header.querySelector('.header-tool-name');
+    if (toolNameEl) {
+      toolNameEl.replaceWith(wrap);
+    } else {
+      const actions = header.querySelector('.header-actions');
+      header.insertBefore(wrap, actions || null);
+    }
   }
 
-  const input = document.getElementById('headerSearch');
-  const drop  = document.getElementById('headerSearchDrop');
-  const kbd   = document.getElementById('hsKbd');
-  const icon  = wrap.querySelector('.header-search-icon');
+  const input = wrap.querySelector('input');
+  if (!input) return;
+
+  // Ensure a dropdown container exists (built-in wrap doesn't ship one)
+  let drop = wrap.querySelector('.header-search-drop');
+  if (!drop) {
+    drop = document.createElement('div');
+    drop.className = 'header-search-drop';
+    drop.id = 'headerSearchDrop';
+    drop.hidden = true;
+    wrap.appendChild(drop);
+  }
+
+  const kbd  = wrap.querySelector('.hs-kbd');   // null on the homepage wrap
+  const icon = wrap.querySelector('.header-search-icon');
   let activeIdx = -1;
 
   function showKbd() {
-    if (kbd)  kbd.style.display  = 'flex';
+    if (!kbd) return;
+    kbd.style.display  = 'flex';
     if (icon) icon.style.display = 'none';
     input.style.paddingRight = '5rem';
   }
   function hideKbd() {
-    if (kbd)  kbd.style.display  = 'none';
+    if (!kbd) return;
+    kbd.style.display  = 'none';
     if (icon) icon.style.display = 'flex';
     input.style.paddingRight = '';
   }
@@ -565,7 +588,8 @@ function initSupportPill() {
 
   const pill = document.createElement('button');
   pill.className = 'support-pill';
-  pill.innerHTML = '&#128172; Support';
+  // Emoji + label as separate spans so the label can be hidden on mobile (icon-only circle)
+  pill.innerHTML = '<span class="btn-ico">&#128172;</span><span class="btn-label">Support</span>';
   pill.title = 'Send feedback or report a broken tool';
 
   // Insert before the theme toggle

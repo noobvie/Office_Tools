@@ -349,8 +349,24 @@ a:hover { text-decoration: underline; }
   pointer-events: none;
 }
 @media (max-width: 560px) {
-  .header-search-wrap { flex: 1; max-width: none; min-width: 0; }
+  /* Let the search box own the row: logo + actions shrink to their icons,
+     search-wrap (flex:1) absorbs all remaining width. */
+  .header-logo, .header-actions { flex: 0 0 auto; }
   .header-logo .logo-text { display: none; }
+  .header-search-wrap { flex: 1 1 auto; max-width: none; min-width: 0; }
+  .header-actions { gap: .35rem; }
+
+  /* Support + theme become compact icon-only circles (emoji only, no labels) */
+  .support-pill, .theme-toggle {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    gap: 0;
+    border-radius: 50%;
+    justify-content: center;
+    font-size: 1rem;
+  }
+  .support-pill .btn-label, .theme-toggle .btn-label { display: none; }
 }
 
 /* Ctrl+K hint badge (shown when search is idle) */
