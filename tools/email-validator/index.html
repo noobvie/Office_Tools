@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Validator — Check Syntax, MX Records &amp; Disposable Domains | Office Tools</title>
+  <meta name="description" content="Free email address validator — check syntax, verify the domain has MX records and can receive mail, and flag disposable or role-based addresses. No login required.">
+  <meta name="keywords" content="email validator, email verification, verify email address, check email valid, MX record check, disposable email detector, role-based email, email syntax checker, email deliverability">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Email Validator — Syntax, MX &amp; Disposable Check">
+  <meta property="og:description" content="Validate any email address: syntax, MX records, disposable and role-based detection. Free, no login.">
+  <meta property="og:url" content="https://tools.grin.money/tools/email-validator/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Email Validator — Syntax, MX &amp; Disposable Check">
+  <meta name="twitter:description" content="Validate any email address: syntax, MX records, disposable and role-based detection. Free.">
+  <link rel="canonical" href="https://tools.grin.money/tools/email-validator/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Email Validator","description":"Validate an email address: syntax, MX records, disposable and role-based detection.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/email-validator/"}</script>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .ctrl-row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+    .ctrl-row input[type="text"] {
+      flex: 1; min-width: 220px; padding: .6rem .9rem;
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-secondary); color: var(--text);
+      font-size: .92rem; font-family: 'Courier New', monospace;
+      outline: none; transition: border-color .15s; box-sizing: border-box;
+    }
+    .ctrl-row input[type="text"]:focus { border-color: var(--primary); }
+    .verdict { display: flex; align-items: center; gap: .6rem; margin-top: .9rem; padding: .8rem 1rem; border-radius: var(--radius); font-weight: 700; font-size: .95rem; }
+    .verdict.ok   { background: rgba(34,197,94,.13); color: #16a34a; }
+    .verdict.bad  { background: var(--danger-dim); color: var(--danger); }
+    .verdict.warn { background: rgba(234,179,8,.14); color: #b8860b; }
+    .verdict .big { font-size: 1.3rem; }
+    .check-grid { display: grid; grid-template-columns: 1fr; gap: .4rem; margin-top: .9rem; }
+    .check-row { display: flex; align-items: center; gap: .6rem; padding: .55rem .8rem; border: 1.5px solid var(--border); border-radius: var(--radius); font-size: .87rem; background: var(--bg-card); }
+    .check-row .ic { font-size: 1rem; width: 1.3rem; text-align: center; }
+    .check-row .lbl { font-weight: 600; color: var(--text); }
+    .check-row .val { margin-left: auto; color: var(--text-muted); font-family: 'Courier New', monospace; font-size: .8rem; text-align: right; word-break: break-all; }
+    .mx-list { margin-top: .7rem; font-family: 'Courier New', monospace; font-size: .8rem; color: var(--text-muted); }
+    .mx-list div { padding: .15rem 0; }
+    .box-error { background: var(--danger-dim); color: var(--danger); border-radius: var(--radius); padding: .65rem .9rem; font-size: .86rem; font-weight: 600; margin-top: .75rem; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: .4rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 560px) { .ctrl-row input[type="text"] { min-width: 100%; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Email Validator</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>📧 Email Validator</h1>
+    <p>Check an email address for valid syntax, a mail-receiving domain (MX records), and disposable or role-based red flags.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About Email Validator</h2>
+    <p>This tool runs the checks a mail server does <em>before</em> it ever tries to deliver a message: it confirms the address is <strong>syntactically valid</strong>, that its domain publishes <strong>MX records</strong> (so it can actually receive email), and whether the domain is a known <strong>disposable / throwaway provider</strong> or the local part is a <strong>role-based</strong> mailbox (like <code>info@</code> or <code>support@</code>) rather than a real person.</p>
+    <p>It does <strong>not</strong> send a probe email or do SMTP <code>RCPT TO</code> verification, so it cannot tell whether one specific mailbox exists — that would require connecting to the recipient's mail server, which most providers reject or rate-limit. For a full picture of a domain's email setup (SPF, DKIM, DMARC), use the <a href="../email-deliverability/">Email Deliverability Checker</a>. To see if a mail server's IP is on a spam blocklist, use the <a href="../dnsbl-checker/">DNSBL Blacklist Checker</a>.</p>
+  </section>
+
+  <div class="card">
+    <div class="ctrl-row">
+      <input type="text" id="emailInput" placeholder="name@example.com" autocomplete="off" spellcheck="false">
+      <button class="btn btn-primary" id="checkBtn">Validate</button>
+    </div>
+    <div class="ctrl-row" style="margin-top:.5rem">
+      <button class="btn btn-ghost btn-sm" data-ex="hello@google.com">hello@google.com</button>
+      <button class="btn btn-ghost btn-sm" data-ex="test@mailinator.com">test@mailinator.com</button>
+      <button class="btn btn-ghost btn-sm" data-ex="info@grin.money">info@grin.money</button>
+    </div>
+
+    <div id="result">
+      <div style="color:var(--text-muted);font-size:.86rem;padding:1rem 0">Enter an email address and click <strong>Validate</strong>.</div>
+    </div>
+  </div>
+
+  <section class="tool-related" id="related-tools"></section>
+
+<div class="page-tags">
+  <span class="page-tag">email validator</span>
+  <span class="page-tag">verify email address</span>
+  <span class="page-tag">MX record check</span>
+  <span class="page-tag">disposable email detector</span>
+  <span class="page-tag">role-based email</span>
+  <span class="page-tag">email syntax checker</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+'use strict';
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+document.querySelectorAll('[data-ex]').forEach(b =>
+  b.addEventListener('click', () => { document.getElementById('emailInput').value = b.dataset.ex; document.getElementById('checkBtn').click(); })
+);
+document.getElementById('emailInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('checkBtn').click();
+});
+
+document.getElementById('checkBtn').addEventListener('click', async () => {
+  const email = document.getElementById('emailInput').value.trim();
+  if (!email) return;
+  const el = document.getElementById('result');
+  el.innerHTML = `<div style="padding:.75rem 0"><span class="spinner"></span> Checking <code>${escHtml(email)}</code>…</div>`;
+  try {
+    const r = await fetch(`${API}/api/email/validate?email=${encodeURIComponent(email)}`);
+    const d = await r.json();
+    if (!r.ok) { el.innerHTML = `<div class="box-error">${escHtml(d.error || 'Validation failed')}</div>`; return; }
+    render(d);
+  } catch (err) {
+    el.innerHTML = `<div class="box-error">Network error: ${escHtml(err.message)}</div>`;
+  }
+});
+
+function row(ok, label, val) {
+  const ic = ok === true ? '✅' : ok === false ? '❌' : ok === 'warn' ? '⚠️' : 'ℹ️';
+  return `<div class="check-row"><span class="ic">${ic}</span><span class="lbl">${escHtml(label)}</span>${val != null ? `<span class="val">${escHtml(val)}</span>` : ''}</div>`;
+}
+
+function render(d) {
+  const el = document.getElementById('result');
+  let cls = 'ok', icon = '✅', msg = 'Looks deliverable';
+  if (!d.syntax_valid)      { cls = 'bad';  icon = '❌'; msg = 'Invalid email syntax'; }
+  else if (!d.accepts_mail) { cls = 'bad';  icon = '❌'; msg = 'Domain cannot receive email'; }
+  else if (d.disposable)    { cls = 'warn'; icon = '⚠️'; msg = 'Disposable / throwaway address'; }
+  else if (d.role_based)    { cls = 'warn'; icon = '⚠️'; msg = 'Valid, but role-based (not a person)'; }
+
+  const checks = [
+    row(d.syntax_valid, 'Valid syntax', `${escHtml(d.local)} @ ${escHtml(d.domain)}`),
+    row(d.has_mx ? true : (d.accepts_mail ? 'warn' : false), 'Has MX records', d.has_mx ? `${d.mx.length} server${d.mx.length === 1 ? '' : 's'}` : (d.accepts_mail ? 'A-record fallback' : 'none')),
+    row(!d.disposable, d.disposable ? 'Disposable provider' : 'Not disposable', null),
+    row(!d.role_based, d.role_based ? 'Role-based mailbox' : 'Personal-style mailbox', null),
+  ].join('');
+
+  const mx = d.mx && d.mx.length
+    ? `<div class="mx-list"><strong style="color:var(--text)">MX servers</strong>${d.mx.map(m => `<div>${m.priority}&nbsp;&nbsp;${escHtml(m.host)}</div>`).join('')}</div>`
+    : '';
+
+  el.innerHTML =
+    `<div class="verdict ${cls}"><span class="big">${icon}</span><span>${escHtml(msg)}</span></div>` +
+    `<div class="check-grid">${checks}</div>${mx}` +
+    `<p style="color:var(--text-muted);font-size:.76rem;margin-top:.8rem">Note: syntax + MX + reputation only — no SMTP mailbox probe, so it can't confirm a specific inbox exists.</p>`;
+}
+
+renderRelatedTools('related-tools', [
+  { path: 'email-deliverability', desc: 'Check SPF, DKIM, DMARC and MX for a domain' },
+  { path: 'disposable-email',     desc: 'Is this a throwaway email provider?' },
+  { path: 'dnsbl-checker',        desc: 'Is a mail server IP on a spam blacklist?' },
+  { path: 'dns-lookup',           desc: 'Query MX, TXT and other DNS records' },
+]);
+</script>
+</body>
+</html>

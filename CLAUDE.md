@@ -91,6 +91,17 @@ Four themes: `light` → `dark` → `matrix` → `anime`. Set via `data-theme` o
 | `GET /ip` (alias `/api/ip`) | Public IP echo (ipify-style, **open CORS** `publicCors`, 60/min) — the caller's source IP only. Short public URL `…/tools-api/ip` (nginx strips `/tools-api/`). Echoes whichever family the connection used; `curl -4`/`-6` to pin one | `text/plain` default; `?format=json` → `{ip,family,ipv4,ipv6}` (only the connected family filled, other `null`); `?format=jsonp&callback=` (same object) |
 | `GET /api/domain/dns?domain=&type=` | DoH proxy — A/AAAA/MX/NS/TXT/CNAME/SOA/CAA | JSON |
 | `GET /api/domain/whois`, `rdap`, `availability` | Domain info | JSON |
+| `GET /api/email/validate?email=` | Syntax + MX + disposable + role-based check | JSON |
+| `GET /api/email/disposable?email=\|domain=` | Disposable-domain check only | JSON |
+| `GET /api/email/deliverability?domain=&selector=` | MX/SPF/DKIM/DMARC/MTA-STS/BIMI + 0–100 score | JSON |
+| `GET /api/email/dnsbl?ip=\|host=` | IP vs ~12 DNSBL zones (OS resolver, not DoH) | JSON |
+| `POST /api/email/inbox/new`, `GET …/inbox/:address/messages`, `DELETE …/inbox/:address`, `POST …/inbox/ingest` | Temp inbox (throwaway email) | JSON |
+
+**Email tools (5, all in `🌐 Network & Web`):** Email Validator, Email Deliverability (the SPF/DKIM/DMARC config tester), DNSBL Blacklist Checker, Disposable Email Detector, Temp Inbox. Notes:
+- DNS reads go through the `dohJson(name,type)` helper (Cloudflare DoH) **except DNSBL** — public DoH resolvers refuse Spamhaus-style queries, so `/api/email/dnsbl` uses a `dns.promises.Resolver({timeout,tries:1})` (the server's OS resolver). Results from a public resolver aren't authoritative; the tool says so.
+- Disposable detection is a curated server-side `_DISPOSABLE_DOMAINS` set (extend it, or swap for a maintained list file later). The disposable-email tool also ships a small client-side fallback set so it works if the backend is down.
+- DKIM has no canonical selector, so `/api/email/deliverability` probes `_DKIM_SELECTORS` (google/selector1/k1/proton/zoho/fastmail/…) plus any user-supplied `selector`.
+- **Temp Inbox needs mail routing to actually receive** (the tool degrades gracefully — it still mints addresses but warns). Set `TEMP_INBOX_DOMAIN` in `.env`, add an MX record for it pointing at this box, and pipe inbound mail from the MTA (postfix/exim) to `POST /api/email/inbox/ingest` with the `X-Ingest-Secret` header (`INBOX_INGEST_SECRET`). Inboxes + mail auto-prune after `TEMP_INBOX_TTL_MIN` (default 60 min) via a 5-min interval. The address itself is the bearer secret for reading messages; HTML bodies render in a `sandbox=""` iframe. Tables `temp_inbox` + `temp_mail` are created in the main `db.exec` block.
 
 IPv6 addresses are accepted with or without brackets (`[::1]` and `::1`); strip brackets with `.replace(/^\[|\]$/g, '')` before use.
 
@@ -127,7 +138,7 @@ nginx proxies `/tools-api/*` → 3001 and `/yt-api/*` → 9000. The `backend/` d
 
 ### What needs the backend vs. what doesn't
 
-Most tools are 100% browser-local. Backend is only required for: URL Shortener, Pastebin, File Share, Port Checker, Domain Checker, and Network Toolkit. The site works without a running backend — those tools just show an error.
+Most tools are 100% browser-local. Backend is only required for: URL Shortener, Pastebin, File Share, Port Checker, Domain Checker, Network Toolkit, and the five email tools (Email Validator, Email Deliverability, DNSBL Checker, Disposable Email Detector, Temp Inbox). The site works without a running backend — those tools just show an error (the Disposable Email Detector degrades to a small client-side blocklist).
 
 ### Adding a new tool checklist
 

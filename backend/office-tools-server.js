@@ -82,6 +82,22 @@ db.exec(`
     ip      TEXT DEFAULT '',
     created TEXT DEFAULT (datetime('now'))
   );
+  CREATE TABLE IF NOT EXISTS temp_inbox (
+    address TEXT PRIMARY KEY,
+    ip      TEXT DEFAULT '',
+    expires TEXT NOT NULL,
+    created TEXT DEFAULT (datetime('now'))
+  );
+  CREATE TABLE IF NOT EXISTS temp_mail (
+    id       TEXT PRIMARY KEY,
+    address  TEXT NOT NULL,
+    mail_from TEXT DEFAULT '',
+    subject  TEXT DEFAULT '',
+    body_text TEXT DEFAULT '',
+    body_html TEXT DEFAULT '',
+    received TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_temp_mail_address ON temp_mail(address);
 `);
 
 function genId() {
@@ -1299,6 +1315,316 @@ app.get('/api/net/proxy', proxyRLMiddleware, async (req, res) => {
       : (err?.cause?.code || err?.code || err?.message || 'Fetch failed');
     res.status(502).json({ error: 'Proxy fetch failed: ' + String(reason) });
   }
+});
+
+// ── Email tools — validation, deliverability, DNSBL, disposable, temp inbox ──
+//
+//   GET  /api/email/validate?email=             syntax + MX + disposable + role check
+//   GET  /api/email/disposable?email=|domain=   disposable-domain check only
+//   GET  /api/email/deliverability?domain=&selector=   MX / SPF / DMARC / DKIM / MTA-STS / BIMI
+//   GET  /api/email/dnsbl?ip=|host=             check an IP against common DNSBL zones
+//   POST /api/email/inbox/new                   { local? } → create a throwaway address
+//   GET  /api/email/inbox/:address/messages     poll an inbox (the address is the secret)
+//   DELETE /api/email/inbox/:address            burn an inbox
+//   POST /api/email/inbox/ingest                MTA webhook — store an inbound message
+//
+// Reuses domainRLMiddleware (15/min) + the _domCache. DNS via Cloudflare DoH
+// (dohJson helper) except DNSBL, which uses the OS resolver — public DoH resolvers
+// (1.1.1.1) refuse Spamhaus-style queries, so DNSBL must hit the server's own resolver.
+
+// Small DoH-over-JSON helper (Cloudflare). Returns the parsed dns-json object.
+async function dohJson(name, type) {
+  const r = await fetch(
+    `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(name)}&type=${encodeURIComponent(type)}`,
+    { headers: { Accept: 'application/dns-json' }, signal: AbortSignal.timeout(8000) }
+  );
+  if (!r.ok) throw new Error(`DNS query failed: ${r.status}`);
+  return r.json();
+}
+
+// Strip surrounding quotes and join the space-split chunks DoH returns for long TXT records.
+function txtValue(answer) {
+  return String(answer.data || '').replace(/^"|"$/g, '').replace(/"\s+"/g, '');
+}
+
+// Curated set of well-known disposable / throwaway email domains. Not exhaustive —
+// extend on the server or swap for a maintained list file later.
+const _DISPOSABLE_DOMAINS = new Set([
+  'mailinator.com','10minutemail.com','guerrillamail.com','guerrillamail.net','guerrillamail.org',
+  'sharklasers.com','grr.la','spam4.me','temp-mail.org','tempmail.com','tempmailo.com','tmpmail.org',
+  'tmpmail.net','tmail.ws','throwawaymail.com','getnada.com','nada.email','dispostable.com',
+  'yopmail.com','yopmail.net','yopmail.fr','trashmail.com','trashmail.net','mailnesia.com',
+  'maildrop.cc','mailcatch.com','mohmal.com','fakeinbox.com','fakemailgenerator.com','emailondeck.com',
+  'mailtemp.net','tempr.email','discard.email','discardmail.com','spamgourmet.com','mintemail.com',
+  'mailexpire.com','jetable.org','mytemp.email','1secmail.com','1secmail.net','1secmail.org',
+  'emailfake.com','generator.email','inboxkitten.com','mailpoof.com','burnermail.io','33mail.com',
+  'anonbox.net','deadaddress.com','despam.it','spambox.us','mailnull.com','tempinbox.com',
+  'temp-mail.io','luxusmail.org','moakt.com','moakt.cc','mailbox.in.ua','vomoto.com','cock.li',
+  'guerrillamailblock.com','pokemail.net','spam.la','incognitomail.org','mvrht.net','tempail.com',
+  'mailde.de','mail-temp.com','tempemail.co','wegwerfmail.de','minuteinbox.com','mailto.plus',
+  'fexbox.org','rover.info','inbox.lv','msgsafe.io','byom.de','spambog.com','harakirimail.com',
+]);
+
+// Common e-mail "role" local-parts (not a person — a function/department mailbox).
+const _ROLE_LOCALS = new Set([
+  'admin','administrator','postmaster','hostmaster','webmaster','abuse','noc','security','root',
+  'info','support','help','helpdesk','contact','sales','billing','accounts','accounting','hr',
+  'jobs','careers','marketing','press','media','legal','privacy','compliance','feedback',
+  'noreply','no-reply','donotreply','do-not-reply','mailer-daemon','daemon','office','team',
+  'hello','hi','enquiries','enquiry','inquiries','service','services','orders','order','newsletter',
+]);
+
+function _parseEmail(raw) {
+  const email = String(raw || '').trim();
+  const at = email.lastIndexOf('@');
+  if (at < 1 || at === email.length - 1) return null;
+  const local  = email.slice(0, at);
+  const domain = email.slice(at + 1).toLowerCase().replace(/\.$/, '');
+  return { email, local, domain };
+}
+
+// Fairly strict but practical RFC 5322-ish address syntax check.
+const _EMAIL_RE = /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/;
+
+// GET /api/email/validate
+app.get('/api/email/validate', domainRLMiddleware, async (req, res) => {
+  const parsed = _parseEmail(req.query.email);
+  if (!parsed) return res.status(400).json({ error: 'Provide a full email address (name@domain)' });
+  const { email, local, domain } = parsed;
+
+  const out = {
+    email, local, domain,
+    syntax_valid: _EMAIL_RE.test(email) && email.length <= 254 && local.length <= 64,
+    role_based:   _ROLE_LOCALS.has(local.toLowerCase()),
+    disposable:   _DISPOSABLE_DOMAINS.has(domain),
+    has_mx: false, mx: [], accepts_mail: false, warnings: [],
+  };
+
+  if (out.syntax_valid) {
+    try {
+      const mx = await dohJson(domain, 'MX');
+      const ans = (mx.Answer || []).filter(a => a.type === 15);
+      out.mx = ans
+        .map(a => { const m = String(a.data).match(/^(\d+)\s+(.+?)\.?$/); return m ? { priority: +m[1], host: m[2] } : null; })
+        .filter(Boolean).sort((a, b) => a.priority - b.priority);
+      out.has_mx = out.mx.length > 0;
+      if (out.has_mx) out.accepts_mail = true;
+      else {
+        // No MX → some domains still accept mail on their A/AAAA (implicit MX).
+        const a = await dohJson(domain, 'A');
+        if ((a.Answer || []).some(r => r.type === 1)) { out.accepts_mail = true; out.warnings.push('No MX record — domain may accept mail on its A record (implicit MX).'); }
+        else out.warnings.push('No MX or A record — this domain cannot receive email.');
+      }
+    } catch (err) { out.warnings.push('MX lookup failed: ' + err.message); }
+  }
+
+  if (out.disposable) out.warnings.push('Disposable / throwaway email provider.');
+  if (out.role_based) out.warnings.push('Role-based address (a department/function, not a person).');
+
+  out.deliverable = out.syntax_valid && out.accepts_mail && !out.disposable;
+  res.json(out);
+});
+
+// GET /api/email/disposable
+app.get('/api/email/disposable', domainRLMiddleware, (req, res) => {
+  let domain = String(req.query.domain || '').trim().toLowerCase();
+  if (req.query.email) { const p = _parseEmail(req.query.email); if (p) domain = p.domain; }
+  domain = domain.replace(/^@/, '').replace(/\.$/, '');
+  if (!validDomain(domain)) return res.status(400).json({ error: 'Provide an email or domain' });
+  res.json({ domain, disposable: _DISPOSABLE_DOMAINS.has(domain) });
+});
+
+// GET /api/email/deliverability — MX / SPF / DMARC / DKIM / MTA-STS / BIMI
+const _DKIM_SELECTORS = ['default','google','selector1','selector2','k1','k2','dkim','mail','s1','s2','mxvault','smtp','key1','protonmail','protonmail2','protonmail3','zoho','fm1','fm2','fm3'];
+
+app.get('/api/email/deliverability', domainRLMiddleware, async (req, res) => {
+  const domain = String(req.query.domain || '').trim().toLowerCase().replace(/^www\.|^@/, '').replace(/\.$/, '');
+  if (!validDomain(domain)) return res.status(400).json({ error: 'Invalid domain name' });
+
+  const ck = 'edeliv:' + domain + ':' + String(req.query.selector || '');
+  const cached = dcGet(ck);
+  if (cached) return res.json({ ...cached, cached: true });
+
+  const userSel = String(req.query.selector || '').trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
+  const selectors = [...new Set([userSel, ..._DKIM_SELECTORS].filter(Boolean))].slice(0, 24);
+
+  try {
+    const [mxR, spfR, dmarcR, mtaStsR, bimiR] = await Promise.all([
+      dohJson(domain, 'MX').catch(() => ({})),
+      dohJson(domain, 'TXT').catch(() => ({})),
+      dohJson('_dmarc.' + domain, 'TXT').catch(() => ({})),
+      dohJson('_mta-sts.' + domain, 'TXT').catch(() => ({})),
+      dohJson('default._bimi.' + domain, 'TXT').catch(() => ({})),
+    ]);
+
+    // MX
+    const mx = (mxR.Answer || []).filter(a => a.type === 15)
+      .map(a => { const m = String(a.data).match(/^(\d+)\s+(.+?)\.?$/); return m ? { priority: +m[1], host: m[2] } : null; })
+      .filter(Boolean).sort((a, b) => a.priority - b.priority);
+
+    // SPF — the TXT record starting v=spf1
+    const txts = (spfR.Answer || []).filter(a => a.type === 16).map(txtValue);
+    const spfRec = txts.find(t => /^v=spf1\b/i.test(t)) || null;
+
+    // DMARC
+    const dmarcTxts = (dmarcR.Answer || []).filter(a => a.type === 16).map(txtValue);
+    const dmarcRec = dmarcTxts.find(t => /^v=DMARC1\b/i.test(t)) || null;
+    let dmarcPolicy = null;
+    if (dmarcRec) { const m = dmarcRec.match(/[;\s]p=([a-z]+)/i); dmarcPolicy = m ? m[1].toLowerCase() : null; }
+
+    // MTA-STS / BIMI presence
+    const mtaSts = (mtaStsR.Answer || []).filter(a => a.type === 16).map(txtValue).find(t => /^v=STSv1\b/i.test(t)) || null;
+    const bimi   = (bimiR.Answer   || []).filter(a => a.type === 16).map(txtValue).find(t => /^v=BIMI1\b/i.test(t)) || null;
+
+    // DKIM — probe common selectors until one returns a v=DKIM1 / p= TXT or CNAME
+    let dkim = null;
+    for (const sel of selectors) {
+      try {
+        const d = await dohJson(`${sel}._domainkey.${domain}`, 'TXT');
+        const rec = (d.Answer || []).filter(a => a.type === 16).map(txtValue).find(t => /(^v=DKIM1\b|[;\s]?p=)/i.test(t));
+        if (rec) { dkim = { selector: sel, record: rec }; break; }
+        // some providers CNAME the selector to a hosted key
+        const c = (d.Answer || []).find(a => a.type === 5);
+        if (c) { dkim = { selector: sel, cname: String(c.data).replace(/\.$/, '') }; break; }
+      } catch { /* try next selector */ }
+    }
+
+    const data = {
+      domain,
+      mx:     { found: mx.length > 0, records: mx },
+      spf:    { found: !!spfRec, record: spfRec },
+      dmarc:  { found: !!dmarcRec, record: dmarcRec, policy: dmarcPolicy },
+      dkim:   { found: !!dkim, ...(dkim || {}), selectors_tried: selectors },
+      mta_sts:{ found: !!mtaSts, record: mtaSts },
+      bimi:   { found: !!bimi, record: bimi },
+    };
+    // Coarse 0–100 score: MX 25, SPF 20, DMARC 25 (+10 if enforcing), DKIM 20
+    let score = 0;
+    if (data.mx.found) score += 25;
+    if (data.spf.found) score += 20;
+    if (data.dmarc.found) score += (dmarcPolicy === 'reject' || dmarcPolicy === 'quarantine') ? 25 : 15;
+    if (data.dkim.found) score += 20;
+    if (data.mta_sts.found) score += 10;
+    data.score = Math.min(100, score);
+    dcSet(ck, data);
+    res.json(data);
+  } catch (err) {
+    console.error('[email/deliverability]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/email/dnsbl — check an IPv4 against common DNS blocklists
+const _DNSBL_ZONES = [
+  'zen.spamhaus.org','bl.spamcop.net','b.barracudacentral.org','dnsbl.sorbs.net',
+  'psbl.surriel.com','dnsbl-1.uceprotect.net','ix.dnsbl.manitu.net','bl.mailspike.net',
+  'all.s5h.net','dnsbl.dronebl.org','spam.dnsbl.anonmails.de','db.wpbl.info',
+];
+const _dnsblResolver = new dns.promises.Resolver({ timeout: 4000, tries: 1 });
+
+app.get('/api/email/dnsbl', domainRLMiddleware, async (req, res) => {
+  let target = String(req.query.ip || req.query.host || '').trim().replace(/^\[|\]$/g, '');
+  if (!target) return res.status(400).json({ error: 'Provide an ip or host' });
+
+  // Resolve a hostname to its IPv4 first (DNSBLs are keyed on IPv4).
+  if (!net.isIPv4(target)) {
+    if (net.isIPv6(target)) return res.status(400).json({ error: 'DNSBL checks support IPv4 only' });
+    if (!validDomain(target)) return res.status(400).json({ error: 'Invalid IP or hostname' });
+    try { const a = await dohJson(target, 'A'); const ip = (a.Answer || []).find(r => r.type === 1); if (!ip) return res.status(404).json({ error: 'Host has no A record' }); target = ip.data; }
+    catch (err) { return res.status(502).json({ error: 'Could not resolve host: ' + err.message }); }
+  }
+
+  const reversed = target.split('.').reverse().join('.');
+  const results = await Promise.all(_DNSBL_ZONES.map(async zone => {
+    const query = `${reversed}.${zone}`;
+    try {
+      const codes = await _dnsblResolver.resolve4(query);
+      let txt = null;
+      try { txt = (await _dnsblResolver.resolveTxt(query)).map(c => c.join('')).join(' '); } catch { /* optional */ }
+      return { zone, listed: true, codes, reason: txt };
+    } catch (err) {
+      if (err.code === 'ENOTFOUND' || err.code === 'ENODATA') return { zone, listed: false };
+      return { zone, listed: null, error: err.code || err.message };
+    }
+  }));
+
+  const listed = results.filter(r => r.listed === true).length;
+  res.json({ ip: target, checked: results.length, listed, clean: listed === 0, results });
+});
+
+// ── Temp inbox (throwaway email) ──────────────────────────────
+// Receives mail only after the operator points an MX at this box and pipes inbound
+// messages to POST /api/email/inbox/ingest (shared-secret auth). Without that wiring
+// the tool still generates addresses but no mail arrives — see the tool's About box.
+const TEMP_INBOX_DOMAIN = (process.env.TEMP_INBOX_DOMAIN || '').trim().toLowerCase();
+const INBOX_INGEST_SECRET = (process.env.INBOX_INGEST_SECRET || '').trim();
+const _INBOX_TTL_MIN = parseInt(process.env.TEMP_INBOX_TTL_MIN, 10) || 60;
+
+// Prune expired inboxes + their mail every 5 min.
+setInterval(() => {
+  try {
+    const dead = db.prepare("SELECT address FROM temp_inbox WHERE expires < datetime('now')").all();
+    for (const r of dead) {
+      db.prepare('DELETE FROM temp_mail  WHERE address = ?').run(r.address);
+      db.prepare('DELETE FROM temp_inbox WHERE address = ?').run(r.address);
+    }
+  } catch (e) { console.error('[temp-inbox prune]', e.message); }
+}, 300_000);
+
+function _randLocal() {
+  return Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 4);
+}
+
+// POST /api/email/inbox/new  { local? }
+app.post('/api/email/inbox/new', domainRLMiddleware, (req, res) => {
+  if (!TEMP_INBOX_DOMAIN) return res.status(503).json({ error: 'Temp inbox not configured (TEMP_INBOX_DOMAIN missing in .env)' });
+  let local = String(req.body?.local || '').trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
+  if (!local || local.length < 3 || local.length > 32) local = _randLocal();
+  const address = `${local}@${TEMP_INBOX_DOMAIN}`;
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
+  try {
+    db.prepare("INSERT OR REPLACE INTO temp_inbox (address, ip, expires) VALUES (?, ?, datetime('now', ?))")
+      .run(address, ip, `+${_INBOX_TTL_MIN} minutes`);
+  } catch (e) { return res.status(500).json({ error: e.message }); }
+  res.json({ address, ttl_minutes: _INBOX_TTL_MIN, domain: TEMP_INBOX_DOMAIN });
+});
+
+// GET /api/email/inbox/:address/messages — the address itself is the bearer secret
+app.get('/api/email/inbox/:address/messages', domainRLMiddleware, (req, res) => {
+  const address = String(req.params.address || '').trim().toLowerCase();
+  if (!/^[a-z0-9._-]+@[a-z0-9.-]+$/.test(address)) return res.status(400).json({ error: 'Invalid address' });
+  const box = db.prepare("SELECT address, expires FROM temp_inbox WHERE address = ? AND expires >= datetime('now')").get(address);
+  if (!box) return res.status(404).json({ error: 'Inbox not found or expired' });
+  const msgs = db.prepare('SELECT id, mail_from, subject, body_text, body_html, received FROM temp_mail WHERE address = ? ORDER BY received DESC LIMIT 50').all(address);
+  res.json({ address, expires: box.expires, count: msgs.length, messages: msgs });
+});
+
+// DELETE /api/email/inbox/:address
+app.delete('/api/email/inbox/:address', domainRLMiddleware, (req, res) => {
+  const address = String(req.params.address || '').trim().toLowerCase();
+  db.prepare('DELETE FROM temp_mail  WHERE address = ?').run(address);
+  db.prepare('DELETE FROM temp_inbox WHERE address = ?').run(address);
+  res.json({ ok: true });
+});
+
+// POST /api/email/inbox/ingest — MTA webhook. Auth: X-Ingest-Secret header.
+//   { to, from, subject, text, html }
+app.post('/api/email/inbox/ingest', (req, res) => {
+  if (!INBOX_INGEST_SECRET || req.headers['x-ingest-secret'] !== INBOX_INGEST_SECRET) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  const to = String(req.body?.to || '').trim().toLowerCase();
+  const address = (to.match(/[a-z0-9._-]+@[a-z0-9.-]+/) || [to])[0];
+  if (!address) return res.status(400).json({ error: 'Missing recipient' });
+  const box = db.prepare("SELECT address FROM temp_inbox WHERE address = ? AND expires >= datetime('now')").get(address);
+  if (!box) return res.status(404).json({ error: 'No active inbox for recipient' });
+  db.prepare('INSERT INTO temp_mail (id, address, mail_from, subject, body_text, body_html) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(genId(), address,
+      String(req.body?.from || '').slice(0, 320),
+      String(req.body?.subject || '').slice(0, 500),
+      String(req.body?.text || '').slice(0, 100_000),
+      String(req.body?.html || '').slice(0, 200_000));
+  res.json({ ok: true });
 });
 
 // ── Start ─────────────────────────────────────────────────────

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DNSBL Blacklist Checker — Is This IP on a Spam Blocklist? | Office Tools</title>
+  <meta name="description" content="Free DNSBL checker — test whether an IP address or mail server is listed on Spamhaus, SpamCop, Barracuda and other DNS blocklists. Check your mail server reputation.">
+  <meta name="keywords" content="DNSBL checker, blacklist checker, RBL check, IP blacklist, Spamhaus check, SpamCop, Barracuda blacklist, mail server blacklist, is my IP blacklisted, spam blocklist check">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="DNSBL Blacklist Checker — Is This IP Listed?">
+  <meta property="og:description" content="Check an IP against Spamhaus, SpamCop, Barracuda and other DNS blocklists. Free, no login.">
+  <meta property="og:url" content="https://tools.grin.money/tools/dnsbl-checker/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="DNSBL Blacklist Checker">
+  <meta name="twitter:description" content="Check an IP against Spamhaus, SpamCop, Barracuda and other DNS blocklists. Free.">
+  <link rel="canonical" href="https://tools.grin.money/tools/dnsbl-checker/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"DNSBL Blacklist Checker","description":"Check whether an IP address is listed on Spamhaus, SpamCop, Barracuda and other DNS blocklists.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/dnsbl-checker/"}</script>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .ctrl-row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+    .ctrl-row input[type="text"] {
+      flex: 1; min-width: 220px; padding: .6rem .9rem;
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-secondary); color: var(--text);
+      font-size: .92rem; font-family: 'Courier New', monospace;
+      outline: none; transition: border-color .15s; box-sizing: border-box;
+    }
+    .ctrl-row input[type="text"]:focus { border-color: var(--primary); }
+    .summary { display: flex; align-items: center; gap: .7rem; margin-top: .9rem; padding: .8rem 1rem; border-radius: var(--radius); font-weight: 700; }
+    .summary.clean  { background: rgba(34,197,94,.13); color: #16a34a; }
+    .summary.listed { background: var(--danger-dim); color: var(--danger); }
+    .summary .big { font-size: 1.4rem; }
+    .bl-table { width: 100%; border-collapse: collapse; font-size: .82rem; margin-top: .8rem; }
+    .bl-table th { text-align: left; padding: .38rem .6rem; font-size: .67rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); border-bottom: 1.5px solid var(--border); }
+    .bl-table td { padding: .42rem .6rem; border-bottom: 1px solid var(--border); font-family: 'Courier New', monospace; color: var(--text); word-break: break-all; }
+    .bl-table tr:last-child td { border-bottom: none; }
+    .pill { font-family: inherit; font-size: .72rem; font-weight: 800; padding: .12rem .55rem; border-radius: 999px; }
+    .pill.ok   { background: rgba(34,197,94,.15); color: #16a34a; }
+    .pill.bad  { background: var(--danger-dim); color: var(--danger); }
+    .pill.err  { background: var(--bg-secondary); color: var(--text-muted); }
+    .box-error { background: var(--danger-dim); color: var(--danger); border-radius: var(--radius); padding: .65rem .9rem; font-size: .86rem; font-weight: 600; margin-top: .75rem; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: .4rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 560px) { .ctrl-row input[type="text"] { min-width: 100%; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">DNSBL Checker</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🚫 DNSBL Blacklist Checker</h1>
+    <p>Check whether an IP address (or mail server) is on a spam blocklist like Spamhaus, SpamCop or Barracuda.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About DNSBL Blacklist Checker</h2>
+    <p>A <strong>DNSBL</strong> (DNS-based blocklist, also called an RBL) is a list of IP addresses with a poor sending reputation, published over DNS so that any mail server can query it in real time before accepting a message. If your sending IP is listed, your email gets rejected or sent to spam. This tool queries a dozen well-known blocklists at once and shows which, if any, list the address.</p>
+    <p>Enter an IPv4 address, or a hostname (we'll resolve its A record first). A <strong>listed</strong> result usually includes a return code and a reason URL explaining why and how to request delisting. <strong>Caveat:</strong> Spamhaus and some others refuse queries that come from large public DNS resolvers, so a result of "not listed" from a public-resolver lookup isn't always authoritative — confirm critical cases directly with the blocklist operator. To check the records that control whether your mail authenticates, use the <a href="../email-deliverability/">Email Deliverability Checker</a>.</p>
+  </section>
+
+  <div class="card">
+    <div class="ctrl-row">
+      <input type="text" id="ipInput" placeholder="IPv4 address or hostname (e.g. 8.8.8.8, mail.example.com)" autocomplete="off" spellcheck="false">
+      <button class="btn btn-primary" id="checkBtn">Check</button>
+    </div>
+    <div class="ctrl-row" style="margin-top:.5rem">
+      <button class="btn btn-ghost btn-sm" id="myIpBtn">Use my IP</button>
+      <button class="btn btn-ghost btn-sm" data-ex="8.8.8.8">8.8.8.8</button>
+      <button class="btn btn-ghost btn-sm" data-ex="127.0.0.2">127.0.0.2 (test listing)</button>
+    </div>
+
+    <div id="result">
+      <div style="color:var(--text-muted);font-size:.86rem;padding:1rem 0">Enter an IP address and click <strong>Check</strong>.</div>
+    </div>
+  </div>
+
+  <section class="tool-related" id="related-tools"></section>
+
+<div class="page-tags">
+  <span class="page-tag">DNSBL checker</span>
+  <span class="page-tag">blacklist checker</span>
+  <span class="page-tag">RBL check</span>
+  <span class="page-tag">Spamhaus check</span>
+  <span class="page-tag">IP blacklist</span>
+  <span class="page-tag">mail server blacklist</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+'use strict';
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+document.querySelectorAll('[data-ex]').forEach(b =>
+  b.addEventListener('click', () => { document.getElementById('ipInput').value = b.dataset.ex; document.getElementById('checkBtn').click(); })
+);
+document.getElementById('ipInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('checkBtn').click();
+});
+
+document.getElementById('myIpBtn').addEventListener('click', async () => {
+  try {
+    const r = await fetch(`${API}/api/ip?format=json`);
+    const d = await r.json();
+    if (d.ipv4 || (d.family === 'ipv4' && d.ip)) { document.getElementById('ipInput').value = d.ipv4 || d.ip; document.getElementById('checkBtn').click(); }
+    else alert('Could not detect an IPv4 address for you (DNSBLs are IPv4-only).');
+  } catch { alert('Could not detect your IP.'); }
+});
+
+document.getElementById('checkBtn').addEventListener('click', async () => {
+  const ip = document.getElementById('ipInput').value.trim();
+  if (!ip) return;
+  const el = document.getElementById('result');
+  el.innerHTML = `<div style="padding:.75rem 0"><span class="spinner"></span> Querying blocklists for <code>${escHtml(ip)}</code>…</div>`;
+  try {
+    const r = await fetch(`${API}/api/email/dnsbl?ip=${encodeURIComponent(ip)}`);
+    const d = await r.json();
+    if (!r.ok) { el.innerHTML = `<div class="box-error">${escHtml(d.error || 'Check failed')}</div>`; return; }
+    render(d);
+  } catch (err) {
+    el.innerHTML = `<div class="box-error">Network error: ${escHtml(err.message)}</div>`;
+  }
+});
+
+function render(d) {
+  const el = document.getElementById('result');
+  const cls = d.clean ? 'clean' : 'listed';
+  const icon = d.clean ? '✅' : '🚫';
+  const msg = d.clean
+    ? `Not listed on any of the ${d.checked} blocklists checked`
+    : `Listed on ${d.listed} of ${d.checked} blocklists`;
+
+  const rows = d.results.map(r => {
+    let pill, detail;
+    if (r.listed === true)  { pill = '<span class="pill bad">LISTED</span>'; detail = escHtml([r.codes ? r.codes.join(', ') : '', r.reason || ''].filter(Boolean).join(' — ')); }
+    else if (r.listed === false) { pill = '<span class="pill ok">clean</span>'; detail = ''; }
+    else { pill = '<span class="pill err">no answer</span>'; detail = escHtml(r.error || ''); }
+    return `<tr><td>${escHtml(r.zone)}</td><td>${pill}</td><td>${detail}</td></tr>`;
+  }).join('');
+
+  el.innerHTML =
+    `<div class="summary ${cls}"><span class="big">${icon}</span><span>${escHtml(msg)} for <code>${escHtml(d.ip)}</code></span></div>` +
+    `<table class="bl-table"><thead><tr><th>Blocklist</th><th>Status</th><th>Detail</th></tr></thead><tbody>${rows}</tbody></table>` +
+    `<p style="color:var(--text-muted);font-size:.76rem;margin-top:.8rem">Some lists (e.g. Spamhaus) refuse queries from public DNS resolvers and may show "no answer" — confirm important results with the operator directly.</p>`;
+}
+
+renderRelatedTools('related-tools', [
+  { path: 'email-deliverability', desc: 'Check SPF, DKIM, DMARC and MX for a domain' },
+  { path: 'ip-location',          desc: 'Country, city, ISP and ASN for any IP' },
+  { path: 'reverse-dns',          desc: 'Resolve an IP to its hostname (PTR)' },
+  { path: 'dns-lookup',           desc: 'Query MX, TXT and other DNS records' },
+]);
+</script>
+</body>
+</html>
