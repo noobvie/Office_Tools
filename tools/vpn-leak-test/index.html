@@ -113,7 +113,13 @@
   <div class="card mt-2">
     <strong>If you found a leak — how to fix it</strong>
     <ul class="fixlist">
-      <li><b>WebRTC leak:</b> disable WebRTC in the browser, or install a WebRTC-blocking extension. Firefox: set <code>media.peerconnection.enabled</code> to <code>false</code> in <code>about:config</code>. Brave: Settings → Shields → WebRTC IP handling → "Disable non-proxied UDP". Some VPN clients block WebRTC leaks for you.</li>
+      <li><b>WebRTC leak:</b> disable WebRTC in the browser, or install a WebRTC-blocking extension. Some VPN clients block WebRTC leaks for you.
+        <ul>
+          <li><b>Chrome / Edge:</b> there's no built-in switch to turn WebRTC off — install an extension such as "WebRTC Network Limiter" (Google) or "WebRTC Leak Prevent", set it to use only your default public interface, or just rely on your VPN client's leak protection.</li>
+          <li><b>Firefox:</b> open <code>about:config</code> and set <code>media.peerconnection.enabled</code> to <code>false</code>.</li>
+          <li><b>Brave:</b> Settings → Shields → WebRTC IP handling → "Disable non-proxied UDP".</li>
+        </ul>
+      </li>
       <li><b>IPv6 leak:</b> use a VPN that tunnels or disables IPv6, enable your VPN's "IPv6 leak protection", or disable IPv6 on your OS/router while connected.</li>
       <li><b>DNS leak</b> (a separate check this tool doesn't cover): use the VPN's own DNS and enable its "DNS leak protection".</li>
     </ul>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Deliverability Checker — SPF, DKIM, DMARC &amp; MX | Office Tools</title>
+  <meta name="description" content="Free email deliverability checker — look up a domain's SPF, DKIM, DMARC, MX, MTA-STS and BIMI records and get a configuration score. Test your email setup before you send.">
+  <meta name="keywords" content="email deliverability checker, SPF check, DKIM check, DMARC check, MX record, email authentication, SPF DKIM DMARC test, MTA-STS, BIMI, email config tester, mail server check">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Email Deliverability Checker — SPF, DKIM, DMARC, MX">
+  <meta property="og:description" content="Look up a domain's SPF, DKIM, DMARC, MX, MTA-STS and BIMI records with a configuration score. Free, no login.">
+  <meta property="og:url" content="https://tools.grin.money/tools/email-deliverability/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Email Deliverability Checker — SPF, DKIM, DMARC">
+  <meta name="twitter:description" content="Check a domain's SPF, DKIM, DMARC, MX, MTA-STS and BIMI records with a score. Free.">
+  <link rel="canonical" href="https://tools.grin.money/tools/email-deliverability/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Email Deliverability Checker","description":"Look up a domain's SPF, DKIM, DMARC, MX, MTA-STS and BIMI records and score its email configuration.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/email-deliverability/"}</script>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .ctrl-row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+    .ctrl-row input[type="text"] {
+      flex: 1; min-width: 200px; padding: .6rem .9rem;
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-secondary); color: var(--text);
+      font-size: .92rem; font-family: 'Courier New', monospace;
+      outline: none; transition: border-color .15s; box-sizing: border-box;
+    }
+    .ctrl-row input[type="text"]:focus { border-color: var(--primary); }
+    .ctrl-row input.sel { flex: 0 0 160px; min-width: 120px; }
+    .score-wrap { display: flex; align-items: center; gap: 1rem; margin-top: .9rem; }
+    .score-ring { font-size: 1.8rem; font-weight: 900; width: 78px; height: 78px; border-radius: 50%; display: grid; place-items: center; flex: none; border: 4px solid var(--border); }
+    .score-ring.good { border-color: #16a34a; color: #16a34a; }
+    .score-ring.mid  { border-color: #b8860b; color: #b8860b; }
+    .score-ring.bad  { border-color: var(--danger); color: var(--danger); }
+    .rec { margin-top: .7rem; border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .rec-head { display: flex; align-items: center; gap: .55rem; padding: .6rem .85rem; background: var(--bg-secondary); font-weight: 700; font-size: .9rem; }
+    .rec-head .ic { font-size: 1rem; }
+    .rec-head .tag { margin-left: auto; font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; padding: .12rem .5rem; border-radius: 999px; font-weight: 800; }
+    .rec-head .tag.ok  { background: rgba(34,197,94,.15); color: #16a34a; }
+    .rec-head .tag.no  { background: var(--danger-dim); color: var(--danger); }
+    .rec-body { padding: .65rem .85rem; font-family: 'Courier New', monospace; font-size: .78rem; color: var(--text); word-break: break-all; white-space: pre-wrap; }
+    .rec-body.empty { color: var(--text-muted); font-style: italic; font-family: inherit; }
+    .rec-note { padding: 0 .85rem .65rem; font-size: .76rem; color: var(--text-muted); }
+    .box-error { background: var(--danger-dim); color: var(--danger); border-radius: var(--radius); padding: .65rem .9rem; font-size: .86rem; font-weight: 600; margin-top: .75rem; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: .4rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 560px) { .ctrl-row input[type="text"], .ctrl-row input.sel { min-width: 100%; flex: 1 1 100%; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Email Deliverability</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>✉️ Email Deliverability Checker</h1>
+    <p>Look up a domain's SPF, DKIM, DMARC, MX, MTA-STS and BIMI records — and get a quick configuration score.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About Email Deliverability</h2>
+    <p>Mailbox providers decide whether your mail lands in the inbox or the spam folder largely from three DNS records: <strong>SPF</strong> (which servers may send for your domain), <strong>DKIM</strong> (a cryptographic signature proving the message wasn't altered), and <strong>DMARC</strong> (the policy that ties SPF and DKIM together and tells receivers what to do on failure). This tool reads all of them — plus your <strong>MX</strong> servers, <strong>MTA-STS</strong> and <strong>BIMI</strong> — straight from public DNS, so you can verify your setup before sending a campaign.</p>
+    <p>DKIM keys live at <code>&lt;selector&gt;._domainkey.&lt;domain&gt;</code>, and the selector name is chosen by whoever set up signing. We probe the common ones (Google, Microsoft, Proton, Zoho, Fastmail, etc.) automatically — if your provider uses a custom selector, type it in the <strong>selector</strong> box. Records come from Cloudflare DNS-over-HTTPS. To validate an individual address instead, use the <a href="../email-validator/">Email Validator</a>; to see raw TXT records, use <a href="../dns-lookup/">DNS Lookup</a>.</p>
+  </section>
+
+  <div class="card">
+    <div class="ctrl-row">
+      <input type="text" id="domainInput" placeholder="example.com" autocomplete="off" spellcheck="false">
+      <input type="text" id="selInput" class="sel" placeholder="DKIM selector (optional)" autocomplete="off" spellcheck="false">
+      <button class="btn btn-primary" id="checkBtn">Check</button>
+    </div>
+    <div class="ctrl-row" style="margin-top:.5rem">
+      <button class="btn btn-ghost btn-sm" data-ex="google.com">google.com</button>
+      <button class="btn btn-ghost btn-sm" data-ex="github.com">github.com</button>
+      <button class="btn btn-ghost btn-sm" data-ex="grin.money">grin.money</button>
+    </div>
+
+    <div id="result">
+      <div style="color:var(--text-muted);font-size:.86rem;padding:1rem 0">Enter a domain and click <strong>Check</strong>.</div>
+    </div>
+  </div>
+
+  <section class="tool-related" id="related-tools"></section>
+
+<div class="page-tags">
+  <span class="page-tag">email deliverability checker</span>
+  <span class="page-tag">SPF check</span>
+  <span class="page-tag">DKIM check</span>
+  <span class="page-tag">DMARC check</span>
+  <span class="page-tag">MX record</span>
+  <span class="page-tag">email authentication</span>
+  <span class="page-tag">MTA-STS</span>
+  <span class="page-tag">BIMI</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+'use strict';
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+document.querySelectorAll('[data-ex]').forEach(b =>
+  b.addEventListener('click', () => { document.getElementById('domainInput').value = b.dataset.ex; document.getElementById('checkBtn').click(); })
+);
+['domainInput','selInput'].forEach(id => document.getElementById(id).addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('checkBtn').click();
+}));
+
+document.getElementById('checkBtn').addEventListener('click', async () => {
+  const domain = document.getElementById('domainInput').value.trim().toLowerCase().replace(/^https?:\/\//,'').replace(/\/.*$/,'');
+  const sel = document.getElementById('selInput').value.trim();
+  if (!domain) return;
+  const el = document.getElementById('result');
+  el.innerHTML = `<div style="padding:.75rem 0"><span class="spinner"></span> Reading DNS records for <code>${escHtml(domain)}</code>… (DKIM selector probing can take a few seconds)</div>`;
+  try {
+    const r = await fetch(`${API}/api/email/deliverability?domain=${encodeURIComponent(domain)}${sel ? '&selector=' + encodeURIComponent(sel) : ''}`);
+    const d = await r.json();
+    if (!r.ok) { el.innerHTML = `<div class="box-error">${escHtml(d.error || 'Lookup failed')}</div>`; return; }
+    render(d);
+  } catch (err) {
+    el.innerHTML = `<div class="box-error">Network error: ${escHtml(err.message)}</div>`;
+  }
+});
+
+function block(icon, title, found, bodyHtml, note) {
+  return `<div class="rec">
+    <div class="rec-head"><span class="ic">${icon}</span><span>${escHtml(title)}</span>
+      <span class="tag ${found ? 'ok' : 'no'}">${found ? 'found' : 'missing'}</span></div>
+    <div class="rec-body ${found ? '' : 'empty'}">${found ? bodyHtml : 'No record found'}</div>
+    ${note ? `<div class="rec-note">${note}</div>` : ''}
+  </div>`;
+}
+
+function render(d) {
+  const el = document.getElementById('result');
+  const score = d.score ?? 0;
+  const ringCls = score >= 80 ? 'good' : score >= 50 ? 'mid' : 'bad';
+  const verdict = score >= 80 ? 'Well configured' : score >= 50 ? 'Partly configured' : 'Needs attention';
+
+  const mxHtml = d.mx.found ? d.mx.records.map(m => `${m.priority}  ${escHtml(m.host)}`).join('\n') : '';
+
+  let dkimBody = '', dkimNote = '';
+  if (d.dkim.found) {
+    dkimBody = d.dkim.cname ? `CNAME → ${escHtml(d.dkim.cname)}` : escHtml(d.dkim.record || '');
+    dkimNote = `Selector <code>${escHtml(d.dkim.selector)}</code> matched.`;
+  } else {
+    dkimNote = `Probed ${d.dkim.selectors_tried?.length || 0} common selectors with no match. If you sign with a custom selector, enter it above.`;
+  }
+
+  const dmarcNote = d.dmarc.found
+    ? (d.dmarc.policy ? `Policy: <code>p=${escHtml(d.dmarc.policy)}</code>${(d.dmarc.policy==='none') ? ' — monitoring only; consider quarantine/reject once you trust your reports.' : ''}` : '')
+    : 'No DMARC — receivers have no policy to enforce. Add a TXT record at <code>_dmarc</code>.';
+
+  el.innerHTML =
+    `<div class="score-wrap">
+       <div class="score-ring ${ringCls}">${score}</div>
+       <div><div style="font-weight:800;font-size:1.05rem;color:var(--text)">${verdict}</div>
+       <div style="color:var(--text-muted);font-size:.82rem">Config score for <code>${escHtml(d.domain)}</code> (out of 100)</div></div>
+     </div>` +
+    block('📥', 'MX — mail servers',  d.mx.found,    mxHtml, d.mx.found ? '' : 'No MX record — this domain cannot receive email.') +
+    block('🛡️', 'SPF — sender policy', d.spf.found,   escHtml(d.spf.record), d.spf.found ? '' : 'Add a TXT record starting <code>v=spf1</code>.') +
+    block('🔑', 'DKIM — signature key', d.dkim.found, dkimBody, dkimNote) +
+    block('📜', 'DMARC — policy',     d.dmarc.found, escHtml(d.dmarc.record), dmarcNote) +
+    block('🔒', 'MTA-STS',            d.mta_sts.found, escHtml(d.mta_sts.record), d.mta_sts.found ? '' : 'Optional — enforces TLS for inbound mail.') +
+    block('🖼️', 'BIMI',              d.bimi.found,  escHtml(d.bimi.record), d.bimi.found ? '' : 'Optional — shows your logo in supporting inboxes (needs DMARC enforcement).');
+}
+
+renderRelatedTools('related-tools', [
+  { path: 'email-validator', desc: 'Validate a single email address' },
+  { path: 'dns-lookup',      desc: 'Query MX, TXT and other DNS records' },
+  { path: 'dnsbl-checker',   desc: 'Is a mail server IP blacklisted?' },
+  { path: 'csr-decoder',     desc: 'Decode a TLS certificate signing request' },
+]);
+</script>
+</body>
+</html>

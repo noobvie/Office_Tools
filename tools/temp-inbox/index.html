@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Temp Inbox — Disposable Email Address for Testing | Office Tools</title>
+  <meta name="description" content="Free temporary email inbox — generate a throwaway address, receive messages and read them in your browser. Great for testing signups without using your real email.">
+  <meta name="keywords" content="temp inbox, temporary email, disposable email address, throwaway email, burner inbox, temp mail, fake email for testing, receive email online, anonymous email">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Temp Inbox — Disposable Email Address">
+  <meta property="og:description" content="Generate a throwaway email address and read incoming messages in your browser. Free, no login.">
+  <meta property="og:url" content="https://tools.grin.money/tools/temp-inbox/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Temp Inbox — Disposable Email Address">
+  <meta name="twitter:description" content="Generate a throwaway email address and read incoming messages in your browser. Free.">
+  <link rel="canonical" href="https://tools.grin.money/tools/temp-inbox/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Temp Inbox","description":"Generate a disposable email address and read incoming messages in your browser for testing.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/temp-inbox/"}</script>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .addr-bar { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+    .addr-box { flex: 1; min-width: 220px; padding: .65rem .9rem; border: 1.5px solid var(--primary); border-radius: var(--radius); background: var(--primary-dim); color: var(--text); font-family: 'Courier New', monospace; font-size: 1rem; font-weight: 700; word-break: break-all; }
+    .addr-box.empty { border-color: var(--border); background: var(--bg-secondary); color: var(--text-muted); font-weight: 400; }
+    .meta { color: var(--text-muted); font-size: .8rem; margin-top: .55rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+    .inbox { margin-top: 1rem; border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .msg { border-bottom: 1px solid var(--border); }
+    .msg:last-child { border-bottom: none; }
+    .msg-head { display: flex; gap: .6rem; align-items: baseline; padding: .6rem .85rem; cursor: pointer; }
+    .msg-head:hover { background: var(--bg-secondary); }
+    .msg-from { font-weight: 700; font-size: .85rem; color: var(--text); }
+    .msg-subj { font-size: .85rem; color: var(--text-muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .msg-time { font-size: .72rem; color: var(--text-muted); font-family: 'Courier New', monospace; white-space: nowrap; }
+    .msg-body { display: none; padding: .2rem .85rem .85rem; }
+    .msg.open .msg-body { display: block; }
+    .msg-body iframe { width: 100%; min-height: 220px; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; }
+    .msg-body pre { white-space: pre-wrap; word-break: break-word; font-family: 'Courier New', monospace; font-size: .82rem; color: var(--text); margin: 0; }
+    .empty-state { padding: 2.2rem 1rem; text-align: center; color: var(--text-muted); }
+    .empty-state .dotspin { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; vertical-align: middle; margin-right: .5rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .box-warn { background: rgba(234,179,8,.12); color: #b8860b; border: 1.5px solid rgba(234,179,8,.4); border-radius: var(--radius); padding: .7rem .95rem; font-size: .84rem; margin-top: .75rem; }
+    .box-error { background: var(--danger-dim); color: var(--danger); border-radius: var(--radius); padding: .65rem .9rem; font-size: .86rem; font-weight: 600; margin-top: .75rem; }
+    @media (max-width: 560px) { .addr-box { min-width: 100%; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Temp Inbox</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>📨 Temp Inbox</h1>
+    <p>Generate a disposable email address, receive messages and read them right here — no signup, auto-deletes itself.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About Temp Inbox</h2>
+    <p>A temporary inbox gives you a throwaway email address you can hand to a website to confirm a signup, grab a one-time code, or test your own app's emails — without exposing your real address or risking spam. Click <strong>New address</strong>, copy it, use it, then watch this page for incoming mail. The address (and everything sent to it) is deleted automatically after the time shown.</p>
+    <p>Anyone who knows the address can read its mail, so never use it for anything private or for password resets on accounts you care about. Messages are shown in a sandboxed frame with scripts disabled. If your message doesn't appear, give it a minute and hit <strong>Refresh</strong> — delivery depends on the sender. To check whether an <em>address</em> is disposable rather than create one, use the <a href="../disposable-email/">Disposable Email Detector</a>.</p>
+  </section>
+
+  <div class="card">
+    <div class="addr-bar">
+      <div class="addr-box empty" id="addrBox">No address yet — click "New address"</div>
+      <button class="btn btn-ghost btn-sm" id="copyBtn" disabled>Copy</button>
+      <button class="btn btn-primary" id="newBtn">New address</button>
+    </div>
+    <div class="meta" id="meta"></div>
+    <div id="notice"></div>
+
+    <div class="inbox" id="inbox" style="display:none">
+      <div class="empty-state" id="inboxEmpty"><span class="dotspin"></span> Waiting for incoming mail…</div>
+    </div>
+
+    <div class="meta" id="controls" style="display:none">
+      <button class="btn btn-ghost btn-sm" id="refreshBtn">↻ Refresh now</button>
+      <label style="display:flex;align-items:center;gap:.35rem;cursor:pointer"><input type="checkbox" id="autoChk" checked> Auto-refresh (10s)</label>
+      <button class="btn btn-ghost btn-sm" id="burnBtn">🔥 Delete inbox</button>
+    </div>
+  </div>
+
+  <section class="tool-related" id="related-tools"></section>
+
+<div class="page-tags">
+  <span class="page-tag">temp inbox</span>
+  <span class="page-tag">temporary email</span>
+  <span class="page-tag">disposable email address</span>
+  <span class="page-tag">throwaway email</span>
+  <span class="page-tag">burner inbox</span>
+  <span class="page-tag">fake email for testing</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+'use strict';
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let _addr = '', _timer = null, _seen = new Set();
+
+const addrBox = document.getElementById('addrBox');
+const meta    = document.getElementById('meta');
+
+// Restore a previous address from this session
+try { const s = sessionStorage.getItem('ot-temp-addr'); if (s) { _addr = s; activate(s); } } catch {}
+
+document.getElementById('newBtn').addEventListener('click', createInbox);
+document.getElementById('copyBtn').addEventListener('click', () => {
+  if (_addr) navigator.clipboard.writeText(_addr).then(() => { const b = document.getElementById('copyBtn'); b.textContent = 'Copied!'; setTimeout(() => b.textContent = 'Copy', 1200); });
+});
+document.getElementById('refreshBtn').addEventListener('click', () => poll(true));
+document.getElementById('autoChk').addEventListener('change', e => { if (e.target.checked) startAuto(); else stopAuto(); });
+document.getElementById('burnBtn').addEventListener('click', burnInbox);
+
+async function createInbox() {
+  document.getElementById('notice').innerHTML = '';
+  const btn = document.getElementById('newBtn');
+  btn.disabled = true; btn.textContent = 'Creating…';
+  try {
+    const r = await fetch(`${API}/api/email/inbox/new`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const d = await r.json();
+    if (!r.ok) {
+      document.getElementById('notice').innerHTML = `<div class="box-warn">${escHtml(d.error || 'Could not create an inbox')}.<br>This feature needs the server configured with a mail domain (<code>TEMP_INBOX_DOMAIN</code>) and an MX record pointing at it. The other email tools work without it.</div>`;
+      return;
+    }
+    _addr = d.address; _seen = new Set();
+    try { sessionStorage.setItem('ot-temp-addr', _addr); } catch {}
+    activate(_addr, d.ttl_minutes);
+    poll(true);
+  } catch (err) {
+    document.getElementById('notice').innerHTML = `<div class="box-error">Network error: ${escHtml(err.message)}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'New address';
+  }
+}
+
+function activate(addr, ttl) {
+  addrBox.textContent = addr; addrBox.classList.remove('empty');
+  document.getElementById('copyBtn').disabled = false;
+  meta.innerHTML = ttl ? `<span>⏳ Expires in ${ttl} minutes of inactivity</span>` : '';
+  document.getElementById('inbox').style.display = '';
+  document.getElementById('controls').style.display = '';
+  startAuto();
+}
+
+function startAuto() { stopAuto(); if (document.getElementById('autoChk').checked) _timer = setInterval(() => poll(false), 10000); }
+function stopAuto()  { if (_timer) { clearInterval(_timer); _timer = null; } }
+
+async function poll(showSpin) {
+  if (!_addr) return;
+  if (showSpin) document.getElementById('inboxEmpty').innerHTML = '<span class="dotspin"></span> Checking…';
+  try {
+    const r = await fetch(`${API}/api/email/inbox/${encodeURIComponent(_addr)}/messages`);
+    const d = await r.json();
+    if (!r.ok) {
+      if (r.status === 404) { stopAuto(); document.getElementById('inboxEmpty').innerHTML = 'This inbox expired. Create a new one.'; }
+      return;
+    }
+    renderMessages(d.messages || []);
+  } catch { /* keep last view; transient */ }
+}
+
+function renderMessages(msgs) {
+  const inbox = document.getElementById('inbox');
+  if (!msgs.length) {
+    inbox.innerHTML = '<div class="empty-state" id="inboxEmpty"><span class="dotspin"></span> Waiting for incoming mail…</div>';
+    return;
+  }
+  inbox.innerHTML = msgs.map(m => {
+    const bodyHtml = m.body_html
+      ? `<iframe sandbox="" srcdoc="${escHtml(m.body_html).replace(/"/g, '&quot;')}"></iframe>`
+      : `<pre>${escHtml(m.body_text || '(no body)')}</pre>`;
+    return `<div class="msg" data-id="${escHtml(m.id)}">
+      <div class="msg-head">
+        <span class="msg-from">${escHtml(m.mail_from || 'unknown')}</span>
+        <span class="msg-subj">${escHtml(m.subject || '(no subject)')}</span>
+        <span class="msg-time">${escHtml(new Date(m.received + 'Z').toLocaleTimeString())}</span>
+      </div>
+      <div class="msg-body">${bodyHtml}</div>
+    </div>`;
+  }).join('');
+  inbox.querySelectorAll('.msg-head').forEach(h => h.addEventListener('click', () => h.parentElement.classList.toggle('open')));
+}
+
+async function burnInbox() {
+  if (!_addr) return;
+  if (!confirm('Delete this inbox and all its messages?')) return;
+  stopAuto();
+  try { await fetch(`${API}/api/email/inbox/${encodeURIComponent(_addr)}`, { method: 'DELETE' }); } catch {}
+  _addr = ''; try { sessionStorage.removeItem('ot-temp-addr'); } catch {}
+  addrBox.textContent = 'No address yet — click "New address"'; addrBox.classList.add('empty');
+  document.getElementById('copyBtn').disabled = true;
+  meta.innerHTML = ''; document.getElementById('inbox').style.display = 'none'; document.getElementById('controls').style.display = 'none';
+}
+
+renderRelatedTools('related-tools', [
+  { path: 'disposable-email', desc: 'Detect throwaway email domains' },
+  { path: 'email-validator',  desc: 'Validate an email address' },
+  { path: 'fake-data',        desc: 'Generate realistic test data' },
+  { path: 'password-generator', desc: 'Generate a secure random password' },
+]);
+</script>
+</body>
+</html>

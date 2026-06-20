@@ -446,11 +446,16 @@ server {
     location ~ ^(.*\.html)/$ { return 301 \$1; }
     # SEO: enforce trailing slash on tool and page directory URLs (no file extension)
     location ~ ^(/tools/[^/.]+|/pages/[^/.]+)$ { return 301 \$uri/; }
+    # Serve flat-file pages (pages/<x>.html) at their canonical directory URL /pages/<x>/
+    # (donate/privacy live as pages/<x>.html but their canonical + sitemap use /pages/<x>/)
+    location ~ ^/pages/([^/]+)/$ { try_files /pages/\$1.html /pages/\$1/index.html =404; }
 
     # Permanently removed pages — 410 Gone de-indexes faster/cleaner than a 404.
     # Add formerly-public URLs here when a tool/page is retired.
     location = /tools/wordle/ { return 410; }
     location ^~ /auth/        { return 410; }
+    location ^~ /api/         { return 410; }   # old donate/wallet backend — live API is under /tools-api/
+    location ~ ^/(playlist|shorts)(/|\$) { return 410; }   # retired YouTube routes
 
     location / { try_files \$uri/index.html \$uri \$uri.html =404; }
 
@@ -538,11 +543,16 @@ server {
     location ~ ^(.*\.html)/$ { return 301 \$1; }
     # SEO: enforce trailing slash on tool and page directory URLs (no file extension)
     location ~ ^(/tools/[^/.]+|/pages/[^/.]+)$ { return 301 \$uri/; }
+    # Serve flat-file pages (pages/<x>.html) at their canonical directory URL /pages/<x>/
+    # (donate/privacy live as pages/<x>.html but their canonical + sitemap use /pages/<x>/)
+    location ~ ^/pages/([^/]+)/$ { try_files /pages/\$1.html /pages/\$1/index.html =404; }
 
     # Permanently removed pages — 410 Gone de-indexes faster/cleaner than a 404.
     # Add formerly-public URLs here when a tool/page is retired.
     location = /tools/wordle/ { return 410; }
     location ^~ /auth/        { return 410; }
+    location ^~ /api/         { return 410; }   # old donate/wallet backend — live API is under /tools-api/
+    location ~ ^/(playlist|shorts)(/|\$) { return 410; }   # retired YouTube routes
 
     location / { try_files \$uri/index.html \$uri \$uri.html =404; }
 

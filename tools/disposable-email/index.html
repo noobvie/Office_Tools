@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Disposable Email Detector — Flag Throwaway &amp; Temp Email Domains | Office Tools</title>
+  <meta name="description" content="Free disposable email detector — check whether an email address uses a throwaway, temporary or burner domain like Mailinator or 10MinuteMail. Single check or bulk list.">
+  <meta name="keywords" content="disposable email detector, temporary email checker, throwaway email, burner email check, fake email detector, mailinator check, 10minutemail, block disposable emails, temp email domains">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Disposable Email Detector — Throwaway Domain Check">
+  <meta property="og:description" content="Check whether an email uses a disposable, temporary or burner domain. Single or bulk. Free, no login.">
+  <meta property="og:url" content="https://tools.grin.money/tools/disposable-email/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Disposable Email Detector">
+  <meta name="twitter:description" content="Check whether an email uses a disposable, temporary or burner domain. Free.">
+  <link rel="canonical" href="https://tools.grin.money/tools/disposable-email/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Disposable Email Detector","description":"Check whether an email address uses a disposable, temporary or burner domain. Single or bulk.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/disposable-email/"}</script>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .ctrl-row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+    .ctrl-row input[type="text"] {
+      flex: 1; min-width: 220px; padding: .6rem .9rem;
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-secondary); color: var(--text);
+      font-size: .92rem; font-family: 'Courier New', monospace;
+      outline: none; transition: border-color .15s; box-sizing: border-box;
+    }
+    .ctrl-row input[type="text"]:focus { border-color: var(--primary); }
+    .tab-bar { display: flex; gap: .35rem; margin-top: .2rem; margin-bottom: .9rem; border-bottom: 1.5px solid var(--border); }
+    .tab-btn { padding: .4rem .9rem; border: none; background: transparent; color: var(--text-muted); font-weight: 700; font-size: .85rem; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1.5px; }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .verdict { display: flex; align-items: center; gap: .6rem; margin-top: .9rem; padding: .8rem 1rem; border-radius: var(--radius); font-weight: 700; }
+    .verdict.ok  { background: rgba(34,197,94,.13); color: #16a34a; }
+    .verdict.bad { background: var(--danger-dim); color: var(--danger); }
+    .verdict .big { font-size: 1.3rem; }
+    textarea { width: 100%; min-height: 140px; padding: .65rem .8rem; border: 1.5px solid var(--border); border-radius: var(--radius); background: var(--bg-secondary); color: var(--text); font-family: 'Courier New', monospace; font-size: .85rem; resize: vertical; box-sizing: border-box; }
+    textarea:focus { outline: none; border-color: var(--primary); }
+    .bulk-table { width: 100%; border-collapse: collapse; font-size: .82rem; margin-top: .8rem; }
+    .bulk-table th { text-align: left; padding: .35rem .6rem; font-size: .67rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); border-bottom: 1.5px solid var(--border); }
+    .bulk-table td { padding: .35rem .6rem; border-bottom: 1px solid var(--border); font-family: 'Courier New', monospace; color: var(--text); word-break: break-all; }
+    .pill { font-family: inherit; font-size: .72rem; font-weight: 800; padding: .12rem .55rem; border-radius: 999px; }
+    .pill.ok  { background: rgba(34,197,94,.15); color: #16a34a; }
+    .pill.bad { background: var(--danger-dim); color: var(--danger); }
+    .box-error { background: var(--danger-dim); color: var(--danger); border-radius: var(--radius); padding: .65rem .9rem; font-size: .86rem; font-weight: 600; margin-top: .75rem; }
+    .stat { color: var(--text-muted); font-size: .82rem; margin-top: .6rem; }
+    @media (max-width: 560px) { .ctrl-row input[type="text"] { min-width: 100%; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Disposable Email Detector</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🗑️ Disposable Email Detector</h1>
+    <p>Flag throwaway, temporary and burner email domains — one address at a time, or a whole pasted list.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About Disposable Email Detector</h2>
+    <p>Disposable (a.k.a. temporary or burner) email services like Mailinator, 10MinuteMail and Guerrilla Mail give out short-lived inboxes that anyone can read without signing up. People use them to dodge verification, abuse free trials, or sign up without leaving a real address. This tool checks an address's domain against a curated blocklist of known disposable providers so you can reject or flag them at signup.</p>
+    <p>Use the <strong>Single</strong> tab for one address, or the <strong>Bulk</strong> tab to paste a list (one per line) and see a clean/disposable verdict for each, plus a summary count. A "not disposable" result only means the domain isn't on the blocklist — it doesn't guarantee the mailbox exists; for that, run the address through the <a href="../email-validator/">Email Validator</a>. To inspect a domain's full mail configuration, use the <a href="../email-deliverability/">Email Deliverability Checker</a>.</p>
+  </section>
+
+  <div class="card">
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="single">Single</button>
+      <button class="tab-btn" data-tab="bulk">Bulk</button>
+    </div>
+
+    <div id="tab-single">
+      <div class="ctrl-row">
+        <input type="text" id="emailInput" placeholder="name@example.com or just a domain" autocomplete="off" spellcheck="false">
+        <button class="btn btn-primary" id="checkBtn">Check</button>
+      </div>
+      <div class="ctrl-row" style="margin-top:.5rem">
+        <button class="btn btn-ghost btn-sm" data-ex="test@mailinator.com">test@mailinator.com</button>
+        <button class="btn btn-ghost btn-sm" data-ex="me@gmail.com">me@gmail.com</button>
+      </div>
+      <div id="singleResult"></div>
+    </div>
+
+    <div id="tab-bulk" style="display:none">
+      <textarea id="bulkInput" placeholder="One email or domain per line&#10;alice@gmail.com&#10;bob@mailinator.com&#10;temp@10minutemail.com"></textarea>
+      <div class="ctrl-row" style="margin-top:.6rem">
+        <button class="btn btn-primary" id="bulkBtn">Check list</button>
+        <button class="btn btn-ghost btn-sm" id="copyDisposable">Copy disposable only</button>
+      </div>
+      <div id="bulkResult"></div>
+    </div>
+  </div>
+
+  <section class="tool-related" id="related-tools"></section>
+
+<div class="page-tags">
+  <span class="page-tag">disposable email detector</span>
+  <span class="page-tag">temporary email checker</span>
+  <span class="page-tag">throwaway email</span>
+  <span class="page-tag">burner email</span>
+  <span class="page-tag">block disposable emails</span>
+  <span class="page-tag">mailinator check</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+'use strict';
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+
+// Small client-side fallback set so the tool still works offline / without the backend.
+const CLIENT_DISPOSABLE = new Set(['mailinator.com','10minutemail.com','guerrillamail.com','sharklasers.com','temp-mail.org','tempmail.com','yopmail.com','trashmail.com','getnada.com','maildrop.cc','throwawaymail.com','fakeinbox.com','dispostable.com','mintemail.com','1secmail.com','emailondeck.com','moakt.com','tempmailo.com','mohmal.com','spam4.me']);
+
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function domainOf(s) {
+  s = String(s || '').trim().toLowerCase();
+  const at = s.lastIndexOf('@');
+  return (at >= 0 ? s.slice(at + 1) : s).replace(/^@/, '').replace(/\.$/, '').replace(/\/.*$/, '');
+}
+
+document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  document.getElementById('tab-single').style.display = b.dataset.tab === 'single' ? '' : 'none';
+  document.getElementById('tab-bulk').style.display   = b.dataset.tab === 'bulk'   ? '' : 'none';
+}));
+
+document.querySelectorAll('[data-ex]').forEach(b =>
+  b.addEventListener('click', () => { document.getElementById('emailInput').value = b.dataset.ex; document.getElementById('checkBtn').click(); })
+);
+document.getElementById('emailInput').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('checkBtn').click(); });
+
+// Ask the backend; fall back to the client list on any failure.
+async function isDisposable(domain) {
+  try {
+    const r = await fetch(`${API}/api/email/disposable?domain=${encodeURIComponent(domain)}`);
+    if (r.ok) { const d = await r.json(); return { disposable: d.disposable, source: 'server' }; }
+  } catch { /* fall through */ }
+  return { disposable: CLIENT_DISPOSABLE.has(domain), source: 'local' };
+}
+
+document.getElementById('checkBtn').addEventListener('click', async () => {
+  const domain = domainOf(document.getElementById('emailInput').value);
+  const el = document.getElementById('singleResult');
+  if (!domain) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="stat">Checking <code>${escHtml(domain)}</code>…</div>`;
+  const { disposable } = await isDisposable(domain);
+  el.innerHTML = disposable
+    ? `<div class="verdict bad"><span class="big">🗑️</span><span>Disposable — <code>${escHtml(domain)}</code> is a known throwaway provider</span></div>`
+    : `<div class="verdict ok"><span class="big">✅</span><span>Not disposable — <code>${escHtml(domain)}</code> is not on the blocklist</span></div>`;
+});
+
+let _lastBulk = [];
+document.getElementById('bulkBtn').addEventListener('click', async () => {
+  const lines = document.getElementById('bulkInput').value.split(/[\n,;]+/).map(s => s.trim()).filter(Boolean);
+  const el = document.getElementById('bulkResult');
+  if (!lines.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="stat">Checking ${lines.length} entr${lines.length === 1 ? 'y' : 'ies'}…</div>`;
+  const seen = new Map();
+  const out = [];
+  for (const raw of lines) {
+    const domain = domainOf(raw);
+    if (!domain) continue;
+    if (!seen.has(domain)) seen.set(domain, (await isDisposable(domain)).disposable);
+    out.push({ input: raw, domain, disposable: seen.get(domain) });
+  }
+  _lastBulk = out;
+  const bad = out.filter(o => o.disposable).length;
+  const rows = out.map(o => `<tr><td>${escHtml(o.input)}</td><td>${escHtml(o.domain)}</td><td>${o.disposable ? '<span class="pill bad">disposable</span>' : '<span class="pill ok">clean</span>'}</td></tr>`).join('');
+  el.innerHTML =
+    `<div class="stat"><strong style="color:var(--text)">${bad}</strong> disposable of <strong style="color:var(--text)">${out.length}</strong> checked</div>` +
+    `<table class="bulk-table"><thead><tr><th>Input</th><th>Domain</th><th>Verdict</th></tr></thead><tbody>${rows}</tbody></table>`;
+});
+
+document.getElementById('copyDisposable').addEventListener('click', () => {
+  const list = _lastBulk.filter(o => o.disposable).map(o => o.input).join('\n');
+  if (!list) { alert('No disposable entries to copy. Run a bulk check first.'); return; }
+  navigator.clipboard.writeText(list).then(() => alert('Copied disposable entries to clipboard.'));
+});
+
+renderRelatedTools('related-tools', [
+  { path: 'email-validator',      desc: 'Full validation: syntax, MX and reputation' },
+  { path: 'temp-inbox',           desc: 'Create your own throwaway inbox' },
+  { path: 'email-deliverability', desc: 'Check SPF, DKIM, DMARC and MX' },
+  { path: 'fake-data',            desc: 'Generate realistic test data' },
+]);
+</script>
+</body>
+</html>
