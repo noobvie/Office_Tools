@@ -692,6 +692,39 @@ function openFeedbackModal() {
   });
 }
 
+/* ---------- Drop-zone upload feedback (global, all tools) ----------
+   Every upload tool renders a `.drop-zone` containing a file <input>. Rather than
+   duplicate confirmation UX in each tool, we bind once here: when a file is picked
+   or dropped, tag the zone `.has-files` and inject a clear "✓ … loaded" hint so users
+   never wonder whether the upload registered. Purely additive — the tool's own file
+   handler still runs untouched. Opt out on a zone with `data-ot-noauto`. */
+function otFmtSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+  return (b / 1048576).toFixed(2) + ' MB';
+}
+function otMarkZoneLoaded(zone, files) {
+  if (!files || !files.length) return;
+  zone.classList.add('has-files');
+  let hint = zone.querySelector('.dz-hint');
+  if (!hint) { hint = document.createElement('div'); hint.className = 'dz-hint'; zone.appendChild(hint); }
+  // textContent (never innerHTML) — filenames are untrusted input.
+  hint.textContent = files.length === 1
+    ? '✓ ' + files[0].name + ' — ' + otFmtSize(files[0].size)
+    : '✓ ' + files.length + ' files loaded';
+}
+function initDropZoneFeedback() {
+  document.querySelectorAll('.drop-zone').forEach(zone => {
+    if (zone.dataset.otFeedback || zone.hasAttribute('data-ot-noauto')) return;
+    zone.dataset.otFeedback = '1';
+    const input = zone.querySelector('input[type=file]');
+    if (input) input.addEventListener('change', () => otMarkZoneLoaded(zone, input.files));
+    zone.addEventListener('drop', e => {
+      if (e.dataTransfer) otMarkZoneLoaded(zone, e.dataTransfer.files);
+    });
+  });
+}
+
 /* ---------- Auto-init on DOMContentLoaded ---------- */
 document.addEventListener('DOMContentLoaded', () => {
   // Inject favicon once — path derived from common.js script URL so it works at any depth
@@ -712,6 +745,7 @@ document.addEventListener('DOMContentLoaded', () => {
   autoRelatedTools();
   trackToolView();
   initSupportPill();
+  initDropZoneFeedback();
 
   // Ctrl+K / Cmd+K → focus the header search wherever it exists
   document.addEventListener('keydown', e => {

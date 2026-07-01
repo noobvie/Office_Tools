@@ -1153,3 +1153,13 @@ body.has-sidebar .tool-main {
 .related-name { font-size: .86rem; font-weight: 700; color: var(--text); }
 .related-desc { font-size: .73rem; color: var(--text-muted); margin-top: .08rem; }
 
+/* ---------- Drop-zone upload confirmation (shared, auto-applied by common.js) ---------- */
+/* .has-files + .dz-hint are injected onto any .drop-zone when a file is selected,
+   so every upload tool gives clear "file loaded" feedback without per-tool code. */
+.drop-zone.has-files { border-style: solid; border-color: var(--success); }
+.drop-zone .dz-hint {
+  margin-top: .6rem; font-weight: 700; color: var(--success);
+  font-size: .92rem; word-break: break-word; line-height: 1.35;
+}
+.drop-zone.has-files .dz-prompt { opacity: .65; font-size: .85em; }
+

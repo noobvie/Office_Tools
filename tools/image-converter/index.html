@@ -113,10 +113,14 @@
         Supports HEIC/HEIF (iPhone), BMP, TIFF, WebP, GIF (first frame) → JPG / PNG / WebP. Multiple files supported.
       </p>
       <div class="drop-zone" id="convDrop">
-        Drop images here or <strong>click to browse</strong>
-        <p style="font-size:.77rem;margin:.25rem 0 0">Multiple files OK</p>
+        <div class="dz-prompt">
+          Drop images here or <strong>click to browse</strong>
+          <p style="font-size:.77rem;margin:.25rem 0 0">Multiple files OK</p>
+        </div>
         <input type="file" id="convFile" accept="image/*,.heic,.heif" multiple>
       </div>
+
+      <div id="convList" class="file-list" style="display:none"></div>
 
       <div class="form-row mt-2" style="gap:.65rem;align-items:flex-end;flex-wrap:wrap">
         <div class="form-group" style="margin:0;min-width:110px">
@@ -133,14 +137,12 @@
         </div>
         <button class="btn btn-primary" id="convBtn" disabled>Convert All</button>
       </div>
-
-      <div id="convList" class="file-list" style="display:none"></div>
     </div>
 
     <!-- ── Compress ───────────────────────────────────────── -->
     <div class="tab-pane" id="compTab">
       <div class="drop-zone" id="compDrop">
-        Drop a JPG, PNG or WebP here or <strong>click to browse</strong>
+        <div class="dz-prompt">Drop a JPG, PNG or WebP here or <strong>click to browse</strong></div>
         <input type="file" id="compFile" accept="image/jpeg,image/png,image/webp">
       </div>
 
@@ -181,7 +183,7 @@
     <!-- ── Resize ─────────────────────────────────────────── -->
     <div class="tab-pane" id="resTab">
       <div class="drop-zone" id="resDrop">
-        Drop any image here or <strong>click to browse</strong>
+        <div class="dz-prompt">Drop any image here or <strong>click to browse</strong></div>
         <input type="file" id="resFile" accept="image/*,.heic,.heif">
       </div>
 
@@ -245,7 +247,7 @@
 </div>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/heic-to@1.5.2/dist/iife/heic-to.js"></script>
 <script src="../../js/common.js"></script>
 <script>
 // ── Shared helpers ─────────────────────────────────────────────────────
@@ -269,11 +271,13 @@ function loadImg(src) {
     const i = new Image(); i.onload = () => ok(i); i.onerror = err; i.src = src;
   });
 }
+async function heicToPng(f) {
+  // Decode HEIC/HEIF to a lossless PNG blob via libheif (heic-to).
+  const b = await HeicTo({ blob: f, type: 'image/png' });
+  return Array.isArray(b) ? b[0] : b;
+}
 async function fileToUrl(f) {
-  if (isHeic(f)) {
-    const b = await heic2any({ blob: f, toType: 'image/png' });
-    return URL.createObjectURL(Array.isArray(b) ? b[0] : b);
-  }
+  if (isHeic(f)) return URL.createObjectURL(await heicToPng(f));
   return URL.createObjectURL(f);
 }
 function imgToBlob(img, mime, q) {
@@ -290,6 +294,8 @@ function fmtMime(fmt) {
   return fmt === 'jpg' ? 'image/jpeg' : fmt === 'webp' ? 'image/webp' : 'image/png';
 }
 function bindDrop(zone, input, cb) {
+  // In-zone "file loaded" confirmation is handled globally by common.js
+  // (initDropZoneFeedback) for every .drop-zone — no per-tool wiring needed here.
   zone.addEventListener('click', () => input.click());
   zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
   zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
@@ -340,16 +346,13 @@ convBtn.addEventListener('click', async () => {
     const st = document.getElementById('cfs' + i);
     st.textContent = 'Converting…'; st.className = 'fi-status st-busy';
     try {
-      let blob;
-      if (isHeic(f)) {
-        const r = await heic2any({ blob: f, toType: mime, quality: q / 100 });
-        blob = Array.isArray(r) ? r[0] : r;
-      } else {
-        const url = URL.createObjectURL(f);
-        const img = await loadImg(url);
-        URL.revokeObjectURL(url);
-        blob = await imgToBlob(img, mime, q);
-      }
+      // HEIC/HEIF → lossless PNG first, then re-encode to the chosen format
+      // via canvas so JPG / PNG / WebP + quality all work uniformly.
+      const src = isHeic(f) ? await heicToPng(f) : f;
+      const url = URL.createObjectURL(src);
+      const img = await loadImg(url);
+      URL.revokeObjectURL(url);
+      const blob = await imgToBlob(img, mime, q);
       dlBlob(blob, noExt(f.name) + '.' + fmt);
       st.textContent = '✓ ' + fmtSz(blob.size);
       st.className = 'fi-status st-ok';
