@@ -176,13 +176,13 @@
     <div class="tab-pane active" id="buildTab">
       <p style="font-size:.84rem;color:var(--text-muted);margin-bottom:.6rem">
         Combine PDFs and images into one PDF, reorder pages freely, then download.
-        Supports <strong>PDF · JPG · PNG · WebP</strong>.
+        Supports <strong>PDF · JPG · PNG · WebP · HEIC/HEIF (iPhone)</strong>.
       </p>
 
       <div class="drop-zone" id="buildDrop">
         Drop PDFs or images here or <strong>click to browse</strong>
         <p style="font-size:.77rem;margin:.25rem 0 0">Multiple files — mix PDFs and images freely</p>
-        <input type="file" id="buildFiles" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" multiple>
+        <input type="file" id="buildFiles" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif" multiple>
       </div>
 
       <div id="buildSourceList" class="merge-list" style="display:none"></div>
@@ -440,11 +440,15 @@ bindDrop(
 async function handleBuildFiles(fileList) {
   const files = Array.from(fileList).filter(f =>
     f.type === 'application/pdf' || ACCEPTED_IMG.has(f.type) ||
-    /\.(pdf|jpe?g|png|webp)$/i.test(f.name)
+    otIsHeic(f) || /\.(pdf|jpe?g|png|webp)$/i.test(f.name)
   );
   if (!files.length) return;
   const startIdx = buildSources.length;
-  for (const file of files) {
+  for (let file of files) {
+    // iPhone HEIC/HEIF → PNG File in-browser (shared helper) before it enters the pipeline
+    if (otIsHeic(file)) {
+      try { file = await otNormalizeImage(file); } catch (e) { continue; }
+    }
     const isImg = file.type.startsWith('image/') || /\.(jpe?g|png|webp)$/i.test(file.name);
     buildSources.push({ file, type: isImg ? 'image' : 'pdf', pageCount: isImg ? 1 : 0 });
     buildPdfjsDocs.push(null);

@@ -107,7 +107,7 @@
           <div id="uploadPane" style="display:none">
             <div class="drop-zone" id="sigDrop" style="padding:1.2rem">
               Drop a signature image (PNG with transparency works best)
-              <input type="file" id="sigFile" accept="image/png,image/jpeg,image/webp">
+              <input type="file" id="sigFile" accept="image/png,image/jpeg,image/webp,image/heic,image/heif,.heic,.heif">
             </div>
             <div class="type-prev" id="sigPrev" style="margin-top:.5rem;display:none"></div>
           </div>
@@ -248,7 +248,8 @@ renderTyped();
 // Upload signature
 const sigPrev = el('sigPrev');
 bindDrop(el('sigDrop'), el('sigFile'), async files => {
-  const f = files[0]; if (!f) return;
+  let f = files[0]; if (!f) return;
+  try { f = await otNormalizeImage(f); } catch (e) { return; }   // iPhone HEIC → PNG in-browser
   const url = URL.createObjectURL(f);
   sigPrev.style.display = 'flex';
   sigPrev.innerHTML = `<img src="${url}" style="max-height:80px;max-width:100%">`;

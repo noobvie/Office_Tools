@@ -796,3 +796,48 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.appendChild(btn);
   }
 });
+
+/* ---------- iPhone HEIC/HEIF support (shared) ----------------------------------
+   Browsers (except Safari) can't natively decode Apple's HEIC/HEIF photos, so any
+   tool that accepts an image should route user files through otNormalizeImage()
+   first. Decoding is done fully in-browser via libheif (the `heic-to` library),
+   which is lazy-injected the first time a HEIC file is actually seen — pages that
+   never receive one pay nothing. The original HEIC File is not retained; only the
+   converted PNG Blob is returned, so nothing is uploaded and no temp copy lingers. */
+const OT_HEIC_SRC = 'https://cdn.jsdelivr.net/npm/heic-to@1.5.2/dist/iife/heic-to.js';
+let _otHeicLoader = null;
+
+function otIsHeic(f) {
+  return !!f && (f.type === 'image/heic' || f.type === 'image/heif'
+    || /\.(heic|heif)$/i.test(f.name || ''));
+}
+
+function otLoadHeic() {
+  if (window.HeicTo) return Promise.resolve();
+  if (_otHeicLoader) return _otHeicLoader;
+  _otHeicLoader = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = OT_HEIC_SRC;
+    s.onload  = () => resolve();
+    s.onerror = () => { _otHeicLoader = null; reject(new Error('Could not load the HEIC decoder')); };
+    document.head.appendChild(s);
+  });
+  return _otHeicLoader;
+}
+
+/* HEIC/HEIF File → lossless PNG File (in-browser). Rejects if decode fails.
+   Returns a File (not a bare Blob) with a .png name + image/png type so callers
+   that rely on file.name / extension detection keep working unchanged. */
+async function otHeicToPng(f) {
+  await otLoadHeic();
+  const out  = await HeicTo({ blob: f, type: 'image/png' });
+  const blob = Array.isArray(out) ? out[0] : out;   // heic-to may return an array for multi-image files
+  const name = (f.name || 'image').replace(/\.[^.]+$/, '') + '.png';
+  return new File([blob], name, { type: 'image/png' });
+}
+
+/* Pass any user-picked image File; returns a browser-decodable File/Blob.
+   HEIC/HEIF is converted to PNG, everything else is returned untouched. */
+async function otNormalizeImage(f) {
+  return otIsHeic(f) ? await otHeicToPng(f) : f;
+}

@@ -63,7 +63,7 @@
     <div class="drop-zone" id="drop">
       Drop an image here or <strong>click to browse</strong>
       <p style="font-size:.77rem;margin:.25rem 0 0">JPG · PNG · WebP</p>
-      <input type="file" id="file" accept="image/png,image/jpeg,image/webp">
+      <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif,.heic,.heif">
     </div>
 
     <div id="controls" style="display:none">
@@ -143,8 +143,9 @@ el('modeRow').addEventListener('click', e => {
 el('strength').addEventListener('input', () => el('strengthV').textContent = el('strength').value);
 
 bindDrop(drop, fileEl, async files => {
-  const f = files[0]; if (!f) return;
+  let f = files[0]; if (!f) return;
   srcName = noExt(f.name);
+  try { f = await otNormalizeImage(f); } catch (e) { statusEl.textContent = 'Could not read this image.'; return; }   // iPhone HEIC → PNG
   baseImg = await loadImg(URL.createObjectURL(f));
   view.width = baseImg.naturalWidth; view.height = baseImg.naturalHeight;
   view.getContext('2d').drawImage(baseImg, 0, 0);

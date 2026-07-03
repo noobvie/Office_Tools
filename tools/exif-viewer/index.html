@@ -65,7 +65,7 @@
       <div><strong>Click or drop a photo</strong> (JPG/PNG/HEIC/TIFF)</div>
       <div style="font-size:.8rem;margin-top:.3rem">Processed locally — never uploaded</div>
     </div>
-    <input type="file" id="file" accept="image/*" hidden>
+    <input type="file" id="file" accept="image/*,.heic,.heif" hidden>
   </div>
 
   <div class="card mt-2" id="resultCard" style="display:none">
@@ -101,7 +101,8 @@
 <script>
 const $ = id => document.getElementById(id);
 function escHtml(s){ return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-let currentFile = null;
+let currentFile = null;   // original upload — parsed by exifr (handles HEIC metadata)
+let displayFile = null;   // browser-decodable copy for preview + strip (HEIC → PNG)
 
 const LABELS = {
   Make:'Camera make', Model:'Camera model', LensModel:'Lens', FNumber:'Aperture (f)',
@@ -121,10 +122,16 @@ function fmtVal(k, v) {
 
 async function handle(file) {
   currentFile = file;
-  $('prev').src = URL.createObjectURL(file);
+  displayFile = file;
   $('resultCard').style.display = '';
   $('gpsWarn').innerHTML = '';
   $('exifTable').innerHTML = '<div class="empty">Reading metadata…</div>';
+  // HEIC/HEIF can't be shown or canvas-stripped natively — decode a PNG copy for that,
+  // but keep the ORIGINAL file for exifr so the real EXIF/GPS is still read.
+  if (otIsHeic(file)) {
+    try { displayFile = await otNormalizeImage(file); } catch (e) { displayFile = file; }
+  }
+  $('prev').src = URL.createObjectURL(displayFile);
 
   if (typeof exifr === 'undefined') { $('exifTable').innerHTML = '<div class="empty">Metadata library failed to load (offline?).</div>'; return; }
   let data = null;
@@ -164,7 +171,7 @@ $('stripBtn').addEventListener('click', () => {
     cv.width = img.naturalWidth; cv.height = img.naturalHeight;
     cv.getContext('2d').drawImage(img, 0, 0);
     // re-encode as JPEG/PNG → drops all metadata
-    const isPng = /png$/i.test(currentFile.type);
+    const isPng = /png$/i.test(displayFile.type);
     cv.toBlob(blob => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -173,9 +180,9 @@ $('stripBtn').addEventListener('click', () => {
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     }, isPng ? 'image/png' : 'image/jpeg', 0.95);
   };
-  img.src = URL.createObjectURL(currentFile);
+  img.src = URL.createObjectURL(displayFile);
 });
-$('resetBtn').addEventListener('click', () => { $('resultCard').style.display = 'none'; $('file').value = ''; currentFile = null; });
+$('resetBtn').addEventListener('click', () => { $('resultCard').style.display = 'none'; $('file').value = ''; currentFile = null; displayFile = null; });
 
 $('drop').addEventListener('click', () => $('file').click());
 $('drop').addEventListener('dragover', e => { e.preventDefault(); $('drop').classList.add('over'); });
