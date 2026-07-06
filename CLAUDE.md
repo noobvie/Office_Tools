@@ -105,6 +105,17 @@ Four themes: `light` → `dark` → `matrix` → `anime`. Set via `data-theme` o
 
 IPv6 addresses are accepted with or without brackets (`[::1]` and `::1`); strip brackets with `.replace(/^\[|\]$/g, '')` before use.
 
+**File Drop (`tools/file-drop/`) — WebSocket signaling at `/drop-ws`** (public URL
+`wss://<domain>/tools-api/drop-ws`; dedicated `location = /tools-api/drop-ws` in deploy.sh adds
+the Upgrade headers the generic `/tools-api/` block lacks). Uses the `ws` package attached to the
+`app.listen` server handle (`attachDropSignaling`). Pure handshake relay: SDP/ICE JSON only — file
+bytes go browser↔browser over WebRTC DataChannels and never touch the server. Peers are grouped by
+public IP (`CF-Connecting-IP` first — behind Cloudflare the socket IP is a CF edge) plus optional
+6-digit room codes for cross-network pairing. Server pings every 30 s (Cloudflare idles silent
+WebSockets out at ~100 s). Large incoming files stream to disk via the page-scoped service worker
+`tools/file-drop/sw.js` (virtual `dl/<id>` URLs, ack-based backpressure); no-SW/iOS falls back to
+an in-memory Blob (warn >1 GB).
+
 **IP-echo family-pinned subdomains (`ip4.<apex>` / `ip6.<apex>`) — the "both v4+v6" feature.**
 A single hostname can only ever report the address family the connection physically arrived on
 (one TCP connection = one family). To let a browser learn BOTH its IPv4 and IPv6, `deploy.sh`

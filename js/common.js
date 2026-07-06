@@ -363,6 +363,7 @@ const OT_TOOLS = [
   { name: 'Subnet Calculator',       path: 'subnet-calculator',     cat: '🌐 Network & Web',        icon: '🧮', desc: 'CIDR subnet — network address, mask, host range and total' },
   { name: 'Website Up or Down',      path: 'website-status',        cat: '🌐 Network & Web',        icon: '🔌', desc: 'Check if a website is up or down — HTTP status, response time, SSL' },
   { name: 'Web Proxy',               path: 'web-proxy',             cat: '🌐 Network & Web',        icon: '🛡️', desc: 'View blocked or geo-restricted pages through an online proxy' },
+  { name: 'File Drop',               path: 'file-drop',             cat: '🌐 Network & Web',        icon: '📡', desc: 'AirDrop for any OS — send files device-to-device, peer-to-peer, no upload', isNew: true },
   // 📤 Share
   { name: 'URL Shortener',           path: 'url-shortener',         cat: '📤 Share',                icon: '🔗', desc: 'Create short links with optional custom alias and expiry' },
   { name: 'Pastebin',                path: 'pastebin',              cat: '📤 Share',                icon: '📋', desc: 'Share code and text via private link with burn-after-read' },

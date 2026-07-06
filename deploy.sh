@@ -459,6 +459,18 @@ server {
 
     location / { try_files \$uri/index.html \$uri \$uri.html =404; }
 
+    # File Drop signaling — WebSocket upgrade (exact match wins over ^~ /tools-api/)
+    location = /tools-api/drop-ws {
+        proxy_pass            http://127.0.0.1:3001/drop-ws;
+        proxy_http_version    1.1;
+        proxy_set_header      Upgrade           \$http_upgrade;
+        proxy_set_header      Connection        "upgrade";
+        proxy_set_header      Host              \$host;
+        proxy_set_header      X-Real-IP         \$remote_addr;
+        proxy_set_header      X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_read_timeout    1h;
+        proxy_send_timeout    1h;
+    }
     location ^~ /tools-api/ {
         proxy_pass            http://127.0.0.1:3001/;
         proxy_http_version    1.1;
@@ -561,6 +573,18 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
+    # File Drop signaling — WebSocket upgrade (exact match wins over ^~ /tools-api/)
+    location = /tools-api/drop-ws {
+        proxy_pass            http://127.0.0.1:3001/drop-ws;
+        proxy_http_version    1.1;
+        proxy_set_header      Upgrade           \$http_upgrade;
+        proxy_set_header      Connection        "upgrade";
+        proxy_set_header      Host              \$host;
+        proxy_set_header      X-Real-IP         \$remote_addr;
+        proxy_set_header      X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_read_timeout    1h;
+        proxy_send_timeout    1h;
+    }
     location ^~ /tools-api/ {
         proxy_pass            http://127.0.0.1:3001/;
         proxy_http_version    1.1;
@@ -815,7 +839,7 @@ show_banner() {
     clear
     echo ""
     echo -e "${BOLD}${CYAN}╔═══════════════════════════════════════════════════════╗${RESET}"
-    echo -e "${BOLD}${CYAN}║       Office Tools — Deploy Manager  v2026.06.14      ║${RESET}"
+    echo -e "${BOLD}${CYAN}║       Office Tools — Deploy Manager  v2026.07.06      ║${RESET}"
     echo -e "${BOLD}${CYAN}║       github.com/noobvie/Office_Tools                 ║${RESET}"
     echo -e "${BOLD}${CYAN}╚═══════════════════════════════════════════════════════╝${RESET}"
     echo ""
