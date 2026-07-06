@@ -363,6 +363,7 @@ const OT_TOOLS = [
   { name: 'Subnet Calculator',       path: 'subnet-calculator',     cat: '🌐 Network & Web',        icon: '🧮', desc: 'CIDR subnet — network address, mask, host range and total' },
   { name: 'Website Up or Down',      path: 'website-status',        cat: '🌐 Network & Web',        icon: '🔌', desc: 'Check if a website is up or down — HTTP status, response time, SSL' },
   { name: 'Web Proxy',               path: 'web-proxy',             cat: '🌐 Network & Web',        icon: '🛡️', desc: 'View blocked or geo-restricted pages through an online proxy' },
+  { name: 'File Drop',               path: 'file-drop',             cat: '🌐 Network & Web',        icon: '📡', desc: 'AirDrop for any OS — send files device-to-device, peer-to-peer, no upload', isNew: true },
   // 📤 Share
   { name: 'URL Shortener',           path: 'url-shortener',         cat: '📤 Share',                icon: '🔗', desc: 'Create short links with optional custom alias and expiry' },
   { name: 'Pastebin',                path: 'pastebin',              cat: '📤 Share',                icon: '📋', desc: 'Share code and text via private link with burn-after-read' },
@@ -692,6 +693,39 @@ function openFeedbackModal() {
   });
 }
 
+/* ---------- Drop-zone upload feedback (global, all tools) ----------
+   Every upload tool renders a `.drop-zone` containing a file <input>. Rather than
+   duplicate confirmation UX in each tool, we bind once here: when a file is picked
+   or dropped, tag the zone `.has-files` and inject a clear "✓ … loaded" hint so users
+   never wonder whether the upload registered. Purely additive — the tool's own file
+   handler still runs untouched. Opt out on a zone with `data-ot-noauto`. */
+function otFmtSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+  return (b / 1048576).toFixed(2) + ' MB';
+}
+function otMarkZoneLoaded(zone, files) {
+  if (!files || !files.length) return;
+  zone.classList.add('has-files');
+  let hint = zone.querySelector('.dz-hint');
+  if (!hint) { hint = document.createElement('div'); hint.className = 'dz-hint'; zone.appendChild(hint); }
+  // textContent (never innerHTML) — filenames are untrusted input.
+  hint.textContent = files.length === 1
+    ? '✓ ' + files[0].name + ' — ' + otFmtSize(files[0].size)
+    : '✓ ' + files.length + ' files loaded';
+}
+function initDropZoneFeedback() {
+  document.querySelectorAll('.drop-zone').forEach(zone => {
+    if (zone.dataset.otFeedback || zone.hasAttribute('data-ot-noauto')) return;
+    zone.dataset.otFeedback = '1';
+    const input = zone.querySelector('input[type=file]');
+    if (input) input.addEventListener('change', () => otMarkZoneLoaded(zone, input.files));
+    zone.addEventListener('drop', e => {
+      if (e.dataTransfer) otMarkZoneLoaded(zone, e.dataTransfer.files);
+    });
+  });
+}
+
 /* ---------- Auto-init on DOMContentLoaded ---------- */
 document.addEventListener('DOMContentLoaded', () => {
   // Inject favicon once — path derived from common.js script URL so it works at any depth
@@ -712,6 +746,7 @@ document.addEventListener('DOMContentLoaded', () => {
   autoRelatedTools();
   trackToolView();
   initSupportPill();
+  initDropZoneFeedback();
 
   // Ctrl+K / Cmd+K → focus the header search wherever it exists
   document.addEventListener('keydown', e => {
@@ -762,3 +797,48 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.appendChild(btn);
   }
 });
+
+/* ---------- iPhone HEIC/HEIF support (shared) ----------------------------------
+   Browsers (except Safari) can't natively decode Apple's HEIC/HEIF photos, so any
+   tool that accepts an image should route user files through otNormalizeImage()
+   first. Decoding is done fully in-browser via libheif (the `heic-to` library),
+   which is lazy-injected the first time a HEIC file is actually seen — pages that
+   never receive one pay nothing. The original HEIC File is not retained; only the
+   converted PNG Blob is returned, so nothing is uploaded and no temp copy lingers. */
+const OT_HEIC_SRC = 'https://cdn.jsdelivr.net/npm/heic-to@1.5.2/dist/iife/heic-to.js';
+let _otHeicLoader = null;
+
+function otIsHeic(f) {
+  return !!f && (f.type === 'image/heic' || f.type === 'image/heif'
+    || /\.(heic|heif)$/i.test(f.name || ''));
+}
+
+function otLoadHeic() {
+  if (window.HeicTo) return Promise.resolve();
+  if (_otHeicLoader) return _otHeicLoader;
+  _otHeicLoader = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = OT_HEIC_SRC;
+    s.onload  = () => resolve();
+    s.onerror = () => { _otHeicLoader = null; reject(new Error('Could not load the HEIC decoder')); };
+    document.head.appendChild(s);
+  });
+  return _otHeicLoader;
+}
+
+/* HEIC/HEIF File → lossless PNG File (in-browser). Rejects if decode fails.
+   Returns a File (not a bare Blob) with a .png name + image/png type so callers
+   that rely on file.name / extension detection keep working unchanged. */
+async function otHeicToPng(f) {
+  await otLoadHeic();
+  const out  = await HeicTo({ blob: f, type: 'image/png' });
+  const blob = Array.isArray(out) ? out[0] : out;   // heic-to may return an array for multi-image files
+  const name = (f.name || 'image').replace(/\.[^.]+$/, '') + '.png';
+  return new File([blob], name, { type: 'image/png' });
+}
+
+/* Pass any user-picked image File; returns a browser-decodable File/Blob.
+   HEIC/HEIF is converted to PNG, everything else is returned untouched. */
+async function otNormalizeImage(f) {
+  return otIsHeic(f) ? await otHeicToPng(f) : f;
+}

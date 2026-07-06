@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Drop — Send Files Between Devices, Like AirDrop for Any OS | Office Tools</title>
+  <meta name="description" content="Send files and text between any two devices — Windows, macOS, Linux, Android, iPhone — right in the browser. Like AirDrop, but cross-platform: peer-to-peer WebRTC transfer, end-to-end encrypted, files are never uploaded to a server. Same Wi-Fi auto-discovery or 6-digit code for remote devices. Free, no login, no install.">
+  <meta name="keywords" content="file drop, airdrop alternative, send file mac to windows, cross platform file transfer, browser file transfer, p2p file sharing, webrtc file transfer, snapdrop alternative, pairdrop alternative, share files between devices, phone to pc file transfer, local file sharing, wifi file transfer, no upload file sharing, encrypted file transfer">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="File Drop — Send Files Between Devices, Like AirDrop for Any OS">
+  <meta property="og:description" content="Peer-to-peer file transfer between Windows, macOS, Linux, Android and iPhone in the browser. Files go device-to-device, never through a server. Free, no login.">
+  <meta property="og:url" content="https://tools.grin.money/tools/file-drop/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="File Drop — Send Files Between Devices, Like AirDrop for Any OS">
+  <meta name="twitter:description" content="Peer-to-peer file transfer between Windows, macOS, Linux, Android and iPhone in the browser. Files go device-to-device, never through a server.">
+  <link rel="canonical" href="https://tools.grin.money/tools/file-drop/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"File Drop","description":"Send files and text between any two devices — Windows, macOS, Linux, Android, iPhone — peer-to-peer in the browser. Like AirDrop, but cross-platform.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/file-drop/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    /* ── Own-device banner ── */
+    .fd-me {
+      display: flex;
+      align-items: center;
+      gap: .8rem;
+      flex-wrap: wrap;
+    }
+    .fd-me-avatar {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem;
+      background: var(--primary-dim, color-mix(in srgb, var(--primary) 14%, transparent));
+      border: 2px solid var(--primary);
+      flex-shrink: 0;
+    }
+    .fd-me-name  { font-weight: 700; font-size: 1.05rem; }
+    .fd-me-sub   { font-size: .8rem; color: var(--text-muted); }
+    .fd-status {
+      display: inline-flex; align-items: center; gap: .35rem;
+      margin-left: auto;
+      font-size: .78rem; color: var(--text-muted);
+      white-space: nowrap;
+    }
+    .fd-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; }
+    .fd-dot.on  { background: #4caf8e; box-shadow: 0 0 6px #4caf8e; }
+    .fd-dot.off { background: var(--danger, #e05260); }
+
+    /* ── Peers grid ── */
+    .fd-peers {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: .8rem;
+      margin-top: .8rem;
+    }
+    .fd-peer {
+      display: flex; flex-direction: column; align-items: center;
+      gap: .35rem;
+      padding: .9rem .5rem .75rem;
+      background: var(--bg-secondary);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      text-align: center;
+      transition: border-color var(--transition), transform var(--transition);
+      user-select: none;
+    }
+    .fd-peer:hover { border-color: var(--primary); transform: translateY(-2px); }
+    .fd-peer-avatar {
+      width: 46px; height: 46px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.45rem;
+      background: var(--bg-card);
+      border: 2px solid var(--primary);
+    }
+    .fd-peer-name { font-weight: 700; font-size: .84rem; line-height: 1.2; }
+    .fd-peer-dev  { font-size: .7rem; color: var(--text-muted); }
+    .fd-empty {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: .86rem;
+      padding: 1.4rem .8rem;
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius);
+      margin-top: .8rem;
+      line-height: 1.55;
+    }
+
+    /* ── Pairing card ── */
+    .fd-pair-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: .6rem;
+    }
+    @media (max-width: 620px) { .fd-pair-grid { grid-template-columns: 1fr; } }
+    .fd-pair-box {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .9rem;
+      text-align: center;
+    }
+    .fd-pair-title { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); margin-bottom: .6rem; }
+    .fd-code {
+      font-family: 'Courier New', monospace;
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: .35em;
+      color: var(--primary);
+      margin: .4rem 0;
+      user-select: all;
+    }
+    .fd-code-input {
+      width: 9.5rem;
+      max-width: 100%;
+      font-family: 'Courier New', monospace;
+      font-size: 1.3rem;
+      letter-spacing: .3em;
+      text-align: center;
+      padding: .45rem .5rem;
+      border-radius: var(--radius);
+      border: 1.5px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text);
+      outline: none;
+    }
+    .fd-code-input:focus { border-color: var(--primary); }
+    .fd-room-badge {
+      display: none;
+      align-items: center; justify-content: center;
+      gap: .5rem;
+      margin-top: .8rem;
+      font-size: .82rem;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+    }
+    .fd-room-badge.visible { display: flex; }
+    .fd-pair-err { color: var(--danger, #e05260); font-size: .78rem; min-height: 1.1em; margin-top: .35rem; }
+
+    /* ── Transfers ── */
+    #transfersCard { display: none; }
+    .fd-tr {
+      display: flex;
+      align-items: center;
+      gap: .7rem;
+      padding: .6rem 0;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .fd-tr:last-child { border-bottom: none; }
+    .fd-tr-icon { font-size: 1.15rem; flex-shrink: 0; }
+    .fd-tr-main { flex: 1; min-width: 200px; }
+    .fd-tr-name { font-weight: 600; font-size: .86rem; word-break: break-all; }
+    .fd-tr-sub  { font-size: .74rem; color: var(--text-muted); margin-top: .1rem; }
+    .fd-tr-bar  { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 50px; height: 8px; overflow: hidden; margin-top: .35rem; }
+    .fd-tr-fill { height: 100%; background: var(--primary); border-radius: 50px; width: 0%; transition: width .15s linear; }
+    .fd-tr-fill.done { background: #4caf8e; }
+    .fd-tr-fill.err  { background: var(--danger, #e05260); }
+    .fd-tr-cancel {
+      background: transparent; border: 1.5px solid var(--border);
+      color: var(--text-muted); border-radius: 50px;
+      font-size: .72rem; padding: .2rem .7rem; cursor: pointer;
+      transition: all var(--transition);
+    }
+    .fd-tr-cancel:hover { border-color: var(--danger, #e05260); color: var(--danger, #e05260); }
+
+    /* ── Overlay / modals ── */
+    .fd-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.55);
+      z-index: 1000;
+      align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .fd-overlay.visible { display: flex; }
+    .fd-modal {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.3rem;
+      max-width: 460px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    .fd-modal h3 { margin: 0 0 .7rem; font-size: 1.02rem; }
+    .fd-modal-files { font-size: .84rem; margin: .5rem 0 .8rem; }
+    .fd-modal-files li { margin: .2rem 0; word-break: break-all; }
+    .fd-modal-btns { display: flex; gap: .6rem; justify-content: flex-end; flex-wrap: wrap; margin-top: .9rem; }
+    .fd-modal textarea {
+      width: 100%; box-sizing: border-box;
+      min-height: 110px;
+      background: var(--bg-secondary);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      padding: .6rem .7rem;
+      font-size: .9rem;
+      font-family: inherit;
+      outline: none;
+      resize: vertical;
+    }
+    .fd-modal textarea:focus { border-color: var(--primary); }
+    .fd-text-view {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .7rem .8rem;
+      font-size: .9rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 45vh;
+      overflow-y: auto;
+    }
+    .fd-modal-warn { font-size: .78rem; color: var(--danger, #e05260); margin-top: .5rem; }
+    .btn-decline { background: transparent; border: 1.5px solid var(--border); color: var(--text-muted); }
+    .btn-decline:hover { border-color: var(--danger, #e05260); color: var(--danger, #e05260); }
+
+    .note-box {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--primary);
+      border-radius: var(--radius);
+      padding: .65rem .9rem;
+      font-size: .82rem;
+      color: var(--text-muted);
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo">← Office Tools</a>
+  <div style="flex:1"></div>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <div class="tool-header-icon">📡</div>
+    <div>
+      <h1 class="tool-title">File Drop</h1>
+      <p class="tool-desc">Send files and text between any two devices — like AirDrop, but it works across Windows, macOS, Linux, Android and iPhone. Peer-to-peer and end-to-end encrypted: files travel directly between your devices and are never uploaded to a server.</p>
+    </div>
+  </div>
+
+<section class="tool-about">
+  <h2>About File Drop</h2>
+  <p><strong>File Drop is a cross-platform AirDrop alternative</strong> that runs entirely in the browser — nothing to install on either device. Open this page on both devices: if they share the same Wi-Fi or network they discover each other automatically; for a device somewhere else, pair with a <strong>6-digit code</strong>.</p>
+  <p>Transfers use <strong>WebRTC peer-to-peer connections</strong>: the file streams directly from one device to the other, end-to-end encrypted (DTLS). Our server only brokers the initial handshake — a few KB of connection metadata — and <strong>never sees, stores or relays your files</strong>. On the same network, data never even leaves your LAN, so large files move at local network speed.</p>
+  <p>Send documents from a <strong>MacBook to a Windows PC</strong>, photos from your <strong>phone to your laptop</strong>, or paste a link to another device with the text-message option. File size is limited only by the receiving device's disk space in modern Chromium browsers; both tabs must stay open during a transfer.</p>
+</section>
+
+  <!-- Your device -->
+  <div class="card">
+    <div class="fd-me">
+      <div class="fd-me-avatar" id="meAvatar">📡</div>
+      <div>
+        <div class="fd-me-name" id="meName">Connecting…</div>
+        <div class="fd-me-sub" id="meDevice"></div>
+      </div>
+      <div class="fd-status"><span class="fd-dot" id="statusDot"></span><span id="statusText">connecting…</span></div>
+    </div>
+  </div>
+
+  <!-- Nearby devices -->
+  <div class="card">
+    <div class="field-label">Devices that can see you <span style="font-weight:400;color:var(--text-muted);font-size:.78rem">(tap one to send)</span></div>
+    <div class="fd-peers" id="peerGrid" style="display:none"></div>
+    <div class="fd-empty" id="peerEmpty">
+      🔭 No devices found yet.<br>
+      Open <strong>tools.grin.money/tools/file-drop</strong> on your other device on the <strong>same Wi-Fi / network</strong> — it will appear here.<br>
+      Device elsewhere? Use a pairing code below.
+    </div>
+  </div>
+
+  <!-- Remote pairing -->
+  <div class="card">
+    <div class="field-label">Pair a remote device <span style="font-weight:400;color:var(--text-muted);font-size:.78rem">(different network — e.g. Mac at home, PC at work)</span></div>
+    <div class="fd-pair-grid">
+      <div class="fd-pair-box">
+        <div class="fd-pair-title">On this device</div>
+        <button class="btn btn-primary" id="getCodeBtn" onclick="createRoom()">🔑 Get a pairing code</button>
+        <div class="fd-code" id="roomCodeView" style="display:none"></div>
+        <div style="font-size:.75rem;color:var(--text-muted)" id="roomCodeHint"></div>
+      </div>
+      <div class="fd-pair-box">
+        <div class="fd-pair-title">On the other device</div>
+        <input class="fd-code-input" id="joinCodeInput" inputmode="numeric" maxlength="6" placeholder="······" autocomplete="off">
+        <div style="margin-top:.6rem"><button class="btn btn-primary" onclick="joinRoom()">Join</button></div>
+        <div class="fd-pair-err" id="joinErr"></div>
+      </div>
+    </div>
+    <div class="fd-room-badge" id="roomBadge">
+      <span>🔗 Paired via code <strong id="roomBadgeCode"></strong></span>
+      <button class="fd-tr-cancel" onclick="leaveRoom()">Unpair</button>
+    </div>
+  </div>
+
+  <!-- Transfers -->
+  <div class="card" id="transfersCard">
+    <div class="field-label">Transfers</div>
+    <div id="transferList"></div>
+  </div>
+
+  <div class="note-box">
+    🔒 <strong>Privacy:</strong> files go directly device-to-device over an encrypted WebRTC channel — they are never uploaded to, stored on, or readable by this website's server. Only devices on your network (or holding your pairing code) can see you. Keep both tabs open until a transfer finishes.
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">airdrop for windows</span>
+  <span class="page-tag">mac to windows file transfer</span>
+  <span class="page-tag">p2p file sharing</span>
+  <span class="page-tag">phone to pc transfer</span>
+  <span class="page-tag">no upload file share</span>
+  <span class="page-tag">webrtc file transfer</span>
+  <span class="page-tag">local wifi file sharing</span>
+  <span class="page-tag">encrypted file transfer</span>
+</div>
+</main>
+
+<!-- hidden file picker -->
+<input type="file" id="filePicker" multiple hidden>
+
+<!-- Peer action chooser -->
+<div class="fd-overlay" id="actionOverlay">
+  <div class="fd-modal">
+    <h3 id="actionTitle">Send to device</h3>
+    <div class="fd-modal-btns" style="justify-content:center">
+      <button class="btn btn-primary" onclick="chooseSendFiles()">📁 Send files</button>
+      <button class="btn btn-primary" onclick="chooseSendText()">💬 Send a message</button>
+      <button class="btn btn-decline" onclick="closeOverlay('actionOverlay')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Incoming files offer -->
+<div class="fd-overlay" id="offerOverlay">
+  <div class="fd-modal">
+    <h3 id="offerTitle">Incoming files</h3>
+    <ul class="fd-modal-files" id="offerFiles"></ul>
+    <div style="font-size:.8rem;color:var(--text-muted)" id="offerTotal"></div>
+    <div class="fd-modal-warn" id="offerWarn" style="display:none"></div>
+    <div class="fd-modal-btns">
+      <button class="btn btn-decline" onclick="answerOffer(false)">Decline</button>
+      <button class="btn btn-primary" onclick="answerOffer(true)">✅ Accept</button>
+    </div>
+  </div>
+</div>
+
+<!-- Send text -->
+<div class="fd-overlay" id="textSendOverlay">
+  <div class="fd-modal">
+    <h3 id="textSendTitle">Send a message</h3>
+    <textarea id="textSendInput" maxlength="10000" placeholder="Type or paste text, a link, a note…"></textarea>
+    <div class="fd-modal-btns">
+      <button class="btn btn-decline" onclick="closeOverlay('textSendOverlay')">Cancel</button>
+      <button class="btn btn-primary" onclick="sendTextNow()">📤 Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- Received text -->
+<div class="fd-overlay" id="textRecvOverlay">
+  <div class="fd-modal">
+    <h3 id="textRecvTitle">💬 Message received</h3>
+    <div class="fd-text-view" id="textRecvBody"></div>
+    <div class="fd-modal-btns">
+      <button class="btn btn-primary" id="textCopyBtn">📋 Copy</button>
+      <button class="btn btn-decline" onclick="closeOverlay('textRecvOverlay')">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+'use strict';
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function fmtSize(b) {
+  if (!Number.isFinite(b)) return '?';
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  if (b < 1073741824) return (b/1048576).toFixed(1) + ' MB';
+  return (b/1073741824).toFixed(2) + ' GB';
+}
+
+/* ── Own device identity ── */
+function deviceInfo() {
+  const ua = navigator.userAgent;
+  let os = 'Device', icon = '🖥️';
+  if (/iPhone|iPad|iPod/i.test(ua))  { os = 'iOS';     icon = '📱'; }
+  else if (/Android/i.test(ua))      { os = 'Android'; icon = '📱'; }
+  else if (/Windows/i.test(ua))      { os = 'Windows'; icon = '🖥️'; }
+  else if (/Mac OS X/i.test(ua))     { os = 'macOS';   icon = '💻'; }
+  else if (/Linux/i.test(ua))        { os = 'Linux';   icon = '🖥️'; }
+  let br = 'Browser';
+  if (/Edg\//.test(ua)) br = 'Edge';
+  else if (/OPR\//.test(ua)) br = 'Opera';
+  else if (/Chrome\//.test(ua)) br = 'Chrome';
+  else if (/Firefox\//.test(ua)) br = 'Firefox';
+  else if (/Safari\//.test(ua)) br = 'Safari';
+  return { label: `${os} · ${br}`, icon, os };
+}
+const MY_DEVICE = deviceInfo();
+const IS_IOS = MY_DEVICE.os === 'iOS';
+document.getElementById('meAvatar').textContent = MY_DEVICE.icon;
+document.getElementById('meDevice').textContent = MY_DEVICE.label;
+
+/* ── Service worker (streaming downloads to disk) ── */
+let swReady = false;
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(() => {
+    // controller is null on the very first load (before claim) — re-check lazily at transfer time
+    swReady = true;
+  }).catch(() => { swReady = false; });
+}
+function canStream() {
+  return swReady && !IS_IOS && !!navigator.serviceWorker?.controller;
+}
+
+/* ── Signaling (WebSocket) ── */
+let ws = null, myId = null, myName = null, myRoom = null;
+let peers = new Map();            // id → {id,name,device}
+let wsRetry = 0;
+
+function wsUrl() {
+  return API.replace(/^http/, 'ws').replace(/\/+$/, '') + '/drop-ws';
+}
+function wsSend(obj) {
+  if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
+}
+function setStatus(on, text) {
+  const dot = document.getElementById('statusDot');
+  dot.className = 'fd-dot ' + (on ? 'on' : 'off');
+  document.getElementById('statusText').textContent = text;
+}
+function connectWS() {
+  setStatus(false, 'connecting…');
+  try { ws = new WebSocket(wsUrl()); } catch { scheduleReconnect(); return; }
+  ws.onopen = () => {
+    wsRetry = 0;
+    setStatus(true, 'online');
+    wsSend({ type: 'hello', device: `${MY_DEVICE.icon} ${MY_DEVICE.label}` });
+    if (myRoom) wsSend({ type: 'join-room', code: myRoom }); // survive reconnects
+  };
+  ws.onmessage = e => {
+    let m; try { m = JSON.parse(e.data); } catch { return; }
+    if (m.type === 'you') {
+      myId = m.id; myName = m.name;
+      document.getElementById('meName').textContent = m.name;
+    } else if (m.type === 'peers') {
+      const next = new Map((m.peers || []).map(p => [p.id, p]));
+      // tear down RTC state for peers that vanished
+      for (const id of rtcPeers.keys()) if (!next.has(id)) teardownPeer(id, 'peer left');
+      peers = next;
+      renderPeers();
+    } else if (m.type === 'signal') {
+      onSignal(m.from, m.data);
+    } else if (m.type === 'room') {
+      myRoom = m.code || null;
+      updateRoomUI();
+    } else if (m.type === 'room-error') {
+      myRoom = null;
+      updateRoomUI();
+      document.getElementById('joinErr').textContent = m.message || 'Pairing failed';
+    }
+  };
+  ws.onclose = () => { setStatus(false, 'offline — reconnecting…'); scheduleReconnect(); };
+  ws.onerror  = () => { try { ws.close(); } catch {} };
+}
+function scheduleReconnect() {
+  const delay = Math.min(10000, 800 * Math.pow(2, wsRetry++));
+  setTimeout(connectWS, delay);
+}
+connectWS();
+
+function renderPeers() {
+  const grid = document.getElementById('peerGrid');
+  const empty = document.getElementById('peerEmpty');
+  if (!peers.size) { grid.style.display = 'none'; empty.style.display = 'block'; return; }
+  grid.style.display = 'grid'; empty.style.display = 'none';
+  grid.innerHTML = '';
+  for (const p of peers.values()) {
+    const div = document.createElement('div');
+    div.className = 'fd-peer';
+    const icon = (p.device || '').trim().split(' ')[0] || '🖥️';
+    const dev  = (p.device || '').replace(/^\S+\s*/, '');
+    div.innerHTML = `<div class="fd-peer-avatar">${escHtml(icon)}</div>
+      <div class="fd-peer-name">${escHtml(p.name || 'Device')}</div>
+      <div class="fd-peer-dev">${escHtml(dev)}</div>`;
+    div.onclick = () => openActionMenu(p.id);
+    grid.appendChild(div);
+  }
+}
+
+/* ── Rooms ── */
+function createRoom() { document.getElementById('joinErr').textContent = ''; wsSend({ type: 'create-room' }); }
+function joinRoom() {
+  const code = document.getElementById('joinCodeInput').value.trim();
+  document.getElementById('joinErr').textContent = '';
+  if (!/^\d{6}$/.test(code)) { document.getElementById('joinErr').textContent = 'Enter the 6-digit code'; return; }
+  wsSend({ type: 'join-room', code });
+}
+function leaveRoom() { wsSend({ type: 'leave-room' }); myRoom = null; updateRoomUI(); }
+function updateRoomUI() {
+  const view = document.getElementById('roomCodeView');
+  const hint = document.getElementById('roomCodeHint');
+  const badge = document.getElementById('roomBadge');
+  if (myRoom) {
+    view.style.display = 'block';
+    view.textContent = myRoom;
+    hint.textContent = 'Enter this code on the other device';
+    badge.classList.add('visible');
+    document.getElementById('roomBadgeCode').textContent = myRoom;
+  } else {
+    view.style.display = 'none';
+    hint.textContent = '';
+    badge.classList.remove('visible');
+  }
+}
+document.getElementById('joinCodeInput').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
+
+/* ── WebRTC ── */
+const RTC_CFG = { iceServers: [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] }] };
+const rtcPeers = new Map(); // peerId → {pc, dc, polite, makingOffer, channelPromise, resolveCh, rejectCh, recv, send}
+
+function getPC(peerId) {
+  let p = rtcPeers.get(peerId);
+  if (p) return p;
+  const pc = new RTCPeerConnection(RTC_CFG);
+  p = { pc, dc: null, polite: String(myId) > String(peerId), makingOffer: false,
+        channelPromise: null, resolveCh: null, rejectCh: null, recv: null, send: null };
+  pc.onicecandidate = e => wsSend({ type: 'signal', to: peerId, data: { candidate: e.candidate } });
+  pc.onnegotiationneeded = async () => {
+    try {
+      p.makingOffer = true;
+      await pc.setLocalDescription();
+      wsSend({ type: 'signal', to: peerId, data: { sdp: pc.localDescription } });
+    } catch {} finally { p.makingOffer = false; }
+  };
+  pc.ondatachannel = e => setupChannel(peerId, e.channel);
+  pc.onconnectionstatechange = () => {
+    if (['failed', 'closed'].includes(pc.connectionState)) teardownPeer(peerId, 'connection lost');
+  };
+  rtcPeers.set(peerId, p);
+  return p;
+}
+async function onSignal(from, data) {
+  if (!data) return;
+  const p = getPC(from), pc = p.pc;
+  try {
+    if (data.sdp) {
+      const collision = data.sdp.type === 'offer' && (p.makingOffer || pc.signalingState !== 'stable');
+      if (collision && !p.polite) return;
+      await pc.setRemoteDescription(data.sdp);
+      if (data.sdp.type === 'offer') {
+        await pc.setLocalDescription();
+        wsSend({ type: 'signal', to: from, data: { sdp: pc.localDescription } });
+      }
+    } else if ('candidate' in data) {
+      if (data.candidate) { try { await pc.addIceCandidate(data.candidate); } catch {} }
+    }
+  } catch (err) { console.warn('signal error', err); }
+}
+function ensureChannel(peerId) {
+  const p = getPC(peerId);
+  if (p.dc && p.dc.readyState === 'open') return Promise.resolve(p.dc);
+  if (!p.channelPromise) {
+    p.channelPromise = new Promise((res, rej) => {
+      p.resolveCh = res; p.rejectCh = rej;
+      setTimeout(() => rej(new Error('Could not connect — both networks may be too restrictive.')), 25000);
+    });
+    p.channelPromise.catch(() => {}); // avoid unhandled rejection when nobody awaits yet
+    setupChannel(peerId, p.pc.createDataChannel('drop'));
+  }
+  return p.channelPromise;
+}
+function setupChannel(peerId, dc) {
+  const p = getPC(peerId);
+  p.dc = dc;
+  dc.binaryType = 'arraybuffer';
+  dc.bufferedAmountLowThreshold = 1 << 20; // 1 MB
+  dc.onopen = () => { p.resolveCh?.(dc); };
+  dc.onclose = () => { if (p.dc === dc) teardownPeer(peerId, 'channel closed'); };
+  dc.onmessage = e => {
+    if (typeof e.data === 'string') {
+      let m; try { m = JSON.parse(e.data); } catch { return; }
+      handleControl(peerId, m);
+    } else {
+      handleChunk(peerId, e.data);
+    }
+  };
+}
+function teardownPeer(peerId, reason) {
+  const p = rtcPeers.get(peerId);
+  if (!p) return;
+  rtcPeers.delete(peerId);
+  p.rejectCh?.(new Error(reason || 'disconnected'));
+  if (p.send)  failSession(p.send, reason || 'disconnected');
+  if (p.recv)  { abortRecvSession(p.recv); failSession(p.recv, reason || 'disconnected'); }
+  try { p.dc?.close(); } catch {}
+  try { p.pc.close(); } catch {}
+}
+
+/* ── Transfer UI ── */
+let fidCounter = 0;
+function transferRow(fid, dirIcon, name, subInit) {
+  document.getElementById('transfersCard').style.display = 'block';
+  const list = document.getElementById('transferList');
+  const row = document.createElement('div');
+  row.className = 'fd-tr';
+  row.id = 'tr-' + fid;
+  row.innerHTML = `
+    <div class="fd-tr-icon">${dirIcon}</div>
+    <div class="fd-tr-main">
+      <div class="fd-tr-name">${escHtml(name)}</div>
+      <div class="fd-tr-sub" id="trsub-${fid}">${escHtml(subInit)}</div>
+      <div class="fd-tr-bar"><div class="fd-tr-fill" id="trfill-${fid}"></div></div>
+    </div>
+    <button class="fd-tr-cancel" id="trbtn-${fid}">✖ Cancel</button>`;
+  list.prepend(row);
+  return row;
+}
+function updRow(fid, pct, sub, cls) {
+  const fill = document.getElementById('trfill-' + fid);
+  const subEl = document.getElementById('trsub-' + fid);
+  if (fill) { fill.style.width = Math.min(100, pct) + '%'; if (cls) fill.classList.add(cls); }
+  if (subEl) subEl.textContent = sub;
+}
+function rowDone(fid, sub, ok) {
+  updRow(fid, 100, sub, ok ? 'done' : 'err');
+  const btn = document.getElementById('trbtn-' + fid);
+  if (btn) btn.remove();
+}
+function speedTracker() {
+  let lastBytes = 0, lastT = Date.now(), rate = 0;
+  return bytes => {
+    const now = Date.now();
+    if (now - lastT >= 500) {
+      rate = (bytes - lastBytes) / ((now - lastT) / 1000);
+      lastBytes = bytes; lastT = now;
+    }
+    return rate;
+  };
+}
+function failSession(sess, reason) {
+  if (!sess || sess.finished) return;
+  sess.finished = true;
+  sess.cancelled = true;
+  for (const f of sess.files) if (!f.done) rowDone(f.fid, '❌ ' + reason, false);
+  const p = rtcPeers.get(sess.peerId);
+  if (p) { if (p.send === sess) p.send = null; if (p.recv === sess) p.recv = null; }
+}
+
+/* ── Peer action menu ── */
+let actionPeerId = null;
+function openActionMenu(peerId) {
+  actionPeerId = peerId;
+  const p = peers.get(peerId);
+  document.getElementById('actionTitle').textContent = 'Send to ' + (p?.name || 'device');
+  document.getElementById('actionOverlay').classList.add('visible');
+}
+function closeOverlay(id) { document.getElementById(id).classList.remove('visible'); }
+function chooseSendFiles() {
+  closeOverlay('actionOverlay');
+  const picker = document.getElementById('filePicker');
+  picker.value = '';
+  picker.onchange = () => { if (picker.files.length) sendFilesTo(actionPeerId, [...picker.files]); };
+  picker.click();
+}
+function chooseSendText() {
+  closeOverlay('actionOverlay');
+  const peer = peers.get(actionPeerId);
+  document.getElementById('textSendTitle').textContent = 'Message to ' + (peer?.name || 'device');
+  document.getElementById('textSendInput').value = '';
+  document.getElementById('textSendOverlay').classList.add('visible');
+  document.getElementById('textSendInput').focus();
+}
+async function sendTextNow() {
+  const text = document.getElementById('textSendInput').value;
+  if (!text.trim()) return;
+  closeOverlay('textSendOverlay');
+  try {
+    const dc = await ensureChannel(actionPeerId);
+    dc.send(JSON.stringify({ t: 'text', text: text.slice(0, 10000) }));
+  } catch (err) { alert('Could not reach device: ' + err.message); }
+}
+
+/* ── Sending files ── */
+const CHUNK = 64 * 1024, BUF_HIGH = 8 << 20;
+function drain(dc) {
+  if (dc.bufferedAmount < BUF_HIGH) return Promise.resolve();
+  return new Promise(res => {
+    const h = () => { dc.removeEventListener('bufferedamountlow', h); res(); };
+    dc.addEventListener('bufferedamountlow', h);
+  });
+}
+async function sendFilesTo(peerId, files) {
+  const peerName = peers.get(peerId)?.name || 'device';
+  const metas = files.map(f => ({ fid: 's' + (++fidCounter), name: f.name, size: f.size, mime: f.type }));
+  for (const m of metas) transferRow(m.fid, '📤', m.name, `→ ${peerName} · waiting for accept…`);
+
+  const p = getPC(peerId);
+  const sess = { peerId, files: metas.map(m => ({ ...m, done: false })), cancelled: false, finished: false, acceptResolve: null };
+  if (p.send) { for (const m of metas) rowDone(m.fid, '❌ Another transfer to this device is in progress', false); return; }
+  p.send = sess;
+  metas.forEach(m => { document.getElementById('trbtn-' + m.fid).onclick = () => cancelSession(peerId, sess); });
+
+  let dc;
+  try { dc = await ensureChannel(peerId); }
+  catch (err) { failSession(sess, err.message); return; }
+
+  dc.send(JSON.stringify({ t: 'files-offer', files: metas }));
+  const accepted = await new Promise(res => {
+    sess.acceptResolve = res;
+    setTimeout(() => res(false), 90000);
+  });
+  if (sess.cancelled) return;
+  if (!accepted) { failSession(sess, 'Declined (or no answer)'); try { dc.send(JSON.stringify({ t: 'cancel' })); } catch {} return; }
+
+  try {
+    for (let i = 0; i < files.length; i++) {
+      if (sess.cancelled) return;
+      const f = files[i], meta = sess.files[i];
+      dc.send(JSON.stringify({ t: 'file-start', fid: meta.fid, name: meta.name, size: meta.size, mime: meta.mime }));
+      const reader = f.stream().getReader();
+      const speed = speedTracker();
+      let sent = 0, carry = null;
+      for (;;) {
+        if (sess.cancelled) { reader.cancel(); return; }
+        const { done, value } = await reader.read();
+        if (done) break;
+        let buf = value;
+        if (carry) { const j = new Uint8Array(carry.length + buf.length); j.set(carry); j.set(buf, carry.length); buf = j; carry = null; }
+        let off = 0;
+        while (buf.length - off >= CHUNK) {
+          await drain(dc);
+          if (sess.cancelled) { reader.cancel(); return; }
+          dc.send(buf.subarray(off, off + CHUNK));
+          off += CHUNK; sent += CHUNK;
+        }
+        if (off < buf.length) carry = buf.slice(off);
+        const r = speed(sent);
+        updRow(meta.fid, meta.size ? sent / meta.size * 100 : 100,
+          `→ ${peerName} · ${fmtSize(sent)} / ${fmtSize(meta.size)}${r ? ' · ' + fmtSize(r) + '/s' : ''}`);
+      }
+      if (carry && carry.length) { await drain(dc); dc.send(carry); sent += carry.length; }
+      dc.send(JSON.stringify({ t: 'file-end', fid: meta.fid }));
+      meta.done = true;
+      rowDone(meta.fid, `✅ Sent to ${peerName} · ${fmtSize(meta.size)}`, true);
+    }
+  } catch (err) {
+    failSession(sess, 'Transfer failed: ' + (err.message || err));
+    return;
+  }
+  sess.finished = true;
+  p.send = null;
+}
+function cancelSession(peerId, sess) {
+  sess.cancelled = true;
+  sess.acceptResolve?.(false);
+  const p = rtcPeers.get(peerId);
+  try { p?.dc?.send(JSON.stringify({ t: 'cancel' })); } catch {}
+  failSession(sess, 'Cancelled');
+}
+
+/* ── Receiving ── */
+let pendingOffer = null; // {peerId, files}
+function handleControl(peerId, m) {
+  const p = getPC(peerId);
+  switch (m.t) {
+    case 'text': {
+      document.getElementById('textRecvTitle').textContent = `💬 Message from ${peers.get(peerId)?.name || 'device'}`;
+      document.getElementById('textRecvBody').textContent = String(m.text || '').slice(0, 10000);
+      const btn = document.getElementById('textCopyBtn');
+      btn.onclick = () => copyText(document.getElementById('textRecvBody').textContent, btn);
+      document.getElementById('textRecvOverlay').classList.add('visible');
+      break;
+    }
+    case 'files-offer': {
+      if (pendingOffer || p.recv) { try { p.dc.send(JSON.stringify({ t: 'files-decline' })); } catch {} break; }
+      const files = (Array.isArray(m.files) ? m.files : []).slice(0, 200).map(f => ({
+        fid: String(f.fid), name: String(f.name || 'file').slice(0, 255),
+        size: Math.max(0, Number(f.size) || 0), mime: String(f.mime || '')
+      }));
+      if (!files.length) break;
+      pendingOffer = { peerId, files };
+      showOfferPrompt(peerId, files);
+      break;
+    }
+    case 'files-accept': {
+      if (p.send?.acceptResolve) p.send.acceptResolve(true);
+      break;
+    }
+    case 'files-decline': {
+      if (p.send?.acceptResolve) p.send.acceptResolve(false);
+      break;
+    }
+    case 'file-start': {
+      if (!p.recv || p.recv.cancelled) break;
+      openIncomingFile(peerId, p.recv, m);
+      break;
+    }
+    case 'file-end': {
+      if (!p.recv) break;
+      finishIncomingFile(peerId, p.recv);
+      break;
+    }
+    case 'cancel': {
+      if (pendingOffer?.peerId === peerId) { pendingOffer = null; closeOverlay('offerOverlay'); }
+      if (p.recv) { abortRecvSession(p.recv); failSession(p.recv, 'Cancelled by sender'); }
+      if (p.send) failSession(p.send, 'Cancelled by receiver');
+      break;
+    }
+  }
+}
+function showOfferPrompt(peerId, files) {
+  const name = peers.get(peerId)?.name || 'A device';
+  document.getElementById('offerTitle').textContent = `📥 ${name} wants to send you ${files.length} file${files.length > 1 ? 's' : ''}`;
+  document.getElementById('offerFiles').innerHTML =
+    files.slice(0, 12).map(f => `<li>📄 ${escHtml(f.name)} <span style="color:var(--text-muted)">(${fmtSize(f.size)})</span></li>`).join('') +
+    (files.length > 12 ? `<li>… and ${files.length - 12} more</li>` : '');
+  const total = files.reduce((a, f) => a + f.size, 0);
+  document.getElementById('offerTotal').textContent = 'Total: ' + fmtSize(total);
+  const warn = document.getElementById('offerWarn');
+  if (!canStream() && total > (1 << 30)) {
+    warn.style.display = 'block';
+    warn.textContent = '⚠️ This browser cannot stream to disk — files this large are held in memory and may crash the tab. Chrome or Edge is recommended for multi-GB transfers.';
+  } else warn.style.display = 'none';
+  document.getElementById('offerOverlay').classList.add('visible');
+}
+function answerOffer(accept) {
+  closeOverlay('offerOverlay');
+  if (!pendingOffer) return;
+  const { peerId, files } = pendingOffer;
+  pendingOffer = null;
+  const p = rtcPeers.get(peerId);
+  if (!p?.dc || p.dc.readyState !== 'open') return;
+  if (!accept) { p.dc.send(JSON.stringify({ t: 'files-decline' })); return; }
+  const peerName = peers.get(peerId)?.name || 'device';
+  const sess = { peerId, files: files.map(f => ({ ...f, done: false })), current: null, cancelled: false, finished: false };
+  p.recv = sess;
+  for (const f of sess.files) {
+    transferRow(f.fid, '📥', f.name, `← ${peerName} · waiting…`);
+    document.getElementById('trbtn-' + f.fid).onclick = () => { cancelSession(peerId, sess); abortRecvSession(sess); };
+  }
+  p.dc.send(JSON.stringify({ t: 'files-accept' }));
+}
+function openIncomingFile(peerId, sess, m) {
+  const meta = sess.files.find(f => f.fid === String(m.fid));
+  if (!meta) return;
+  sess.current = {
+    meta, received: 0, speed: speedTracker(),
+    sink: null, sinkReady: null, queue: Promise.resolve()
+  };
+  sess.current.sinkReady = (canStream() ? openStreamSink(meta) : Promise.resolve(openRamSink(meta)))
+    .catch(() => openRamSink(meta));
+}
+function handleChunk(peerId, buf) {
+  const p = rtcPeers.get(peerId);
+  const cur = p?.recv?.current;
+  if (!cur || p.recv.cancelled) return;
+  cur.received += buf.byteLength;
+  const peerName = peers.get(peerId)?.name || 'device';
+  const r = cur.speed(cur.received);
+  updRow(cur.meta.fid, cur.meta.size ? cur.received / cur.meta.size * 100 : 0,
+    `← ${peerName} · ${fmtSize(cur.received)} / ${fmtSize(cur.meta.size)}${r ? ' · ' + fmtSize(r) + '/s' : ''}`);
+  // serialize writes behind the sink handshake
+  cur.queue = cur.queue.then(async () => {
+    const sink = cur.sink || (cur.sink = await cur.sinkReady);
+    await sink.write(buf);
+  }).catch(() => {});
+}
+function finishIncomingFile(peerId, sess) {
+  const cur = sess.current;
+  if (!cur) return;
+  sess.current = null;
+  cur.queue = cur.queue.then(async () => {
+    const sink = cur.sink || (cur.sink = await cur.sinkReady);
+    await sink.close();
+    cur.meta.done = true;
+    rowDone(cur.meta.fid, `✅ Received · ${fmtSize(cur.received)}`, true);
+    if (sess.files.every(f => f.done)) {
+      sess.finished = true;
+      const p = rtcPeers.get(peerId);
+      if (p && p.recv === sess) p.recv = null;
+    }
+  }).catch(() => rowDone(cur.meta.fid, '❌ Save failed', false));
+}
+function abortRecvSession(sess) {
+  const cur = sess.current;
+  sess.current = null;
+  if (cur) cur.queue = cur.queue.then(async () => { (cur.sink || await cur.sinkReady)?.abort?.(); }).catch(() => {});
+}
+
+/* ── Receive sinks ── */
+function openStreamSink(meta) {
+  return new Promise((resolve, reject) => {
+    const swc = navigator.serviceWorker.controller;
+    if (!swc) { reject(new Error('no sw')); return; }
+    const id = (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2)).replace(/[^A-Za-z0-9_-]/g, '');
+    const mc = new MessageChannel();
+    let unacked = 0, waiters = [];
+    const MAX_UNACKED = 64;
+    const to = setTimeout(() => reject(new Error('sw timeout')), 4000);
+    mc.port1.onmessage = ev => {
+      const t = ev.data?.type;
+      if (t === 'ready') {
+        clearTimeout(to);
+        const iframe = document.createElement('iframe');
+        iframe.hidden = true;
+        iframe.src = 'dl/' + id;
+        document.body.appendChild(iframe);
+        resolve({
+          async write(buf) {
+            while (unacked >= MAX_UNACKED) await new Promise(r => waiters.push(r));
+            unacked++;
+            mc.port1.postMessage({ type: 'chunk', buf }, [buf]);
+          },
+          close() { mc.port1.postMessage({ type: 'end' }); setTimeout(() => iframe.remove(), 60000); },
+          abort() { mc.port1.postMessage({ type: 'abort' }); iframe.remove(); }
+        });
+      } else if (t === 'ack') {
+        unacked--;
+        waiters.splice(0).forEach(fn => fn());
+      } else if (t === 'cancel') {
+        waiters.splice(0).forEach(fn => fn());
+      }
+    };
+    swc.postMessage({ type: 'stream', id, name: meta.name, size: meta.size }, [mc.port2]);
+  });
+}
+function openRamSink(meta) {
+  const parts = [];
+  return {
+    write(buf) { parts.push(buf); },
+    close() {
+      const blob = new Blob(parts, { type: meta.mime || 'application/octet-stream' });
+      parts.length = 0;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = meta.name || 'download';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    },
+    abort() { parts.length = 0; }
+  };
+}
+
+/* keep the tab awake hint: warn before leaving mid-transfer */
+window.addEventListener('beforeunload', e => {
+  const busy = [...rtcPeers.values()].some(p => (p.send && !p.send.finished) || (p.recv && !p.recv.finished));
+  if (busy) { e.preventDefault(); e.returnValue = ''; }
+});
+</script>
+</body>
+</html>

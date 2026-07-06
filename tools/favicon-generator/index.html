@@ -85,7 +85,7 @@
         <div id="paneImage" class="field" style="display:none">
           <label class="field-label">Image</label>
           <div class="drop" id="drop">Click or drop an image here (PNG/JPG/SVG)</div>
-          <input type="file" id="file" accept="image/*" hidden>
+          <input type="file" id="file" accept="image/*,.heic,.heif" hidden>
         </div>
 
         <div class="row2">
@@ -216,9 +216,11 @@ $('drop').addEventListener('dragover', e => { e.preventDefault(); $('drop').styl
 $('drop').addEventListener('dragleave', () => $('drop').style.borderColor = '');
 $('drop').addEventListener('drop', e => { e.preventDefault(); $('drop').style.borderColor = ''; if (e.dataTransfer.files[0]) loadImage(e.dataTransfer.files[0]); });
 $('file').addEventListener('change', e => { if (e.target.files[0]) loadImage(e.target.files[0]); });
-function loadImage(file) {
+async function loadImage(file) {
+  const name = file.name;
+  try { file = await otNormalizeImage(file); } catch (e) { return; }   // iPhone HEIC → PNG
   const img = new Image();
-  img.onload = () => { uploadedImg = img; $('drop').textContent = file.name; render(); };
+  img.onload = () => { uploadedImg = img; $('drop').textContent = name; render(); };
   img.src = URL.createObjectURL(file);
 }
 

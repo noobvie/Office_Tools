@@ -226,9 +226,11 @@
   │    Deployed automatically by deploy.sh step 1.     │
   │    Runs as office-tools-cobalt systemd service.     │
   │    Proxied via nginx /yt-api/ → 127.0.0.1:9000.    │
-  │    cobalt handles YouTube auth internally —         │
-  │    no cookies, no API keys, no manual maintenance.  │
-  │    To update cobalt: deploy.sh → Option 6 → h.     │
+  │    PO-token provider (office-tools-pot) bypasses    │
+  │    most bot checks, BUT a flagged VPS IP also       │
+  │    needs YTDLP_COOKIES — see the operator cookie    │
+  │    setup panel below (create/renew steps).          │
+  │    To update backend: deploy.sh → Option 6 → h.    │
   │                                                     │
   │  Playlist download:                                 │
   │    Requires a FREE YouTube Data API v3 key.         │
@@ -243,11 +245,63 @@
   └─────────────────────────────────────────────────────┘
   -->
 
-  <!-- Maintenance notice -->
-  <div class="prereqs-box" style="border-color:var(--warning,#f59e0b);background:color-mix(in srgb,var(--warning,#f59e0b) 10%,transparent);">
-    <strong>🔧 Under Maintenance</strong>
-    <p style="margin:.4rem 0 0;">YouTube download is currently under maintenance. We will fix it in the future.</p>
-  </div>
+  <!-- Maintenance notice + operator cookie-setup instructions.
+       Public visitors see only the collapsed summary line. The operator expands
+       <details> for the create/renew steps. Delete this whole block once cookies
+       are configured and downloads work. -->
+  <details class="prereqs-box" style="border-color:var(--warning,#f59e0b);background:color-mix(in srgb,var(--warning,#f59e0b) 10%,transparent);">
+    <summary style="cursor:pointer;font-weight:600;list-style:none;">
+      🔧 Under Maintenance — YouTube downloads need a one-time cookie setup
+      <span style="font-weight:400;opacity:.7;">(operator: click to expand)</span>
+    </summary>
+
+    <div style="margin-top:.8rem;font-size:.92rem;line-height:1.5;">
+      <p style="margin:.2rem 0 .8rem;">
+        YouTube blocks downloads from datacenter/VPS IPs with a
+        <em>"Sign in to confirm you're not a bot"</em> check. The PO-token provider
+        (<code>office-tools-pot</code>) is running and healthy, but on a flagged server IP
+        that alone is not enough — YouTube requires <strong>authenticated cookies</strong>.
+        There is <strong>no fully autonomous way</strong> to mint these on the server: the
+        initial Google login must be done by a human (Google's login flow blocks datacenter
+        logins with CAPTCHA/2FA). Cookies then last weeks, not forever, and must be re-exported
+        when downloads start failing again.
+      </p>
+
+      <p style="margin:.6rem 0 .3rem;font-weight:600;">① Create cookies (one time, on your local computer)</p>
+      <ol style="margin:.2rem 0 .8rem 1.1rem;padding:0;">
+        <li>Use a <strong>throwaway Google account</strong> — never your real one. Server-side
+            scraping can get the account flagged or banned.</li>
+        <li>Install the <strong>"Get cookies.txt LOCALLY"</strong> browser extension.</li>
+        <li>Open a <strong>private / incognito window</strong> and log into
+            <code>youtube.com</code> with the burner account.</li>
+        <li>With a normal video open, click the extension → <em>Export</em> → save
+            <code>cookies.txt</code> (Netscape format).</li>
+        <li><strong>Close the incognito window WITHOUT logging out.</strong> Logging out
+            invalidates the session server-side — this is the #1 reason server cookies
+            "work for an hour then die."</li>
+      </ol>
+
+      <p style="margin:.6rem 0 .3rem;font-weight:600;">② Install on the server &amp; enable</p>
+      <pre style="overflow-x:auto;padding:.7rem .8rem;border-radius:8px;background:rgba(0,0,0,.35);color:#e5e7eb;font-size:.82rem;margin:.2rem 0 .5rem;"># after copying cookies.txt to the VPS (scp):
+install -o www-data -g www-data -m 600 cookies.txt /opt/office-tools/yt-server/cookies.txt
+grep -q '^YTDLP_COOKIES=' /opt/office-tools/yt-server/.env \
+  || echo 'YTDLP_COOKIES=/opt/office-tools/yt-server/cookies.txt' >> /opt/office-tools/yt-server/.env
+systemctl restart office-tools-cobalt
+curl -s http://127.0.0.1:9000/health   # "cookies" should change from "none" to "file:ok"/"file:unchecked"</pre>
+
+      <p style="margin:.6rem 0 .3rem;font-weight:600;">③ Renew (when the bot-check returns weeks later)</p>
+      <p style="margin:.2rem 0 .3rem;">Health shows <code>"cookies":"file:expired"</code> or downloads fail again.
+        Re-export with the exact same incognito method above, then replace the file:</p>
+      <pre style="overflow-x:auto;padding:.7rem .8rem;border-radius:8px;background:rgba(0,0,0,.35);color:#e5e7eb;font-size:.82rem;margin:.2rem 0 .5rem;">install -o www-data -g www-data -m 600 cookies.txt /opt/office-tools/yt-server/cookies.txt
+systemctl restart office-tools-cobalt</pre>
+
+      <p style="margin:.6rem 0 0;opacity:.75;font-size:.85rem;">
+        Note: yt-dlp rewrites rotated cookies back into this file on each use, so it must stay
+        writable by <code>www-data</code>. Cookie upkeep is inherent to running a YouTube
+        downloader from a server IP — it is not a bug in the tool.
+      </p>
+    </div>
+  </details>
 
   <!-- ── Main card ── -->
   <div class="card">
@@ -436,9 +490,14 @@
     })
       .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
       .then(d => {
-        const version = d.cobalt?.version || 'unknown';
+        const version = d.cobalt?.version || d.ytdlp || 'unknown';
+        // yt-server reports the bgutil PO-token provider state; without it YouTube
+        // is likely to answer server IPs with bot-check 403s.
+        const potWarn = d.pot === false
+          ? ` <span style="color:var(--warning,#f59e0b)">⚠ PO-token provider down — check <code>office-tools-pot</code></span>`
+          : '';
         backendInfoEl.innerHTML = LOCAL_INFO +
-          ` <span style="color:var(--success)">✓ running (v${escHtml(version)})</span>`;
+          ` <span style="color:var(--success)">✓ running (v${escHtml(version)})</span>` + potWarn;
       })
       .catch(() => {
         const hint = IS_LOCAL_DEV

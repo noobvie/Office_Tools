@@ -65,7 +65,7 @@
       <div class="drop-icon">✂️</div>
       <div><strong>Click to choose an image</strong> or drag &amp; drop</div>
       <div style="font-size:.8rem;margin-top:.3rem">JPG · PNG · WebP · GIF · BMP</div>
-      <input type="file" id="fileInput" accept="image/*">
+      <input type="file" id="fileInput" accept="image/*,.heic,.heif">
     </label>
   </div>
 
@@ -138,9 +138,10 @@ const dropZone  = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 const cropImg   = document.getElementById('cropImg');
 
-function loadFile(file) {
-  if (!file || !file.type.startsWith('image/')) return;
+async function loadFile(file) {
+  if (!file || !(file.type.startsWith('image/') || otIsHeic(file))) return;
   currentName = (file.name || 'image').replace(/\.[^.]+$/, '');
+  try { file = await otNormalizeImage(file); } catch (e) { alert('Could not read this image.'); return; }   // iPhone HEIC → PNG
   const url = URL.createObjectURL(file);
   cropImg.src = url;
   document.getElementById('dropCard').style.display = 'none';

@@ -211,7 +211,7 @@
       <div style="font-size:.76rem;color:var(--text-light);margin-top:.25rem">PNG · JPG · GIF · BMP · WEBP · SVG · PDF &nbsp;·&nbsp; Max 5 MB</div>
     </div>
     <input type="file" id="openFileInput" style="display:none"
-      accept=".png,.jpg,.jpeg,.gif,.bmp,.webp,.svg,.pdf,image/*,application/pdf">
+      accept=".png,.jpg,.jpeg,.gif,.bmp,.webp,.svg,.pdf,.heic,.heif,image/*,image/heic,image/heif,application/pdf">
 
     <!-- Top toolbar (shown after image loaded) -->
     <div id="topToolbar" style="display:none;margin-top:.75rem">
@@ -514,6 +514,12 @@
     // Size check
     document.getElementById('sizeBanner').style.display = file.size > 5 * 1024 * 1024 ? '' : 'none';
     if (file.size > 5 * 1024 * 1024) return;
+
+    // iPhone HEIC/HEIF → PNG in-browser before decoding (createImageBitmap can't read HEIC)
+    if (otIsHeic(file)) {
+      try { file = await otNormalizeImage(file); }
+      catch (e) { setStatus('❌ Could not decode HEIC image: ' + (e.message || e), 'err'); return; }
+    }
 
     sourceFileName = file.name.replace(/\.[^.]+$/, '');
     const ext = file.name.split('.').pop().toLowerCase();

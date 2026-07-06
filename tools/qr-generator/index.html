@@ -277,7 +277,7 @@
         <div class="logo-upload-box" id="logoDropZone" onclick="document.getElementById('logoFileInput').click()">
           📁 Click to upload logo (PNG, JPG, SVG)
         </div>
-        <input type="file" id="logoFileInput" accept="image/*" style="display:none">
+        <input type="file" id="logoFileInput" accept="image/*,.heic,.heif" style="display:none">
         <div class="logo-preview-row" id="logoPreviewRow" style="display:none">
           <img id="logoPreviewImg" src="" alt="logo preview">
           <div style="flex:1">
@@ -444,7 +444,7 @@
         <div class="logo-upload-box" id="decDropZone" onclick="document.getElementById('decFileInput').click()" style="padding:1.5rem 1rem;font-size:.9rem">
           📁 Click or drag &amp; drop a QR code image (PNG, JPG, WEBP, GIF)
         </div>
-        <input type="file" id="decFileInput" accept="image/*" capture="environment" style="display:none">
+        <input type="file" id="decFileInput" accept="image/*,.heic,.heif" capture="environment" style="display:none">
       </div>
 
       <!-- Camera mode -->
@@ -544,9 +544,10 @@ document.getElementById('bcHeight').addEventListener('input', e =>
 
 // ── Logo handling ──
 let logoDataUrl = null;
-document.getElementById('logoFileInput').addEventListener('change', e => {
-  const file = e.target.files[0];
+document.getElementById('logoFileInput').addEventListener('change', async e => {
+  let file = e.target.files[0];
   if (!file) return;
+  try { file = await otNormalizeImage(file); } catch (err) { return; }   // iPhone HEIC → PNG
   const reader = new FileReader();
   reader.onload = ev => {
     logoDataUrl = ev.target.result;
@@ -878,7 +879,8 @@ function decodeImageData(canvas) {
 }
 
 // ── Upload mode ──
-function decodeFile(file) {
+async function decodeFile(file) {
+  try { file = await otNormalizeImage(file); } catch (e) { showDecError('Could not read this image.'); return; }   // iPhone HEIC → PNG
   const reader = new FileReader();
   reader.onload = e => {
     const img = new Image();
@@ -905,7 +907,7 @@ decDropZone.addEventListener('dragleave', () => decDropZone.classList.remove('de
 decDropZone.addEventListener('drop', e => {
   e.preventDefault(); decDropZone.classList.remove('dec-drop-active');
   const file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith('image/')) decodeFile(file);
+  if (file && (file.type.startsWith('image/') || otIsHeic(file))) decodeFile(file);
 });
 
 // ── Camera mode ──

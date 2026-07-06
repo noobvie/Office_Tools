@@ -95,7 +95,7 @@
     <div class="drop-zone" id="drop">
       Drop an image here or <strong>click to browse</strong>
       <p style="font-size:.77rem;margin:.25rem 0 0">JPG · PNG · WebP · BMP · GIF</p>
-      <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/bmp,image/gif">
+      <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/bmp,image/gif,image/heic,image/heif,.heic,.heif">
     </div>
 
     <div id="controls" style="display:none">
@@ -247,8 +247,9 @@ function updateTargetInfo() {
 }
 
 bindDrop(drop, fileEl, async files => {
-  const f = files[0]; if (!f) return;
+  let f = files[0]; if (!f) return;
   srcName = noExt(f.name);
+  try { f = await otNormalizeImage(f); } catch (e) { alert('Could not read this image.'); return; }   // iPhone HEIC → PNG
   const url = URL.createObjectURL(f);
   srcImg = await loadImg(url);
   srcInfo.innerHTML = `Source: <b>${srcImg.naturalWidth} × ${srcImg.naturalHeight}</b> px`;

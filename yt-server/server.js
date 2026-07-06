@@ -50,14 +50,19 @@
  *   MAX_QUALITY         Max video quality override      (default: "1080")
  *   TEMP_DIR            Directory for temp files        (default: OS temp dir)
  *   JOB_TTL_MS          Job expiry in ms                (default: 600000 = 10 min)
- *   YTDLP_PLAYER_CLIENT  YouTube player clients to try  (default: "android,tv_embedded,web")
- *                        Primary bot-detection bypass — mobile/TV clients don't require
- *                        browser verification. Passed as --extractor-args to yt-dlp.
- *                        Override only if a specific client causes problems.
+ *   YTDLP_PLAYER_CLIENT  YouTube player clients to try  (default: "" = yt-dlp's own defaults)
+ *                        Leave EMPTY. YouTube now requires PO (Proof of Origin) tokens for
+ *                        most clients (web, android, ios all need them) — hardcoding a client
+ *                        list works against the PO-token plugin. The real bot-detection fix is
+ *                        the bgutil-ytdlp-pot-provider plugin + its token server (see below).
+ *                        Set only as a temporary emergency override.
+ *   POT_PROVIDER_URL    bgutil PO-token provider server (default: "http://127.0.0.1:4416")
+ *                       deploy.sh installs this as the office-tools-pot service. The yt-dlp
+ *                       plugin auto-detects it at the default URL — this setting is only used
+ *                       by /health to report provider reachability.
  *   YTDLP_COOKIES       Path to Netscape cookies.txt    (optional fallback for age-restricted
- *                       videos or severe IP bans where player clients alone aren't enough)
+ *                       videos or severe IP bans where PO tokens alone aren't enough)
  *                       Export from browser with "Get cookies.txt LOCALLY" extension.
- *                       Set via deploy.sh → Option 6 → i) Configure Cookies.
  *   YTDLP_COOKIES_BROWSER  Browser name for live cookie extraction (e.g. "chrome").
  *                          Only works if the browser is installed on the same machine.
  *
@@ -74,8 +79,9 @@
  *    Waits for download to finish, then streams the file.
  *    Deletes temp file after sending.
  *
- *  GET /health
+ *  GET /health  (GET / returns the same, plus a cobalt-style { cobalt: { version } })
  *    Returns: { ok: true, ytdlp: "version string", ffmpeg: boolean,
+ *               pot: "provider version" | false,
  *               cookies: "none" | "file:ok" | "file:unchecked" | "file:expired" | "file:missing" | "browser:<name>" }
  */
 
@@ -98,19 +104,22 @@ const CORS_ORIG  = process.env.CORS_ORIGIN      || '*';
 const MAX_QUAL   = process.env.MAX_QUALITY      || '1080';
 const TEMP_DIR   = process.env.TEMP_DIR         || os.tmpdir();
 const JOB_TTL    = parseInt(process.env.JOB_TTL_MS || '600000', 10);
-// Use mobile/TV YouTube player clients to avoid bot-detection on server IPs.
-// Android and TV Embedded clients authenticate differently from the browser —
-// no cookie or human verification required in most cases. This is what most
-// public YouTube download services use under the hood.
-// Override via YTDLP_PLAYER_CLIENT env var if needed.
-const YTDLP_PLAYER_CLIENT   = process.env.YTDLP_PLAYER_CLIENT   || 'android,tv_embedded,web';
+// Player client override — default EMPTY so yt-dlp picks its own current defaults.
+// YouTube now requires PO (Proof of Origin) tokens for most clients (web/android/ios);
+// the old 'android,tv_embedded,web' pin is what broke downloads on server IPs.
+// Bot detection is handled by the bgutil-ytdlp-pot-provider plugin (installed by
+// deploy.sh), which yt-dlp auto-detects — keep this empty unless firefighting.
+const YTDLP_PLAYER_CLIENT   = process.env.YTDLP_PLAYER_CLIENT   || '';
+// bgutil PO-token provider server — used only for the /health reachability probe.
+const POT_PROVIDER_URL      = process.env.POT_PROVIDER_URL      || 'http://127.0.0.1:4416';
 // Optional cookie fallback for age-restricted videos or IP bans.
 // See deploy.sh → Option 6 → i) Configure Cookies.
 const YTDLP_COOKIES         = process.env.YTDLP_COOKIES         || '';  // path to cookies.txt
 const YTDLP_COOKIES_BROWSER = process.env.YTDLP_COOKIES_BROWSER || '';  // e.g. "chrome"
 
-/* Returns player client args — primary bot-detection bypass (no cookies needed) */
+/* Returns player client args — empty by default (yt-dlp defaults + PO-token plugin) */
 function clientArgs() {
+  if (!YTDLP_PLAYER_CLIENT) return [];
   return ['--extractor-args', `youtube:player_client=${YTDLP_PLAYER_CLIENT}`];
 }
 
@@ -228,9 +237,12 @@ app.get('/stream/:id', (req, res) => {
 
 /* ══════════════════════════════════════════════════════════════
    GET /health  — dependency check
+   GET /        — same payload + cobalt-style { cobalt: { version } }
+                  (the yt-downloader frontend probes GET / for its
+                  status indicator, cobalt-API style)
 ══════════════════════════════════════════════════════════════ */
-app.get('/health', async (req, res) => {
-  const [ytdlpVer, ffmpegOk] = await Promise.all([getYtdlpVersion(), hasFfmpeg()]);
+async function healthPayload() {
+  const [ytdlpVer, ffmpegOk, potVer] = await Promise.all([getYtdlpVersion(), hasFfmpeg(), getPotStatus()]);
   let cookiesOk;
   if (YTDLP_COOKIES_BROWSER) {
     cookiesOk = 'browser:' + YTDLP_COOKIES_BROWSER;
@@ -248,7 +260,16 @@ app.get('/health', async (req, res) => {
       cookiesOk = 'file:unchecked'; // file exists, keep-alive cron not yet run
     }
   }
-  res.json({ ok: !!ytdlpVer, ytdlp: ytdlpVer || 'not found', ffmpeg: ffmpegOk, cookies: cookiesOk });
+  return { ok: !!ytdlpVer, ytdlp: ytdlpVer || 'not found', ffmpeg: ffmpegOk, pot: potVer, cookies: cookiesOk };
+}
+
+app.get('/health', async (req, res) => {
+  res.json(await healthPayload());
+});
+
+app.get('/', async (req, res) => {
+  const h = await healthPayload();
+  res.json({ cobalt: { version: h.ytdlp, services: ['youtube'] }, ...h });
 });
 
 /* ══════════════════════════════════════════════════════════════
@@ -407,6 +428,18 @@ function hasFfmpeg() {
     proc.on('error', () => resolve(false));
   });
 }
+/* Probe the bgutil PO-token provider (GET /ping → { version, server_uptime }).
+   Returns the provider version string, or false when unreachable. */
+async function getPotStatus() {
+  try {
+    const r = await fetch(`${POT_PROVIDER_URL}/ping`, { signal: AbortSignal.timeout(3000) });
+    if (!r.ok) return false;
+    const d = await r.json();
+    return d.version || 'unknown';
+  } catch {
+    return false;
+  }
+}
 
 /* ── Periodic cleanup of expired jobs ──────────────────────── */
 setInterval(() => {
@@ -426,8 +459,9 @@ app.listen(PORT, HOST, async () => {
   console.log(`\n  yt-dlp server  →  http://localhost:${PORT}/`);
   console.log(`  In the yt-downloader tool, select "Local" backend (default when deployed via nginx /yt-api/).\n`);
 
-  const [ver, ffmpegOk] = await Promise.all([getYtdlpVersion(), hasFfmpeg()]);
+  const [ver, ffmpegOk, potVer] = await Promise.all([getYtdlpVersion(), hasFfmpeg(), getPotStatus()]);
   console.log(`  yt-dlp  : ${ver  ? `✓ ${ver}` : '✗ NOT FOUND — install: pip install yt-dlp'}`);
   console.log(`  ffmpeg  : ${ffmpegOk ? '✓ found'  : '✗ NOT FOUND — MP3 and 1080p will not work (install ffmpeg)'}`);
+  console.log(`  PO-token: ${potVer ? `✓ provider v${potVer} at ${POT_PROVIDER_URL}` : `✗ provider NOT reachable at ${POT_PROVIDER_URL} — YouTube may serve bot-check 403s (deploy.sh installs office-tools-pot)`}`);
   console.log('');
 });

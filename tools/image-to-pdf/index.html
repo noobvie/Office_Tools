@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Image to PDF — JPG &amp; PNG to PDF Converter — Office Tools</title>
-  <meta name="description" content="Convert JPG, PNG, WebP and other images into a single PDF. Reorder pages, choose A4 or Letter size, set orientation and margins. Free, runs in your browser — no upload.">
-  <meta name="keywords" content="image to PDF, JPG to PDF, PNG to PDF, photo to PDF, convert image to PDF, combine images into PDF, pictures to PDF, JPEG to PDF online">
+  <title>Image to PDF — JPG, PNG &amp; iPhone HEIC to PDF Converter — Office Tools</title>
+  <meta name="description" content="Convert JPG, PNG, WebP and iPhone HEIC/HEIF images into a single PDF. Reorder pages, choose A4 or Letter size, set orientation and margins. Free, runs in your browser — no upload.">
+  <meta name="keywords" content="image to PDF, JPG to PDF, PNG to PDF, HEIC to PDF, iPhone photo to PDF, photo to PDF, convert image to PDF, combine images into PDF, pictures to PDF, JPEG to PDF online">
   <meta name="robots" content="index, follow">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Office Tools">
-  <meta property="og:title" content="Image to PDF — JPG &amp; PNG to PDF Converter — Office Tools">
-  <meta property="og:description" content="Combine JPG, PNG and WebP images into one PDF. Reorder pages, pick page size, orientation and margins. Free, runs in your browser.">
+  <meta property="og:title" content="Image to PDF — JPG, PNG &amp; iPhone HEIC to PDF Converter — Office Tools">
+  <meta property="og:description" content="Combine JPG, PNG, WebP and iPhone HEIC images into one PDF. Reorder pages, pick page size, orientation and margins. Free, runs in your browser.">
   <meta property="og:url" content="https://tools.grin.money/tools/image-to-pdf/">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Image to PDF — JPG &amp; PNG to PDF — Office Tools">
-  <meta name="twitter:description" content="Combine images into one PDF. Reorder, set page size, orientation and margins. No upload.">
+  <meta name="twitter:title" content="Image to PDF — JPG, PNG &amp; iPhone HEIC to PDF — Office Tools">
+  <meta name="twitter:description" content="Combine images (incl. iPhone HEIC) into one PDF. Reorder, set page size, orientation and margins. No upload.">
   <link rel="canonical" href="https://tools.grin.money/tools/image-to-pdf/">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Image to PDF","description":"Convert and combine JPG, PNG and WebP images into a single PDF. Reorder pages, choose page size, orientation and margins.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/image-to-pdf/"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Image to PDF","description":"Convert and combine JPG, PNG, WebP and iPhone HEIC/HEIF images into a single PDF. Reorder pages, choose page size, orientation and margins.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/image-to-pdf/"}</script>
   <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
   <link rel="stylesheet" href="../../css/style.css">
   <style>
@@ -58,16 +58,22 @@
 <section class="tool-about">
   <h2>About Image to PDF</h2>
   <p>Turn a batch of <strong>photos, scans or screenshots into a single PDF document</strong>. Add as many images as you like, drag the order with the arrow buttons, choose <strong>A4, US Letter, or fit-to-image</strong> page sizing, set the orientation and margins, then download one tidy PDF. Great for submitting scanned forms, receipts, ID copies, or photo sets where one file is easier than many.</p>
-  <p>Everything is generated locally in your browser using the open-source pdf-lib engine &mdash; your images are <strong>never uploaded</strong>. WebP, GIF and BMP images are automatically re-encoded to fit cleanly into the PDF. No watermarks, no account, no size limits beyond your device's memory.</p>
+  <p>Everything is generated locally in your browser using the open-source pdf-lib engine &mdash; your images are <strong>never uploaded</strong>. WebP, GIF and BMP images are automatically re-encoded to fit cleanly into the PDF, and <strong>HEIC/HEIF photos straight from an iPhone are decoded in-browser</strong> too (the temporary converted copy is discarded after the PDF is built). No watermarks, no account, no size limits beyond your device's memory.</p>
 </section>
 
   <div class="card">
     <label class="drop-zone" id="dropZone">
       <div class="drop-icon">🖼️</div>
       <div><strong>Click to add images</strong> or drag &amp; drop</div>
-      <div style="font-size:.8rem;margin-top:.3rem">JPG · PNG · WebP · GIF · BMP — multiple allowed</div>
-      <input type="file" id="fileInput" accept="image/*" multiple>
+      <div style="font-size:.8rem;margin-top:.3rem">JPG · PNG · WebP · GIF · BMP · HEIC/HEIF (iPhone) — multiple allowed</div>
+      <input type="file" id="fileInput" accept="image/*,.heic,.heif" multiple>
     </label>
+
+    <p style="font-size:.78rem;color:var(--text-muted);margin:.6rem 0 0">
+      📱 <strong>iPhone HEIC/HEIF supported.</strong> These are decoded to an image right here in
+      your browser — nothing is uploaded, and the temporary converted copy is discarded once your
+      PDF is built.
+    </p>
 
     <div class="thumb-grid" id="thumbGrid"></div>
   </div>
@@ -130,11 +136,22 @@ const fileInput = document.getElementById('fileInput');
 const thumbGrid = document.getElementById('thumbGrid');
 const genBtn    = document.getElementById('genBtn');
 
-function addFiles(fileList) {
-  [...fileList].filter(f => f.type.startsWith('image/')).forEach(f => {
-    images.push({ file: f, url: URL.createObjectURL(f) });
-  });
-  render();
+// iPhone HEIC/HEIF can't be decoded natively by most browsers — otNormalizeImage()
+// (shared, in common.js) converts them to PNG in-browser before the image pipeline.
+async function addFiles(fileList) {
+  const status = document.getElementById('statusMsg');
+  const files = [...fileList].filter(f => f.type.startsWith('image/') || otIsHeic(f));
+  for (const f of files) {
+    try {
+      if (otIsHeic(f)) status.textContent = `Converting iPhone photo “${f.name}” in your browser…`;
+      const img = await otNormalizeImage(f);   // original HEIC File is dropped; only the PNG is kept
+      images.push({ file: img, url: URL.createObjectURL(img) });
+      status.textContent = '';
+    } catch (err) {
+      status.textContent = `Could not add “${f.name}”: ${err.message || err}`;
+    }
+    render();
+  }
 }
 
 function render() {

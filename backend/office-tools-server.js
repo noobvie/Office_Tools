@@ -1627,10 +1627,174 @@ app.post('/api/email/inbox/ingest', (req, res) => {
   res.json({ ok: true });
 });
 
+// ── File Drop — WebRTC signaling relay (/drop-ws) ─────────────
+// Serves tools/file-drop: browser-to-browser file transfer. This endpoint only
+// relays the WebRTC handshake (SDP/ICE JSON, a few KB per session) — file bytes
+// travel peer-to-peer over DataChannels and never touch this server.
+// Discovery: peers sharing a public IP see each other ("nearby"); a 6-digit
+// room code pairs devices across networks. nginx proxies /tools-api/drop-ws
+// here with Upgrade headers (exact-match location in deploy.sh).
+const { WebSocketServer } = require('ws');
+
+const DROP_MAX_CONN_PER_IP = 8;
+const DROP_MAX_CONN_TOTAL  = 400;
+const DROP_ROOM_MAX        = 10;
+const _dropClients = new Map();   // id  → client
+const _dropByIp    = new Map();   // ip  → Set<client>
+const _dropRooms   = new Map();   // code → Set<client>
+
+const _DROP_ADJ    = ['Brave','Calm','Clever','Cosmic','Gentle','Golden','Happy','Lucky','Mellow','Nimble','Quick','Quiet','Royal','Sunny','Swift','Wild','Witty','Zen'];
+const _DROP_ANIMAL = ['Fox','Panda','Otter','Falcon','Tiger','Dolphin','Koala','Lynx','Owl','Rabbit','Wolf','Heron','Gecko','Bison','Crane','Seal','Moose','Yak'];
+
+function _dropIp(req) {
+  // Behind Cloudflare the socket/XFF tail is a CF edge IP — CF-Connecting-IP is
+  // the real client, and same-IP grouping breaks without it.
+  let ip = String(req.headers['cf-connecting-ip'] || '').trim()
+        || (req.headers['x-forwarded-for'] || '').split(',')[0].trim()
+        || req.socket.remoteAddress || '';
+  if (ip.startsWith('::ffff:')) ip = ip.slice(7);
+  return ip;
+}
+function _dropName() {
+  return _DROP_ADJ[Math.floor(Math.random() * _DROP_ADJ.length)] + ' ' +
+         _DROP_ANIMAL[Math.floor(Math.random() * _DROP_ANIMAL.length)];
+}
+function _dropPublic(c) { return { id: c.id, name: c.name, device: c.device }; }
+function _dropVisible(c) {
+  const seen = new Set();
+  for (const set of [_dropByIp.get(c.ip), c.room ? _dropRooms.get(c.room) : null]) {
+    if (set) for (const p of set) if (p !== c) seen.add(p);
+  }
+  return [...seen];
+}
+function _dropSend(c, obj) {
+  if (c.ws.readyState === 1) { try { c.ws.send(JSON.stringify(obj)); } catch { /* closing */ } }
+}
+function _dropSyncPeers(clients) {
+  for (const c of clients) _dropSend(c, { type: 'peers', peers: _dropVisible(c).map(_dropPublic) });
+}
+function _dropLeaveRoom(c) {
+  const code = c.room;
+  if (!code) return;
+  c.room = null;
+  const room = _dropRooms.get(code);
+  if (!room) return;
+  room.delete(c);
+  if (!room.size) _dropRooms.delete(code);
+  else _dropSyncPeers([...room]);
+}
+
+function attachDropSignaling(server) {
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 128 * 1024 });
+
+  server.on('upgrade', (req, socket, head) => {
+    const pathname = (req.url || '').split('?')[0];
+    if (pathname !== '/drop-ws') { socket.destroy(); return; }
+    const ip = _dropIp(req);
+    const perIp = _dropByIp.get(ip)?.size || 0;
+    if (_dropClients.size >= DROP_MAX_CONN_TOTAL || perIp >= DROP_MAX_CONN_PER_IP) {
+      socket.destroy(); return;
+    }
+    wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req));
+  });
+
+  wss.on('connection', (ws, req) => {
+    const c = {
+      ws,
+      ip: _dropIp(req),
+      id: genId() + genId(),
+      name: _dropName(),
+      device: '',
+      room: null,
+      _msgs: 0,
+      _msgWindow: Date.now(),
+      isAlive: true,
+    };
+    _dropClients.set(c.id, c);
+    if (!_dropByIp.has(c.ip)) _dropByIp.set(c.ip, new Set());
+    _dropByIp.get(c.ip).add(c);
+
+    _dropSend(c, { type: 'you', id: c.id, name: c.name });
+    _dropSyncPeers([c, ..._dropVisible(c)]);
+
+    ws.on('pong', () => { c.isAlive = true; });
+
+    ws.on('message', raw => {
+      const now = Date.now();
+      if (now - c._msgWindow > 10_000) { c._msgWindow = now; c._msgs = 0; }
+      if (++c._msgs > 300) { ws.close(1008, 'rate limit'); return; }
+
+      let msg; try { msg = JSON.parse(raw); } catch { return; }
+      switch (msg.type) {
+        case 'hello': {
+          c.device = String(msg.device || '').slice(0, 60);
+          _dropSyncPeers([c, ..._dropVisible(c)]);
+          break;
+        }
+        case 'create-room': {
+          _dropLeaveRoom(c);
+          let code;
+          do { code = String(Math.floor(100000 + Math.random() * 900000)); } while (_dropRooms.has(code));
+          _dropRooms.set(code, new Set([c]));
+          c.room = code;
+          _dropSend(c, { type: 'room', code });
+          break;
+        }
+        case 'join-room': {
+          const code = String(msg.code || '').trim();
+          const room = _dropRooms.get(code);
+          if (!room) { _dropSend(c, { type: 'room-error', message: 'Code not found — ask the other device for a fresh one' }); break; }
+          if (room.size >= DROP_ROOM_MAX) { _dropSend(c, { type: 'room-error', message: 'Room is full' }); break; }
+          _dropLeaveRoom(c);
+          room.add(c);
+          c.room = code;
+          _dropSend(c, { type: 'room', code });
+          _dropSyncPeers([...room]);
+          break;
+        }
+        case 'leave-room': {
+          _dropLeaveRoom(c);
+          _dropSend(c, { type: 'room', code: null });
+          _dropSyncPeers([c]);
+          break;
+        }
+        case 'signal': {
+          // relay SDP/ICE — only between peers that can currently see each other
+          const to = _dropClients.get(String(msg.to || ''));
+          if (to && _dropVisible(c).includes(to)) {
+            _dropSend(to, { type: 'signal', from: c.id, data: msg.data });
+          }
+          break;
+        }
+      }
+    });
+
+    ws.on('close', () => {
+      const affected = _dropVisible(c);
+      _dropClients.delete(c.id);
+      const ipSet = _dropByIp.get(c.ip);
+      if (ipSet) { ipSet.delete(c); if (!ipSet.size) _dropByIp.delete(c.ip); }
+      _dropLeaveRoom(c);
+      _dropSyncPeers(affected);
+    });
+    ws.on('error', () => {});
+  });
+
+  // Keepalive ping (Cloudflare drops silent WebSockets at ~100 s) + reap dead clients
+  setInterval(() => {
+    for (const c of _dropClients.values()) {
+      if (!c.isAlive) { c.ws.terminate(); continue; }
+      c.isAlive = false;
+      try { c.ws.ping(); } catch { /* closing */ }
+    }
+  }, 30_000);
+}
+
 // ── Start ─────────────────────────────────────────────────────
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Office Tools server running on port ${PORT}`);
   const _cfgEmail = (process.env.NOTIFY_EMAIL || '').trim();
   if (!_cfgEmail) console.warn('[config] NOTIFY_EMAIL not set — feedback emails will not be sent');
   else            console.log(`[config] Feedback emails → ${_cfgEmail}`);
 });
+attachDropSignaling(server);

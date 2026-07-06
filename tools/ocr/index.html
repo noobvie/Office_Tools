@@ -65,7 +65,7 @@
       <div class="drop-icon">🖼️</div>
       <div><strong>Click to choose an image</strong> or drag &amp; drop</div>
       <div style="font-size:.8rem;margin-top:.3rem">PNG · JPG · WebP · BMP · GIF</div>
-      <input type="file" id="fileInput" accept="image/*">
+      <input type="file" id="fileInput" accept="image/*,.heic,.heif">
     </label>
 
     <div class="opts">
@@ -135,8 +135,9 @@ const fileInput  = document.getElementById('fileInput');
 const runBtn     = document.getElementById('runBtn');
 const previewImg = document.getElementById('previewImg');
 
-function setFile(file) {
-  if (!file || !file.type.startsWith('image/')) return;
+async function setFile(file) {
+  if (!file || !(file.type.startsWith('image/') || otIsHeic(file))) return;
+  try { file = await otNormalizeImage(file); } catch (e) { return; }   // iPhone HEIC → PNG for Tesseract
   selectedFile = file;
   const url = URL.createObjectURL(file);
   previewImg.src = url;

@@ -70,7 +70,7 @@
       <div><strong>Click or drop an image</strong> to pick colors from</div>
       <div style="font-size:.8rem;margin-top:.3rem">Processed locally — never uploaded</div>
     </div>
-    <input type="file" id="file" accept="image/*" hidden>
+    <input type="file" id="file" accept="image/*,.heic,.heif" hidden>
   </div>
 
   <div class="card mt-2" id="workCard" style="display:none">
@@ -129,7 +129,8 @@ function toHsl(r, g, b) {
   return `hsl(${Math.round(h*360)}, ${Math.round(s*100)}%, ${Math.round(l*100)}%)`;
 }
 
-function loadImage(file) {
+async function loadImage(file) {
+  try { file = await otNormalizeImage(file); } catch (e) { return; }   // iPhone HEIC → PNG
   const im = new Image();
   im.onload = () => {
     img = im;
