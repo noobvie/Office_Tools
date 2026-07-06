@@ -436,9 +436,14 @@
     })
       .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
       .then(d => {
-        const version = d.cobalt?.version || 'unknown';
+        const version = d.cobalt?.version || d.ytdlp || 'unknown';
+        // yt-server reports the bgutil PO-token provider state; without it YouTube
+        // is likely to answer server IPs with bot-check 403s.
+        const potWarn = d.pot === false
+          ? ` <span style="color:var(--warning,#f59e0b)">⚠ PO-token provider down — check <code>office-tools-pot</code></span>`
+          : '';
         backendInfoEl.innerHTML = LOCAL_INFO +
-          ` <span style="color:var(--success)">✓ running (v${escHtml(version)})</span>`;
+          ` <span style="color:var(--success)">✓ running (v${escHtml(version)})</span>` + potWarn;
       })
       .catch(() => {
         const hint = IS_LOCAL_DEV

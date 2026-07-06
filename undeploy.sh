@@ -28,6 +28,8 @@ LOG_DIR="/var/log/office-tools"      # deploy logs
 
 SVC_API="/etc/systemd/system/office-tools-api.service"
 SVC_COBALT="/etc/systemd/system/office-tools-cobalt.service"
+SVC_POT="/etc/systemd/system/office-tools-pot.service"
+CRON_YTDLP="/etc/cron.weekly/yt-dlp-update"
 
 NGINX_AVAIL="/etc/nginx/sites-available/office-tools"
 NGINX_ENABLED="/etc/nginx/sites-enabled/office-tools"
@@ -69,7 +71,7 @@ echo ""
 
 # Systemd services
 echo -e "${BOLD}  Systemd services${RESET}"
-for svc in office-tools-api office-tools-cobalt; do
+for svc in office-tools-api office-tools-cobalt office-tools-pot; do
     if systemctl list-unit-files "${svc}.service" &>/dev/null 2>&1 && \
        systemctl list-unit-files "${svc}.service" | grep -q "${svc}"; then
         STATUS=$(systemctl is-active "${svc}" 2>/dev/null || echo "inactive")
@@ -82,7 +84,7 @@ done
 # Systemd unit files
 echo ""
 echo -e "${BOLD}  Systemd unit files${RESET}"
-for f in "$SVC_API" "$SVC_COBALT"; do
+for f in "$SVC_API" "$SVC_COBALT" "$SVC_POT" "$CRON_YTDLP"; do
     [[ -f "$f" ]] && echo -e "    ${RED}✗${RESET}  $f" || echo -e "    ${DIM}–  $f  (not found)${RESET}"
 done
 
@@ -139,7 +141,7 @@ echo -e "${BOLD}${CYAN}━━━━━━━━━━━━━━━━━━━
 echo ""
 
 # ─── 1. Stop & disable systemd services ──────────────────────────────────────
-for svc in office-tools-api office-tools-cobalt; do
+for svc in office-tools-api office-tools-cobalt office-tools-pot; do
     if systemctl list-unit-files "${svc}.service" 2>/dev/null | grep -q "${svc}"; then
         info "Stopping and disabling ${svc}…"
         systemctl stop    "${svc}" 2>/dev/null || true
@@ -151,7 +153,7 @@ for svc in office-tools-api office-tools-cobalt; do
 done
 
 # ─── 2. Remove systemd unit files ────────────────────────────────────────────
-for f in "$SVC_API" "$SVC_COBALT"; do
+for f in "$SVC_API" "$SVC_COBALT" "$SVC_POT" "$CRON_YTDLP"; do
     if [[ -f "$f" ]]; then
         rm -f "$f"
         success "Removed $f"
