@@ -947,6 +947,34 @@ TURNEOF
     fi
 }
 
+# Set KEY=VALUE in the backend .env — update in place or append. Value must not
+# contain the sed delimiter (|); TURN URLs/secret/domain never do.
+_set_env_kv() {
+    local key="$1" val="$2" envf="$BACKEND_DIR/.env"
+    if grep -q "^${key}=" "$envf" 2>/dev/null; then
+        sed -i "s|^${key}=.*|${key}=${val}|" "$envf"
+    else
+        echo "${key}=${val}" >> "$envf"
+    fi
+}
+
+# Idempotently ensure TURN settings exist in .env and coturn is provisioned.
+# Safe on first-time setup AND every update (sync_backend): reuses an existing
+# TURN_SECRET (never rotates a working one), refreshes TURN_URLS to the current
+# domain, then (re)configures coturn. No-op without a domain or an existing .env.
+_provision_turn() {
+    local domain="$1" envf="$BACKEND_DIR/.env"
+    if [[ -z "$domain" || ! -f "$envf" ]]; then return 0; fi
+    local secret
+    secret=$(grep -E '^TURN_SECRET=' "$envf" 2>/dev/null | head -1 | cut -d= -f2-)
+    [[ -z "$secret" ]] && secret="$(openssl rand -hex 32)"
+    _set_env_kv TURN_URLS   "turn:${domain}:3478?transport=udp,turn:${domain}:3478?transport=tcp"
+    _set_env_kv TURN_SECRET "$secret"
+    grep -q '^TURN_TTL=' "$envf" 2>/dev/null || echo 'TURN_TTL=3600' >> "$envf"
+    chmod 600 "$envf"
+    setup_turn "$domain" "$secret"
+}
+
 setup_backend_first() {
     local domain="$1"
     local notify_email="${2:-}"
@@ -969,26 +997,11 @@ NOTIFY_EMAIL_2=${notify_email2}
 # Raise for many miners behind one shared NAT/VPN (e.g. 1000); restart the service after.
 PROBE_RATE_PER_MIN=600
 ENVEOF
-
-    # ── TURN relay (File Drop WebRTC fallback) ──────────────────────────────
-    # Same-Wi-Fi transfers fail on APs with client isolation and on restrictive
-    # NATs unless a relay is available. coturn (setup_turn below) hands out
-    # short-lived credentials derived from this shared secret; the /api/tools/turn
-    # endpoint computes them. A dead/missing TURN entry is harmless — ICE just
-    # skips it and falls back to direct P2P.
-    local turn_secret turn_urls
-    turn_secret="$(openssl rand -hex 32)"
-    turn_urls="turn:${domain}:3478?transport=udp,turn:${domain}:3478?transport=tcp"
-    cat >> "$BACKEND_DIR/.env" << ENVEOF
-
-# ── TURN relay (File Drop) — short-lived creds via coturn use-auth-secret ──
-TURN_URLS=${turn_urls}
-TURN_SECRET=${turn_secret}
-TURN_TTL=3600
-ENVEOF
     chmod 600 "$BACKEND_DIR/.env"
 
-    setup_turn "$domain" "$turn_secret"
+    # TURN relay for File Drop — idempotent; the same helper runs on every
+    # sync_backend so existing deployments get it on update, not just here.
+    _provision_turn "$domain"
 
     cd "$BACKEND_DIR" && npm install --omit=dev && cd /
     success "Backend files ready at $BACKEND_DIR"
@@ -1030,6 +1043,10 @@ sync_backend() {
     # Ensure SQLite data directory exists and is owned by the service user
     mkdir -p /opt/office-tools/data/uploads
     chown -R www-data:www-data /opt/office-tools/data
+    # Ensure the File Drop TURN relay is provisioned (idempotent). Runs here so
+    # existing deployments pick up TURN on a normal update, before the restart
+    # below so the API loads the freshly-seeded TURN_SECRET/TURN_URLS.
+    _provision_turn "${DOMAIN:-}"
     systemctl restart office-tools-api 2>/dev/null || true
     success "Backend synced and service restarted"
 }
