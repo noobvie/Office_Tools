@@ -31,6 +31,7 @@ const path      = require('path');
 // DatabaseSync exposes the same exec()/prepare()/run/get/all subset this file uses.
 const { DatabaseSync } = require('node:sqlite');
 const multer    = require('multer');
+const { makeRateLimiter } = require('./lib/rate-limit');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -118,29 +119,15 @@ app.use(cors({ origin: CORS_ORIGINS, methods: ['GET','POST','DELETE'], allowedHe
 app.use(express.json());
 
 // ── Shared: creation rate limit + CAPTCHA ────────────────────
-const _createRateMap = new Map();
-setInterval(() => {
-  const now = Date.now();
-  for (const [k, v] of _createRateMap) { if (now > v.resetAt) _createRateMap.delete(k); }
-}, 300_000);
-function _createAllow(ip) {
-  const now = Date.now();
-  let e = _createRateMap.get(ip);
-  if (!e || now > e.resetAt) e = { count: 0, resetAt: now + 3_600_000 };
-  e.count++;
-  _createRateMap.set(ip, e);
-  return e.count <= 10;
-}
+const createRLMiddleware = makeRateLimiter({
+  windowMs: 3_600_000, max: 10,
+  message: 'Rate limit: 10 creates per hour. Try again later.',
+}).middleware;
 function _checkCaptcha(body) {
   const ca  = parseInt(body?.ca,  10);
   const cb  = parseInt(body?.cb,  10);
   const ans = parseInt(body?.ans, 10);
   return !isNaN(ca) && !isNaN(cb) && !isNaN(ans) && ca + cb === ans;
-}
-function createRLMiddleware(req, res, next) {
-  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
-  if (!_createAllow(ip)) return res.status(429).json({ error: 'Rate limit: 10 creates per hour. Try again later.' });
-  next();
 }
 
 // ── Tools API: URL Shortener ──────────────────────────────────
@@ -235,24 +222,11 @@ app.use((err, _req, res, next) => {
 });
 
 // ── Popular tools — click-based view tracking ─────────────────
-const _viewRateMap = new Map();
-setInterval(() => {
-  const now = Date.now();
-  for (const [k, v] of _viewRateMap) { if (now > v.resetAt) _viewRateMap.delete(k); }
-}, 300_000);
-
-function _viewAllow(ip) {
-  const now = Date.now();
-  let e = _viewRateMap.get(ip);
-  if (!e || now > e.resetAt) e = { count: 0, resetAt: now + 60_000 };
-  e.count++;
-  _viewRateMap.set(ip, e);
-  return e.count <= 60;
-}
+const _viewRL = makeRateLimiter({ windowMs: 60_000, max: 60 });
 
 app.post('/api/tools/view', (req, res) => {
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress;
-  if (!_viewAllow(ip)) return res.status(429).json({ error: 'Too many requests' });
+  if (!_viewRL.allow(ip)) return res.status(429).json({ error: 'Too many requests' });
   const tool = String(req.body?.tool || '').trim();
   if (!tool || !/^[a-z0-9-]+$/.test(tool) || tool.length > 60) {
     return res.status(400).json({ error: 'Invalid tool id' });
@@ -344,24 +318,10 @@ function resolvePublicTarget(host) {
 // Clamped to a sane floor/ceiling.
 const PROBE_RATE_PER_MIN = Math.min(2000, Math.max(10,
   parseInt(process.env.PROBE_RATE_PER_MIN, 10) || 600));
-const _probeRateMap = new Map();
-setInterval(() => {
-  const now = Date.now();
-  for (const [k, v] of _probeRateMap) { if (now > v.resetAt) _probeRateMap.delete(k); }
-}, 300_000);
-function _probeAllow(ip) {
-  const now = Date.now();
-  let e = _probeRateMap.get(ip);
-  if (!e || now > e.resetAt) e = { count: 0, resetAt: now + 60_000 };
-  e.count++;
-  _probeRateMap.set(ip, e);
-  return e.count <= PROBE_RATE_PER_MIN;
-}
-function probeRLMiddleware(req, res, next) {
-  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
-  if (!_probeAllow(ip)) return res.status(429).json({ error: 'Rate limit: ' + PROBE_RATE_PER_MIN + ' requests/minute. Please wait.' });
-  next();
-}
+const probeRLMiddleware = makeRateLimiter({
+  windowMs: 60_000, max: PROBE_RATE_PER_MIN,
+  message: `Rate limit: ${PROBE_RATE_PER_MIN} requests/minute. Please wait.`,
+}).middleware;
 
 app.get('/api/resolve', netRLMiddleware, (req, res) => {
   const host = String(req.query.host || '').trim();
@@ -470,26 +430,10 @@ app.get('/api/health', (_, res) => res.json({ status: 'ok', ts: new Date().toISO
 // Optional env vars: GEMINI_API_KEY (AI suggest), VIEWDNS_API_KEY / WHOXY_API_KEY (history)
 
 // Per-IP rate limiter (domain routes only)
-const _domainRateMap = new Map();
-setInterval(() => {
-  const now = Date.now();
-  for (const [k, v] of _domainRateMap) { if (now > v.resetAt) _domainRateMap.delete(k); }
-}, 300_000);
-
-function _domainAllow(ip) {
-  const now = Date.now();
-  let e = _domainRateMap.get(ip);
-  if (!e || now > e.resetAt) e = { count: 0, resetAt: now + 60_000 };
-  e.count++;
-  _domainRateMap.set(ip, e);
-  return e.count <= 15;
-}
-
-function domainRLMiddleware(req, res, next) {
-  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
-  if (!_domainAllow(ip)) return res.status(429).json({ error: 'Rate limit: 15 requests/minute. Please wait.' });
-  next();
-}
+const domainRLMiddleware = makeRateLimiter({
+  windowMs: 60_000, max: 15,
+  message: 'Rate limit: 15 requests/minute. Please wait.',
+}).middleware;
 
 // In-memory result cache (1 h TTL)
 const _domCache = new Map();
@@ -767,26 +711,13 @@ function validNetHost(h) {
   return h.length > 0 && h.length <= 253 && /^[a-zA-Z0-9.\-:\[\]_]+$/.test(h);
 }
 
-const _netRateMap = new Map();
-setInterval(() => {
-  const now = Date.now();
-  for (const [k, v] of _netRateMap) { if (now > v.resetAt) _netRateMap.delete(k); }
-}, 300_000);
-
-function _netAllow(ip) {
-  const now = Date.now();
-  let e = _netRateMap.get(ip);
-  if (!e || now > e.resetAt) e = { count: 0, resetAt: now + 60_000 };
-  e.count++;
-  _netRateMap.set(ip, e);
-  return e.count <= 10;
-}
-
-function netRLMiddleware(req, res, next) {
-  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
-  if (!_netAllow(ip)) return res.status(429).json({ error: 'Rate limit: 10 requests/minute. Please wait.' });
-  next();
-}
+const _netRL = makeRateLimiter({
+  windowMs: 60_000, max: 10,
+  message: 'Rate limit: 10 requests/minute. Please wait.',
+});
+// Hoisted wrapper: /api/resolve (in the Port Checker section above) references
+// this before this line runs, so it must be a function declaration, not a const.
+function netRLMiddleware(req, res, next) { return _netRL.middleware(req, res, next); }
 
 // GET /api/net/ping?host=&count=&family=   (SSE stream)
 app.get('/api/net/ping', netRLMiddleware, (req, res) => {
@@ -905,19 +836,7 @@ function _sendmailNotify(to, subject, body) {
   });
 }
 
-const _fbRateMap = new Map();
-setInterval(() => {
-  const now = Date.now();
-  for (const [k, v] of _fbRateMap) { if (now > v.resetAt) _fbRateMap.delete(k); }
-}, 300_000);
-function _fbAllow(ip) {
-  const now = Date.now();
-  let e = _fbRateMap.get(ip);
-  if (!e || now > e.resetAt) e = { count: 0, resetAt: now + 86_400_000 }; // 24 hours
-  e.count++;
-  _fbRateMap.set(ip, e);
-  return e.count <= 3;
-}
+const _fbRL = makeRateLimiter({ windowMs: 86_400_000, max: 3 }); // 3 per 24 hours
 
 // POST /api/feedback  { message, page, ca, cb, ans }
 app.post('/api/feedback', (req, res) => {
@@ -931,7 +850,7 @@ app.post('/api/feedback', (req, res) => {
     return res.status(400).json({ error: 'Incorrect answer to the math question.' });
   }
 
-  if (!_fbAllow(clientIp)) return res.status(429).json({ error: 'Limit reached: 3 messages per 24 hours.' });
+  if (!_fbRL.allow(clientIp)) return res.status(429).json({ error: 'Limit reached: 3 messages per 24 hours.' });
 
   const message = String(req.body?.message || '').trim().slice(0, 2000);
   const page    = String(req.body?.page    || '').trim().slice(0, 200);
@@ -960,24 +879,13 @@ app.post('/api/feedback', (req, res) => {
 
 // ── IP Geolocation proxy ──────────────────────────────────────
 // ip-api.com free tier only allows HTTP, not HTTPS — proxy it server-side
-const _geoRateMap = new Map();
-setInterval(() => {
-  const now = Date.now();
-  for (const [k, v] of _geoRateMap) { if (now > v.resetAt) _geoRateMap.delete(k); }
-}, 300_000);
-function _geoAllow(ip) {
-  const now = Date.now();
-  let s = _geoRateMap.get(ip);
-  if (!s || now > s.resetAt) { s = { count: 0, resetAt: now + 60_000 }; _geoRateMap.set(ip, s); }
-  s.count++;
-  return s.count <= 20;
-}
+const _geoRL = makeRateLimiter({ windowMs: 60_000, max: 20 });
 
 const _GEO_FIELDS = 'status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query';
 
 app.get('/api/ip/geo', async (req, res) => {
   const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || '';
-  if (!_geoAllow(clientIp)) return res.status(429).json({ error: 'Rate limit exceeded' });
+  if (!_geoRL.allow(clientIp)) return res.status(429).json({ error: 'Rate limit exceeded' });
 
   const target = (req.query.ip || '').trim();
   if (!target) return res.status(400).json({ error: 'Missing ip parameter' });
@@ -1014,18 +922,7 @@ app.get('/api/ip/geo', async (req, res) => {
 // a path/hostname cannot force a family the connection didn't use. From a shell, pin
 // it with `curl -4`/`curl -6`; for a per-family hostname you need v4-only / v6-only
 // DNS (the front-end's split display borrows api4./api6.ipify.org for this).
-const _ipEchoRateMap = new Map();
-setInterval(() => {
-  const now = Date.now();
-  for (const [k, v] of _ipEchoRateMap) { if (now > v.resetAt) _ipEchoRateMap.delete(k); }
-}, 300_000);
-function _ipEchoAllow(ip) {
-  const now = Date.now();
-  let s = _ipEchoRateMap.get(ip);
-  if (!s || now > s.resetAt) { s = { count: 0, resetAt: now + 60_000 }; _ipEchoRateMap.set(ip, s); }
-  s.count++;
-  return s.count <= 60;
-}
+const _ipEchoRL = makeRateLimiter({ windowMs: 60_000, max: 60 });
 
 function _clientIp(req) {
   let ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
@@ -1036,7 +933,7 @@ function _clientIp(req) {
 
 app.get(['/ip', '/api/ip'], publicCors, (req, res) => {
   const ip = _clientIp(req);
-  if (!_ipEchoAllow(ip || 'unknown')) return res.status(429).json({ error: 'Rate limit: 60 requests/minute. Please wait.' });
+  if (!_ipEchoRL.allow(ip || 'unknown')) return res.status(429).json({ error: 'Rate limit: 60 requests/minute. Please wait.' });
 
   res.setHeader('Cache-Control', 'no-store');
   const format = String(req.query.format || '').toLowerCase();
@@ -1183,24 +1080,10 @@ app.get('/api/net/uptime', netRLMiddleware, async (req, res) => {
 });
 
 // Dedicated proxy rate limiter — one page pulls many assets, so allow more
-const _proxyRateMap = new Map();
-setInterval(() => {
-  const now = Date.now();
-  for (const [k, v] of _proxyRateMap) { if (now > v.resetAt) _proxyRateMap.delete(k); }
-}, 300_000);
-function _proxyAllow(ip) {
-  const now = Date.now();
-  let e = _proxyRateMap.get(ip);
-  if (!e || now > e.resetAt) e = { count: 0, resetAt: now + 60_000 };
-  e.count++;
-  _proxyRateMap.set(ip, e);
-  return e.count <= 240;
-}
-function proxyRLMiddleware(req, res, next) {
-  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
-  if (!_proxyAllow(ip)) return res.status(429).json({ error: 'Rate limit: 240 requests/minute. Please slow down.' });
-  next();
-}
+const proxyRLMiddleware = makeRateLimiter({
+  windowMs: 60_000, max: 240,
+  message: 'Rate limit: 240 requests/minute. Please slow down.',
+}).middleware;
 
 const _PROXY_MAX_BYTES = 12 * 1024 * 1024; // 12 MB cap per resource
 
@@ -1716,12 +1599,29 @@ function _dropLeaveRoom(c) {
   else _dropSyncPeers([...room]);
 }
 
+// ── Shared WebSocket upgrade router ───────────────────────────
+// Node fires EVERY 'upgrade' listener for each upgrade event, so multiple ad-hoc
+// listeners cannot each `socket.destroy()` the paths they don't own — that would
+// kill another route's freshly-upgraded socket. One dispatcher owns the upgrade
+// event and routes by pathname; unknown paths are destroyed exactly once.
+const _wsRoutes = new Map(); // pathname → (req, socket, head) => void
+let _wsRouterInstalled = false;
+function _wsRegister(server, pathname, handler) {
+  _wsRoutes.set(pathname, handler);
+  if (_wsRouterInstalled) return;
+  _wsRouterInstalled = true;
+  server.on('upgrade', (req, socket, head) => {
+    const p = (req.url || '').split('?')[0];
+    const h = _wsRoutes.get(p);
+    if (!h) { socket.destroy(); return; }
+    h(req, socket, head);
+  });
+}
+
 function attachDropSignaling(server) {
   const wss = new WebSocketServer({ noServer: true, maxPayload: 128 * 1024 });
 
-  server.on('upgrade', (req, socket, head) => {
-    const pathname = (req.url || '').split('?')[0];
-    if (pathname !== '/drop-ws') { socket.destroy(); return; }
+  _wsRegister(server, '/drop-ws', (req, socket, head) => {
     const ip = _dropIp(req);
     const perIp = _dropByIp.get(ip)?.size || 0;
     if (_dropClients.size >= DROP_MAX_CONN_TOTAL || perIp >= DROP_MAX_CONN_PER_IP) {
@@ -1822,6 +1722,319 @@ function attachDropSignaling(server) {
   }, 30_000);
 }
 
+// ── Group Chat Rooms — /chat-ws relay + temp file attachments ─
+// A no-registration, ephemeral group chat: create a room → get an 8-char code →
+// anyone worldwide joins with the code. Text messages are relayed IN MEMORY and
+// never written to disk. Attachments ARE stored on disk temporarily (a group of
+// 3+ people plus 2 GB files cannot stream peer-to-peer) under
+// UPLOADS_DIR/chat/<code>/ and are deleted, with the whole room, the moment the
+// last member leaves (short grace for reconnects; a hard age backstop reaps any
+// room a ghost connection might otherwise keep alive). See CLAUDE.md.
+
+const CHAT_UPLOADS_DIR      = path.join(UPLOADS_DIR, 'chat');
+const CHAT_MAX_CONN_TOTAL   = 600;
+const CHAT_MAX_CONN_PER_IP  = 12;
+const CHAT_ROOM_MAX_MEMBERS = 50;
+const CHAT_MAX_FILE_BYTES   = 2 * 1024 * 1024 * 1024;      // 2 GB per file
+const CHAT_ROOM_MAX_FILES   = 40;
+const CHAT_ROOM_MAX_BYTES   = 6 * 1024 * 1024 * 1024;      // 6 GB aggregate per room
+const CHAT_MSG_MAXLEN       = 4000;
+const CHAT_NAME_MAXLEN      = 32;
+const CHAT_HISTORY_KEEP     = 60;                          // in-memory recent msgs for late joiners
+const CHAT_EMPTY_GRACE_MS   = 20_000;                      // delete room this long after it empties
+const CHAT_ROOM_MAX_AGE_MS  = 12 * 3_600_000;             // backstop against ghost-kept rooms
+
+fs.mkdirSync(CHAT_UPLOADS_DIR, { recursive: true });
+
+// Denylist of executable / script extensions — everything else is allowed. The
+// final extension is what matters (foo.pdf.exe → "exe" → blocked). Downloads are
+// always served as an attachment (never inline), so a renamed file can still only
+// land on the downloader's disk, never execute in-page.
+const CHAT_BLOCKED_EXT = new Set([
+  'exe','dll','com','bat','cmd','msi','msix','scr','pif','cpl','hta','vbs','vbe',
+  'js','mjs','jse','wsf','wsh','ws','ps1','psm1','ps1xml','psc1','psd1','reg','inf',
+  'lnk','sys','drv','ocx','efi','elf','so','dylib','jar','jnlp','sh','bash','zsh',
+  'csh','ksh','run','bin','out','apk','app','deb','rpm','dmg','pkg','gadget','msc',
+  'application','appref-ms','ade','adp','mde','mdb','vb','scf','shb','shs','u3p',
+  'xbap','mst','isu','job','paf','rgs','crt','der','pcd','prg','ins','isp','vbscript',
+]);
+function chatExtOf(name) {
+  const base = String(name || '').split(/[\\/]/).pop() || '';
+  const dot = base.lastIndexOf('.');
+  return dot > 0 ? base.slice(dot + 1).toLowerCase() : '';
+}
+function chatExtBlocked(name) { return CHAT_BLOCKED_EXT.has(chatExtOf(name)); }
+
+const _chatRooms   = new Map();   // code → room
+const _chatClients = new Set();   // every connected /chat-ws client (joined or not)
+
+// Unguessable 8-char code from an unambiguous alphabet (no 0/O/1/I/L). 32^8 ≈
+// 1.1e12 combinations — not enumerable, unlike a 6-digit File Drop code.
+const _CHAT_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+function _chatCode() {
+  let code;
+  do {
+    const bytes = crypto.randomBytes(8);
+    code = '';
+    for (let i = 0; i < 8; i++) code += _CHAT_ALPHABET[bytes[i] % _CHAT_ALPHABET.length];
+  } while (_chatRooms.has(code));
+  return code;
+}
+
+function _chatSend(c, obj) {
+  if (c.ws.readyState === 1) { try { c.ws.send(JSON.stringify(obj)); } catch { /* closing */ } }
+}
+function _chatBroadcast(room, obj, except) {
+  for (const c of room.members.values()) if (c !== except) _chatSend(c, obj);
+}
+function _chatMemberList(room) {
+  return [...room.members.values()].map(c => ({ id: c.id, name: c.name }));
+}
+function _chatFileList(room) {
+  return [...room.files.values()].map(f => ({ id: f.id, name: f.name, size: f.size, mime: f.mime, by: f.by, ts: f.ts }));
+}
+function _chatSyncMembers(room) {
+  _chatBroadcast(room, { type: 'members', members: _chatMemberList(room) });
+}
+
+function _chatRoomNew() {
+  const code = _chatCode();
+  const room = {
+    code,
+    members: new Map(),   // id → client
+    files:   new Map(),   // fileId → { id, name, size, mime, path, by, ts }
+    bytes: 0,
+    history: [],          // recent { from, name, text, ts } — memory only, never persisted
+    createdAt: Date.now(),
+    lastActivity: Date.now(),
+    emptyTimer: null,
+  };
+  _chatRooms.set(code, room);
+  return room;
+}
+
+function _chatDeleteRoom(room, reason) {
+  if (!_chatRooms.has(room.code)) return;
+  _chatRooms.delete(room.code);
+  if (room.emptyTimer) { clearTimeout(room.emptyTimer); room.emptyTimer = null; }
+  for (const c of room.members.values()) {
+    _chatSend(c, { type: 'room-closed', reason: reason || 'Room closed' });
+    c.room = null;
+    try { c.ws.close(1000, 'room closed'); } catch { /* already closing */ }
+  }
+  room.members.clear();
+  room.files.clear();
+  fs.rm(path.join(CHAT_UPLOADS_DIR, room.code), { recursive: true, force: true }, () => {});
+}
+
+function _chatArmEmpty(room) {
+  if (room.members.size > 0 || room.emptyTimer) return;
+  room.emptyTimer = setTimeout(() => {
+    room.emptyTimer = null;
+    if (room.members.size === 0) _chatDeleteRoom(room, 'Everyone left — files were deleted');
+  }, CHAT_EMPTY_GRACE_MS);
+}
+function _chatCancelEmpty(room) {
+  if (room.emptyTimer) { clearTimeout(room.emptyTimer); room.emptyTimer = null; }
+}
+
+function _chatLeave(c, notify) {
+  const room = c.room ? _chatRooms.get(c.room) : null;
+  c.room = null;
+  if (!room) return;
+  room.members.delete(c.id);
+  room.lastActivity = Date.now();
+  if (notify !== false) _chatBroadcast(room, { type: 'notice', event: 'leave', id: c.id, name: c.name, ts: Date.now() });
+  if (room.members.size === 0) _chatArmEmpty(room);
+  else _chatSyncMembers(room);
+}
+
+function _chatJoin(c, code) {
+  const room = _chatRooms.get(code);
+  if (!room)                                      { _chatSend(c, { type: 'error', message: 'Room not found. Check the code, or create a new room.' }); return; }
+  if (room.members.size >= CHAT_ROOM_MAX_MEMBERS) { _chatSend(c, { type: 'error', message: 'This room is full.' }); return; }
+  _chatLeave(c, true);
+  _chatCancelEmpty(room);
+  room.members.set(c.id, c);
+  c.room = code;
+  room.lastActivity = Date.now();
+  _chatSend(c, {
+    type: 'joined', code, you: { id: c.id, name: c.name },
+    members: _chatMemberList(room),
+    files:   _chatFileList(room),
+    history: room.history.slice(-CHAT_HISTORY_KEEP),
+  });
+  _chatBroadcast(room, { type: 'notice', event: 'join', id: c.id, name: c.name, ts: Date.now() }, c);
+  _chatSyncMembers(room);
+}
+
+function attachChatSignaling(server) {
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
+
+  _wsRegister(server, '/chat-ws', (req, socket, head) => {
+    const ip = _dropIp(req);
+    let perIp = 0;
+    for (const c of _chatClients) if (c.ip === ip) perIp++;
+    if (_chatClients.size >= CHAT_MAX_CONN_TOTAL || perIp >= CHAT_MAX_CONN_PER_IP) { socket.destroy(); return; }
+    wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req));
+  });
+
+  wss.on('connection', (ws, req) => {
+    const c = {
+      ws, ip: _dropIp(req), id: genId() + genId(),
+      name: _dropName(), room: null, isAlive: true,
+      _msgs: 0, _msgWindow: Date.now(),
+    };
+    _chatClients.add(c);
+    _chatSend(c, { type: 'you', id: c.id, name: c.name });
+
+    ws.on('pong', () => { c.isAlive = true; });
+
+    ws.on('message', raw => {
+      const now = Date.now();
+      if (now - c._msgWindow > 10_000) { c._msgWindow = now; c._msgs = 0; }
+      if (++c._msgs > 240) { ws.close(1008, 'rate limit'); return; }
+
+      let msg; try { msg = JSON.parse(raw); } catch { return; }
+      switch (msg.type) {
+        case 'create': {
+          _chatLeave(c, true);
+          const room = _chatRoomNew();
+          room.members.set(c.id, c);
+          c.room = room.code;
+          _chatSend(c, { type: 'joined', code: room.code, you: { id: c.id, name: c.name }, members: _chatMemberList(room), files: [], history: [] });
+          break;
+        }
+        case 'join': {
+          const code = String(msg.code || '').trim().toUpperCase();
+          if (!/^[A-Z0-9]{8}$/.test(code)) { _chatSend(c, { type: 'error', message: 'Enter the 8-character room code.' }); break; }
+          _chatJoin(c, code);
+          break;
+        }
+        case 'name': {
+          const nm = String(msg.name || '').replace(/[\x00-\x1f\x7f]/g, '').trim().slice(0, CHAT_NAME_MAXLEN);
+          if (!nm) break;
+          c.name = nm;
+          const room = c.room ? _chatRooms.get(c.room) : null;
+          if (room) _chatSyncMembers(room);
+          break;
+        }
+        case 'msg': {
+          const room = c.room ? _chatRooms.get(c.room) : null;
+          if (!room) break;
+          const text = String(msg.text || '').slice(0, CHAT_MSG_MAXLEN);
+          if (!text.trim()) break;
+          const ts = Date.now();
+          const rec = { from: c.id, name: c.name, text, ts };
+          room.history.push(rec);
+          if (room.history.length > CHAT_HISTORY_KEEP) room.history.shift();
+          room.lastActivity = ts;
+          _chatBroadcast(room, { type: 'msg', ...rec });
+          break;
+        }
+        case 'typing': {
+          const room = c.room ? _chatRooms.get(c.room) : null;
+          if (room) _chatBroadcast(room, { type: 'typing', id: c.id, name: c.name }, c);
+          break;
+        }
+        case 'leave': {
+          _chatLeave(c, true);
+          _chatSend(c, { type: 'left' });
+          break;
+        }
+      }
+    });
+
+    ws.on('close', () => { _chatClients.delete(c); _chatLeave(c, true); });
+    ws.on('error', () => {});
+  });
+
+  // Keepalive ping (Cloudflare idles silent sockets out ~100 s) + reap dead
+  // clients; a terminated socket fires 'close' → member removal → empty cleanup.
+  // Also a hard age backstop so a wedged room can never keep 2 GB files forever.
+  setInterval(() => {
+    for (const c of _chatClients) {
+      if (!c.isAlive) { try { c.ws.terminate(); } catch { /* gone */ } continue; }
+      c.isAlive = false;
+      try { c.ws.ping(); } catch { /* closing */ }
+    }
+    const now = Date.now();
+    for (const room of [..._chatRooms.values()]) {
+      if (now - room.createdAt > CHAT_ROOM_MAX_AGE_MS && now - room.lastActivity > CHAT_ROOM_MAX_AGE_MS) {
+        _chatDeleteRoom(room, 'Room expired');
+      }
+    }
+  }, 30_000);
+}
+
+// Streaming multipart upload straight to disk (never buffered in RAM). Room dir
+// is created lazily per code; the extension denylist runs in fileFilter so a
+// blocked type is rejected BEFORE any bytes are written.
+const chatUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const code = String(req.params.code || '').toUpperCase();
+      const dir  = path.join(CHAT_UPLOADS_DIR, code);
+      fs.mkdir(dir, { recursive: true }, err => cb(err, dir));
+    },
+    filename: (req, file, cb) => cb(null, genId() + genId()),
+  }),
+  limits: { fileSize: CHAT_MAX_FILE_BYTES, files: 1 },
+  fileFilter: (req, file, cb) => {
+    if (chatExtBlocked(file.originalname)) {
+      const e = new Error('blocked extension'); e.code = 'CHAT_BLOCKED_EXT'; return cb(e);
+    }
+    cb(null, true);
+  },
+});
+
+// POST /api/chat/:code/upload — form fields (before the file part): name, by
+app.post('/api/chat/:code/upload', (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  const room = _chatRooms.get(code);
+  if (!room) return res.status(404).json({ error: 'Room not found or already closed.' });
+  if (room.files.size >= CHAT_ROOM_MAX_FILES) return res.status(409).json({ error: 'This room has reached its file limit.' });
+
+  chatUpload.single('file')(req, res, err => {
+    if (err) {
+      if (req.file?.path) fs.unlink(req.file.path, () => {});
+      if (err.code === 'LIMIT_FILE_SIZE')   return res.status(413).json({ error: 'File too large (max 2 GB).' });
+      if (err.code === 'CHAT_BLOCKED_EXT')  return res.status(415).json({ error: 'That file type is blocked (executables and scripts are not allowed).' });
+      return res.status(400).json({ error: 'Upload failed.' });
+    }
+    if (!req.file) return res.status(400).json({ error: 'No file received.' });
+
+    // The room can vanish mid-upload if everyone left; drop the orphaned bytes.
+    if (!_chatRooms.has(code)) { fs.unlink(req.file.path, () => {}); return res.status(410).json({ error: 'Room closed during upload.' }); }
+    if (room.bytes + req.file.size > CHAT_ROOM_MAX_BYTES) {
+      fs.unlink(req.file.path, () => {});
+      return res.status(413).json({ error: 'Room storage limit reached.' });
+    }
+
+    const id   = genId() + genId();
+    const name = String(req.body.name || req.file.originalname || 'file').slice(0, 200);
+    const by   = String(req.body.by || '').slice(0, CHAT_NAME_MAXLEN) || 'Someone';
+    const f = { id, name, size: req.file.size, mime: req.file.mimetype || 'application/octet-stream', path: req.file.path, by, ts: Date.now() };
+    room.files.set(id, f);
+    room.bytes += req.file.size;
+    room.lastActivity = Date.now();
+    _chatBroadcast(room, { type: 'file', file: { id, name, size: f.size, mime: f.mime, by, ts: f.ts } });
+    res.json({ ok: true, id, name, size: f.size });
+  });
+});
+
+// GET /api/chat/:code/file/:id — always an attachment (never inline → no in-page
+// execution of an uploaded HTML/SVG), with nosniff.
+app.get('/api/chat/:code/file/:id', (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  const room = _chatRooms.get(code);
+  if (!room) return res.status(404).json({ error: 'Room not found or closed.' });
+  const f = room.files.get(String(req.params.id));
+  if (!f) return res.status(404).json({ error: 'File not found or expired.' });
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.download(f.path, f.name);
+});
+
 // ── Start ─────────────────────────────────────────────────────
 const server = app.listen(PORT, () => {
   console.log(`Office Tools server running on port ${PORT}`);
@@ -1830,3 +2043,4 @@ const server = app.listen(PORT, () => {
   else            console.log(`[config] Feedback emails → ${_cfgEmail}`);
 });
 attachDropSignaling(server);
+attachChatSignaling(server);

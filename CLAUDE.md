@@ -38,17 +38,26 @@ Every tool is a self-contained `tools/<name>/index.html`. There is no bundler, n
 
 The hub (`index.html`) renders a tool grid with search and category filters. Adding a tool = creating the `tools/<name>/` directory and inserting a card into the correct `<section class="category-section">` in `index.html`.
 
-### Backend — single Express file
+### Backend — Express server + `backend/lib/`
 
-`backend/office-tools-server.js` is one file with all API routes. Routes are grouped by feature with inline comments (`// ── Section ──`). Add new endpoints before the `// ── Start ──` block at the bottom.
+`backend/office-tools-server.js` holds all API routes, grouped by feature with inline
+comments (`// ── Section ──`). Add new endpoints before the `// ── Start ──` block at the
+bottom. Shared, self-contained primitives are being peeled into `backend/lib/` (the whole
+`backend/` tree is rsync'd on deploy, so new subfiles ship automatically). Prefer a small
+`lib/` module over a fourth copy of a helper.
 
-**Rate limiting pattern** (reuse, don't reinvent):
+**Rate limiting** — use the shared factory in `backend/lib/rate-limit.js` (it replaced ~9
+copy-pasted `_xxxRateMap`/`_xxxAllow`/`xxxRLMiddleware` triples). Never hand-roll a new map:
 ```js
-const _myRateMap = new Map();
-setInterval(() => { /* prune expired */ }, 300_000);
-function _myAllow(ip) { /* count <= N per minute */ }
-function myRLMiddleware(req, res, next) { /* 429 if exceeded */ }
+const { makeRateLimiter } = require('./lib/rate-limit');
+const myRL = makeRateLimiter({ windowMs: 60_000, max: 15, message: '…' });
+app.get('/x', myRL.middleware, handler);   // 429 { error: message } when over
+if (!myRL.allow(ip)) …                       // inline form with a caller-chosen key
 ```
+One ordering gotcha: `myRL.middleware` is a `const`, so a route registered **above** the
+`makeRateLimiter` line can't reference it (temporal dead zone at startup). `netRLMiddleware`
+is the live example — it's used by `/api/resolve` earlier in the file, so it's kept as a
+hoisted `function` wrapper around its limiter. Define shared middlewares before their first use.
 
 **SSE streaming pattern** (ping, traceroute):
 ```js

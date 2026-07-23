@@ -364,6 +364,8 @@ const OT_TOOLS = [
   { name: 'Website Up or Down',      path: 'website-status',        cat: '🌐 Network & Web',        icon: '🔌', desc: 'Check if a website is up or down — HTTP status, response time, SSL' },
   { name: 'Web Proxy',               path: 'web-proxy',             cat: '🌐 Network & Web',        icon: '🛡️', desc: 'View blocked or geo-restricted pages through an online proxy' },
   { name: 'File Drop',               path: 'file-drop',             cat: '🌐 Network & Web',        icon: '📡', desc: 'AirDrop for any OS — send files device-to-device, peer-to-peer, no upload', isNew: true },
+  { name: 'Trickle ICE Test',        path: 'webrtc-ice-test',       cat: '🌐 Network & Web',        icon: '🧊', desc: 'Test a STUN or TURN server — gather WebRTC ICE candidates live in the browser', isNew: true },
+  { name: 'Chat Room',               path: 'chat-room',             cat: '🌐 Network & Web',        icon: '💬', desc: 'Temporary group chat — share a code, chat + send files, auto-deleted when everyone leaves', isNew: true },
   // 📤 Share
   { name: 'URL Shortener',           path: 'url-shortener',         cat: '📤 Share',                icon: '🔗', desc: 'Create short links with optional custom alias and expiry' },
   { name: 'Pastebin',                path: 'pastebin',              cat: '📤 Share',                icon: '📋', desc: 'Share code and text via private link with burn-after-read' },

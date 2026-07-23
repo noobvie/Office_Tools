@@ -578,6 +578,33 @@ server {
         proxy_read_timeout    1h;
         proxy_send_timeout    1h;
     }
+    # Chat Room signaling — WebSocket upgrade (exact match wins over ^~ /tools-api/)
+    location = /tools-api/chat-ws {
+        proxy_pass            http://127.0.0.1:3001/chat-ws;
+        proxy_http_version    1.1;
+        proxy_set_header      Upgrade           \$http_upgrade;
+        proxy_set_header      Connection        "upgrade";
+        proxy_set_header      Host              \$host;
+        proxy_set_header      X-Real-IP         \$remote_addr;
+        proxy_set_header      X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_read_timeout    1h;
+        proxy_send_timeout    1h;
+    }
+    # Chat Room file uploads/downloads — up to 2 GB, long timeout for slow links
+    # (longer prefix wins over ^~ /tools-api/; streamed, unbuffered)
+    location ^~ /tools-api/api/chat/ {
+        proxy_pass            http://127.0.0.1:3001/api/chat/;
+        proxy_http_version    1.1;
+        proxy_set_header      Host              \$host;
+        proxy_set_header      X-Real-IP         \$remote_addr;
+        proxy_set_header      X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header      X-Forwarded-Proto \$scheme;
+        client_max_body_size    2200M;
+        proxy_read_timeout      3600s;
+        proxy_send_timeout      3600s;
+        proxy_request_buffering off;
+        proxy_buffering         off;
+    }
     location ^~ /tools-api/ {
         proxy_pass            http://127.0.0.1:3001/;
         proxy_http_version    1.1;
@@ -691,6 +718,33 @@ server {
         proxy_set_header      X-Forwarded-For   \$proxy_add_x_forwarded_for;
         proxy_read_timeout    1h;
         proxy_send_timeout    1h;
+    }
+    # Chat Room signaling — WebSocket upgrade (exact match wins over ^~ /tools-api/)
+    location = /tools-api/chat-ws {
+        proxy_pass            http://127.0.0.1:3001/chat-ws;
+        proxy_http_version    1.1;
+        proxy_set_header      Upgrade           \$http_upgrade;
+        proxy_set_header      Connection        "upgrade";
+        proxy_set_header      Host              \$host;
+        proxy_set_header      X-Real-IP         \$remote_addr;
+        proxy_set_header      X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_read_timeout    1h;
+        proxy_send_timeout    1h;
+    }
+    # Chat Room file uploads/downloads — up to 2 GB, long timeout for slow links
+    # (longer prefix wins over ^~ /tools-api/; streamed, unbuffered)
+    location ^~ /tools-api/api/chat/ {
+        proxy_pass            http://127.0.0.1:3001/api/chat/;
+        proxy_http_version    1.1;
+        proxy_set_header      Host              \$host;
+        proxy_set_header      X-Real-IP         \$remote_addr;
+        proxy_set_header      X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header      X-Forwarded-Proto \$scheme;
+        client_max_body_size    2200M;
+        proxy_read_timeout      3600s;
+        proxy_send_timeout      3600s;
+        proxy_request_buffering off;
+        proxy_buffering         off;
     }
     location ^~ /tools-api/ {
         proxy_pass            http://127.0.0.1:3001/;
@@ -861,8 +915,14 @@ _update_notify_env() {
 # and non-fatal: on any failure it warns and returns 0 so the deploy continues —
 # File Drop still works over direct P2P, just without the relay fallback.
 setup_turn() {
-    local domain="$1" secret="$2"
+    local domain="$1" secret="$2" ext_ip="${3:-}"
     section "TURN relay setup — coturn (File Drop fallback)"
+
+    # On a cloud VPS with 1:1 NAT (public IP not on the interface), coturn must be
+    # told the public↔private mapping or it advertises the private IP as the relay
+    # candidate. Passed as <PUBLIC>/<PRIVATE> from _provision_turn only when they differ.
+    local ext_line=""
+    [[ -n "$ext_ip" ]] && ext_line="external-ip=${ext_ip}"
 
     # coturn reads a different config path per distro: Debian → /etc/turnserver.conf
     # (plus the /etc/default/coturn enable gate); EPEL on Rocky/Alma → /etc/coturn/
@@ -893,13 +953,12 @@ setup_turn() {
     # turns: can be added later (needs a cert the coturn user can read).
     cat > "$turn_conf" << TURNEOF
 # Office Tools — File Drop TURN relay (managed by deploy.sh)
-# NOTE: on a cloud VPS with 1:1 NAT (AWS/GCP — public IP not on the interface),
-# add: external-ip=<PUBLIC_IP>/<PRIVATE_IP>  or relayed candidates will be private.
 listening-port=3478
 fingerprint
 use-auth-secret
 static-auth-secret=${secret}
 realm=${domain}
+${ext_line}
 no-cli
 no-tcp-relay
 no-multicast-peers
@@ -958,21 +1017,59 @@ _set_env_kv() {
     fi
 }
 
+# The IP a remote client actually sees (asks an external echo; falls back to the
+# default-route source IP). TURN clients must reach this IP directly.
+_detect_public_ip() {
+    local ip="" url
+    for url in "https://api.ipify.org" "https://ipv4.icanhazip.com" "https://ifconfig.me/ip"; do
+        # || true: under `set -e`+pipefail a failed curl would otherwise abort the
+        # loop before the fallback URLs are tried.
+        ip=$(curl -4 -fsS --max-time 5 "$url" 2>/dev/null | tr -d '[:space:]') || true
+        [[ "$ip" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] && { echo "$ip"; return 0; }
+    done
+    ip -4 route get 1.1.1.1 2>/dev/null | grep -oP 'src \K[0-9.]+' | head -1 || true
+}
+# The IP actually bound on the interface (private on a NAT box, public otherwise).
+_detect_local_ip() {
+    ip -4 route get 1.1.1.1 2>/dev/null | grep -oP 'src \K[0-9.]+' | head -1 || true
+}
+
 # Idempotently ensure TURN settings exist in .env and coturn is provisioned.
 # Safe on first-time setup AND every update (sync_backend): reuses an existing
-# TURN_SECRET (never rotates a working one), refreshes TURN_URLS to the current
-# domain, then (re)configures coturn. No-op without a domain or an existing .env.
+# TURN_SECRET (never rotates a working one), then (re)configures coturn.
+# No-op without a domain or an existing .env.
+#
+# TURN is advertised on the server's PUBLIC IP, not the site domain: a CDN/proxy
+# in front of the domain (e.g. Cloudflare's orange cloud) only forwards 80/443, so
+# UDP/TCP 3478 sent to the proxied hostname dies at the edge and never reaches
+# coturn. The raw IP goes straight to the box. (Trade-off: the /api/tools/turn
+# response then exposes the origin IP — unavoidable for TURN to function.)
 _provision_turn() {
     local domain="$1" envf="$BACKEND_DIR/.env"
     if [[ -z "$domain" || ! -f "$envf" ]]; then return 0; fi
+
+    local pub_ip local_ip host ext_ip=""
+    pub_ip="$(_detect_public_ip)"  || true
+    local_ip="$(_detect_local_ip)" || true
+    if [[ -n "$pub_ip" ]]; then
+        host="$pub_ip"
+        # 1:1 NAT (cloud): interface holds a private IP ≠ the public IP → tell coturn.
+        [[ -n "$local_ip" && "$local_ip" != "$pub_ip" ]] && ext_ip="${pub_ip}/${local_ip}"
+    else
+        warn "Could not detect public IP — TURN will use ${domain} (fails if behind a proxy/CDN)"
+        host="$domain"
+    fi
+
     local secret
-    secret=$(grep -E '^TURN_SECRET=' "$envf" 2>/dev/null | head -1 | cut -d= -f2-)
+    # || true: grep exits 1 (→ pipefail) when TURN_SECRET isn't in .env yet (fresh
+    # box); without the guard `set -e` would abort the deploy on first-time setup.
+    secret=$(grep -E '^TURN_SECRET=' "$envf" 2>/dev/null | head -1 | cut -d= -f2-) || true
     [[ -z "$secret" ]] && secret="$(openssl rand -hex 32)"
-    _set_env_kv TURN_URLS   "turn:${domain}:3478?transport=udp,turn:${domain}:3478?transport=tcp"
+    _set_env_kv TURN_URLS   "turn:${host}:3478?transport=udp,turn:${host}:3478?transport=tcp"
     _set_env_kv TURN_SECRET "$secret"
     grep -q '^TURN_TTL=' "$envf" 2>/dev/null || echo 'TURN_TTL=3600' >> "$envf"
     chmod 600 "$envf"
-    setup_turn "$domain" "$secret"
+    setup_turn "$domain" "$secret" "$ext_ip"
 }
 
 setup_backend_first() {

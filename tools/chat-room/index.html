@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Room — Free Temporary Group Chat, No Sign Up | Office Tools</title>
+  <meta name="description" content="Create a private group chat room in one click — share the code and anyone, anywhere joins instantly. No registration, no app. Send messages and files up to 2 GB. Everything is deleted the moment the last person leaves.">
+  <meta name="keywords" content="chat room, temporary chat, anonymous chat, group chat no registration, disposable chat room, private chat link, share files in chat, ephemeral chat, room code chat, throwaway chat room, no sign up chat, encrypted temporary chat">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Chat Room — Free Temporary Group Chat, No Sign Up">
+  <meta property="og:description" content="Spin up a disposable group chat room, share the code, and chat + send files worldwide. No login. Auto-deleted when everyone leaves.">
+  <meta property="og:url" content="https://tools.grin.money/tools/chat-room/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Chat Room — Free Temporary Group Chat, No Sign Up">
+  <meta name="twitter:description" content="Disposable group chat rooms with file sharing. Share a code, chat worldwide, auto-deleted when everyone leaves.">
+  <link rel="canonical" href="https://tools.grin.money/tools/chat-room/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Chat Room","description":"Create a temporary group chat room with no registration. Share the code, chat and send files worldwide, and everything is deleted when the last person leaves.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/chat-room/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    /* ── Lobby ── */
+    .cr-lobby-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 640px) { .cr-lobby-grid { grid-template-columns: 1fr; } }
+    .cr-box {
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 1.2rem; display: flex; flex-direction: column; gap: .8rem;
+      background: var(--bg-secondary);
+    }
+    .cr-box h3 { margin: 0; font-size: 1rem; }
+    .cr-box p.hint { margin: 0; font-size: .82rem; color: var(--text-muted); }
+    .cr-code-input {
+      width: 100%; font-family: ui-monospace, monospace; font-size: 1.5rem;
+      letter-spacing: .35em; text-align: center; text-transform: uppercase;
+      padding: .7rem .5rem; border: 2px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-card); color: var(--text);
+    }
+    .cr-code-input:focus { border-color: var(--primary); outline: none; }
+    .cr-name-input {
+      width: 100%; padding: .6rem .7rem; border: 1px solid var(--border);
+      border-radius: var(--radius); background: var(--bg-card); color: var(--text); font-size: .95rem;
+    }
+    .cr-name-input:focus { border-color: var(--primary); outline: none; }
+    .cr-err { color: var(--danger, #e05260); font-size: .82rem; min-height: 1em; }
+
+    /* ── Room shell ── */
+    .cr-room { display: none; }
+    .cr-room.active { display: block; }
+    .cr-bar {
+      display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+      padding: .6rem .9rem; border: 1px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-secondary); margin-bottom: .8rem;
+    }
+    .cr-code-badge {
+      font-family: ui-monospace, monospace; font-weight: 700; font-size: 1.05rem;
+      letter-spacing: .12em; color: var(--primary);
+      background: var(--primary-dim, color-mix(in srgb, var(--primary) 14%, transparent));
+      padding: .25rem .6rem; border-radius: var(--radius);
+    }
+    .cr-bar-btns { margin-left: auto; display: flex; gap: .5rem; flex-wrap: wrap; }
+    .cr-mini-btn {
+      font-size: .78rem; padding: .35rem .7rem; border: 1px solid var(--border);
+      border-radius: var(--radius); background: var(--bg-card); color: var(--text); cursor: pointer;
+    }
+    .cr-mini-btn:hover { border-color: var(--primary); }
+    .cr-mini-btn.leave { color: var(--danger, #e05260); }
+
+    .cr-members {
+      display: flex; align-items: center; gap: .4rem; flex-wrap: wrap;
+      font-size: .8rem; color: var(--text-muted); margin-bottom: .8rem;
+    }
+    .cr-chip {
+      display: inline-flex; align-items: center; gap: .3rem;
+      padding: .15rem .55rem; border-radius: 999px; background: var(--bg-secondary);
+      border: 1px solid var(--border); color: var(--text);
+    }
+    .cr-chip.me { border-color: var(--primary); color: var(--primary); }
+    .cr-dot { width: 7px; height: 7px; border-radius: 50%; background: #4caf8e; }
+
+    /* ── Messages ── */
+    .cr-log {
+      height: 52vh; min-height: 320px; overflow-y: auto;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-card); padding: 1rem; display: flex; flex-direction: column; gap: .7rem;
+    }
+    .cr-log.drag { border-color: var(--primary); border-style: dashed; }
+    .cr-msg { max-width: 82%; display: flex; flex-direction: column; gap: .15rem; }
+    .cr-msg.mine { align-self: flex-end; align-items: flex-end; }
+    .cr-msg-meta { font-size: .72rem; color: var(--text-muted); }
+    .cr-bubble {
+      padding: .5rem .75rem; border-radius: 12px; background: var(--bg-secondary);
+      border: 1px solid var(--border); white-space: pre-wrap; word-break: break-word; line-height: 1.4;
+    }
+    .cr-msg.mine .cr-bubble {
+      background: var(--primary-dim, color-mix(in srgb, var(--primary) 16%, transparent));
+      border-color: var(--primary);
+    }
+    .cr-bubble a { color: var(--primary); word-break: break-all; }
+    .cr-sys { align-self: center; font-size: .74rem; color: var(--text-muted); font-style: italic; }
+
+    /* file bubble */
+    .cr-file {
+      display: flex; align-items: center; gap: .7rem; text-decoration: none; color: inherit;
+      padding: .55rem .7rem; border: 1px solid var(--border); border-radius: 10px;
+      background: var(--bg-secondary); min-width: 220px;
+    }
+    .cr-msg.mine .cr-file { border-color: var(--primary); }
+    .cr-file:hover { border-color: var(--primary); }
+    .cr-file-ic { font-size: 1.5rem; flex-shrink: 0; }
+    .cr-file-name { font-weight: 600; word-break: break-all; font-size: .9rem; }
+    .cr-file-sub { font-size: .72rem; color: var(--text-muted); }
+
+    .cr-typing { min-height: 1.1em; font-size: .76rem; color: var(--text-muted); font-style: italic; padding: .2rem .2rem 0; }
+
+    /* ── Composer ── */
+    .cr-compose { display: flex; gap: .5rem; align-items: flex-end; margin-top: .6rem; }
+    .cr-input {
+      flex: 1; resize: none; min-height: 44px; max-height: 140px;
+      padding: .6rem .8rem; border: 1px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-card); color: var(--text); font: inherit; line-height: 1.4;
+    }
+    .cr-input:focus { border-color: var(--primary); outline: none; }
+    .cr-icon-btn {
+      width: 44px; height: 44px; flex-shrink: 0; border: 1px solid var(--border);
+      border-radius: var(--radius); background: var(--bg-card); color: var(--text);
+      font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .cr-icon-btn:hover { border-color: var(--primary); }
+    .cr-send { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    /* ── Upload progress ── */
+    .cr-uploads { display: flex; flex-direction: column; gap: .4rem; margin-top: .5rem; }
+    .cr-up {
+      display: flex; align-items: center; gap: .6rem; font-size: .8rem;
+      padding: .45rem .65rem; border: 1px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-secondary);
+    }
+    .cr-up-name { flex: 1; word-break: break-all; }
+    .cr-up-bar { width: 90px; height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; flex-shrink: 0; }
+    .cr-up-fill { height: 100%; width: 0; background: var(--primary); transition: width .15s; }
+    .cr-up-x { cursor: pointer; color: var(--text-muted); }
+    .cr-up.err { border-color: var(--danger, #e05260); color: var(--danger, #e05260); }
+
+    .cr-note {
+      display: flex; gap: .5rem; align-items: flex-start; margin-top: 1rem;
+      font-size: .78rem; color: var(--text-muted);
+      padding: .7rem .9rem; border: 1px dashed var(--border); border-radius: var(--radius);
+    }
+    .cr-status { display: inline-flex; align-items: center; gap: .35rem; font-size: .76rem; color: var(--text-muted); }
+    .cr-sdot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+    .cr-sdot.on { background: #4caf8e; box-shadow: 0 0 6px #4caf8e; }
+    .cr-sdot.off { background: var(--danger, #e05260); }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo">← Office Tools</a>
+  <div style="flex:1"></div>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <div class="tool-header-icon">💬</div>
+    <div>
+      <h1 class="tool-title">Chat Room</h1>
+      <p class="tool-desc">Create a temporary group chat in one click, share the code, and anyone in the world can join — no sign-up, no app. Send messages and files up to 2 GB. Everything is deleted the moment the last person leaves.</p>
+    </div>
+  </div>
+
+<section class="tool-about">
+  <h2>About Chat Room</h2>
+  <p><strong>A disposable, no-registration group chat.</strong> Click <em>Create a room</em> to get a random 8-character code, share it (or the room link) with anyone, and they join instantly from any device, anywhere. No accounts, no phone numbers, no history left behind.</p>
+  <p><strong>Messages are relayed in memory and never written to disk.</strong> File attachments are stored only temporarily on the server so everyone in the room can download them, and they are <strong>deleted along with the whole room the instant the last person leaves</strong>. Executable and script files (.exe, .dll, .bat, …) are blocked; other common types — zip, tar, 7z, images, PDFs, video — are allowed up to 2 GB each.</p>
+  <p>Great for a quick huddle, sharing files across your own devices, or a throwaway room you never have to clean up. Keep the tab open to stay in the room.</p>
+</section>
+
+  <!-- ── Lobby ── -->
+  <div class="card" id="lobby">
+    <div class="cr-lobby-grid">
+      <div class="cr-box">
+        <h3>🚪 Create a room</h3>
+        <p class="hint">Get a fresh code and invite others. You'll be the first one in.</p>
+        <button class="btn btn-primary" id="createBtn">Create a room</button>
+      </div>
+      <div class="cr-box">
+        <h3>🔑 Join a room</h3>
+        <p class="hint">Enter the 8-character code someone shared with you.</p>
+        <input class="cr-code-input" id="joinInput" maxlength="8" placeholder="········" autocomplete="off" spellcheck="false">
+        <button class="btn btn-primary" id="joinBtn">Join</button>
+      </div>
+    </div>
+    <div style="margin-top:1rem">
+      <label class="field-label" for="nameInput">Your display name <span style="font-weight:400;color:var(--text-muted);font-size:.78rem">(optional — a random one is used if blank)</span></label>
+      <input class="cr-name-input" id="nameInput" maxlength="32" placeholder="e.g. Alex" autocomplete="off">
+    </div>
+    <div class="cr-err" id="lobbyErr"></div>
+    <div class="cr-status" style="margin-top:.4rem"><span class="cr-sdot" id="lobbyDot"></span><span id="lobbyStatus">connecting…</span></div>
+  </div>
+
+  <!-- ── Room ── -->
+  <div class="cr-room" id="room">
+    <div class="cr-bar">
+      <span>Room</span>
+      <span class="cr-code-badge" id="roomCode">········</span>
+      <span class="cr-status"><span class="cr-sdot" id="roomDot"></span><span id="roomStatus">connected</span></span>
+      <div class="cr-bar-btns">
+        <button class="cr-mini-btn" id="copyCodeBtn">📋 Copy code</button>
+        <button class="cr-mini-btn" id="copyLinkBtn">🔗 Copy link</button>
+        <button class="cr-mini-btn leave" id="leaveBtn">Leave</button>
+      </div>
+    </div>
+
+    <div class="cr-members" id="members"></div>
+
+    <div class="cr-log" id="log"></div>
+    <div class="cr-typing" id="typing"></div>
+    <div class="cr-uploads" id="uploads"></div>
+
+    <div class="cr-compose">
+      <button class="cr-icon-btn" id="attachBtn" title="Attach a file">📎</button>
+      <input type="file" id="fileInput" style="display:none" multiple>
+      <textarea class="cr-input" id="msgInput" rows="1" placeholder="Type a message…  (Enter to send, Shift+Enter for a new line)"></textarea>
+      <button class="cr-icon-btn cr-send" id="sendBtn" title="Send">➤</button>
+    </div>
+
+    <div class="cr-note">
+      <span>🔒</span>
+      <span>Messages are never stored on the server. Files are held temporarily so everyone can download them and are <strong>deleted for everyone the moment the last person leaves this room</strong>. Executable/script files are blocked; other types up to 2 GB are allowed.</span>
+    </div>
+  </div>
+
+  <div class="page-tags">
+    <span>temporary chat room</span><span>anonymous group chat</span><span>chat without registration</span>
+    <span>disposable chat link</span><span>share files in chat</span><span>ephemeral chat</span>
+    <span>room code chat</span><span>no sign up chat</span><span>private chat room</span>
+  </div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+'use strict';
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+
+function escHtml(s) {
+  // Escapes < > & AND both quote chars — quote escaping is what keeps a
+  // linkified URL or a filename from breaking out of an href="…"/download="…"
+  // attribute (e.g. https://x/"onmouseover="… ) and injecting an event handler.
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function fmtSize(b) {
+  if (!Number.isFinite(b)) return '?';
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  if (b < 1073741824) return (b/1048576).toFixed(1) + ' MB';
+  return (b/1073741824).toFixed(2) + ' GB';
+}
+function fmtTime(ts) {
+  try { return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+  catch { return ''; }
+}
+function fileIcon(name) {
+  const e = (name.split('.').pop() || '').toLowerCase();
+  if (['png','jpg','jpeg','gif','webp','heic','heif','bmp','svg','avif'].includes(e)) return '🖼️';
+  if (['zip','tar','gz','tgz','7z','rar','bz2','xz'].includes(e)) return '🗜️';
+  if (['mp4','mkv','mov','avi','webm','m4v'].includes(e)) return '🎬';
+  if (['mp3','wav','flac','ogg','m4a','aac'].includes(e)) return '🎵';
+  if (['pdf'].includes(e)) return '📕';
+  if (['doc','docx','odt','rtf','txt','md'].includes(e)) return '📄';
+  if (['xls','xlsx','csv','ods'].includes(e)) return '📊';
+  return '📎';
+}
+// Escape text, then linkify http(s) URLs (safe: escaped first).
+function renderText(s) {
+  const esc = escHtml(s);
+  return esc.replace(/\b(https?:\/\/[^\s<]+)/g, u => `<a href="${u}" target="_blank" rel="noopener nofollow">${u}</a>`);
+}
+
+/* ── State ── */
+let ws = null, myId = null, myName = null, myRoom = null;
+let members = [];
+let wantRoom = null;         // code we intend to be in (for reconnect rejoin)
+let wsRetry = 0;
+let connected = false;
+
+const $ = id => document.getElementById(id);
+const savedName = () => (localStorage.getItem('cr-name') || '').slice(0, 32);
+$('nameInput').value = savedName();
+
+/* ── WebSocket ── */
+function wsUrl() { return API.replace(/^http/, 'ws').replace(/\/+$/, '') + '/chat-ws'; }
+function wsSend(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
+
+function setStatus(on) {
+  connected = on;
+  for (const d of [$('lobbyDot'), $('roomDot')]) { d.classList.toggle('on', on); d.classList.toggle('off', !on); }
+  $('lobbyStatus').textContent = on ? 'connected' : 'reconnecting…';
+  $('roomStatus').textContent  = on ? 'connected' : 'reconnecting…';
+}
+
+function connect() {
+  ws = new WebSocket(wsUrl());
+  ws.onopen = () => {
+    wsRetry = 0; setStatus(true);
+    const nm = savedName();
+    if (nm) wsSend({ type: 'name', name: nm });
+    if (wantRoom) wsSend({ type: 'join', code: wantRoom });   // survive reconnects
+  };
+  ws.onmessage = e => {
+    let m; try { m = JSON.parse(e.data); } catch { return; }
+    handle(m);
+  };
+  ws.onclose = () => {
+    setStatus(false);
+    const delay = Math.min(1000 * 2 ** wsRetry++, 15000);
+    setTimeout(connect, delay);
+  };
+  ws.onerror = () => { try { ws.close(); } catch {} };
+}
+
+function handle(m) {
+  switch (m.type) {
+    case 'you':
+      myId = m.id; myName = m.name;
+      break;
+    case 'joined':
+      myRoom = wantRoom = m.code;
+      myId = m.you.id; myName = m.you.name;
+      enterRoom(m);
+      break;
+    case 'members':
+      members = m.members; renderMembers();
+      break;
+    case 'msg':
+      addMessage(m); break;
+    case 'file':
+      addFile(m.file); break;
+    case 'notice':
+      addSys(`${m.name} ${m.event === 'join' ? 'joined' : 'left'} the room`); break;
+    case 'typing':
+      showTyping(m.name); break;
+    case 'left':
+      myRoom = wantRoom = null; showLobby(); break;
+    case 'room-closed':
+      myRoom = wantRoom = null; showLobby(m.reason || 'Room closed'); break;
+    case 'error':
+      if (myRoom) addSys('⚠️ ' + m.message);
+      else { wantRoom = null; $('lobbyErr').textContent = m.message; }   // stop auto-rejoin loops
+      break;
+  }
+}
+
+/* ── Lobby ↔ Room ── */
+function showLobby(msg) {
+  $('room').classList.remove('active');
+  $('lobby').style.display = '';
+  if (msg) $('lobbyErr').textContent = msg;
+  history.replaceState(null, '', location.pathname);
+}
+function enterRoom(m) {
+  $('lobbyErr').textContent = '';
+  $('lobby').style.display = 'none';
+  $('room').classList.add('active');
+  $('roomCode').textContent = m.code;
+  members = m.members || []; renderMembers();
+  $('log').innerHTML = ''; $('uploads').innerHTML = '';
+  (m.history || []).forEach(addMessage);
+  (m.files || []).forEach(addFile);
+  addSys('You joined room ' + m.code);
+  history.replaceState(null, '', location.pathname + '?room=' + m.code);
+  $('msgInput').focus();
+}
+
+function renderMembers() {
+  const html = members.map(u =>
+    `<span class="cr-chip ${u.id === myId ? 'me' : ''}"><span class="cr-dot"></span>${escHtml(u.name)}${u.id === myId ? ' (you)' : ''}</span>`
+  ).join('');
+  $('members').innerHTML = `<strong>${members.length}</strong>&nbsp;in room&nbsp;&nbsp;${html}`;
+}
+
+/* ── Message rendering ── */
+function atBottom() { const l = $('log'); return l.scrollHeight - l.scrollTop - l.clientHeight < 60; }
+function scrollDown() { const l = $('log'); l.scrollTop = l.scrollHeight; }
+
+function addMessage(m) {
+  const stick = atBottom();
+  const mine = m.from === myId;
+  const el = document.createElement('div');
+  el.className = 'cr-msg' + (mine ? ' mine' : '');
+  el.innerHTML =
+    `<div class="cr-msg-meta">${mine ? 'You' : escHtml(m.name)} · ${fmtTime(m.ts)}</div>` +
+    `<div class="cr-bubble">${renderText(m.text)}</div>`;
+  $('log').appendChild(el);
+  if (stick || mine) scrollDown();
+}
+function addSys(text) {
+  const stick = atBottom();
+  const el = document.createElement('div');
+  el.className = 'cr-sys';
+  el.textContent = text;
+  $('log').appendChild(el);
+  if (stick) scrollDown();
+}
+function addFile(f) {
+  const stick = atBottom();
+  const mine = f.by === myName;
+  const el = document.createElement('div');
+  el.className = 'cr-msg' + (mine ? ' mine' : '');
+  const url = `${API}/api/chat/${encodeURIComponent(myRoom)}/file/${encodeURIComponent(f.id)}`;
+  el.innerHTML =
+    `<div class="cr-msg-meta">${escHtml(f.by)} · ${fmtTime(f.ts)}</div>` +
+    `<a class="cr-file" href="${url}" download="${escHtml(f.name)}">` +
+      `<span class="cr-file-ic">${fileIcon(f.name)}</span>` +
+      `<span><span class="cr-file-name">${escHtml(f.name)}</span><br>` +
+      `<span class="cr-file-sub">${fmtSize(f.size)} · click to download</span></span>` +
+    `</a>`;
+  $('log').appendChild(el);
+  if (stick || mine) scrollDown();
+}
+
+/* ── Typing indicator ── */
+let typingTimer = null;
+function showTyping(name) {
+  $('typing').textContent = `${name} is typing…`;
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(() => { $('typing').textContent = ''; }, 2500);
+}
+let lastTypingSent = 0;
+function maybeSendTyping() {
+  const now = Date.now();
+  if (now - lastTypingSent > 1500) { lastTypingSent = now; wsSend({ type: 'typing' }); }
+}
+
+/* ── Sending ── */
+function sendMessage() {
+  const ta = $('msgInput');
+  const text = ta.value.trim();
+  if (!text) return;
+  wsSend({ type: 'msg', text: text.slice(0, 4000) });
+  ta.value = ''; ta.style.height = 'auto';
+}
+
+/* ── File uploads (XHR for progress) ── */
+function uploadFile(file) {
+  if (!myRoom) return;
+  const row = document.createElement('div');
+  row.className = 'cr-up';
+  row.innerHTML =
+    `<span class="cr-file-ic" style="font-size:1.1rem">${fileIcon(file.name)}</span>` +
+    `<span class="cr-up-name">${escHtml(file.name)} <span style="color:var(--text-muted)">(${fmtSize(file.size)})</span></span>` +
+    `<span class="cr-up-bar"><span class="cr-up-fill"></span></span>` +
+    `<span class="cr-up-x" title="Cancel">✕</span>`;
+  $('uploads').appendChild(row);
+  const fill = row.querySelector('.cr-up-fill');
+
+  const fd = new FormData();
+  fd.append('name', file.name);
+  fd.append('by', myName || 'Someone');
+  fd.append('file', file);
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', `${API}/api/chat/${encodeURIComponent(myRoom)}/upload`);
+  xhr.upload.onprogress = ev => { if (ev.lengthComputable) fill.style.width = (ev.loaded / ev.total * 100) + '%'; };
+  xhr.onload = () => {
+    if (xhr.status >= 200 && xhr.status < 300) {
+      row.remove();   // the broadcast 'file' event renders it in the log
+    } else {
+      let msg = 'Upload failed';
+      try { msg = JSON.parse(xhr.responseText).error || msg; } catch {}
+      row.classList.add('err');
+      row.querySelector('.cr-up-name').textContent = `${file.name} — ${msg}`;
+      row.querySelector('.cr-up-bar').remove();
+    }
+  };
+  xhr.onerror = () => {
+    row.classList.add('err');
+    row.querySelector('.cr-up-name').textContent = `${file.name} — network error`;
+  };
+  row.querySelector('.cr-up-x').onclick = () => { xhr.abort(); row.remove(); };
+  xhr.send(fd);
+}
+function pickFiles(list) { for (const f of list) uploadFile(f); }
+
+/* ── Events ── */
+$('createBtn').onclick = () => {
+  if (!connected) { $('lobbyErr').textContent = 'Still connecting — try again in a moment.'; return; }
+  $('lobbyErr').textContent = '';
+  saveNameFromLobby();
+  wsSend({ type: 'create' });
+};
+$('joinBtn').onclick = () => {
+  const code = $('joinInput').value.trim().toUpperCase();
+  if (!/^[A-Z0-9]{8}$/.test(code)) { $('lobbyErr').textContent = 'Enter the full 8-character code.'; return; }
+  $('lobbyErr').textContent = '';
+  saveNameFromLobby();
+  wantRoom = code;
+  wsSend({ type: 'join', code });
+};
+$('joinInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('joinBtn').click(); });
+$('joinInput').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
+
+function saveNameFromLobby() {
+  const nm = $('nameInput').value.trim().slice(0, 32);
+  if (nm) { localStorage.setItem('cr-name', nm); wsSend({ type: 'name', name: nm }); }
+}
+
+$('leaveBtn').onclick = () => { wsSend({ type: 'leave' }); myRoom = wantRoom = null; showLobby(); };
+$('copyCodeBtn').onclick = () => copyText(myRoom, $('copyCodeBtn'));
+$('copyLinkBtn').onclick = () => copyText(location.origin + location.pathname + '?room=' + myRoom, $('copyLinkBtn'));
+
+$('sendBtn').onclick = sendMessage;
+const ta = $('msgInput');
+ta.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+ta.addEventListener('input', () => {
+  ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
+  if (ta.value.trim()) maybeSendTyping();
+});
+
+$('attachBtn').onclick = () => $('fileInput').click();
+$('fileInput').addEventListener('change', e => { pickFiles(e.target.files); e.target.value = ''; });
+
+// Drag & drop onto the log
+const log = $('log');
+['dragenter', 'dragover'].forEach(ev => log.addEventListener(ev, e => { e.preventDefault(); log.classList.add('drag'); }));
+['dragleave', 'drop'].forEach(ev => log.addEventListener(ev, e => { e.preventDefault(); log.classList.remove('drag'); }));
+log.addEventListener('drop', e => { if (e.dataTransfer?.files?.length) pickFiles(e.dataTransfer.files); });
+
+// Paste a file/image into the composer
+ta.addEventListener('paste', e => {
+  const files = [...(e.clipboardData?.files || [])];
+  if (files.length) { e.preventDefault(); pickFiles(files); }
+});
+
+/* ── Boot: auto-join ?room= ── */
+const urlRoom = new URLSearchParams(location.search).get('room');
+if (urlRoom && /^[A-Za-z0-9]{8}$/.test(urlRoom)) wantRoom = urlRoom.toUpperCase();
+connect();
+</script>
+</body>
+</html>
