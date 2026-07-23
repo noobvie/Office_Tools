@@ -21,6 +21,7 @@
 require('dotenv').config();
 const express   = require('express');
 const cors      = require('cors');
+const crypto    = require('crypto');
 const fs        = require('fs');
 const path      = require('path');
 // Node's built-in SQLite (Node 24+). Replaced better-sqlite3 to drop the native
@@ -1625,6 +1626,37 @@ app.post('/api/email/inbox/ingest', (req, res) => {
       String(req.body?.text || '').slice(0, 100_000),
       String(req.body?.html || '').slice(0, 200_000));
   res.json({ ok: true });
+});
+
+// ── File Drop — ICE / TURN credentials (/api/tools/turn) ──────
+// Same-Wi-Fi transfers fail on routers with AP/client isolation and on
+// restrictive NATs: STUN can only discover addresses, it cannot relay, and with
+// no relay there is no fallback path. A TURN server relays the (already DTLS-
+// encrypted) media when no direct route exists. To avoid baking a long-lived
+// TURN password into public JS — which would let anyone abuse the relay — we
+// hand out short-lived credentials using coturn's `use-auth-secret` REST scheme:
+//   username   = <unix-expiry-timestamp>
+//   credential = base64( HMAC-SHA1( TURN_SECRET, username ) )
+// Configure via .env (seeded by deploy.sh): TURN_URLS (comma-separated turn:/
+// turns: URIs), TURN_SECRET, optional TURN_TTL (seconds, default 3600) and
+// STUN_URLS. With TURN_SECRET/TURN_URLS unset the response is STUN-only, so File
+// Drop keeps working over direct P2P and nothing breaks before coturn exists.
+const TURN_URLS   = (process.env.TURN_URLS || '').split(',').map(s => s.trim()).filter(Boolean);
+const TURN_SECRET = (process.env.TURN_SECRET || '').trim();
+const TURN_TTL    = Math.max(300, Math.min(86400, parseInt(process.env.TURN_TTL || '3600', 10) || 3600));
+const STUN_URLS   = (process.env.STUN_URLS ||
+  'stun:stun.cloudflare.com:3478,stun:stun.l.google.com:19302')
+  .split(',').map(s => s.trim()).filter(Boolean);
+
+app.get('/api/tools/turn', (_req, res) => {
+  const iceServers = STUN_URLS.length ? [{ urls: STUN_URLS }] : [];
+  if (TURN_URLS.length && TURN_SECRET) {
+    const username   = String(Math.floor(Date.now() / 1000) + TURN_TTL);
+    const credential = crypto.createHmac('sha1', TURN_SECRET).update(username).digest('base64');
+    iceServers.push({ urls: TURN_URLS, username, credential });
+  }
+  res.set('Cache-Control', 'no-store');
+  res.json({ iceServers, ttl: TURN_TTL });
 });
 
 // ── File Drop — WebRTC signaling relay (/drop-ws) ─────────────

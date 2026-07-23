@@ -855,6 +855,98 @@ _update_notify_env() {
     done
 }
 
+# ─── TURN relay (coturn) — File Drop WebRTC fallback ───────────────────────────
+# Installs+configures coturn with the REST/`use-auth-secret` scheme so the API
+# server can mint short-lived TURN credentials (see /api/tools/turn). Idempotent
+# and non-fatal: on any failure it warns and returns 0 so the deploy continues —
+# File Drop still works over direct P2P, just without the relay fallback.
+setup_turn() {
+    local domain="$1" secret="$2"
+    section "TURN relay setup — coturn (File Drop fallback)"
+
+    # coturn reads a different config path per distro: Debian → /etc/turnserver.conf
+    # (plus the /etc/default/coturn enable gate); EPEL on Rocky/Alma → /etc/coturn/
+    # turnserver.conf. Writing to the wrong one would leave coturn running on
+    # package defaults (no auth secret) — broken. Pick the path the package uses.
+    local turn_conf="/etc/turnserver.conf"
+    if [[ "$OS_FAMILY" == "debian" ]]; then
+        DEBIAN_FRONTEND=noninteractive apt-get install -y coturn >/dev/null 2>&1 \
+            || { warn "coturn install failed — File Drop will use direct P2P only"; return 0; }
+        # Debian gates the daemon behind /etc/default/coturn
+        if grep -q '^#*TURNSERVER_ENABLED=' /etc/default/coturn 2>/dev/null; then
+            sed -i 's/^#*TURNSERVER_ENABLED=.*/TURNSERVER_ENABLED=1/' /etc/default/coturn
+        else
+            echo 'TURNSERVER_ENABLED=1' >> /etc/default/coturn
+        fi
+    else
+        # coturn on Rocky/Alma comes from EPEL — install fails (non-fatal) if EPEL absent
+        dnf install -y coturn >/dev/null 2>&1 || yum install -y coturn >/dev/null 2>&1 \
+            || { warn "coturn install failed (EPEL enabled?) — File Drop will use direct P2P only"; return 0; }
+        mkdir -p /etc/coturn
+        turn_conf="/etc/coturn/turnserver.conf"
+    fi
+
+    # Plain turn: on 3478 (udp+tcp) only. We deliberately do NOT configure turns:
+    # (TLS 5349): the frontend advertises only turn: URLs, the relayed media is
+    # already end-to-end DTLS-encrypted, and pointing coturn at the root-only LE
+    # privkey would make a non-root coturn (EL) fail to start for zero client gain.
+    # turns: can be added later (needs a cert the coturn user can read).
+    cat > "$turn_conf" << TURNEOF
+# Office Tools — File Drop TURN relay (managed by deploy.sh)
+# NOTE: on a cloud VPS with 1:1 NAT (AWS/GCP — public IP not on the interface),
+# add: external-ip=<PUBLIC_IP>/<PRIVATE_IP>  or relayed candidates will be private.
+listening-port=3478
+fingerprint
+use-auth-secret
+static-auth-secret=${secret}
+realm=${domain}
+no-cli
+no-tcp-relay
+no-multicast-peers
+min-port=49152
+max-port=65535
+# SSRF hardening — never relay to loopback/private/link-local ranges
+denied-peer-ip=0.0.0.0-0.255.255.255
+denied-peer-ip=10.0.0.0-10.255.255.255
+denied-peer-ip=100.64.0.0-100.127.255.255
+denied-peer-ip=127.0.0.0-127.255.255.255
+denied-peer-ip=169.254.0.0-169.254.255.255
+denied-peer-ip=172.16.0.0-172.31.255.255
+denied-peer-ip=192.168.0.0-192.168.255.255
+denied-peer-ip=::1
+denied-peer-ip=fc00::-fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+denied-peer-ip=fe80::-febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+TURNEOF
+    # The config holds the auth secret, so keep it non-world-readable — but coturn
+    # runs as a non-root user on EL (coturn) and may on Debian (turnserver), so a
+    # 600 root:root file would be UNREADABLE to the daemon and it wouldn't start.
+    # 640 root:<service-group> lets the daemon read it; falls back to root:root
+    # (fine — Debian's unit runs as root) when no such group exists.
+    chmod 640 "$turn_conf"
+    for _grp in coturn turnserver; do
+        if getent group "$_grp" >/dev/null 2>&1; then chown "root:$_grp" "$turn_conf"; break; fi
+    done
+
+    # Firewall: TURN signaling (3478 udp+tcp) + relay media range
+    if command -v firewall-cmd &>/dev/null && systemctl is-active --quiet firewalld 2>/dev/null; then
+        firewall-cmd --permanent --add-port=3478/udp --add-port=3478/tcp &>/dev/null
+        firewall-cmd --permanent --add-port=49152-65535/udp &>/dev/null
+        firewall-cmd --reload &>/dev/null
+    fi
+    if command -v ufw &>/dev/null && ufw status 2>/dev/null | grep -q "Status: active"; then
+        ufw allow 3478/udp >/dev/null 2>&1 || true
+        ufw allow 3478/tcp >/dev/null 2>&1 || true
+        ufw allow 49152:65535/udp >/dev/null 2>&1 || true
+    fi
+
+    systemctl enable coturn >/dev/null 2>&1 || true
+    if systemctl restart coturn >/dev/null 2>&1; then
+        success "coturn TURN relay running on :3478 (realm ${domain})"
+    else
+        warn "coturn failed to start — check: journalctl -u coturn (File Drop still works P2P)"
+    fi
+}
+
 setup_backend_first() {
     local domain="$1"
     local notify_email="${2:-}"
@@ -877,7 +969,26 @@ NOTIFY_EMAIL_2=${notify_email2}
 # Raise for many miners behind one shared NAT/VPN (e.g. 1000); restart the service after.
 PROBE_RATE_PER_MIN=600
 ENVEOF
+
+    # ── TURN relay (File Drop WebRTC fallback) ──────────────────────────────
+    # Same-Wi-Fi transfers fail on APs with client isolation and on restrictive
+    # NATs unless a relay is available. coturn (setup_turn below) hands out
+    # short-lived credentials derived from this shared secret; the /api/tools/turn
+    # endpoint computes them. A dead/missing TURN entry is harmless — ICE just
+    # skips it and falls back to direct P2P.
+    local turn_secret turn_urls
+    turn_secret="$(openssl rand -hex 32)"
+    turn_urls="turn:${domain}:3478?transport=udp,turn:${domain}:3478?transport=tcp"
+    cat >> "$BACKEND_DIR/.env" << ENVEOF
+
+# ── TURN relay (File Drop) — short-lived creds via coturn use-auth-secret ──
+TURN_URLS=${turn_urls}
+TURN_SECRET=${turn_secret}
+TURN_TTL=3600
+ENVEOF
     chmod 600 "$BACKEND_DIR/.env"
+
+    setup_turn "$domain" "$turn_secret"
 
     cd "$BACKEND_DIR" && npm install --omit=dev && cd /
     success "Backend files ready at $BACKEND_DIR"
@@ -946,7 +1057,7 @@ show_banner() {
     clear
     echo ""
     echo -e "${BOLD}${CYAN}╔═══════════════════════════════════════════════════════╗${RESET}"
-    echo -e "${BOLD}${CYAN}║       Office Tools — Deploy Manager  v2026.07.06      ║${RESET}"
+    echo -e "${BOLD}${CYAN}║       Office Tools — Deploy Manager  v2026.07.23      ║${RESET}"
     echo -e "${BOLD}${CYAN}║       github.com/noobvie/Office_Tools                 ║${RESET}"
     echo -e "${BOLD}${CYAN}╚═══════════════════════════════════════════════════════╝${RESET}"
     echo ""
