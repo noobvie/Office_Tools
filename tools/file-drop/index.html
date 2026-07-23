@@ -534,13 +534,44 @@ function updateRoomUI() {
 document.getElementById('joinCodeInput').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
 
 /* ── WebRTC ── */
-const RTC_CFG = { iceServers: [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] }] };
+/* ICE config comes from the backend (/api/tools/turn) so a TURN password is
+   never baked into this public page — the server returns short-lived credentials.
+   TURN is the relay fallback for same-Wi-Fi transfers that fail on routers with
+   AP/client isolation and for restrictive NATs, where STUN-only has no path.
+   We refresh before the credentials expire and fall back to STUN-only (direct
+   P2P) if the fetch fails, so discovery/transfer still work without a TURN server. */
+const FALLBACK_ICE = [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] }];
+let iceConfig = { iceServers: FALLBACK_ICE };
+let iceExpiry = 0;
+let iceInFlight = null;
+function refreshIce() {
+  if (Date.now() < iceExpiry) return Promise.resolve(iceConfig);
+  if (iceInFlight) return iceInFlight;                     // dedupe concurrent callers
+  iceInFlight = (async () => {
+    try {
+      const r = await fetch(API + '/api/tools/turn', { cache: 'no-store' });
+      if (r.ok) {
+        const j = await r.json();
+        if (Array.isArray(j.iceServers) && j.iceServers.length) {
+          iceConfig = { iceServers: j.iceServers };
+          // renew a minute before the TURN credentials lapse (min 1 min cache)
+          iceExpiry = Date.now() + Math.max(60, (Number(j.ttl) || 3600) - 60) * 1000;
+        }
+      }
+    } catch { /* keep last-good / fallback config */ }
+    finally { iceInFlight = null; }
+    return iceConfig;
+  })();
+  return iceInFlight;
+}
+refreshIce();
+
 const rtcPeers = new Map(); // peerId → {pc, dc, polite, makingOffer, channelPromise, resolveCh, rejectCh, recv, send}
 
 function getPC(peerId) {
   let p = rtcPeers.get(peerId);
   if (p) return p;
-  const pc = new RTCPeerConnection(RTC_CFG);
+  const pc = new RTCPeerConnection(iceConfig);
   p = { pc, dc: null, polite: String(myId) > String(peerId), makingOffer: false,
         channelPromise: null, resolveCh: null, rejectCh: null, recv: null, send: null };
   pc.onicecandidate = e => wsSend({ type: 'signal', to: peerId, data: { candidate: e.candidate } });
@@ -560,6 +591,7 @@ function getPC(peerId) {
 }
 async function onSignal(from, data) {
   if (!data) return;
+  if (!rtcPeers.has(from)) await refreshIce(); // ensure TURN is in the config before the first PC
   const p = getPC(from), pc = p.pc;
   try {
     if (data.sdp) {
@@ -575,9 +607,10 @@ async function onSignal(from, data) {
     }
   } catch (err) { console.warn('signal error', err); }
 }
-function ensureChannel(peerId) {
+async function ensureChannel(peerId) {
+  if (!rtcPeers.has(peerId)) await refreshIce(); // ensure TURN is in the config before the first PC
   const p = getPC(peerId);
-  if (p.dc && p.dc.readyState === 'open') return Promise.resolve(p.dc);
+  if (p.dc && p.dc.readyState === 'open') return p.dc;
   if (!p.channelPromise) {
     p.channelPromise = new Promise((res, rej) => {
       p.resolveCh = res; p.rejectCh = rej;
@@ -713,6 +746,7 @@ async function sendFilesTo(peerId, files) {
   const metas = files.map(f => ({ fid: 's' + (++fidCounter), name: f.name, size: f.size, mime: f.type }));
   for (const m of metas) transferRow(m.fid, '📤', m.name, `→ ${peerName} · waiting for accept…`);
 
+  if (!rtcPeers.has(peerId)) await refreshIce(); // ensure TURN is in the config before the first PC
   const p = getPC(peerId);
   const sess = { peerId, files: metas.map(m => ({ ...m, done: false })), cancelled: false, finished: false, acceptResolve: null };
   if (p.send) { for (const m of metas) rowDone(m.fid, '❌ Another transfer to this device is in progress', false); return; }
