@@ -303,8 +303,9 @@
 
       <p style="margin:.6rem 0 .3rem;font-weight:600;">② Install on the server</p>
       <p style="margin:.2rem 0 .4rem;">Run <code>deploy.sh</code> → <strong>Option 6 → j) YouTube cookies</strong>
-        → <em>Paste cookies.txt content</em>, paste the file, end with a line containing only
-        <code>EOF</code>. That validates the file, installs it as <code>www-data</code> 600,
+        → <em>1) Set up cookies</em>. That is a three-screen walkthrough of everything in
+        step ① above and ends at the paste prompt (paste, then a line containing only
+        <code>EOF</code>). It validates the file, installs it as <code>www-data</code> 600,
         adds <code>YTDLP_COOKIES</code> to <code>.env</code>, installs the keep-alive cron,
         restarts yt-server and prints the probe result — no manual commands.</p>
       <p style="margin:.4rem 0 .3rem;opacity:.8;font-size:.85rem;">Equivalent by hand, if you prefer:</p>
