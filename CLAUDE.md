@@ -156,6 +156,14 @@ Consumed by the Grin Node Toolkit solo-mining setup page (`web/07_mining_pool_so
 
 nginx proxies `/tools-api/*` → 3001 and `/yt-api/*` → 9000. The `backend/` directory is excluded from the public web root (`rsync --exclude=backend/`).
 
+**yt-server cookies** — YouTube blocks datacenter IPs, so beyond the PO-token provider
+(`office-tools-pot`) the server usually needs a `cookies.txt` from a burner account. Install
+it with `deploy.sh` → Option 6 → j (validates, installs 600 `www-data`, sets `YTDLP_COOKIES`,
+restarts, probes). `yt-server/.env` holds operator settings and is **never rewritten** by the
+installer — use `env_ensure`, never `cat > .env`, or a re-run silently drops the cookie path.
+`ytcookie-keepalive.sh` (cron, 6-hourly, as `www-data`) rotates the session and writes
+`cookies.status`, which is the only source for `/health`'s `file:ok` / `file:expired`.
+
 ### What needs the backend vs. what doesn't
 
 Most tools are 100% browser-local. Backend is only required for: URL Shortener, Pastebin, File Share, Port Checker, Domain Checker, Network Toolkit, and the five email tools (Email Validator, Email Deliverability, DNSBL Checker, Disposable Email Detector, Temp Inbox). The site works without a running backend — those tools just show an error (the Disposable Email Detector degrades to a small client-side blocklist).

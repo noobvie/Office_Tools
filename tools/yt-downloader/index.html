@@ -223,14 +223,15 @@
   │  PREREQUISITES — read before deploying              │
   │                                                     │
   │  Backend — Local (self-hosted cobalt):              │
-  │    Deployed automatically by deploy.sh step 1.     │
+  │    Deployed automatically by deploy.sh step 1.      │
   │    Runs as office-tools-cobalt systemd service.     │
-  │    Proxied via nginx /yt-api/ → 127.0.0.1:9000.    │
+  │    Proxied via nginx /yt-api/ → 127.0.0.1:9000.     │
   │    PO-token provider (office-tools-pot) bypasses    │
   │    most bot checks, BUT a flagged VPS IP also       │
   │    needs YTDLP_COOKIES — see the operator cookie    │
   │    setup panel below (create/renew steps).          │
-  │    To update backend: deploy.sh → Option 6 → h.    │
+  │    Install cookies: deploy.sh → Option 6 → j.       │
+  │    To update backend: deploy.sh → Option 6 → h.     │
   │                                                     │
   │  Playlist download:                                 │
   │    Requires a FREE YouTube Data API v3 key.         │
@@ -269,19 +270,44 @@
 
       <p style="margin:.6rem 0 .3rem;font-weight:600;">① Create cookies (one time, on your local computer)</p>
       <ol style="margin:.2rem 0 .8rem 1.1rem;padding:0;">
-        <li>Use a <strong>throwaway Google account</strong> — never your real one. Server-side
-            scraping can get the account flagged or banned.</li>
-        <li>Install the <strong>"Get cookies.txt LOCALLY"</strong> browser extension.</li>
-        <li>Open a <strong>private / incognito window</strong> and log into
-            <code>youtube.com</code> with the burner account.</li>
-        <li>With a normal video open, click the extension → <em>Export</em> → save
-            <code>cookies.txt</code> (Netscape format).</li>
-        <li><strong>Close the incognito window WITHOUT logging out.</strong> Logging out
+        <li><strong>Make a "burner" Google account first.</strong> A burner (throwaway)
+            account is a brand-new Google account created for this one job: any name, no
+            recovery phone or address you care about, nothing else signed in to it, and you
+            would not mind losing it tomorrow. Two reasons it must not be your real account:
+            YouTube flags and sometimes bans accounts whose session is used for server-side
+            downloading, and the exported <code>cookies.txt</code> <em>is</em> a working login
+            for that account — anyone who can read that file on the server is signed in as it.
+            Below, "the burner" means this account.</li>
+        <li><strong>Recommended — private window + extension.</strong> Install
+            <strong>"Get cookies.txt LOCALLY"</strong> (allow it to run in private windows),
+            open a <strong>private / incognito window</strong>, log into
+            <code>youtube.com</code> with the burner account, open a normal video, then click
+            the extension → <em>Export</em> → save <code>cookies.txt</code> (Netscape format).
+            Any ordinary video will do, e.g.
+            <code>https://www.youtube.com/watch?v=J6VMJLSNAHk</code>.
+            <br>Private is the right choice because <em>nothing touches that session
+            afterwards</em> — a session you keep browsing with has its cookies rotated, and the
+            exported copy goes stale within hours.</li>
+        <li><strong>Alternative — let yt-dlp export it</strong>, no extension needed:
+            <pre style="overflow-x:auto;padding:.6rem .7rem;border-radius:8px;background:rgba(0,0,0,.35);color:#e5e7eb;font-size:.8rem;margin:.35rem 0;">yt-dlp --cookies-from-browser firefox --cookies cookies.txt \
+       --skip-download "https://www.youtube.com/watch?v=J6VMJLSNAHk"</pre>
+            This reads the profile's <strong>on-disk</strong> cookie DB, so it cannot see a
+            private window — those cookies are memory-only. Use a <strong>normal</strong>
+            window, ideally a Firefox profile kept only for the burner account, and close
+            Firefox before running it. Firefox, not Chrome: app-bound cookie encryption
+            commonly breaks <code>--cookies-from-browser chrome</code>.</li>
+        <li><strong>Close the window WITHOUT logging out.</strong> Logging out
             invalidates the session server-side — this is the #1 reason server cookies
             "work for an hour then die."</li>
       </ol>
 
-      <p style="margin:.6rem 0 .3rem;font-weight:600;">② Install on the server &amp; enable</p>
+      <p style="margin:.6rem 0 .3rem;font-weight:600;">② Install on the server</p>
+      <p style="margin:.2rem 0 .4rem;">Run <code>deploy.sh</code> → <strong>Option 6 → j) YouTube cookies</strong>
+        → <em>Paste cookies.txt content</em>, paste the file, end with a line containing only
+        <code>EOF</code>. That validates the file, installs it as <code>www-data</code> 600,
+        adds <code>YTDLP_COOKIES</code> to <code>.env</code>, installs the keep-alive cron,
+        restarts yt-server and prints the probe result — no manual commands.</p>
+      <p style="margin:.4rem 0 .3rem;opacity:.8;font-size:.85rem;">Equivalent by hand, if you prefer:</p>
       <pre style="overflow-x:auto;padding:.7rem .8rem;border-radius:8px;background:rgba(0,0,0,.35);color:#e5e7eb;font-size:.82rem;margin:.2rem 0 .5rem;"># after copying cookies.txt to the VPS (scp):
 install -o www-data -g www-data -m 600 cookies.txt /opt/office-tools/yt-server/cookies.txt
 grep -q '^YTDLP_COOKIES=' /opt/office-tools/yt-server/.env \
@@ -290,14 +316,16 @@ systemctl restart office-tools-cobalt
 curl -s http://127.0.0.1:9000/health   # "cookies" should change from "none" to "file:ok"/"file:unchecked"</pre>
 
       <p style="margin:.6rem 0 .3rem;font-weight:600;">③ Renew (when the bot-check returns weeks later)</p>
-      <p style="margin:.2rem 0 .3rem;">Health shows <code>"cookies":"file:expired"</code> or downloads fail again.
-        Re-export with the exact same incognito method above, then replace the file:</p>
-      <pre style="overflow-x:auto;padding:.7rem .8rem;border-radius:8px;background:rgba(0,0,0,.35);color:#e5e7eb;font-size:.82rem;margin:.2rem 0 .5rem;">install -o www-data -g www-data -m 600 cookies.txt /opt/office-tools/yt-server/cookies.txt
-systemctl restart office-tools-cobalt</pre>
+      <p style="margin:.2rem 0 .3rem;">A cron probe (<code>ytcookie-keepalive.sh</code>, every 6&nbsp;hours) keeps the
+        session rotating and flips the backend line above to
+        <em>⚠ cookies expired</em> when Google finally rejects it — you no longer have to notice
+        by watching downloads fail. Re-export with the same incognito method and repeat step ②
+        (<code>deploy.sh</code> → Option 6 → j).</p>
 
       <p style="margin:.6rem 0 0;opacity:.75;font-size:.85rem;">
         Note: yt-dlp rewrites rotated cookies back into this file on each use, so it must stay
-        writable by <code>www-data</code>. Cookie upkeep is inherent to running a YouTube
+        writable by <code>www-data</code> — that is why every path above installs it as
+        <code>www-data</code>, never root. Cookie upkeep is inherent to running a YouTube
         downloader from a server IP — it is not a bug in the tool.
       </p>
     </div>
@@ -496,8 +524,20 @@ systemctl restart office-tools-cobalt</pre>
         const potWarn = d.pot === false
           ? ` <span style="color:var(--warning,#f59e0b)">⚠ PO-token provider down — check <code>office-tools-pot</code></span>`
           : '';
+        // Cookie state (/health "cookies"). On a flagged VPS IP the PO-token provider
+        // alone is not enough, so a missing/expired cookie file is the usual reason
+        // downloads fail — show it here instead of making the operator SSH in.
+        const COOKIE_WARN = {
+          'none':          'no cookies configured — YouTube may answer with a bot check',
+          'file:missing':  'YTDLP_COOKIES points at a file that is not there',
+          'file:expired':  'cookies expired — re-export them (see the panel above)',
+        };
+        const cookieMsg  = COOKIE_WARN[d.cookies];
+        const cookieWarn = cookieMsg
+          ? ` <span style="color:var(--warning,#f59e0b)">⚠ ${escHtml(cookieMsg)}</span>`
+          : '';
         backendInfoEl.innerHTML = LOCAL_INFO +
-          ` <span style="color:var(--success)">✓ running (v${escHtml(version)})</span>` + potWarn;
+          ` <span style="color:var(--success)">✓ running (v${escHtml(version)})</span>` + potWarn + cookieWarn;
       })
       .catch(() => {
         const hint = IS_LOCAL_DEV
@@ -778,6 +818,15 @@ systemctl restart office-tools-cobalt</pre>
     isDownloading  = false;
   }
 
+  /* Short error codes from yt-server → something a visitor can act on. */
+  const ERR_TEXT = {
+    rate_limit:       'Too many downloads from your connection — wait a few minutes and try again.',
+    server_busy:      'The server is already downloading as much as it can — try again in a moment.',
+    unsupported_host: 'Only YouTube links are supported.',
+    invalid_url:      'That does not look like a valid URL.',
+    missing_url:      'Please enter a YouTube URL.',
+  };
+
   /* ══════════════════════════════════════════
      LOCAL FETCH (cobalt protocol)
      Docs: https://github.com/imputnet/cobalt
@@ -808,6 +857,13 @@ systemctl restart office-tools-cobalt</pre>
 
     if (!res.ok) {
       const txt = await res.text().catch(() => res.statusText);
+      // The abuse guards answer 429/503 with a JSON error code from a server that is
+      // perfectly healthy. Check for that FIRST — otherwise "server busy" falls into
+      // the 503 branch below and is reported as "cobalt not reachable", and 429 shows
+      // the raw JSON body.
+      let guardCode = '';
+      try { guardCode = (JSON.parse(txt).error || {}).code || ''; } catch (_) {}
+      if (ERR_TEXT[guardCode]) throw new Error(ERR_TEXT[guardCode]);
       if (res.status === 404 || res.status === 502 || res.status === 503) {
         throw new Error(
           `cobalt not reachable (HTTP ${res.status}). ` +
@@ -820,7 +876,9 @@ systemctl restart office-tools-cobalt</pre>
     const data = await res.json();
     if (data.status === 'error') {
       const code = data.error?.code || data.error || 'unknown';
-      throw new Error(code);
+      // yt-server returns short codes; anything unmapped (a raw yt-dlp line, e.g. the
+      // bot-check message) is shown as-is, which is usually the most useful text there is.
+      throw new Error(ERR_TEXT[code] || code);
     }
 
     if (data.status === 'picker') {

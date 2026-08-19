@@ -43,9 +43,12 @@ COOKIES="${YTDLP_COOKIES:-$(_env_get YTDLP_COOKIES)}"
 YTDLP_BIN="${YTDLP:-$(_env_get YTDLP)}"
 YTDLP_BIN="${YTDLP_BIN:-yt-dlp}"
 
-# "Me at the zoo" — the first video on YouTube, short and about as permanent as a
-# video gets. Override with YTCOOKIE_PROBE_URL if it ever goes away.
-PROBE_URL="${YTCOOKIE_PROBE_URL:-https://www.youtube.com/watch?v=jNQXAC9IVRw}"
+# The probe target. Any ordinary public video works — it is only ever fetched with
+# --simulate (metadata, no download). Pick one that is unlikely to be deleted or made
+# private, because a removed video fails in a way this script must NOT read as expired
+# cookies (it reports "inconclusive" and leaves the status alone). Override per-run
+# with YTCOOKIE_PROBE_URL if this one ever disappears.
+PROBE_URL="${YTCOOKIE_PROBE_URL:-https://www.youtube.com/watch?v=J6VMJLSNAHk}"
 
 # Nothing configured → nothing to keep alive. /health reports "none" on its own.
 [[ -n "$COOKIES" ]] || exit 0

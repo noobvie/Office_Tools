@@ -47,7 +47,16 @@
  *   YTDLP               Path to yt-dlp binary           (default: "yt-dlp")
  *   FFMPEG              Path to ffmpeg binary           (default: "ffmpeg")
  *   CORS_ORIGIN         Allowed CORS origin             (default: "*")
- *   MAX_QUALITY         Max video quality override      (default: "1080")
+ *   MAX_QUALITY         Hard cap on video height        (default: "1080")
+ *                       Applies to "Best available" too — set "max" (or "none"/"0")
+ *                       to lift the cap entirely.
+ *   MAX_CONCURRENT      Simultaneous downloads allowed  (default: 2)
+ *                       Each one is a yt-dlp + ffmpeg pair writing a full file to
+ *                       TEMP_DIR, so this is the CPU/disk guard. Over the cap →
+ *                       { error: { code: "server_busy" } }.
+ *   RATE_MAX            Downloads per IP per window     (default: 6)
+ *   RATE_WINDOW_MS      Rate-limit window in ms         (default: 300000 = 5 min)
+ *                       Over the limit → HTTP 429 { error: { code: "rate_limit" } }.
  *   TEMP_DIR            Directory for temp files        (default: OS temp dir)
  *   JOB_TTL_MS          Job expiry in ms                (default: 600000 = 10 min)
  *   YTDLP_PLAYER_CLIENT  YouTube player clients to try  (default: "" = yt-dlp's own defaults)
@@ -102,6 +111,11 @@ const YTDLP      = process.env.YTDLP            || 'yt-dlp';
 const FFMPEG     = process.env.FFMPEG           || 'ffmpeg';
 const CORS_ORIG  = process.env.CORS_ORIGIN      || '*';
 const MAX_QUAL   = process.env.MAX_QUALITY      || '1080';
+// Abuse guards — this endpoint is public through nginx /yt-api/ and every request
+// spawns yt-dlp (+ffmpeg) and writes a full video to TEMP_DIR.
+const MAX_CONCURRENT  = parseInt(process.env.MAX_CONCURRENT || '2', 10);
+const RATE_MAX        = parseInt(process.env.RATE_MAX       || '6', 10);
+const RATE_WINDOW_MS  = parseInt(process.env.RATE_WINDOW_MS || '300000', 10);
 const TEMP_DIR   = process.env.TEMP_DIR         || os.tmpdir();
 const JOB_TTL    = parseInt(process.env.JOB_TTL_MS || '600000', 10);
 // Player client override — default EMPTY so yt-dlp picks its own current defaults.
@@ -113,7 +127,7 @@ const YTDLP_PLAYER_CLIENT   = process.env.YTDLP_PLAYER_CLIENT   || '';
 // bgutil PO-token provider server — used only for the /health reachability probe.
 const POT_PROVIDER_URL      = process.env.POT_PROVIDER_URL      || 'http://127.0.0.1:4416';
 // Optional cookie fallback for age-restricted videos or IP bans.
-// See deploy.sh → Option 6 → i) Configure Cookies.
+// See deploy.sh → Option 6 → j) YouTube cookies.
 const YTDLP_COOKIES         = process.env.YTDLP_COOKIES         || '';  // path to cookies.txt
 const YTDLP_COOKIES_BROWSER = process.env.YTDLP_COOKIES_BROWSER || '';  // e.g. "chrome"
 
@@ -121,6 +135,22 @@ const YTDLP_COOKIES_BROWSER = process.env.YTDLP_COOKIES_BROWSER || '';  // e.g. 
 function clientArgs() {
   if (!YTDLP_PLAYER_CLIENT) return [];
   return ['--extractor-args', `youtube:player_client=${YTDLP_PLAYER_CLIENT}`];
+}
+
+/* Operator height cap. MAX_QUALITY="max"|"none"|"0"|"" lifts it; anything else is a
+   number that also clamps the "Best available" choice (which used to bypass it). */
+function qualityCap() {
+  const raw = String(MAX_QUAL).trim().toLowerCase();
+  if (!raw || raw === 'max' || raw === 'none' || raw === '0') return 0;
+  const n = parseInt(raw, 10);
+  // A typo must not fail open (uncapped) or produce a nonsense cap: parseInt('1o80')
+  // is 1, which would filter every format away. Anything below the smallest real
+  // YouTube height falls back to the documented default.
+  if (!Number.isFinite(n) || n < 144) {
+    console.warn(`[config] MAX_QUALITY="${MAX_QUAL}" is not a usable height - using 1080`);
+    return 1080;
+  }
+  return n;
 }
 
 /* Returns extra cookie auth args — fallback for age-restricted / IP-banned videos */
@@ -143,6 +173,29 @@ app.use((req, res, next) => {
   next();
 });
 
+/* ── Abuse guards ─────────────────────────────────────── */
+// nginx proxies from loopback and sets X-Forwarded-For; trusting only loopback means
+// req.ip is the real client behind nginx but cannot be spoofed by a direct caller.
+app.set('trust proxy', 'loopback');
+
+// Sliding-window per-IP counter. Deliberately dependency-free — this server has no
+// npm deps beyond express, unlike backend/ which uses lib/rate-limit.js.
+const rateHits = new Map();   // ip -> number[] (hit timestamps)
+function rateAllow(ip) {
+  if (RATE_MAX <= 0) return true;
+  const now  = Date.now();
+  const hits = (rateHits.get(ip) || []).filter(t => now - t < RATE_WINDOW_MS);
+  if (hits.length >= RATE_MAX) { rateHits.set(ip, hits); return false; }
+  hits.push(now);
+  rateHits.set(ip, hits);
+  return true;
+}
+
+// Active yt-dlp downloads. Incremented when a job starts, decremented exactly once when
+// its process settles (see startDownload) — never derived from jobs.size, which also
+// counts finished jobs still waiting to be streamed.
+let activeDownloads = 0;
+
 /* ── Job store ───────────────────────────────────────────────── */
 // Each job: { tmpPath, filename, status ('pending'|'ready'|'error'), error, emitter, expires }
 const jobs = new Map();
@@ -158,6 +211,14 @@ app.post('/', async (req, res) => {
     audioFormat   = 'mp3',   // 'mp3' | 'm4a' | 'best'
     audioBitrate  = '128',   // kbps: '320' | '256' | '128' | '96'
   } = req.body || {};
+
+  /* ── Abuse guards (before any yt-dlp spawn) ── */
+  if (!rateAllow(req.ip)) {
+    return res.status(429).json({ status: 'error', error: { code: 'rate_limit' } });
+  }
+  if (MAX_CONCURRENT > 0 && activeDownloads >= MAX_CONCURRENT) {
+    return res.status(503).json({ status: 'error', error: { code: 'server_busy' } });
+  }
 
   /* ── Validate ── */
   if (!url) return res.json({ status: 'error', error: { code: 'missing_url' } });
@@ -206,14 +267,14 @@ app.post('/', async (req, res) => {
 app.get('/stream/:id', (req, res) => {
   const job = jobs.get(req.params.id);
   if (!job || job.expires < Date.now()) {
-    return res.status(404).json({ error: 'Stream not found or expired' });
+    return streamError(req, res, 404, 'Stream not found or expired');
   }
 
   /* Already finished? */
   if (job.status === 'ready') return serveFile(job, req, res);
   if (job.status === 'error') {
     jobs.delete(req.params.id);
-    return res.status(500).json({ error: job.error || 'Download failed' });
+    return streamError(req, res, 500, job.error || 'Download failed');
   }
 
   /* Wait for the download to complete (event-based, no polling) */
@@ -221,7 +282,7 @@ app.get('/stream/:id', (req, res) => {
     job.emitter.off('done', onDone);
     jobs.delete(req.params.id);
     cleanTemp(job.tmpPath);
-    res.status(504).json({ error: 'Download timed out' });
+    streamError(req, res, 504, 'Download timed out');
   }, JOB_TTL);
 
   function onDone() {
@@ -229,7 +290,7 @@ app.get('/stream/:id', (req, res) => {
     if (job.status === 'ready') serveFile(job, req, res);
     else {
       jobs.delete(req.params.id);
-      res.status(500).json({ error: job.error || 'Download failed' });
+      streamError(req, res, 500, job.error || 'Download failed');
     }
   }
   job.emitter.once('done', onDone);
@@ -347,7 +408,11 @@ function startDownload({ jobId, url, tmpPath, isAudio, wantMp3, videoQuality, au
      * PREREQUISITE: ffmpeg must be installed for merging separate streams.
      * Without ffmpeg, falls back to a single pre-merged stream (usually ≤720p).
      */
-    const q       = videoQuality === 'max' ? '' : `[height<=${Math.min(parseInt(videoQuality) || 1080, parseInt(MAX_QUAL))}]`;
+    // "max" is capped too: MAX_QUALITY is an operator limit, not just a default.
+    const cap     = qualityCap();
+    const want    = videoQuality === 'max' ? 0 : (parseInt(videoQuality) || 1080);
+    const height  = (cap && want) ? Math.min(want, cap) : (cap || want);   // 0 = uncapped
+    const q       = height ? `[height<=${height}]` : '';
     const format  = `bestvideo${q}[ext=mp4]+bestaudio[ext=m4a]/bestvideo${q}+bestaudio/best${q}/best`;
     args = [
       '--no-playlist', '--no-warnings',
@@ -360,22 +425,39 @@ function startDownload({ jobId, url, tmpPath, isAudio, wantMp3, videoQuality, au
     ];
   }
 
+  activeDownloads++;
+  let settled = false;
+  const release = () => { if (!settled) { settled = true; activeDownloads--; } };
+
+  // Keep the tail of stderr so a failure reports the real yt-dlp line ("Sign in to
+  // confirm you're not a bot", "Video unavailable", …) instead of a bare exit code.
+  // Without this the reason exists only in the journal and the user is told nothing.
+  let errTail = '';
   const proc = spawn(YTDLP, args);
   proc.stdout.on('data', () => {});
-  proc.stderr.on('data', d => process.stderr.write(`[yt-dlp ${jobId.slice(0,8)}] ${d}`));
+  proc.stderr.on('data', d => {
+    process.stderr.write(`[yt-dlp ${jobId.slice(0,8)}] ${d}`);
+    errTail = (errTail + d).slice(-4096);
+  });
 
   proc.on('close', code => {
+    release();
     if (!jobs.has(jobId)) return;
     if (code === 0 && fs.existsSync(tmpPath)) {
       job.status = 'ready';
     } else {
+      const detail = errTail.trim().split('\n')
+        .map(l => l.trim())
+        .filter(l => l && !l.startsWith('[download]'))
+        .pop();
       job.status = 'error';
-      job.error  = `yt-dlp exited with code ${code}`;
+      job.error  = detail ? detail.slice(0, 300) : `yt-dlp exited with code ${code}`;
     }
     job.emitter.emit('done');
   });
 
   proc.on('error', e => {
+    release();
     if (!jobs.has(jobId)) return;
     job.status = 'error';
     job.error  = 'yt-dlp spawn error: ' + e.message;
@@ -384,6 +466,30 @@ function startDownload({ jobId, url, tmpPath, isAudio, wantMp3, videoQuality, au
 
   /* Kill download if client disconnects during the wait */
   // (handled in serveFile for the streaming phase)
+}
+
+/**
+ * Report a /stream failure. The browser reaches this URL through a plain navigation
+ * (the frontend's hidden <a download>), so a JSON body would render as raw JSON in a
+ * fresh tab — HTML for browsers, JSON for anything asking for it.
+ */
+function streamError(req, res, status, message) {
+  res.status(status);
+  if (!req.accepts('html')) return res.json({ error: message });
+  const safe = String(message)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  res.type('html').send(`<!doctype html>
+<html><head><meta charset="utf-8"><title>Download failed</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+             background:#0f1115;color:#e5e7eb;font:15px/1.55 system-ui,sans-serif;padding:1.5rem">
+  <div style="max-width:36rem;background:#171a21;border:1px solid #2a2f3a;border-radius:12px;padding:1.5rem">
+    <h1 style="margin:0 0 .6rem;font-size:1.15rem">❌ Download failed</h1>
+    <p style="margin:0 0 .9rem;color:#9ca3af">The server could not produce this file.</p>
+    <pre style="margin:0;padding:.8rem;background:#0f1115;border-radius:8px;white-space:pre-wrap;
+                word-break:break-word;font-size:.85rem;color:#fca5a5">${safe}</pre>
+  </div>
+</body></html>`);
 }
 
 /**
@@ -450,6 +556,11 @@ setInterval(() => {
       jobs.delete(id);
     }
   }
+  // Drop rate-limit entries whose whole window has passed, so the map cannot grow
+  // unbounded across every IP that ever touched the server.
+  for (const [ip, hits] of rateHits) {
+    if (!hits.some(t => now - t < RATE_WINDOW_MS)) rateHits.delete(ip);
+  }
 }, 60_000);
 
 /* ══════════════════════════════════════════════════════════════
@@ -463,5 +574,6 @@ app.listen(PORT, HOST, async () => {
   console.log(`  yt-dlp  : ${ver  ? `✓ ${ver}` : '✗ NOT FOUND — install: pip install yt-dlp'}`);
   console.log(`  ffmpeg  : ${ffmpegOk ? '✓ found'  : '✗ NOT FOUND — MP3 and 1080p will not work (install ffmpeg)'}`);
   console.log(`  PO-token: ${potVer ? `✓ provider v${potVer} at ${POT_PROVIDER_URL}` : `✗ provider NOT reachable at ${POT_PROVIDER_URL} — YouTube may serve bot-check 403s (deploy.sh installs office-tools-pot)`}`);
+  console.log(`  Limits  : ${MAX_CONCURRENT > 0 ? MAX_CONCURRENT : '∞'} concurrent · ${RATE_MAX > 0 ? `${RATE_MAX} per IP / ${Math.round(RATE_WINDOW_MS / 1000)}s` : 'no rate limit'} · height cap ${qualityCap() || 'none'}`);
   console.log('');
 });
