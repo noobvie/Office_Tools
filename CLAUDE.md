@@ -35,6 +35,14 @@ Every tool is a self-contained `tools/<name>/index.html`. There is no bundler, n
 - `../../css/style.css` — all shared styles and CSS variables
 - `../../js/config.js` — exposes `window.OT_CONFIG.API_SERVER_URL`
 - `../../js/common.js` — theme toggle (`initThemeToggle`), `copyText(text, btn)`
+- `../../js/vietnamese.js` — **opt-in, include only where needed** (currently `pdf-to-text`).
+  `window.OTVietnamese`: legacy Vietnamese font encodings (TCVN3/ABC, VNI-Windows, VISCII)
+  → Unicode, plus NFC composition, VIQR/Telex, and `detect()`. Its tables are **generated,
+  not hand-edited** — run `node scripts/gen-vietnamese-tables.js [--write]`, which re-derives
+  them from iconv-lite plus a pinned upstream and aborts if the two sources disagree.
+  `detect()` ranks candidates by whether the RESULT is valid Vietnamese, not by how much junk
+  a conversion cleared: German `größer/Prüfung/Grüße` clears more "junk" under TCVN3 than real
+  VNI text does under VNI, so a junk-count heuristic picks the wrong answer on both.
 
 The hub (`index.html`) renders a tool grid with search and category filters. Adding a tool = creating the `tools/<name>/` directory and inserting a card into the correct `<section class="category-section">` in `index.html`.
 

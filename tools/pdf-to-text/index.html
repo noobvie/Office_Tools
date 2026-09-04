@@ -113,6 +113,31 @@
       .ocr-actions .btn { flex: 1 1 auto; }
     }
 
+    /* Vietnamese repair card - same visual language as the OCR card above it */
+    .vn-title { font-size: 1rem; margin: 0 0 .4rem; color: var(--primary); }
+    .vn-note, .vn-hint { font-size: .82rem; color: var(--text-muted); line-height: 1.6; margin: 0 0 .7rem; }
+    .vn-hint { margin: .7rem 0 0; }
+    .vn-opts {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: .75rem; align-items: end;
+    }
+    .vn-actions { display: flex; gap: .5rem; }
+    .vn-detected {
+      font-size: .82rem; line-height: 1.6;
+      color: var(--text); background: var(--primary-dim);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: .55rem .75rem; margin: 0 0 .7rem;
+    }
+    .vn-sample {
+      font-family: 'Courier New', monospace;
+      font-size: .8rem; word-break: break-word;
+    }
+    @media (max-width: 620px) {
+      .vn-opts { grid-template-columns: 1fr; }
+      .vn-actions .btn { flex: 1 1 auto; }
+    }
+
     .text-preview-area {
       width: 100%;
       min-height: 220px;
@@ -149,6 +174,7 @@
   <p>Got a <strong>PDF full of text</strong> you need to copy, search, edit, or process? Instead of painstakingly copying it paragraph by paragraph, this tool extracts all the text content from any PDF in one go and lets you download it as a plain <strong><code>.txt</code> file or a <code>.docx</code> Word document</strong> &mdash; ready to open, edit, and reformat in any text editor or word processor.</p>
   <p>Everything runs <strong>locally in your browser</strong> &mdash; your PDF is never uploaded to any server. Useful for extracting text from <strong>contracts, research papers, reports, ebooks, and scanned documents that have a text layer</strong>.</p>
   <p>Purely scanned PDFs &mdash; photocopies, phone scans, faxes &mdash; carry no embedded text layer, so a normal extraction returns empty pages. When that happens this tool detects it and offers an <strong>optional OCR pass</strong> that reads the pages as images instead, using the open-source Tesseract engine in <strong>17 languages including Vietnamese, Chinese, Japanese, Korean, Thai and Arabic</strong>. OCR never starts on its own: you pick the language and the page range and press the button, and the engine is only downloaded at that moment, so ordinary text PDFs stay as fast as they were. Recognised text drops straight into the same page list and the same <code>.txt</code> / <code>.docx</code> downloads.</p>
+  <p><strong>Vietnamese PDFs that extract as gibberish</strong> &mdash; <code>TiÕng ViÖt</code> or <code>Tieáng Vieät</code> instead of <code>Tiếng Việt</code> &mdash; are not damaged. They were written in a pre-Unicode Vietnamese font (<strong>TCVN3/ABC .VnTime</strong>, <strong>VNI-Windows</strong> or <strong>VISCII</strong>), and the characters you are seeing are that font's byte values. This tool recognises all three automatically and converts them back to real Unicode in one click, and it re-composes accents (NFC) on every document even when no conversion is needed, so <kbd>Ctrl</kbd>+<kbd>F</kbd>, sorting and Word behave. The original extraction is always kept, so you can undo or try a different encoding at any time. <strong>VIQR</strong> and <strong>Telex</strong> &mdash; the conventions for typing Vietnamese on an ASCII keyboard &mdash; can also be converted, but must be chosen manually.</p>
 </section>
 
   <!-- Upload -->
@@ -205,12 +231,51 @@
       </div>
     </div>
 
+    <label class="checkbox-row" style="margin:.7rem 0 0">
+      <input type="checkbox" id="ocrBest">
+      <label for="ocrBest" style="font-size:.84rem" id="ocrBestLabel">Best-quality recognition model</label>
+    </label>
+    <p class="ocr-hint" id="ocrBestHint" style="margin:.2rem 0 0"></p>
+
     <p class="ocr-hint" id="ocrHint"></p>
 
     <div id="ocrProgressWrap" style="display:none">
       <div class="progress-bar"><div class="progress-fill" id="ocrProgressFill"></div></div>
       <p class="ocr-progress-label" id="ocrProgressLabel">Starting…</p>
     </div>
+  </div>
+
+  <!-- Vietnamese text repair. Shown whenever there is extracted text, because
+       the manual picker has to be reachable when auto-detection says nothing —
+       a detector that is the only way in is a dead end on the file it misses.
+       The banner above it is what changes when something IS detected. -->
+  <div class="card" id="vnCard" style="display:none">
+    <h2 class="vn-title">🇻🇳 Vietnamese text repair</h2>
+    <p class="vn-note" id="vnNote"></p>
+
+    <div class="vn-opts">
+      <div>
+        <label class="form-label" for="vnEncodingSel">Source encoding</label>
+        <select id="vnEncodingSel" class="form-input">
+          <option value="none">None — leave the text as extracted</option>
+          <optgroup label="Legacy font encodings (auto-detectable)">
+            <option value="tcvn3">TCVN3 / ABC — .VnTime  (TiÕng ViÖt)</option>
+            <option value="vni">VNI-Windows — VNI-Times  (Tieáng Vieät)</option>
+            <option value="viscii">VISCII</option>
+          </optgroup>
+          <optgroup label="Typing conventions (manual only)">
+            <option value="viqr">VIQR  (Tie^&#39;ng Vie^.t)</option>
+            <option value="telex">Telex  (Tieengs Vieejt)</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="vn-actions">
+        <button class="btn btn-primary" id="vnApplyBtn" style="display:none">Convert to Unicode</button>
+        <button class="btn btn-secondary" id="vnRevertBtn" style="display:none">Undo</button>
+      </div>
+    </div>
+
+    <p class="vn-hint" id="vnHint"></p>
   </div>
 
   <!-- Results -->
@@ -271,6 +336,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
 <script src="../../js/common.js"></script>
+<script src="../../js/vietnamese.js"></script>
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -318,6 +384,19 @@ const OCR_MAX_AREA_PX  = IS_SMALL_DEVICE ? 3.5e6 : 1.1e7;
 
 const OCR_LOAD_SHARE   = 6;      // % of the bar reserved for the engine download
 const TESSERACT_SRC    = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+
+// Tesseract ships two model families from the same host. The default is a
+// quantised integer model tuned for speed; "_best" is the float LSTM one.
+// For Vietnamese that is 3.8 MB vs 11.9 MB, and the difference lands squarely
+// on the thing Vietnamese depends on — a syllable carries a letter diacritic
+// and a tone mark at once (ế = ê + acute), so the marks are small, stacked and
+// close together, and the quantised model drops or swaps them far more often
+// than it misreads the letters. Same story for Thai, Arabic, Hindi and the CJK
+// scripts, hence the default-on list.
+const TESSDATA_FAST = 'https://tessdata.projectnaptha.com/4.0.0';
+const TESSDATA_BEST = 'https://tessdata.projectnaptha.com/4.0.0_best';
+const OCR_BEST_DEFAULT_LANGS = new Set(
+  ['vie', 'tha', 'ara', 'hin', 'rus', 'chi_sim', 'chi_tra', 'jpn', 'kor']);
 
 let pagesText = [];   // array of strings, one per page
 let pdfName   = '';
@@ -463,17 +542,7 @@ async function loadPdf(file) {
     setProgress(15 + Math.round(80 * i / pdf.numPages), `Extracting page ${i} of ${pdf.numPages}…`);
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    // Join items, preserving newlines from transform data
-    let pageStr = '';
-    let lastY = null;
-    for (const item of content.items) {
-      if ('str' in item) {
-        if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) pageStr += '\n';
-        pageStr += item.str;
-        lastY = item.transform[5];
-      }
-    }
-    pagesText.push(pageStr.trim());
+    pagesText.push(joinTextItems(content.items));
   }
 
   setProgress(100, 'Done');
@@ -499,6 +568,54 @@ async function loadPdf(file) {
   }
 
   renderResults();
+  runVnDetect();
+}
+
+// Stitch one page's text items back into lines.
+//
+// pdf.js hands back positioned runs, not a paragraph — a run ends wherever the
+// font, size or colour changes, and the PDF itself may carry no space glyphs at
+// all (word gaps can be pure positioning). So both the line breaks and some of
+// the spaces have to be inferred from the geometry:
+//
+//   * `hasEOL` is pdf.js's own end-of-line flag and is trusted first.
+//   * A baseline that moved by more than half a line height is a new line. The
+//     old fixed "> 5 units" threshold was wrong at both ends of the range: 5
+//     units is nothing inside a 24pt heading, and superscripts in 6pt print
+//     tripped it on every footnote marker.
+//   * A horizontal gap wider than a fifth of the font size is a word space.
+//     Runs used to be concatenated with nothing between them, which glues words
+//     together wherever a PDF splits them — and Vietnamese is written in short
+//     separated syllables, so that shows up there far more than in English.
+//
+// The gap test deliberately ignores anything at or below zero, because a
+// diacritic drawn as its own glyph sits ON TOP of its base letter, not after
+// it. Those arrive as combining marks and are composed by the NFC pass later.
+function joinTextItems(items) {
+  let out = '';
+  let lastY = null, lastEnd = 0, lastH = 0, lastEOL = false;
+  for (const item of items) {
+    if (!('str' in item)) continue;
+    const x = item.transform[4], y = item.transform[5];
+    const h = Math.abs(item.transform[3]) || item.height || lastH;
+    if (lastY !== null) {
+      // lastEOL, not item.hasEOL: the flag marks the item that ENDS a line, so
+      // the break belongs after it. Testing the current item put every newline
+      // one item too early, which only stayed invisible while each line
+      // happened to be a single run.
+      if (lastEOL || Math.abs(y - lastY) > Math.max(2, (lastH || h) * 0.5)) {
+        out += '\n';
+      } else if (x - lastEnd > (lastH || h) * 0.2 && !/\s$/.test(out)) {
+        out += ' ';
+      }
+    }
+    out += item.str;
+    lastY = y;
+    lastEnd = x + (item.width || 0);
+    lastH = h || lastH;
+    lastEOL = !!item.hasEOL;
+  }
+  return out.trim();
 }
 
 function setProgress(pct, label) {
@@ -506,9 +623,180 @@ function setProgress(pct, label) {
   document.getElementById('progressLabel').textContent = label;
 }
 
-// ── Render results ──────────────────────────────────────────────────
+// ── Text repair layer ───────────────────────────────────────────────
+// pagesText always holds the RAW extraction. Everything the user sees or
+// downloads comes from viewPages, which is pagesText run through the chosen
+// repair. Keeping the two apart is what makes the encoding picker reversible
+// and lossless: switching it re-derives from the original rather than
+// converting an already-converted string, which would be unrecoverable. It
+// also means OCR — which writes into pagesText — is repaired on the same path
+// without knowing anything about it.
+let vnEncoding = 'none';   // 'none' still NFC-normalises; see js/vietnamese.js
+let viewPages  = [];
+
+function rebuildViewPages() {
+  const V = window.OTVietnamese;
+  if (!V) { viewPages = pagesText.slice(); return; }
+  // A font encoding describes how the PDF stored its glyph codes, so it cannot
+  // apply to a page that came from OCR — tesseract reads pixels and emits
+  // Unicode. Decoding that a second time is silent damage, not a no-op: TCVN3
+  // over correct Vietnamese turns "và" into "vỔ" and "phú" into "phỳ". A
+  // hybrid PDF (legacy-font text pages plus a few scanned ones) hits this on
+  // the OCR pages the moment the conversion is applied.
+  //
+  // A typing convention is the opposite case — it IS a property of the visible
+  // characters, which OCR reproduces faithfully — so those still apply.
+  const fontFix = (V.ENCODINGS.find(e => e.id === vnEncoding) || {}).kind === 'font';
+  viewPages = pagesText.map((t, i) =>
+    V.convert(t, fontFix && ocrPages.has(i) ? 'none' : vnEncoding));
+}
+
+// The pages a font encoding can legitimately describe: everything pdf.js
+// extracted, and nothing OCR produced. Detection reads the same set, or an
+// all-Unicode OCR page would raise the baseline the garbled pages are measured
+// against and talk the detector out of a correct answer.
+function extractedPages() {
+  return pagesText.filter((t, i) => t && !ocrPages.has(i));
+}
+
+// Stop reading at the same 200 000 characters detect() samples. The quoted
+// syllable rate is a sanity figure — "did I pick the right encoding" — and the
+// first few hundred pages settle it as well as three thousand do. Joining the
+// whole array to slice it afterwards would allocate the entire document on
+// every click of the picker, which is the cost this is meant to avoid.
+const VN_SAMPLE_CHARS = 200000;
+function sampleOfPages(pages) {
+  const parts = [];
+  let n = 0;
+  for (const t of pages) {
+    if (!t) continue;
+    parts.push(t);
+    n += t.length + 1;
+    if (n >= VN_SAMPLE_CHARS) break;
+  }
+  return parts.join('\n');
+}
+
+function viewText(i) { return viewPages[i] ?? ''; }
+
+// ── Vietnamese repair card ──────────────────────────────────────────
+// Detection runs over the whole document at once rather than per page: a
+// legacy-font PDF is legacy throughout, and a single page rarely carries the
+// 12 words the detector needs before it will commit to an answer.
+let vnDetected = null;   // last detect() result, for the wording below
+
+function vnSampleOf(text) {
+  // A line that actually shows the damage beats one from the title page, so
+  // prefer the first line carrying a character that has no business in text.
+  const lines = text.split('\n').map(s => s.trim()).filter(s => s.length > 12);
+  const junky = lines.find(s => /[\u0080-\u00ff]/.test(s));
+  return (junky || lines[0] || text.slice(0, 90)).slice(0, 90);
+}
+
+function updateVnCard() {
+  const V = window.OTVietnamese;
+  const card = document.getElementById('vnCard');
+  if (!V || !pagesText.some(t => t)) { card.style.display = 'none'; return; }
+
+  card.style.display = '';
+  const note = document.getElementById('vnNote');
+  const hint = document.getElementById('vnHint');
+  const revert = document.getElementById('vnRevertBtn');
+  const apply = document.getElementById('vnApplyBtn');
+  const d = vnDetected;
+
+  // The dropdown always shows what is APPLIED, never what was merely detected.
+  // Pre-selecting the detection instead leaves the control already sitting on
+  // the value the user needs to choose, so choosing it fires no change event
+  // and the button does nothing — the offer has to be its own control.
+  document.getElementById('vnEncodingSel').value = vnEncoding;
+  apply.style.display = (d && d.encoding && d.encoding !== vnEncoding) ? '' : 'none';
+
+  if (vnEncoding !== 'none') {
+    const label = (V.ENCODINGS.find(e => e.id === vnEncoding) || {}).label || vnEncoding;
+    const rate = V.syllableRate(sampleOfPages(viewPages));
+    note.innerHTML = `Converted from <strong>${escHtml(label)}</strong> to Unicode.`
+      + (rate === null ? ''
+        : ` <strong>${Math.round(rate * 100)}%</strong> of words are now valid Vietnamese `
+          + 'syllables — if that number is low, this is the wrong encoding.');
+    revert.style.display = '';
+  } else if (d && d.encoding) {
+    const label = (V.ENCODINGS.find(e => e.id === d.encoding) || {}).label || d.encoding;
+    note.innerHTML = `<span class="vn-detected">This PDF looks like it was written in a `
+      + `<strong>${escHtml(label)}</strong> font rather than Unicode, which is why the text `
+      + `below is unreadable. Converting it recovers the original Vietnamese.<br>`
+      + `<span class="vn-sample">${escHtml(vnSampleOf(extractedPages()[0] || ''))}</span>`
+      + `</span>`;
+    revert.style.display = 'none';
+  } else {
+    note.textContent = 'The extracted text does not look like a legacy Vietnamese '
+      + 'encoding. If it is still wrong, pick the encoding yourself below — nothing is '
+      + 'lost either way, the original is always kept.';
+    revert.style.display = 'none';
+  }
+
+  // The two typing conventions are destructive on text that is not actually in
+  // them, so say what they do to English before someone picks one.
+  const manual = V.ENCODINGS.filter(e => e.manualOnly).map(e => e.label).join(' and ');
+  hint.textContent = 'Accents are always re-composed (NFC) so search and Word behave, '
+    + 'even with no conversion selected. ' + manual + ' are conventions for TYPING '
+    + 'Vietnamese on an ASCII keyboard, not stored encodings — they are never '
+    + 'auto-detected, and running them over English text will damage it.';
+}
+
+function applyVnEncoding(id) {
+  vnEncoding = id;
+  renderResults(false);      // re-derives viewPages, keeps the reading position
+  repaintRenderedPages();
+  updateVnCard();
+}
+
+// Repaint the page blocks that are ALREADY on screen, and only those.
+//
+// refreshPageBlocks() is the wrong tool here even though it looks like the
+// right one: it extends the list in whole batches down to the deepest index it
+// is given, which is exactly right for OCR (a handful of pages, and the user
+// wants to be taken to them) and exactly wrong for an encoding change, which
+// touches every page — it would render all of them at once and undo the
+// batching that keeps a few-thousand-page document from taking the tab down.
+// Nothing needs scrolling either: the text changed where the user is already
+// looking.
+function repaintRenderedPages() {
+  if (!perPageBuilt) return;
+  for (let i = 0; i < perPageRendered; i++) {
+    const block = document.getElementById('pblk' + i);
+    if (!block) continue;
+    const wasCollapsed = document.getElementById('pb' + i)?.classList.contains('collapsed');
+    block.outerHTML = pageBlockHtml(viewText(i), i);
+    if (wasCollapsed) togglePage(i);
+  }
+}
+
+function runVnDetect() {
+  const V = window.OTVietnamese;
+  vnDetected = null;
+  if (!V) return;
+  const joined = sampleOfPages(extractedPages());
+  if (!joined) { updateVnCard(); return; }
+  vnDetected = V.detect(joined);
+  // Detection only ever OFFERS. Nothing converts without a click: the detector
+  // is good but not infallible, and only the person reading the result can say
+  // whether it worked.
+  updateVnCard();
+}
+
+document.getElementById('vnEncodingSel').addEventListener('change', e => {
+  applyVnEncoding(e.target.value);
+});
+document.getElementById('vnApplyBtn').addEventListener('click', () => {
+  if (vnDetected && vnDetected.encoding) applyVnEncoding(vnDetected.encoding);
+});
+document.getElementById('vnRevertBtn').addEventListener('click', () => {
+  applyVnEncoding('none');
+});
+
 function buildFullText(includeNums) {
-  return pagesText.map((t, i) => {
+  return viewPages.map((t, i) => {
     const header = includeNums ? `━━━ Page ${i + 1} ━━━\n` : '';
     return header + t;
   }).join('\n\n');
@@ -520,8 +808,9 @@ function countWords(str) { return str.split(/\s+/).filter(Boolean).length; }
 // the user left it - same scroll position, same "show more" depth, same
 // expand/collapse state. Only a NEW document rebuilds from scratch.
 function renderResults(rebuild = true) {
-  const totalWords = pagesText.reduce((n, t) => n + countWords(t), 0);
-  const totalChars = pagesText.reduce((n, t) => n + t.length, 0);
+  rebuildViewPages();
+  const totalWords = viewPages.reduce((n, t) => n + countWords(t), 0);
+  const totalChars = viewPages.reduce((n, t) => n + t.length, 0);
   document.getElementById('statPages').textContent = pagesText.length + ' page' + (pagesText.length !== 1 ? 's' : '');
   document.getElementById('statWords').textContent = totalWords.toLocaleString() + ' words';
   document.getElementById('statChars').textContent = totalChars.toLocaleString() + ' chars';
@@ -580,7 +869,7 @@ function refreshPageBlocks(indices) {
     const block = document.getElementById('pblk' + i);
     if (!block) continue;
     const wasCollapsed = document.getElementById('pb' + i)?.classList.contains('collapsed');
-    block.outerHTML = pageBlockHtml(pagesText[i], i);
+    block.outerHTML = pageBlockHtml(viewText(i), i);
     if (wasCollapsed) togglePage(i);
   }
 
@@ -604,7 +893,7 @@ function renderPerPageBatch() {
   const list = document.getElementById('perPageList');
   const end  = Math.min(perPageRendered + PAGE_RENDER_BATCH, pagesText.length);
   let html = '';
-  for (let i = perPageRendered; i < end; i++) html += pageBlockHtml(pagesText[i], i);
+  for (let i = perPageRendered; i < end; i++) html += pageBlockHtml(viewText(i), i);
   list.insertAdjacentHTML('beforeend', html);
   perPageRendered = end;
   updatePerPageMore();
@@ -743,8 +1032,33 @@ function showOcrPrompt(emptyPages) {
     'and the language data (10–15 MB) download from a CDN the first time you use them, then stay ' +
     'in your browser cache. Your PDF is still never uploaded.';
   ocrRangeEl.value = formatRange(emptyPages.slice(0, OCR_DEFAULT_PAGES));
+  syncOcrBest(true);
   ocrCard.style.display = '';
 }
+
+// Keep the quality checkbox in step with the language, but stop tracking it the
+// moment the user touches it — a control that silently undoes a deliberate
+// choice on the next unrelated change is worse than one that never moved.
+let ocrBestTouched = false;
+
+function syncOcrBest(reset) {
+  const lang = document.getElementById('ocrLang').value;
+  const box  = document.getElementById('ocrBest');
+  if (reset) ocrBestTouched = false;
+  if (!ocrBestTouched) box.checked = OCR_BEST_DEFAULT_LANGS.has(lang);
+  document.getElementById('ocrBestHint').textContent = box.checked
+    ? 'Reads accented and stacked marks much more reliably — which is most of what '
+      + 'Vietnamese tone marks are — at roughly 12 MB of language data instead of 4 MB, '
+      + 'and around twice the time per page.'
+    : 'Uses the smaller, faster model (~4 MB). Fine for plain Latin text; it drops and '
+      + 'swaps diacritics noticeably more often.';
+}
+
+document.getElementById('ocrLang').addEventListener('change', () => syncOcrBest(false));
+document.getElementById('ocrBest').addEventListener('change', () => {
+  ocrBestTouched = true;
+  syncOcrBest(false);
+});
 
 // Called before every new file, and by Cancel's teardown.
 async function resetOcrState() {
@@ -753,6 +1067,11 @@ async function resetOcrState() {
   await terminateOcrWorker();
   ocrPages = new Set();
   ocrEmptyPages = [];
+  // The repair belongs to the document, not the session - a new file must not
+  // inherit the last one's encoding, or its text silently arrives converted.
+  vnEncoding = 'none';
+  vnDetected = null;
+  document.getElementById('vnCard').style.display = 'none';
   ocrPhase = 'load';
   ocrPctFloor = 0;
   ocrCard.style.display = 'none';
@@ -899,6 +1218,7 @@ async function runOcr() {
   setOcrProgress(1, 'Loading the OCR engine…', true);
 
   const lang = document.getElementById('ocrLang').value;
+  const useBest = document.getElementById('ocrBest').checked;
   const readIdx = [];    // 0-based indices actually written, for the repaint
   let worker = null;     // this run's own handle - see the finally
   let done = 0, blanks = [];
@@ -911,6 +1231,7 @@ async function runOcr() {
     // ONE worker for the whole run. Tesseract.recognize() would spin up a
     // worker and re-fetch the language data for every single page.
     worker = ocrWorker = await Tesseract.createWorker(lang, 1, {
+      langPath: useBest ? TESSDATA_BEST : TESSDATA_FAST,
       // The engine download is a fixed slice at the FRONT of the bar rather
       // than a share of the page budget. Folding it into the per-page fraction
       // meant a one-page run showed 100% before page one was rendered, because
@@ -927,6 +1248,13 @@ async function runOcr() {
           `Reading page ${ocrTick.page} — ${ocrTick.done + 1} of ${ocrTick.total}`);
       }
     });
+    if (ocrCancelled || runId !== ocrRunId) return;
+
+    // Tesseract's default collapses runs of spaces, which is how a Vietnamese
+    // page comes back with syllables run together: the words are short and the
+    // engine has less width to judge a gap by than it does in English.
+    try { await worker.setParameters({ preserve_interword_spaces: '1' }); }
+    catch (e) { /* older builds ignore the key; not worth failing the run over */ }
     if (ocrCancelled || runId !== ocrRunId) return;
     ocrPhase = 'read';
 
@@ -1022,7 +1350,7 @@ async function runOcr() {
       // the per-page view all pick it up - there is no second output path.
       // renderResults(false) keeps the list where the user left it; the pages
       // that changed are repainted individually.
-      if (done) { renderResults(false); refreshPageBlocks(readIdx); }
+      if (done) { renderResults(false); refreshPageBlocks(readIdx); runVnDetect(); }
       refreshOcrPrompt();
 
       if (blanks.length) {
@@ -1080,7 +1408,7 @@ document.getElementById('dlDocxBtn').addEventListener('click', async () => {
     const includeNums = document.getElementById('addPageNums').checked;
     const children = [];
 
-    pagesText.forEach((text, i) => {
+    viewPages.forEach((text, i) => {
       if (includeNums) {
         children.push(new Paragraph({ text: `Page ${i + 1}`, heading: HeadingLevel.HEADING_2 }));
       }
@@ -1088,7 +1416,7 @@ document.getElementById('dlDocxBtn').addEventListener('click', async () => {
       lines.forEach(line => {
         children.push(new Paragraph({ children: [new TextRun(line)] }));
       });
-      if (i < pagesText.length - 1) {
+      if (i < viewPages.length - 1) {
         children.push(new Paragraph({ children: [new TextRun({ text: '', break: 1 })] }));
       }
     });
