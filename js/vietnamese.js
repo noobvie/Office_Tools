@@ -397,6 +397,169 @@
     return decode(text, id);
   }
 
+  // ── Proofreading OCR output ─────────────────────────────────────────────────
+  // A spell checker cannot help here, and it is worth being precise about why:
+  // the errors this exists to catch are REAL WORDS. Vietnamese OCR reads "cái"
+  // as "cói" and "đã" as "đỡ" — both of which isSyllable() accepts, because
+  // both are ordinary words (cói = sedge, đỡ = to support). Only context
+  // separates them.
+  //
+  // The context used here is the DOCUMENT ITSELF, not a bundled language model.
+  // A word that a document uses forty times is that document's spelling; the
+  // same word appearing once more in a shape one confusion-step away is
+  // overwhelmingly a misreading of it. That needs no corpus, ships no
+  // megabytes, adapts to the document's own vocabulary, and — the part a
+  // frequency list cannot do — leaves a document genuinely ABOUT "đỡ" alone,
+  // because there "đỡ" is the frequent form.
+  //
+  // What it cannot do: a short document gives it almost nothing to work with,
+  // and an error the OCR made consistently looks exactly like a real word.
+  // It suggests; it never rewrites on its own.
+
+  // Base letters whose shapes OCR actually swaps. The tone is NOT part of the
+  // confusion — it is a separate high-contrast mark that survives, which is why
+  // the reported errors kept the tone and changed only the vowel:
+  //     cái -> cói   (a->o, acute kept)      đã -> đỡ   (a->ơ, tilde kept)
+  var CONFUSABLE_GROUPS = ['aăâoôơ', 'uư', 'eê', 'iy', 'dđ'];
+  var PROOF_TONES = ['', '̀', '́', '̃', '̉', '̣'];
+
+  // The other half, and in Vietnamese the larger one: the tone mark itself.
+  // A scan that is faint, skewed or low-dpi loses or swaps tone marks far more
+  // often than it confuses letters — ả/ã differ by a few pixels, and a dropped
+  // mark turns a word into a different real word rather than into nonsense.
+  var TONE_BEARING = 'aăâeêioôơuưy';
+
+  var CONFUSE = (function () {
+    var m = Object.create(null);
+    function add(a, b) {
+      if (a === b) return;
+      (m[a] || (m[a] = [])).push(b);
+      if (a.toUpperCase() !== a) (m[a.toUpperCase()] || (m[a.toUpperCase()] = []))
+        .push(b.toUpperCase());
+    }
+    // A combination that does not compose to ONE character is not a letter any
+    // Vietnamese font ever drew, so no OCR engine can have confused it. That
+    // single check is what keeps "d"/"đ" to their untoned forms and drops the
+    // impossible vowel+tone pairs, without needing a table of exceptions.
+    function compose(base, tone) {
+      var c = (base + tone).normalize('NFC');
+      return c.length === 1 ? c : null;
+    }
+    // same tone, confusable base letter  — cái -> cói, đã -> đỡ
+    CONFUSABLE_GROUPS.forEach(function (group) {
+      for (var i = 0; i < group.length; i++) {
+        for (var j = 0; j < group.length; j++) {
+          if (i === j) continue;
+          for (var t = 0; t < PROOF_TONES.length; t++) {
+            var a = compose(group[i], PROOF_TONES[t]);
+            var b = compose(group[j], PROOF_TONES[t]);
+            if (a && b) add(a, b);
+          }
+        }
+      }
+    });
+    // same base letter, confusable tone — người -> ngươi, hỏi -> hõi
+    for (var v = 0; v < TONE_BEARING.length; v++) {
+      for (var s = 0; s < PROOF_TONES.length; s++) {
+        for (var u = 0; u < PROOF_TONES.length; u++) {
+          if (s === u) continue;
+          var x = compose(TONE_BEARING[v], PROOF_TONES[s]);
+          var y = compose(TONE_BEARING[v], PROOF_TONES[u]);
+          if (x && y) add(x, y);
+        }
+      }
+    }
+    return m;
+  })();
+
+  // Words that may be a correction TARGET but never a correction SUSPECT.
+  //
+  // Self-consistency has one bad failure mode, and it is this: in a document
+  // that happens to be about "đỡ", a single correct "đã" is rare enough and
+  // "đỡ" frequent enough that the rule proposes rewriting the grammar. These
+  // are ordinary Vietnamese function words — if one appears at all, even once,
+  // it is almost certainly what the page really said.
+  var PROOF_KEEP = (function () {
+    var keep = Object.create(null);
+    ('là và của có không được các một những người cho với này đó đã trong khi '
+      + 'đến ra thì mà nên cũng như về tại bởi vì nếu hay hoặc tôi chúng bạn họ '
+      + 'nó ai gì nào sao đâu rất quá lắm hơn nhất mỗi mọi cả chỉ còn đang sẽ '
+      + 'vẫn chưa phải cần muốn biết làm đi lại ở từ theo sau trước trên dưới '
+      + 'giữa ngoài cùng để do bằng thêm nhưng hoặc rồi nữa ấy kia').split(' ')
+      .forEach(function (w) { if (w) keep[w] = true; });
+    return keep;
+  })();
+
+  // One substitution only. Allowing two would reach far enough to connect words
+  // that merely rhyme, and precision is the whole value here.
+  function confusionNeighbours(word) {
+    var out = [];
+    for (var i = 0; i < word.length; i++) {
+      var alts = CONFUSE[word[i]];
+      if (!alts) continue;
+      for (var k = 0; k < alts.length; k++) {
+        out.push(word.slice(0, i) + alts[k] + word.slice(i + 1));
+      }
+    }
+    return out;
+  }
+
+  var PROOF_RARE_MAX  = 2;   // the suspect must be rare in this document
+  var PROOF_ALT_MIN   = 4;   // the alternative must be well established in it
+  var PROOF_MIN_RATIO = 8;   // and must clearly dominate it
+
+  // corpus = the text to learn the document's own spellings from (pass
+  // everything). target = the text actually eligible for correction; defaults
+  // to the corpus. They differ because pdf-extracted text is EXACT — a rare
+  // word there is a real word — so only OCR pages should be corrected, while
+  // every page is worth counting.
+  function proofread(corpus, target) {
+    var count = Object.create(null);
+    var all = wordsOf(corpus);
+    for (var i = 0; i < all.length; i++) {
+      var k = all[i].toLowerCase();
+      count[k] = (count[k] || 0) + 1;
+    }
+    var pool = Object.create(null);
+    var tw = target === undefined || target === null ? all : wordsOf(target);
+    for (var j = 0; j < tw.length; j++) pool[tw[j].toLowerCase()] = true;
+
+    var out = [];
+    for (var w in pool) {
+      var n = count[w] || 0;
+      if (n < 1 || n > PROOF_RARE_MAX || w.length < 2) continue;
+      if (PROOF_KEEP[w]) continue;
+      var alts = confusionNeighbours(w);
+      var best = null;
+      for (var a = 0; a < alts.length; a++) {
+        var an = count[alts[a]] || 0;
+        if (an < PROOF_ALT_MIN || an < n * PROOF_MIN_RATIO) continue;
+        if (!isSyllable(alts[a])) continue;
+        if (!best || an > best.altCount) best = { to: alts[a], altCount: an };
+      }
+      if (best) out.push({ from: w, to: best.to, count: n, altCount: best.altCount });
+    }
+    out.sort(function (x, y) {
+      return y.altCount - x.altCount || (x.from < y.from ? -1 : x.from > y.from ? 1 : 0);
+    });
+    return out;
+  }
+
+  function applySuggestions(text, subs) {
+    if (!subs || !subs.length) return toNFC(text);
+    var map = Object.create(null);
+    for (var i = 0; i < subs.length; i++) map[subs[i].from] = subs[i].to;
+    return toNFC(text).replace(/[A-Za-zÀ-ỹ]+/g, function (w) {
+      var to = map[w.toLowerCase()];
+      if (!to) return w;
+      // Match the case that was actually there — a corrected word at the start
+      // of a sentence must not come back lowercase.
+      if (w === w.toUpperCase() && w !== w.toLowerCase()) return to.toUpperCase();
+      if (w[0] === w[0].toUpperCase()) return to.charAt(0).toUpperCase() + to.slice(1);
+      return to;
+    });
+  }
+
   global.OTVietnamese = {
     ENCODINGS: ENCODINGS,
     convert: convert,
@@ -405,6 +568,8 @@
     telexToUnicode: telexToUnicode,
     toNFC: toNFC,
     isSyllable: isSyllable,
-    syllableRate: syllableRate
+    syllableRate: syllableRate,
+    proofread: proofread,
+    applySuggestions: applySuggestions
   };
 })(typeof window !== 'undefined' ? window : globalThis);

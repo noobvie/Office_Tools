@@ -43,6 +43,21 @@ Every tool is a self-contained `tools/<name>/index.html`. There is no bundler, n
   `detect()` ranks candidates by whether the RESULT is valid Vietnamese, not by how much junk
   a conversion cleared: German `größer/Prüfung/Grüße` clears more "junk" under TCVN3 than real
   VNI text does under VNI, so a junk-count heuristic picks the wrong answer on both.
+  `proofread(corpus, target)` is a separate layer for **OCR output only**: Vietnamese OCR
+  errors are REAL WORDS (`cái`→`cói`, `đã`→`đỡ` — tone kept, vowel changed), so `isSyllable`
+  passes them and no spell check can help. It scores against **the document's own word
+  frequencies**, not a bundled corpus — no data file, and a document really about `đỡ` is left
+  alone. Never run it on pdf-extracted text: that text is exact, so a rare word in it is a
+  real word. `PROOF_KEEP` stops grammar particles being rewritten.
+
+  **Three provenance rules the repair layer must keep straight**, each of which silently
+  corrupts text if broken: (1) a *font* encoding must never touch an OCR page (tesseract emits
+  Unicode; TCVN3 over correct Vietnamese gives `và`→`vỔ`) — a *typing* convention still may;
+  (2) `detect()` must ignore OCR pages, or correct Unicode raises the baseline and talks it out
+  of a right answer (measured: survives 3 OCR pages against one garbled page, dies at 6);
+  (3) a document may mix two legacy fonts, so encoding is chosen **per `item.fontName`**
+  (`pageSpans`), not per document — one global encoding repairs most of such a file and
+  quietly damages the rest, which is exactly what "a few words are still wrong" looks like.
 
 The hub (`index.html`) renders a tool grid with search and category filters. Adding a tool = creating the `tools/<name>/` directory and inserting a card into the correct `<section class="category-section">` in `index.html`.
 
