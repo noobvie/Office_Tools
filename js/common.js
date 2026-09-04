@@ -327,7 +327,7 @@ const OT_TOOLS = [
   { name: 'Speech & Voice',          path: 'speech-voice',          cat: '🎬 Media',                icon: '🎙️', desc: 'Transcribe mic or audio to text, or convert text to speech' },
   { name: 'Photo Editor',            path: 'photo-editor',          cat: '🎬 Media',                icon: '🖼️', desc: 'Remove backgrounds, adjust colors and add text to photos' },
   { name: 'Image Converter',         path: 'image-converter',       cat: '🎬 Media',                icon: '🖼️', desc: 'Convert HEIC/HEIF to JPG/PNG, compress and resize images' },
-  { name: 'Image to Text (OCR)',     path: 'ocr',                   cat: '🎬 Media',                icon: '🔎', desc: 'Extract text from photos, screenshots and scans — 10+ languages' },
+  { name: 'Image to Text (OCR)',     path: 'ocr',                   cat: '🎬 Media',                icon: '🔎', desc: 'Extract text from photos, screenshots and scans — 17 languages incl. Vietnamese, Thai, Chinese' },
   { name: 'Image Cropper',           path: 'image-cropper',         cat: '🎬 Media',                icon: '✂️', desc: 'Crop photos with aspect presets, rotate, flip and zoom' },
   { name: 'Image Upscaler',          path: 'image-upscale',         cat: '🎬 Media',                icon: '🔬', desc: 'Enlarge images 2×/3×/4× with high-quality resampling, sharpen and denoise',  isNew: true },
   { name: 'Image Redaction',         path: 'image-redact',          cat: '🎬 Media',                icon: '🚫', desc: 'Blur, pixelate or black-box sensitive areas; flattened and EXIF stripped',  isNew: true },
@@ -372,7 +372,7 @@ const OT_TOOLS = [
   { name: 'File Share',              path: 'file-share',            cat: '📤 Share',                icon: '📦', desc: 'Upload archives and share a download link, auto-deleted after 7 days' },
   // 📁 PDF
   { name: 'PDF Toolkit',             path: 'pdf-toolkit',           cat: '📁 PDF',                  icon: '📑', desc: 'Merge, split, extract and reorder PDF pages with drag-and-drop' },
-  { name: 'PDF to Text',             path: 'pdf-to-text',           cat: '📁 PDF',                  icon: '📄', desc: 'Extract text from any PDF — copy or download as .txt or .docx' },
+  { name: 'PDF to Text',             path: 'pdf-to-text',           cat: '📁 PDF',                  icon: '📄', desc: 'Extract text from any PDF, with OCR for scanned pages — copy or download as .txt or .docx' },
   { name: 'Image to PDF',            path: 'image-to-pdf',          cat: '📁 PDF',                  icon: '🖼️', desc: 'Combine JPG/PNG/WebP images into one PDF — reorder, A4/Letter' },
   { name: 'PDF Enhance & Clean',     path: 'pdf-enhance',           cat: '📁 PDF',                  icon: '🧼', desc: 'Deskew, sharpen and clean scanned PDFs, add a searchable OCR text layer',  isNew: true },
   { name: 'PDF to Images',           path: 'pdf-to-images',         cat: '📁 PDF',                  icon: '🖼️', desc: 'Convert PDF pages to PNG/JPG — pick resolution and range, download or ZIP',  isNew: true },

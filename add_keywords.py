@@ -28,10 +28,11 @@ KEYWORDS = {
   'my-ip':               'what is my IP address, find my IP, check my IP, public IP lookup, IPv4 IPv6, ISP lookup, my IP right now',
   'notepad':             'online notepad, browser notepad, auto-save, scratch pad, quick notes, local storage notes',
   'number-words':        'number to words, spell out number, number in english words, check writing, invoice amount in words',
+  'ocr':                 'OCR online, image to text, extract text from image, photo to text, picture to text, screenshot to text, scanned document to text, free OCR, optical character recognition, Vietnamese OCR, Thai OCR, Indonesian OCR, Chinese OCR, Japanese OCR, Arabic OCR',
   'palette-extractor':   'color palette extractor, image color picker, dominant colors, extract palette from photo, HEX from image',
   'password-generator':  'password generator, secure random password, strong password maker, memorable passphrase, special characters',
   'pastebin':            'pastebin, code sharing, share code online, syntax highlight paste, private paste, burn after read',
-  'pdf-to-text':         'PDF to text, extract text from PDF, PDF to Word, PDF text extractor, PDF to TXT, convert PDF, read PDF text',
+  'pdf-to-text':         'PDF to text, extract text from PDF, scanned PDF to text, PDF OCR, OCR scanned PDF, PDF to Word, PDF text extractor, PDF to TXT, convert PDF, read PDF text',
   'pdf-toolkit':         'PDF merger, merge PDF, split PDF, extract PDF pages, reorder pages, compress PDF, reduce file size, combine PDF',
   'percentage-calculator': 'percentage calculator, percent of number, percentage change increase decrease, calculate percentage online',
   'photo-editor':        'remove background free, background remover AI, add text to photo, resize passport social media image, recolor crop',
@@ -59,7 +60,10 @@ KEYWORDS = {
   'yt-downloader':       'youtube downloader, youtube to mp3 mp4, download youtube video, youtube converter, save video, playlist',
 }
 
-path = 'c:/Users/LenovoTiny/OneDrive/Git_noobvie/Office_Tools/index.html'
+import os
+# Resolve against this file, not a machine-specific absolute path - this used
+# to point at a OneDrive checkout that is not the repo.
+path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'index.html')
 with open(path, 'r', encoding='utf-8') as f:
     html = f.read()
 

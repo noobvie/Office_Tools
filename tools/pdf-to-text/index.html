@@ -4,19 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PDF to Text — Office Tools</title>
-  <meta name="description" content="Extract text from any PDF file online. Browse extracted content page by page, copy to clipboard, or download as a .txt or Word .docx file. Privacy-safe — nothing is uploaded.">
-  <meta name="keywords" content="PDF to text, extract text from PDF, PDF to Word, PDF text extractor, PDF to TXT, convert PDF online, read PDF text">
+  <meta name="description" content="Extract text from any PDF file online, with opt-in OCR for scanned PDFs that have no text layer. Browse extracted content page by page, copy to clipboard, or download as a .txt or Word .docx file. Privacy-safe — nothing is uploaded.">
+  <meta name="keywords" content="PDF to text, extract text from PDF, scanned PDF to text, PDF OCR, OCR scanned PDF, PDF to Word, PDF text extractor, PDF to TXT, convert PDF online, read PDF text">
   <meta name="robots" content="index, follow">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Office Tools">
   <meta property="og:title" content="Free PDF to Text Converter — Extract Text from PDF Online">
-  <meta property="og:description" content="Extract text from any PDF file online. Browse extracted content page by page, copy to clipboard, or download as a .txt or Word .docx file. Privacy-safe — nothing is uploaded.">
+  <meta property="og:description" content="Extract text from any PDF file online, with opt-in OCR for scanned PDFs that have no text layer. Browse extracted content page by page, copy to clipboard, or download as a .txt or Word .docx file. Privacy-safe — nothing is uploaded.">
   <meta property="og:url" content="https://tools.grin.money/tools/pdf-to-text/">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Free PDF to Text Converter — Extract Text from PDF Online">
-  <meta name="twitter:description" content="Extract text from any PDF file online. Browse extracted content page by page, copy to clipboard, or download as a .txt or Word .docx file. Privacy-safe — nothing is uploaded.">
+  <meta name="twitter:description" content="Extract text from any PDF file online, with opt-in OCR for scanned PDFs that have no text layer. Browse extracted content page by page, copy to clipboard, or download as a .txt or Word .docx file. Privacy-safe — nothing is uploaded.">
   <link rel="canonical" href="https://tools.grin.money/tools/pdf-to-text/">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"PDF to Text Converter","description":"Extract text from any PDF file online. Browse extracted content page by page, copy to clipboard, or download as a .txt or Word .docx file. Privacy-safe — nothing is uploaded.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/pdf-to-text/"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"PDF to Text Converter","description":"Extract text from any PDF file online, with opt-in OCR for scanned PDFs that have no text layer. Browse extracted content page by page, copy to clipboard, or download as a .txt or Word .docx file. Privacy-safe — nothing is uploaded.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/pdf-to-text/"}</script>
   <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
   <link rel="stylesheet" href="../../css/style.css">
   <style>
@@ -68,7 +68,51 @@
       font-size: .78rem; font-weight: 600; margin-right: .3rem;
     }
 
+    .page-more { text-align: center; margin: .1rem 0 .9rem; }
+    .page-more-note {
+      font-size: .79rem; color: var(--text-muted);
+      margin: 0 0 .5rem; line-height: 1.5;
+    }
+
     .action-bar { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+    /* OCR fallback card - hidden until the text layer comes back empty */
+    .ocr-title { font-size: 1rem; margin: 0 0 .4rem; color: var(--primary); }
+    .ocr-note, .ocr-hint { font-size: .82rem; color: var(--text-muted); line-height: 1.6; margin: 0 0 .7rem; }
+    .ocr-hint { margin: .7rem 0 0; }
+    .ocr-opts {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+      gap: .75rem; align-items: end;
+    }
+    .ocr-actions { display: flex; gap: .5rem; }
+    .ocr-progress-label { font-size: .81rem; color: var(--text-muted); margin-top: .35rem; }
+    .ocr-badge {
+      display: inline-block;
+      background: var(--primary-dim); color: var(--primary);
+      border-radius: 4px; padding: .05rem .38rem;
+      font-size: .68rem; font-weight: 700; letter-spacing: .05em;
+      margin-left: .4rem; vertical-align: middle;
+    }
+    /* --text, not --text-muted: muted ink on --primary-dim is 4.2:1 in the light
+       theme, under AA for text this small. */
+    .ocr-flag {
+      padding: .35rem .9rem;
+      font-size: .75rem; line-height: 1.5;
+      color: var(--text); background: var(--primary-dim);
+      border-top: 1px solid var(--border);
+    }
+    .ocr-flag.hidden { display: none; }
+    .ocr-mobile-note {
+      font-size: .79rem; line-height: 1.55;
+      color: var(--text); background: var(--warning-dim, var(--primary-dim));
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: .55rem .75rem; margin: 0 0 .7rem;
+    }
+    @media (max-width: 620px) {
+      .ocr-opts { grid-template-columns: 1fr; }
+      .ocr-actions .btn { flex: 1 1 auto; }
+    }
+
     .text-preview-area {
       width: 100%;
       min-height: 220px;
@@ -92,6 +136,7 @@
   <div class="tool-header">
     <h1>📄 PDF to Text</h1>
     <p>Extract text from any PDF. Download as plain <code>.txt</code> or Word <code>.docx</code>. Everything runs locally — no upload.</p>
+    <p style="font-size:.85rem;color:var(--text-muted);margin-top:.35rem">Scanned PDF with no text layer? An optional built-in <strong>OCR</strong> pass can read the pages as images — you'll be offered it only if it's needed.</p>
     <p style="font-size:.8rem;color:var(--text-muted);margin-top:.5rem;display:flex;align-items:center;gap:.4rem">
       <span style="color:var(--success)">🔒</span>
       <span>Your documents are never uploaded to any server — all processing happens in your browser.
@@ -102,7 +147,8 @@
 <section class="tool-about">
   <h2>About PDF to Text</h2>
   <p>Got a <strong>PDF full of text</strong> you need to copy, search, edit, or process? Instead of painstakingly copying it paragraph by paragraph, this tool extracts all the text content from any PDF in one go and lets you download it as a plain <strong><code>.txt</code> file or a <code>.docx</code> Word document</strong> &mdash; ready to open, edit, and reformat in any text editor or word processor.</p>
-  <p>Everything runs <strong>locally in your browser</strong> &mdash; your PDF is never uploaded to any server. Useful for extracting text from <strong>contracts, research papers, reports, ebooks, and scanned documents that have a text layer</strong>. Note: purely scanned image PDFs with no embedded text layer won't extract via this method &mdash; those require OCR software.</p>
+  <p>Everything runs <strong>locally in your browser</strong> &mdash; your PDF is never uploaded to any server. Useful for extracting text from <strong>contracts, research papers, reports, ebooks, and scanned documents that have a text layer</strong>.</p>
+  <p>Purely scanned PDFs &mdash; photocopies, phone scans, faxes &mdash; carry no embedded text layer, so a normal extraction returns empty pages. When that happens this tool detects it and offers an <strong>optional OCR pass</strong> that reads the pages as images instead, using the open-source Tesseract engine in <strong>17 languages including Vietnamese, Chinese, Japanese, Korean, Thai and Arabic</strong>. OCR never starts on its own: you pick the language and the page range and press the button, and the engine is only downloaded at that moment, so ordinary text PDFs stay as fast as they were. Recognised text drops straight into the same page list and the same <code>.txt</code> / <code>.docx</code> downloads.</p>
 </section>
 
   <!-- Upload -->
@@ -115,6 +161,55 @@
     <div id="progressWrap" style="display:none">
       <div class="progress-bar mt-2"><div class="progress-fill" id="progressFill"></div></div>
       <p id="progressLabel" style="font-size:.81rem;color:var(--text-muted);margin-top:.35rem">Reading…</p>
+    </div>
+  </div>
+
+  <!-- OCR fallback. Hidden unless the text-layer pass came back empty on a
+       meaningful share of pages. Nothing here downloads the OCR engine until
+       the Run button is actually clicked. -->
+  <div class="card" id="ocrCard" style="display:none">
+    <h2 class="ocr-title" id="ocrTitle">🔍 Scanned pages found</h2>
+    <p class="ocr-note" id="ocrNote"></p>
+    <p class="ocr-mobile-note" id="ocrMobileNote" style="display:none"></p>
+
+    <div class="ocr-opts">
+      <div>
+        <label class="form-label" for="ocrLang">Document language</label>
+        <select id="ocrLang" class="form-input">
+          <option value="eng">English</option>
+          <option value="spa">Spanish (Español)</option>
+          <option value="fra">French (Français)</option>
+          <option value="deu">German (Deutsch)</option>
+          <option value="ita">Italian (Italiano)</option>
+          <option value="por">Portuguese (Português)</option>
+          <option value="nld">Dutch (Nederlands)</option>
+          <option value="rus">Russian (Русский)</option>
+          <option value="chi_sim">Chinese — Simplified (简体)</option>
+          <option value="chi_tra">Chinese — Traditional (繁體)</option>
+          <option value="jpn">Japanese (日本語)</option>
+          <option value="kor">Korean (한국어)</option>
+          <option value="vie">Vietnamese (Tiếng Việt)</option>
+          <option value="tha">Thai (ไทย)</option>
+          <option value="ind">Indonesian (Bahasa Indonesia)</option>
+          <option value="ara">Arabic (العربية)</option>
+          <option value="hin">Hindi (हिन्दी)</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label" for="ocrRange">Pages to read</label>
+        <input type="text" id="ocrRange" class="form-input" placeholder="e.g. 1-5, 8" autocomplete="off">
+      </div>
+      <div class="ocr-actions">
+        <button class="btn btn-primary" id="ocrStartBtn">Run OCR</button>
+        <button class="btn btn-secondary" id="ocrCancelBtn" style="display:none">Cancel</button>
+      </div>
+    </div>
+
+    <p class="ocr-hint" id="ocrHint"></p>
+
+    <div id="ocrProgressWrap" style="display:none">
+      <div class="progress-bar"><div class="progress-fill" id="ocrProgressFill"></div></div>
+      <p class="ocr-progress-label" id="ocrProgressLabel">Starting…</p>
     </div>
   </div>
 
@@ -146,8 +241,11 @@
       </div>
     </div>
 
-    <!-- Per-page view -->
-    <div id="perPageView"></div>
+    <!-- Per-page view - rendered in batches, never all at once -->
+    <div id="perPageView">
+      <div id="perPageList"></div>
+      <div class="page-more" id="perPageMore" style="display:none"></div>
+    </div>
 
     <!-- Flat view -->
     <div class="card" id="flatView" style="display:none">
@@ -165,6 +263,8 @@
   <span class="page-tag">PDF to TXT</span>
   <span class="page-tag">copy PDF text</span>
   <span class="page-tag">PDF reader</span>
+  <span class="page-tag">scanned PDF to text</span>
+  <span class="page-tag">PDF OCR</span>
 </div>
 </main>
 
@@ -175,8 +275,72 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
+// ── Limits ────────────────────────────────────────────────────
+// Everything here runs in one browser tab with no server to fall back on, so
+// these are the points where the tool stops and asks rather than freezing.
+const MB                = 1024 * 1024;
+const PAGE_WARN_PAGES   = 500;   // warn before running the extraction loop
+const PAGE_RENDER_BATCH = 100;   // page blocks injected into the DOM at once
+
+// A phone is not a small desktop. Safari on iOS kills a tab at a few hundred MB
+// with no warning and no error to catch, and every budget below has to be a
+// fraction of the desktop one rather than the same number on a smaller screen.
+// `pointer: coarse` catches phones and tablets including iPadOS, which lies in
+// its user-agent string; deviceMemory is Chromium-only, so it can only ever add
+// to the verdict, never clear it.
+const IS_SMALL_DEVICE = (window.matchMedia && matchMedia('(pointer: coarse)').matches)
+                     || (navigator.deviceMemory && navigator.deviceMemory <= 4)
+                     || Math.min(screen.width, screen.height) <= 820;
+
+const SIZE_COMFY_MB  = IS_SMALL_DEVICE ? 15 : 50;   // below this, no comment
+const SIZE_WARN_MB   = IS_SMALL_DEVICE ? 25 : 100;  // first warning
+const SIZE_STRONG_MB = IS_SMALL_DEVICE ? 60 : 200;  // "will not finish" warning
+
+// -- OCR fallback limits ---------------------------------------
+// Only reached when the text-layer pass returns nothing, and only on an
+// explicit click - see runOcr(). Every number here is a guard against the
+// engine's real cost: ~2 MB of wasm/JS plus 10-15 MB of language data on
+// first use, and 2-10 s of pegged CPU per page after that.
+const OCR_DEFAULT_PAGES = IS_SMALL_DEVICE ? 2 : 5;  // pre-filled range - never "all"
+const OCR_CONFIRM_PAGES = IS_SMALL_DEVICE ? 8 : 25; // ask again above this many
+const OCR_TARGET_DPI    = IS_SMALL_DEVICE ? 200 : 300;  // diacritics need the dpi,
+const OCR_MIN_SCALE     = IS_SMALL_DEVICE ? 1.5 : 2;    // the tab needs the memory
+const OCR_MAX_SCALE     = 4.2;
+
+// TWO caps, because the browser limit is on AREA and the previous single edge
+// cap did not bound it: 4000x4000 passes an edge check at 16.0 M px / 64 MB of
+// RGBA, over the ceiling on older iOS and far over what a phone tab survives.
+// Over the ceiling the render does not throw - it returns a BLANK bitmap, which
+// OCRs to an empty string and would mark the page read. Hence the blank probe
+// in renderPageToCanvas() as well.
+const OCR_MAX_EDGE_PX  = IS_SMALL_DEVICE ? 2200 : 4000;
+const OCR_MAX_AREA_PX  = IS_SMALL_DEVICE ? 3.5e6 : 1.1e7;
+
+const OCR_LOAD_SHARE   = 6;      // % of the bar reserved for the engine download
+const TESSERACT_SRC    = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+
 let pagesText = [];   // array of strings, one per page
 let pdfName   = '';
+let perPageRendered = 0;      // how many page blocks are currently in the DOM
+let perPageBuilt    = false;  // has the per-page view been built for this file
+
+let pdfDoc         = null;    // kept alive ONLY while OCR is on offer - it holds
+                              // the worker's copy of the whole file
+let ocrPages       = new Set();  // 0-based indices whose text came from OCR
+let ocrEmptyPages  = [];         // 1-based page numbers with no text layer
+let ocrWorker      = null;
+let ocrRunning     = false;
+let ocrCancelled   = false;
+let ocrTick        = { done: 0, total: 1, page: 0 };  // for the progress logger
+let ocrPhase       = 'load';  // 'load' while the engine downloads, then 'read'
+let ocrPctFloor    = 0;       // the bar never moves backwards within a run
+let ocrRunId       = 0;       // bumped by every reset - a superseded run stays silent
+let tesseractLoad  = null;    // in-flight <script> injection, if any
+
+// Local escHtml - every tool defines its own rather than leaning on common.js.
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
 // ── Drop / file input ───────────────────────────────────────────────
 const dropZone = document.getElementById('dropZone');
@@ -187,25 +351,112 @@ dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover
 dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); loadPdf(e.dataTransfer.files[0]); });
 pdfFileEl.addEventListener('change', () => loadPdf(pdfFileEl.files[0]));
 
+// Yield long enough for the browser to actually paint. setProgress() only
+// mutates the DOM - without this the bar and its label never reach the screen
+// before the next blocking step, so the UI looks frozen from the first click.
+function nextPaint() {
+  return new Promise(resolve =>
+    requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 0))));
+}
+
+// Size gate. Returns warning text, or null when the file is small enough that
+// the user should see no friction at all.
+function largeFileWarning(file) {
+  const mb = file.size / MB;
+  if (mb < SIZE_WARN_MB) return null;
+  const strong = mb >= SIZE_STRONG_MB;
+  return [
+    `This PDF is ${otFmtSize(file.size)}.`,
+    '',
+    strong
+      ? 'A file this size will very likely freeze or crash this browser tab before it '
+        + 'finishes. Everything runs in the tab - there is no server doing the work.'
+      : `PDFs over about ${SIZE_COMFY_MB} MB get slow here, and this one may freeze or `
+        + 'crash the tab. Everything runs in the tab - there is no server doing the work.',
+    IS_SMALL_DEVICE
+      ? '\nYou are on a phone or tablet, where the limit is much lower than on a '
+        + 'desktop and the browser closes the tab without asking. The same file will '
+        + 'very likely work on a computer.'
+      : '',
+    '',
+    'Also worth knowing before you wait: PDFs this large are almost always scanned '
+      + 'images. Scans carry no text layer, so the extraction below will return empty '
+      + 'pages no matter how long it runs. This tool can then offer to OCR them, but '
+      + 'OCR is slower again - seconds per page - so a scan this size is not something '
+      + 'to start and wait on.',
+    '',
+    'Splitting the PDF into smaller parts and running them one at a time is far more '
+      + 'likely to work.',
+    '',
+    'Continue anyway?'
+  ].join('\n');
+}
+
+function pageCountWarning(n) {
+  return [
+    `This PDF has ${n.toLocaleString()} pages.`,
+    '',
+    'Extracting that many pages holds every page of text in memory at once and may '
+      + 'freeze or crash this browser tab. The per-page view below is drawn '
+      + `${PAGE_RENDER_BATCH} pages at a time to soften that, but the extraction `
+      + 'itself cannot be split up.',
+    '',
+    'Continue anyway?'
+  ].join('\n');
+}
+
+// Both gates below can end in "no". Until BOTH have passed, nothing that the
+// user can already see is allowed to change - declining a warning about a file
+// that was never loaded must not throw away the document they are reading. So
+// resetOcrState(), pdfName and pagesText are all deferred to the commit point.
+// Clearing the input is part of that: without it, re-picking the SAME file
+// fires no change event and the second attempt does nothing.
+function abandonLoad() {
+  pdfFileEl.value = '';
+  setProgress(0, '');
+  document.getElementById('progressWrap').style.display = 'none';
+}
+
 async function loadPdf(file) {
   if (!file) return;
-  pdfName = file.name.replace(/\.pdf$/i, '');
-  document.getElementById('results').style.display = 'none';
+
+  // Gate 1 - size, checked before the file is pulled into memory at all.
+  const sizeWarning = largeFileWarning(file);
+  if (sizeWarning && !confirm(sizeWarning)) { pdfFileEl.value = ''; return; }
+
   document.getElementById('progressWrap').style.display = '';
-  setProgress(5, 'Loading PDF…');
+  setProgress(5, `Reading ${otFmtSize(file.size)} into memory…`);
+  await nextPaint();
 
   const buf = await file.arrayBuffer();
   setProgress(15, 'Parsing PDF…');
+  await nextPaint();
 
   let pdf;
   try {
+    // pdf.js normalises `data` to a Uint8Array view over this same ArrayBuffer and
+    // passes [data.buffer] to postMessage as a TRANSFER list, so the bytes move to
+    // the worker rather than being copied - `buf` is detached here afterwards and
+    // must not be reused. The worker still holds one full copy of the file, plus
+    // parsing structures on top, which is what the gates above are protecting.
     pdf = await pdfjsLib.getDocument({ data: buf }).promise;
   } catch (e) {
-    setProgress(0, '');
-    document.getElementById('progressWrap').style.display = 'none';
+    abandonLoad();
     alert('Could not read PDF: ' + e.message);
     return;
   }
+
+  // Gate 2 - page count. numPages is cheap now; the extraction loop is not.
+  if (pdf.numPages > PAGE_WARN_PAGES && !confirm(pageCountWarning(pdf.numPages))) {
+    pdf.destroy().catch(() => {});   // release the worker's copy of the document
+    abandonLoad();
+    return;
+  }
+
+  // ── Commit point. Both gates passed, so the previous document goes now. ──
+  await resetOcrState();
+  pdfName = file.name.replace(/\.pdf$/i, '');
+  document.getElementById('results').style.display = 'none';
 
   pagesText = [];
   for (let i = 1; i <= pdf.numPages; i++) {
@@ -228,6 +479,25 @@ async function loadPdf(file) {
   setProgress(100, 'Done');
   setTimeout(() => { document.getElementById('progressWrap').style.display = 'none'; }, 500);
 
+  // Empty entries ARE the scanned pages - a page with a text layer never
+  // extracts to nothing, so this needs no heuristic. Hold on to the parsed
+  // document only when OCR is actually on offer; otherwise let the worker
+  // drop its copy of the file.
+  // ANY empty page puts OCR on offer. A share-of-pages threshold looked tidy
+  // but there is no second way in: below it pdf.destroy() ran and the offer
+  // could never be made again. A 120-page contract with 8 scanned exhibit pages
+  // is 6.7% - the shape this feature exists for - and it was silently excluded.
+  // The wording in showOcrPrompt() scales instead, so one blank separator page
+  // reads as a note rather than an alarm.
+  const empty = [];
+  pagesText.forEach((t, i) => { if (!t) empty.push(i + 1); });
+  if (empty.length) {
+    pdfDoc = pdf;
+    showOcrPrompt(empty);
+  } else {
+    pdf.destroy().catch(() => {});
+  }
+
   renderResults();
 }
 
@@ -246,13 +516,17 @@ function buildFullText(includeNums) {
 
 function countWords(str) { return str.split(/\s+/).filter(Boolean).length; }
 
-function renderResults() {
+// `rebuild` false updates the stats and leaves the per-page list exactly where
+// the user left it - same scroll position, same "show more" depth, same
+// expand/collapse state. Only a NEW document rebuilds from scratch.
+function renderResults(rebuild = true) {
   const totalWords = pagesText.reduce((n, t) => n + countWords(t), 0);
   const totalChars = pagesText.reduce((n, t) => n + t.length, 0);
   document.getElementById('statPages').textContent = pagesText.length + ' page' + (pagesText.length !== 1 ? 's' : '');
   document.getElementById('statWords').textContent = totalWords.toLocaleString() + ' words';
   document.getElementById('statChars').textContent = totalChars.toLocaleString() + ' chars';
   document.getElementById('results').style.display = '';
+  if (rebuild) perPageBuilt = false;
   updateViews();
 }
 
@@ -263,27 +537,525 @@ function updateViews() {
   document.getElementById('flatView').style.display    = perPage ? 'none' : '';
 
   if (perPage) {
-    const container = document.getElementById('perPageView');
-    container.innerHTML = pagesText.map((t, i) => `
-      <div class="page-block">
-        <div class="page-header" onclick="togglePage(${i})">
-          <span>Page ${i + 1}</span>
-          <span style="color:var(--text-muted);font-weight:400">${countWords(t)} words &nbsp; ▾</span>
-        </div>
-        <div class="page-body" id="pb${i}">${escHtml(t || '(no text on this page)')}</div>
-      </div>`).join('');
+    if (!perPageBuilt) buildPerPage();
   } else {
     document.getElementById('flatText').value = buildFullText(addNums);
   }
 }
 
+function pageBlockHtml(t, i) {
+  const isOcr = ocrPages.has(i);
+  const badge = isOcr ? '<span class="ocr-badge" title="Read by OCR from the page image">OCR</span>' : '';
+  const flag  = isOcr
+    ? `<div class="ocr-flag" id="of${i}">⚠ Machine-read by OCR from the page image — expect recognition errors, `
+      + 'especially in accented text, tables and small print. Check it against the original.</div>'
+    : '';
+  return `
+      <div class="page-block" id="pblk${i}">
+        <div class="page-header" onclick="togglePage(${i})">
+          <span>Page ${i + 1}${badge}</span>
+          <span style="color:var(--text-muted);font-weight:400">${countWords(t)} words &nbsp; ▾</span>
+        </div>${flag}
+        <div class="page-body" id="pb${i}">${escHtml(t || '(no text on this page)')}</div>
+      </div>`;
+}
+
+// Repaint just the pages OCR touched, and extend the list far enough that they
+// are actually on screen. Rebuilding the whole view instead - which is what
+// renderResults() used to do after every run - reset the list to page 1 and
+// threw away the "show more" depth, so text OCR'd on page 250 of a 400-page
+// scan landed somewhere the user then had to click three times to reach again.
+function refreshPageBlocks(indices) {
+  if (!indices.length || !perPageBuilt) return;
+  const visible = document.getElementById('showPerPage').checked;
+  const highest = Math.max(...indices);
+
+  // Extend in whole batches until the deepest OCR'd page is drawn. This only
+  // ever grows the view, so nothing already on screen moves.
+  while (perPageRendered <= highest && perPageRendered < pagesText.length) {
+    renderPerPageBatch();
+  }
+
+  for (const i of indices) {
+    const block = document.getElementById('pblk' + i);
+    if (!block) continue;
+    const wasCollapsed = document.getElementById('pb' + i)?.classList.contains('collapsed');
+    block.outerHTML = pageBlockHtml(pagesText[i], i);
+    if (wasCollapsed) togglePage(i);
+  }
+
+  // Only chase the result onto the screen when the list is the thing on screen;
+  // in flat view the textarea has already been refreshed by renderResults().
+  const first = visible && document.getElementById('pblk' + Math.min(...indices));
+  if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// Build the per-page view one batch at a time. Injecting every page in a single
+// innerHTML assignment is its own out-of-memory on a few thousand pages, quite
+// apart from whether the parse itself succeeded.
+function buildPerPage() {
+  document.getElementById('perPageList').innerHTML = '';
+  perPageRendered = 0;
+  perPageBuilt = true;
+  renderPerPageBatch();
+}
+
+function renderPerPageBatch() {
+  const list = document.getElementById('perPageList');
+  const end  = Math.min(perPageRendered + PAGE_RENDER_BATCH, pagesText.length);
+  let html = '';
+  for (let i = perPageRendered; i < end; i++) html += pageBlockHtml(pagesText[i], i);
+  list.insertAdjacentHTML('beforeend', html);
+  perPageRendered = end;
+  updatePerPageMore();
+}
+
+function updatePerPageMore() {
+  const bar  = document.getElementById('perPageMore');
+  const left = pagesText.length - perPageRendered;
+  if (left <= 0) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  const next = Math.min(PAGE_RENDER_BATCH, left);
+  bar.style.display = '';
+  bar.innerHTML =
+    `<p class="page-more-note">Showing ${perPageRendered.toLocaleString()} of ` +
+    `${pagesText.length.toLocaleString()} pages. The rest are already extracted and are ` +
+    `included in Copy All and both downloads - they are just not drawn yet.</p>` +
+    `<button class="btn btn-secondary btn-sm" id="perPageMoreBtn">Show ${next} more ` +
+    `page${next !== 1 ? 's' : ''}</button>`;
+  document.getElementById('perPageMoreBtn').addEventListener('click', renderPerPageBatch);
+}
+
 function togglePage(i) {
   const body = document.getElementById('pb' + i);
   body.classList.toggle('collapsed');
+  // The OCR provenance notice sits outside .page-body so it reads as part of
+  // the header, which means it has to be collapsed by hand.
+  document.getElementById('of' + i)?.classList.toggle('hidden', body.classList.contains('collapsed'));
 }
 
 document.getElementById('showPerPage').addEventListener('change', updateViews);
 document.getElementById('addPageNums').addEventListener('change', updateViews);
+
+// ── OCR fallback ────────────────────────────────────────────────────
+// A scanned page has no text layer, so the loop above returns '' for it. That
+// detection is free and exact; what follows is the opt-in second pass that
+// renders those pages and reads them as images instead. Nothing in this section
+// runs, downloads or allocates until the Run button is clicked.
+
+const ocrCard      = document.getElementById('ocrCard');
+const ocrRangeEl   = document.getElementById('ocrRange');
+const ocrStartBtn  = document.getElementById('ocrStartBtn');
+const ocrCancelBtn = document.getElementById('ocrCancelBtn');
+
+// Collapse [3,4,5,9] into "3-5, 9" for the range box.
+function formatRange(nums) {
+  const out = [];
+  for (let i = 0; i < nums.length; ) {
+    let j = i;
+    while (j + 1 < nums.length && nums[j + 1] === nums[j] + 1) j++;
+    out.push(i === j ? String(nums[i]) : `${nums[i]}-${nums[j]}`);
+    i = j + 1;
+  }
+  return out.join(', ');
+}
+
+// Parse "1-3, 5" into sorted unique 1-based page numbers inside bounds.
+// An empty string returns nothing rather than every page: OCR is minutes of
+// work, so "run everything" has to be typed, never defaulted into.
+function parsePageRange(str, max) {
+  const set = new Set();
+  for (const part of String(str || '').split(',')) {
+    const m = part.trim().match(/^(\d+)\s*(?:-\s*(\d+))?$/);
+    if (!m) continue;
+    let a = +m[1], b = m[2] ? +m[2] : a;
+    if (a > b) [a, b] = [b, a];
+    for (let n = a; n <= b; n++) if (n >= 1 && n <= max) set.add(n);
+  }
+  return [...set].sort((x, y) => x - y);
+}
+
+// Pages that still have nothing on them and have not been through OCR yet.
+function remainingEmptyPages() {
+  const out = [];
+  pagesText.forEach((t, i) => { if (!t && !ocrPages.has(i)) out.push(i + 1); });
+  return out;
+}
+
+// Re-point the card at whatever is still unread, so finishing one batch hands
+// the user the next one instead of making them work out the numbers.
+function refreshOcrPrompt() {
+  const left = remainingEmptyPages();
+  if (!left.length) {
+    // The heading is set here too. It used to be a static "No text layer found
+    // on <span>0</span> pages", which at completion contradicted its own body
+    // text - the card says everything has been read while the title says
+    // nothing was found.
+    document.getElementById('ocrTitle').textContent = '✅ All scanned pages have been read';
+    document.getElementById('ocrNote').textContent =
+      'Every page without a text layer has now been through OCR. Re-run any page by typing its ' +
+      'number above — a different language setting can be worth a second pass on a page that came ' +
+      'out badly.';
+    ocrEmptyPages = [];
+    ocrRangeEl.value = '';
+    return;
+  }
+  showOcrPrompt(left);
+}
+
+function showOcrPrompt(emptyPages) {
+  ocrEmptyPages = emptyPages;
+  const total = pagesText.length;
+  const n     = emptyPages.length;
+  const shown = formatRange(emptyPages.slice(0, 12)) + (n > 12 ? ', …' : '');
+
+  // One blank page in a text PDF is a separator, not a scanning problem. Since
+  // the offer is now made for ANY empty page, the wording has to carry the
+  // difference rather than a threshold silently withholding the card.
+  const minor = n <= 2 && n / total < 0.15;
+  document.getElementById('ocrTitle').textContent = minor
+    ? `🔍 ${n} page${n !== 1 ? 's' : ''} with no text layer`
+    : `🔍 No text layer found on ${n.toLocaleString()} pages`;
+  document.getElementById('ocrNote').textContent = minor
+    ? `Page${n !== 1 ? 's' : ''} ${shown} carr${n !== 1 ? 'y' : 'ies'} no text layer. That is often just a ` +
+      'blank or divider page — but if it is a scan or a photo, OCR can read it as an image instead ' +
+      'and drop the result into the page list and both downloads.'
+    : `${n.toLocaleString()} of ${total.toLocaleString()} pages carry no text layer ` +
+      `(pages ${shown}). That is what a scanned or photographed page looks like — there is nothing ` +
+      'to extract from it. OCR can read those pages as images instead, and the result drops into the ' +
+      'page list and both downloads exactly like extracted text.';
+
+  const mobileNote = document.getElementById('ocrMobileNote');
+  if (IS_SMALL_DEVICE) {
+    mobileNote.textContent =
+      'You are on a phone or tablet. OCR is the heaviest thing this tool does — it holds a ' +
+      'full-resolution image of the page in memory while a recognition engine works on it — and a ' +
+      'mobile browser closes the tab rather than slowing down. Pages are rendered smaller here to ' +
+      'stay inside that limit, which costs some accuracy on small print. Two or three pages at a ' +
+      'time is the safe way to work; a computer will handle the whole document.';
+    mobileNote.style.display = '';
+  } else {
+    mobileNote.style.display = 'none';
+  }
+
+  document.getElementById('ocrHint').textContent =
+    'OCR takes roughly 2–10 seconds per page and pegs one CPU core, so start with a few pages and ' +
+    'check the quality before running the rest. Recognition itself is local, but the engine (~2 MB) ' +
+    'and the language data (10–15 MB) download from a CDN the first time you use them, then stay ' +
+    'in your browser cache. Your PDF is still never uploaded.';
+  ocrRangeEl.value = formatRange(emptyPages.slice(0, OCR_DEFAULT_PAGES));
+  ocrCard.style.display = '';
+}
+
+// Called before every new file, and by Cancel's teardown.
+async function resetOcrState() {
+  ocrRunId++;   // any run still unwinding belongs to the previous file now
+  if (ocrRunning) { ocrCancelled = true; ocrRunning = false; }
+  await terminateOcrWorker();
+  ocrPages = new Set();
+  ocrEmptyPages = [];
+  ocrPhase = 'load';
+  ocrPctFloor = 0;
+  ocrCard.style.display = 'none';
+  document.getElementById('ocrMobileNote').style.display = 'none';
+  document.getElementById('ocrProgressWrap').style.display = 'none';
+  ocrStartBtn.disabled = false;
+  ocrCancelBtn.disabled = false;
+  ocrCancelBtn.style.display = 'none';
+  if (pdfDoc) { const d = pdfDoc; pdfDoc = null; d.destroy().catch(() => {}); }
+}
+
+async function terminateOcrWorker() {
+  const w = ocrWorker;
+  ocrWorker = null;
+  if (w) { try { await w.terminate(); } catch (e) {} }
+}
+
+// Inject Tesseract on demand. Deliberately NOT a <script> tag in the page: the
+// engine plus its language data is well over 10 MB, and the text-layer path -
+// which is what nearly every visitor needs - must stay instant.
+function loadTesseract() {
+  if (window.Tesseract) return Promise.resolve();
+  if (tesseractLoad) return tesseractLoad;
+  tesseractLoad = new Promise((resolve, reject) => {
+    const el = document.createElement('script');
+    el.src = TESSERACT_SRC;
+    el.async = true;
+    el.onload = () => window.Tesseract
+      ? resolve()
+      : reject(new Error('the OCR engine loaded but did not start'));
+    el.onerror = () => {
+      tesseractLoad = null; el.remove();
+      reject(new Error('could not download the OCR engine — check your connection'));
+    };
+    document.head.appendChild(el);
+  });
+  return tesseractLoad;
+}
+
+// `force` is for the terminal states (cancelled / failed / a new run starting),
+// which are the only things allowed to move the bar backwards. Everything else
+// ratchets: Tesseract's logger reports 0->1 several times over during the engine
+// download alone, and on a one-page run that drove the bar to 100% before the
+// first page had even been rendered.
+function setOcrProgress(pct, label, force) {
+  let v = Math.max(0, Math.min(100, pct));
+  if (force) ocrPctFloor = v; else v = ocrPctFloor = Math.max(ocrPctFloor, v);
+  document.getElementById('ocrProgressFill').style.width = v + '%';
+  document.getElementById('ocrProgressLabel').textContent = label;
+}
+
+// pdf.js scale 1.0 is 72 dpi. OCR accuracy is resolution-bound and Vietnamese
+// diacritics are only a few pixels tall at that size - ẩ, â and ă are the same
+// glyph until the marks resolve - so render at ~300 dpi, capped so one page
+// canvas cannot blow past the browser's maximum surface.
+function ocrScaleFor(page) {
+  const base = page.getViewport({ scale: 1 });
+  const w = base.width || 1, h = base.height || 1;
+  const longest = Math.max(w, h);
+  let scale = Math.max(OCR_MIN_SCALE, Math.min(OCR_TARGET_DPI / 72, OCR_MAX_SCALE));
+
+  // Both caps are applied LAST and outrank the minimum. The EDGE cap alone did
+  // not bound memory: a near-square page passes it at 4000x4000 = 16.0 M px,
+  // which is 64 MB of RGBA and over the ceiling on older iOS. Past the ceiling
+  // the render does not throw - it produces a blank bitmap, and OCR then reads
+  // a blank page and reports success. Hence the AREA cap as well.
+  if (longest * scale > OCR_MAX_EDGE_PX) scale = OCR_MAX_EDGE_PX / longest;
+  const area = w * h * scale * scale;
+  if (area > OCR_MAX_AREA_PX) scale *= Math.sqrt(OCR_MAX_AREA_PX / area);
+  return scale;
+}
+
+// A canvas over the browser's limit yields a blank bitmap with no error, and a
+// genuinely blank scan is indistinguishable from it here - so this reports
+// "nothing was drawn" and the caller refuses to mark the page read either way.
+// Sampling a 32x32 downscale keeps this at ~4 KB of getImageData per page
+// rather than pulling back 35 MB.
+function canvasLooksBlank(canvas) {
+  try {
+    const probe = document.createElement('canvas');
+    probe.width = probe.height = 32;
+    const pctx = probe.getContext('2d', { willReadFrequently: true });
+    pctx.drawImage(canvas, 0, 0, 32, 32);
+    const d = pctx.getImageData(0, 0, 32, 32).data;
+    for (let i = 4; i < d.length; i += 4) {
+      if (d[i] !== d[0] || d[i + 1] !== d[1] || d[i + 2] !== d[2]) return false;
+    }
+    return true;
+  } catch (e) {
+    return false;   // a probe that cannot run must never veto a good page
+  }
+}
+
+async function runOcr() {
+  if (ocrRunning || !pdfDoc) return;
+
+  const pages = parsePageRange(ocrRangeEl.value, pdfDoc.numPages);
+  if (!pages.length) {
+    alert('Enter the pages to read — for example "'
+      + formatRange(ocrEmptyPages.slice(0, OCR_DEFAULT_PAGES)) + '".\n\n'
+      + `Valid page numbers are 1 to ${pdfDoc.numPages}.`);
+    ocrRangeEl.focus();
+    return;
+  }
+  // OCR overwrites pagesText in place and there is no undo, so a selection that
+  // includes pages which already extracted cleanly has to be confirmed. The
+  // completion copy invites re-running a page by number, which makes a typo of
+  // "1-6" for "15-20" easy - and it would replace six pages of exact embedded
+  // text with recognition guesses, marked only by an OCR badge.
+  const overwrites = pages.filter(n => pagesText[n - 1] && !ocrPages.has(n - 1));
+  if (overwrites.length) {
+    if (!confirm(
+      `Page${overwrites.length !== 1 ? 's' : ''} ${formatRange(overwrites.slice(0, 12))}` +
+      `${overwrites.length > 12 ? ', …' : ''} already ` +
+      `${overwrites.length !== 1 ? 'have' : 'has'} text extracted from the PDF's own text layer.\n\n` +
+      'That text is exact. OCR only guesses at letter shapes in an image, so replacing it will ' +
+      'almost always make it worse — wrong characters, lost accents, broken tables.\n\n' +
+      'There is no undo: the only way back is to load the PDF again.\n\n' +
+      `Replace ${overwrites.length !== 1 ? 'those pages' : 'that page'} with OCR output anyway?`
+    )) { ocrRangeEl.focus(); return; }
+  }
+
+  if (pages.length > OCR_CONFIRM_PAGES) {
+    const mins = Math.max(1, Math.round(pages.length * 5 / 60));
+    if (!confirm(
+      `That is ${pages.length.toLocaleString()} pages of OCR.\n\n` +
+      `At roughly 5 seconds a page this will take around ${mins} minute${mins !== 1 ? 's' : ''} ` +
+      'with one CPU core busy the whole time. The tab will be sluggish and a laptop will get warm.\n\n' +
+      (IS_SMALL_DEVICE
+        ? 'On a phone or tablet a run this long is likely to have the browser close the tab '
+          + 'before it finishes, losing everything extracted so far.\n\n'
+        : '') +
+      'You can stop it at any point with Cancel — pages already read are kept.\n\nStart anyway?'
+    )) return;
+  }
+
+  const runId = ++ocrRunId;
+  ocrRunning = true;
+  ocrCancelled = false;
+  ocrPhase = 'load';
+  ocrStartBtn.disabled = true;
+  ocrCancelBtn.style.display = '';
+  document.getElementById('ocrProgressWrap').style.display = '';
+  setOcrProgress(1, 'Loading the OCR engine…', true);
+
+  const lang = document.getElementById('ocrLang').value;
+  const readIdx = [];    // 0-based indices actually written, for the repaint
+  let worker = null;     // this run's own handle - see the finally
+  let done = 0, blanks = [];
+
+  try {
+    await loadTesseract();
+    if (ocrCancelled || runId !== ocrRunId) return;
+
+    ocrTick = { done: 0, total: pages.length, page: pages[0] };
+    // ONE worker for the whole run. Tesseract.recognize() would spin up a
+    // worker and re-fetch the language data for every single page.
+    worker = ocrWorker = await Tesseract.createWorker(lang, 1, {
+      // The engine download is a fixed slice at the FRONT of the bar rather
+      // than a share of the page budget. Folding it into the per-page fraction
+      // meant a one-page run showed 100% before page one was rendered, because
+      // the loader's own 0->1 progress was the whole bar.
+      logger: m => {
+        if (!ocrRunning) return;
+        if (ocrPhase === 'load') {
+          setOcrProgress(1 + (m.progress || 0) * (OCR_LOAD_SHARE - 1),
+            'Downloading the OCR engine and language data (first use only)…');
+          return;
+        }
+        const frac = (ocrTick.done + (m.progress || 0)) / ocrTick.total;
+        setOcrProgress(OCR_LOAD_SHARE + frac * (100 - OCR_LOAD_SHARE),
+          `Reading page ${ocrTick.page} — ${ocrTick.done + 1} of ${ocrTick.total}`);
+      }
+    });
+    if (ocrCancelled || runId !== ocrRunId) return;
+    ocrPhase = 'read';
+
+    for (let i = 0; i < pages.length; i++) {
+      if (ocrCancelled || runId !== ocrRunId) break;
+      const n = pages[i];
+      ocrTick = { done: i, total: pages.length, page: n };
+      setOcrProgress(OCR_LOAD_SHARE + i / pages.length * (100 - OCR_LOAD_SHARE),
+        `Rendering page ${n} — ${i + 1} of ${pages.length}`);
+      await nextPaint();
+
+      // nextPaint() is a suspension point, so re-check: a new file loaded here
+      // nulls pdfDoc and the next line would be a TypeError on null. It was
+      // caught and swallowed before, which worked only by accident.
+      if (ocrCancelled || runId !== ocrRunId || !pdfDoc) break;
+
+      const page = await pdfDoc.getPage(n);
+      try {
+        const viewport = page.getViewport({ scale: ocrScaleFor(page) });
+        const canvas = document.createElement('canvas');
+        canvas.width  = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        // alpha:false halves nothing on its own but lets the compositor skip a
+        // transparency pass on a surface this large.
+        const ctx = canvas.getContext('2d', { alpha: false });
+        ctx.fillStyle = '#fff';      // scans are ink on white - not a themed surface
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        if (ocrCancelled || runId !== ocrRunId) { canvas.width = canvas.height = 0; break; }
+
+        // Over the browser's canvas ceiling the render returns a blank bitmap
+        // without throwing. Reading that gives '' and would mark the page done,
+        // hiding it from the prompt forever - so refuse to record it instead.
+        if (canvasLooksBlank(canvas)) {
+          blanks.push(n);
+          canvas.width = canvas.height = 0;
+          continue;
+        }
+
+        // Tesseract takes a canvas directly - no toBlob() round trip.
+        const { data } = await ocrWorker.recognize(canvas);
+
+        // Drop the bitmap before the next page so memory stays flat rather than
+        // climbing by ~35 MB of RGBA per A4 page at 300 dpi.
+        canvas.width = canvas.height = 0;
+
+        if (runId !== ocrRunId) break;   // superseded while recognising
+        pagesText[n - 1] = (data.text || '').trim();
+        ocrPages.add(n - 1);
+        readIdx.push(n - 1);
+        done++;
+      } finally {
+        page.cleanup();   // also on the cancel and error paths, which skipped it
+      }
+    }
+
+    if (!ocrCancelled && runId === ocrRunId) {
+      setOcrProgress(100, blanks.length
+        ? `Done — ${done} page${done !== 1 ? 's' : ''} read, ${blanks.length} could not be rendered`
+        : `Done — ${done} page${done !== 1 ? 's' : ''} read`, true);
+    }
+  } catch (err) {
+    // Cancel terminates the worker mid-call, which rejects the pending
+    // recognize() - that is the intended way out, not a failure.
+    if (!ocrCancelled && runId === ocrRunId) {
+      setOcrProgress(0, 'OCR failed: ' + (err.message || 'unknown error'), true);
+    }
+  } finally {
+    // A new PDF loaded while this run was in flight - pagesText and the card
+    // belong to that file now, so unwind quietly and touch nothing.
+    const stale = runId !== ocrRunId;
+    ocrRunning = false;
+
+    // Terminate THIS run's worker by its own handle. Calling the global
+    // teardown while stale would null out a worker a newer run had installed.
+    if (!stale) {
+      await terminateOcrWorker();
+    } else if (worker) {
+      if (ocrWorker === worker) ocrWorker = null;
+      try { await worker.terminate(); } catch (e) {}
+    }
+
+    if (!stale) {
+      ocrStartBtn.disabled = false;
+      ocrCancelBtn.style.display = 'none';
+      if (ocrCancelled) {
+        setOcrProgress(0, done
+          ? `Cancelled — ${done} page${done !== 1 ? 's' : ''} already read were kept`
+          : 'Cancelled — nothing was changed', true);
+      }
+      // Feed everything back through the normal path so copy, .txt, .docx and
+      // the per-page view all pick it up - there is no second output path.
+      // renderResults(false) keeps the list where the user left it; the pages
+      // that changed are repainted individually.
+      if (done) { renderResults(false); refreshPageBlocks(readIdx); }
+      refreshOcrPrompt();
+
+      if (blanks.length) {
+        alert(
+          `${blanks.length} page${blanks.length !== 1 ? 's' : ''} could not be rendered for OCR: ` +
+          `${formatRange(blanks.slice(0, 12))}${blanks.length > 12 ? ', …' : ''}.\n\n` +
+          'The page image came back blank, which usually means it is larger than this browser will ' +
+          'draw in one go' +
+          (IS_SMALL_DEVICE ? ' — phones and tablets have a much lower limit than computers.' : '.') +
+          '\n\nThose pages have been left unread rather than saved as empty text, so they are still ' +
+          'listed above.' + (IS_SMALL_DEVICE ? ' Trying the same PDF on a computer usually works.' : '')
+        );
+      }
+
+      setTimeout(() => {
+        if (!ocrRunning) document.getElementById('ocrProgressWrap').style.display = 'none';
+      }, 4000);
+    }
+  }
+}
+
+ocrStartBtn.addEventListener('click', runOcr);
+ocrCancelBtn.addEventListener('click', async () => {
+  if (!ocrRunning) return;
+  ocrCancelled = true;
+  ocrCancelBtn.disabled = true;
+  setOcrProgress(0, 'Cancelling…', true);
+  // Terminating is what actually stops it: recognize() cannot be interrupted
+  // from outside, so killing the worker rejects the in-flight page instead of
+  // leaving a core pegged until that page finishes on its own.
+  await terminateOcrWorker();
+  ocrCancelBtn.disabled = false;
+});
 
 // ── Actions ─────────────────────────────────────────────────────────
 document.getElementById('copyAllBtn').addEventListener('click', () => {
@@ -296,7 +1068,7 @@ document.getElementById('copyFlatBtn').addEventListener('click', () => {
 
 document.getElementById('dlTxtBtn').addEventListener('click', () => {
   const text = buildFullText(document.getElementById('addPageNums').checked);
-  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const blob = new Blob(['\uFEFF', text], { type: 'text/plain;charset=utf-8' });
   dlBlob(blob, pdfName + '.txt');
 });
 
