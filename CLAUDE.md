@@ -35,20 +35,52 @@ Every tool is a self-contained `tools/<name>/index.html`. There is no bundler, n
 - `../../css/style.css` — all shared styles and CSS variables
 - `../../js/config.js` — exposes `window.OT_CONFIG.API_SERVER_URL`
 - `../../js/common.js` — theme toggle (`initThemeToggle`), `copyText(text, btn)`
+- `../../js/vietnamese.js` — **opt-in, include only where needed** (currently `pdf-to-text`).
+  `window.OTVietnamese`: legacy Vietnamese font encodings (TCVN3/ABC, VNI-Windows, VISCII)
+  → Unicode, plus NFC composition, VIQR/Telex, and `detect()`. Its tables are **generated,
+  not hand-edited** — run `node scripts/gen-vietnamese-tables.js [--write]`, which re-derives
+  them from iconv-lite plus a pinned upstream and aborts if the two sources disagree.
+  `detect()` ranks candidates by whether the RESULT is valid Vietnamese, not by how much junk
+  a conversion cleared: German `größer/Prüfung/Grüße` clears more "junk" under TCVN3 than real
+  VNI text does under VNI, so a junk-count heuristic picks the wrong answer on both.
+  `proofread(corpus, target)` is a separate layer for **OCR output only**: Vietnamese OCR
+  errors are REAL WORDS (`cái`→`cói`, `đã`→`đỡ` — tone kept, vowel changed), so `isSyllable`
+  passes them and no spell check can help. It scores against **the document's own word
+  frequencies**, not a bundled corpus — no data file, and a document really about `đỡ` is left
+  alone. Never run it on pdf-extracted text: that text is exact, so a rare word in it is a
+  real word. `PROOF_KEEP` stops grammar particles being rewritten.
+
+  **Three provenance rules the repair layer must keep straight**, each of which silently
+  corrupts text if broken: (1) a *font* encoding must never touch an OCR page (tesseract emits
+  Unicode; TCVN3 over correct Vietnamese gives `và`→`vỔ`) — a *typing* convention still may;
+  (2) `detect()` must ignore OCR pages, or correct Unicode raises the baseline and talks it out
+  of a right answer (measured: survives 3 OCR pages against one garbled page, dies at 6);
+  (3) a document may mix two legacy fonts, so encoding is chosen **per `item.fontName`**
+  (`pageSpans`), not per document — one global encoding repairs most of such a file and
+  quietly damages the rest, which is exactly what "a few words are still wrong" looks like.
 
 The hub (`index.html`) renders a tool grid with search and category filters. Adding a tool = creating the `tools/<name>/` directory and inserting a card into the correct `<section class="category-section">` in `index.html`.
 
-### Backend — single Express file
+### Backend — Express server + `backend/lib/`
 
-`backend/office-tools-server.js` is one file with all API routes. Routes are grouped by feature with inline comments (`// ── Section ──`). Add new endpoints before the `// ── Start ──` block at the bottom.
+`backend/office-tools-server.js` holds all API routes, grouped by feature with inline
+comments (`// ── Section ──`). Add new endpoints before the `// ── Start ──` block at the
+bottom. Shared, self-contained primitives are being peeled into `backend/lib/` (the whole
+`backend/` tree is rsync'd on deploy, so new subfiles ship automatically). Prefer a small
+`lib/` module over a fourth copy of a helper.
 
-**Rate limiting pattern** (reuse, don't reinvent):
+**Rate limiting** — use the shared factory in `backend/lib/rate-limit.js` (it replaced ~9
+copy-pasted `_xxxRateMap`/`_xxxAllow`/`xxxRLMiddleware` triples). Never hand-roll a new map:
 ```js
-const _myRateMap = new Map();
-setInterval(() => { /* prune expired */ }, 300_000);
-function _myAllow(ip) { /* count <= N per minute */ }
-function myRLMiddleware(req, res, next) { /* 429 if exceeded */ }
+const { makeRateLimiter } = require('./lib/rate-limit');
+const myRL = makeRateLimiter({ windowMs: 60_000, max: 15, message: '…' });
+app.get('/x', myRL.middleware, handler);   // 429 { error: message } when over
+if (!myRL.allow(ip)) …                       // inline form with a caller-chosen key
 ```
+One ordering gotcha: `myRL.middleware` is a `const`, so a route registered **above** the
+`makeRateLimiter` line can't reference it (temporal dead zone at startup). `netRLMiddleware`
+is the live example — it's used by `/api/resolve` earlier in the file, so it's kept as a
+hoisted `function` wrapper around its limiter. Define shared middlewares before their first use.
 
 **SSE streaming pattern** (ping, traceroute):
 ```js
@@ -146,6 +178,14 @@ Consumed by the Grin Node Toolkit solo-mining setup page (`web/07_mining_pool_so
 | `yt-server/server.js` | 9000 | systemd `office-tools-cobalt.service` |
 
 nginx proxies `/tools-api/*` → 3001 and `/yt-api/*` → 9000. The `backend/` directory is excluded from the public web root (`rsync --exclude=backend/`).
+
+**yt-server cookies** — YouTube blocks datacenter IPs, so beyond the PO-token provider
+(`office-tools-pot`) the server usually needs a `cookies.txt` from a burner account. Install
+it with `deploy.sh` → Option 6 → j (validates, installs 600 `www-data`, sets `YTDLP_COOKIES`,
+restarts, probes). `yt-server/.env` holds operator settings and is **never rewritten** by the
+installer — use `env_ensure`, never `cat > .env`, or a re-run silently drops the cookie path.
+`ytcookie-keepalive.sh` (cron, 6-hourly, as `www-data`) rotates the session and writes
+`cookies.status`, which is the only source for `/health`'s `file:ok` / `file:expired`.
 
 ### What needs the backend vs. what doesn't
 

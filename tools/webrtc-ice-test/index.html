@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trickle ICE Test — Test STUN &amp; TURN Servers in Your Browser | Office Tools</title>
+  <meta name="description" content="Free WebRTC trickle ICE tester — check that a STUN or TURN server works by gathering ICE candidates live in your browser. See host, server-reflexive (srflx) and relay candidates, verify TURN relaying. No login, runs entirely client-side.">
+  <meta name="keywords" content="trickle ICE, ICE test, WebRTC test, STUN server test, TURN server test, test TURN server, ICE candidate gathering, srflx candidate, relay candidate, host candidate, WebRTC connectivity, RTCPeerConnection test, coturn test, check TURN works, NAT type, WebRTC diagnostics, ice servers">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Trickle ICE Test — Test STUN and TURN Servers">
+  <meta property="og:description" content="Verify a STUN or TURN server works by gathering WebRTC ICE candidates live in your browser. See srflx and relay candidates. Free, runs entirely client-side.">
+  <meta property="og:url" content="https://tools.grin.money/tools/webrtc-ice-test/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Trickle ICE Test — STUN &amp; TURN Server Tester">
+  <meta name="twitter:description" content="Gather WebRTC ICE candidates to verify your STUN/TURN server. See host, srflx and relay candidates. Free, client-side.">
+  <link rel="canonical" href="https://tools.grin.money/tools/webrtc-ice-test/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Trickle ICE Test","description":"Test a STUN or TURN server by gathering WebRTC ICE candidates (host, server-reflexive and relay) live in the browser. Verify that TURN relaying works. Runs entirely client-side.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/webrtc-ice-test/"}</script>
+  <script type="application/ld+json">[{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Office Tools","item":"https://tools.grin.money/"},{"@type":"ListItem","position":2,"name":"Network Tools","item":"https://tools.grin.money/tools/network-toolkit/"},{"@type":"ListItem","position":3,"name":"Trickle ICE Test","item":"https://tools.grin.money/tools/webrtc-ice-test/"}]},{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What does a trickle ICE test tell me?","acceptedAnswer":{"@type":"Answer","text":"It creates a throwaway WebRTC connection configured with the STUN/TURN servers you enter, then prints every ICE candidate the browser gathers. Host candidates are your local addresses; server-reflexive (srflx) candidates prove your STUN server sees your public IP through the NAT; relay candidates prove your TURN server can relay traffic. If you configured a TURN server and see relay candidates, TURN works."}},{"@type":"Question","name":"Why do I get no relay (TURN) candidates?","acceptedAnswer":{"@type":"Answer","text":"Common causes: the TURN URL, username or credential is wrong; the credential has expired (coturn use-auth-secret credentials are time-limited); a firewall blocks UDP 3478 or the TLS port for turns:; or the server is only configured for STUN. Check the server logs and confirm the shared secret and TTL. This tester surfaces gathering errors returned by the browser to help narrow it down."}},{"@type":"Question","name":"What is the difference between STUN and TURN?","acceptedAnswer":{"@type":"Answer","text":"STUN only discovers your public address behind NAT — it cannot move data. TURN is a relay: when two peers cannot reach each other directly (symmetric NAT, AP/client isolation, restrictive firewalls), TURN forwards the already-encrypted media between them. TURN is the fallback that makes peer-to-peer tools work on hostile networks, at the cost of running relay traffic through a server."}},{"@type":"Question","name":"Is this tool safe — where do my credentials go?","acceptedAnswer":{"@type":"Answer","text":"Everything runs in your browser. The STUN/TURN URLs and credentials you type are passed straight to the browser's RTCPeerConnection and are never sent to Office Tools servers. Nothing is stored or logged. Close the tab and it is gone."}}]}]</script>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+    .field { display: flex; flex-direction: column; gap: .28rem; }
+    .field.full { grid-column: 1 / -1; }
+    .field label { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); font-weight: 700; }
+    .field input, .field select {
+      padding: .55rem .8rem; border: 1.5px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-secondary); color: var(--text);
+      font-size: .9rem; font-family: 'Courier New', monospace;
+      outline: none; transition: border-color .15s; box-sizing: border-box; width: 100%;
+    }
+    .field input:focus, .field select:focus { border-color: var(--primary); }
+    .preset-bar { display: flex; gap: .3rem; flex-wrap: wrap; margin-bottom: .9rem; }
+    .run-row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-top: .9rem; }
+    .ice-table { width: 100%; border-collapse: collapse; font-size: .8rem; margin-top: .6rem; }
+    .ice-table th {
+      text-align: left; padding: .38rem .55rem; position: sticky; top: 0; background: var(--bg-card);
+      font-size: .66rem; text-transform: uppercase; letter-spacing: .05em;
+      color: var(--text-muted); border-bottom: 1.5px solid var(--border);
+    }
+    .ice-table td {
+      padding: .4rem .55rem; border-bottom: 1px solid var(--border);
+      font-family: 'Courier New', monospace; word-break: break-all; color: var(--text);
+    }
+    .ice-table tr:last-child td { border-bottom: none; }
+    .ice-scroll { max-height: 460px; overflow: auto; margin-top: .3rem; }
+    .badge { display: inline-block; padding: .1rem .5rem; border-radius: 999px; font-size: .68rem; font-weight: 800; letter-spacing: .02em; }
+    .badge-host  { background: var(--border); color: var(--text); }
+    .badge-srflx { background: var(--primary-dim); color: var(--primary); }
+    .badge-prflx { background: var(--primary-dim); color: var(--primary); }
+    .badge-relay { background: #16a34a22; color: #16a34a; }
+    .summary { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+    .sum-pill {
+      display: flex; align-items: center; gap: .4rem; padding: .4rem .8rem;
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      font-size: .8rem; font-weight: 700; color: var(--text-muted);
+    }
+    .sum-pill .n { font-family: 'Courier New', monospace; font-size: .95rem; color: var(--text); }
+    .sum-pill.on { border-color: var(--primary); color: var(--primary); }
+    .sum-pill.on-relay { border-color: #16a34a; color: #16a34a; }
+    .box-error { background: var(--danger-dim); color: var(--danger); border-radius: var(--radius); padding: .65rem .9rem; font-size: .86rem; font-weight: 600; margin-top: .75rem; }
+    .box-info  { background: var(--primary-dim); color: var(--primary); border-radius: var(--radius); padding: .6rem .9rem; font-size: .82rem; margin-top: .75rem; }
+    .box-ok    { background: #16a34a1a; color: #16a34a; border-radius: var(--radius); padding: .65rem .9rem; font-size: .86rem; font-weight: 600; margin-top: .75rem; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: .4rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hint { font-size: .76rem; color: var(--text-muted); margin-top: .45rem; }
+    @media (max-width: 560px) { .field-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Trickle ICE Test</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🧊 Trickle ICE Test</h1>
+    <p>Test a STUN or TURN server by gathering WebRTC ICE candidates live in your browser — verify that TURN relaying actually works.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About Trickle ICE Test</h2>
+    <p>This tool creates a throwaway <code>RTCPeerConnection</code> configured with the STUN/TURN servers you enter, kicks off ICE gathering, and prints every candidate the browser discovers as it <strong>trickles</strong> in. It's the browser-side equivalent of the classic WebRTC "trickle-ICE" sample — but self-hosted, so you don't hand your TURN credentials to a third-party page.</p>
+    <p>There are three candidate types to watch for. <strong>host</strong> candidates are your machine's local addresses. <strong>srflx</strong> (server-reflexive) candidates are your public address as seen through NAT — their presence proves your <strong>STUN</strong> server works. <strong>relay</strong> candidates are allocated on a TURN server — their presence proves your <strong>TURN</strong> server can relay traffic, which is the fallback that makes peer-to-peer tools connect on symmetric-NAT or AP-isolated networks. If you enter a TURN server and see a green <em>relay</em> row, TURN is working.</p>
+    <p>Everything runs client-side: the URLs and credentials you type go straight to the browser's WebRTC engine and never touch our servers. This pairs naturally with <a href="../file-drop/">File Drop</a>, which uses the same STUN/TURN mechanism for browser-to-browser transfers — use the <strong>“My File Drop TURN server”</strong> preset to test the exact relay File Drop falls back to.</p>
+  </section>
+
+  <div class="card">
+    <div class="preset-bar">
+      <button class="btn btn-ghost btn-sm" data-preset="filedrop">📡 My File Drop TURN server</button>
+      <button class="btn btn-ghost btn-sm" data-preset="google">Google STUN</button>
+      <button class="btn btn-ghost btn-sm" data-preset="cloudflare">Cloudflare STUN</button>
+      <button class="btn btn-ghost btn-sm" data-preset="clear">Clear</button>
+    </div>
+
+    <div class="field-grid">
+      <div class="field full">
+        <label for="iceUrl">ICE server URL(s) — comma-separated</label>
+        <input type="text" id="iceUrl" placeholder="stun:stun.l.google.com:19302  or  turn:turn.example.com:3478" autocomplete="off" spellcheck="false" value="stun:stun.l.google.com:19302">
+      </div>
+      <div class="field">
+        <label for="iceUser">TURN username <span style="text-transform:none;font-weight:400">(TURN only)</span></label>
+        <input type="text" id="iceUser" placeholder="(leave blank for STUN)" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="iceCred">TURN credential <span style="text-transform:none;font-weight:400">(TURN only)</span></label>
+        <input type="text" id="iceCred" placeholder="(leave blank for STUN)" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+
+    <div class="run-row">
+      <button class="btn btn-primary" id="iceRun">Gather candidates</button>
+      <button class="btn btn-ghost" id="iceStop" disabled>Stop</button>
+      <span id="iceStatus" class="hint"></span>
+    </div>
+    <div class="hint">Credentials are used only by your browser's WebRTC engine — they are never sent to Office Tools.</div>
+
+    <div id="iceOut"></div>
+  </div>
+
+  <section class="tool-related" id="related-tools"></section>
+
+<div class="page-tags">
+  <span class="page-tag">trickle ICE</span>
+  <span class="page-tag">test TURN server</span>
+  <span class="page-tag">STUN server test</span>
+  <span class="page-tag">WebRTC test</span>
+  <span class="page-tag">ICE candidates</span>
+  <span class="page-tag">relay candidate</span>
+  <span class="page-tag">srflx candidate</span>
+  <span class="page-tag">coturn test</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+'use strict';
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+const $ = id => document.getElementById(id);
+let pc = null, t0 = 0, rows = [], counts = { host: 0, srflx: 0, prflx: 0, relay: 0 }, done = true;
+
+// ── Presets ───────────────────────────────────────────────
+document.querySelector('.preset-bar').addEventListener('click', async e => {
+  const btn = e.target.closest('[data-preset]');
+  if (!btn) return;
+  const p = btn.dataset.preset;
+  if (p === 'google')     { $('iceUrl').value = 'stun:stun.l.google.com:19302'; $('iceUser').value = ''; $('iceCred').value = ''; }
+  else if (p === 'cloudflare') { $('iceUrl').value = 'stun:stun.cloudflare.com:3478'; $('iceUser').value = ''; $('iceCred').value = ''; }
+  else if (p === 'clear') { $('iceUrl').value = ''; $('iceUser').value = ''; $('iceCred').value = ''; }
+  else if (p === 'filedrop') await loadFileDropIce(btn);
+});
+
+// Pull the exact ICE config File Drop uses (STUN + short-lived TURN creds) from the backend.
+async function loadFileDropIce(btn) {
+  const old = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Fetching…';
+  try {
+    const r = await fetch(API + '/api/tools/turn', { cache: 'no-store' });
+    const j = await r.json();
+    const servers = Array.isArray(j.iceServers) ? j.iceServers : [];
+    const turn = servers.find(s => String(Array.isArray(s.urls) ? s.urls.join(',') : s.urls).includes('turn'));
+    const stun = servers.find(s => String(Array.isArray(s.urls) ? s.urls.join(',') : s.urls).includes('stun'));
+    const pick = turn || stun;
+    if (!pick) { showInfo('The backend returned no ICE servers. TURN is not configured on this deployment yet — File Drop is running STUN-only.'); return; }
+    const urls = Array.isArray(pick.urls) ? pick.urls.join(', ') : pick.urls;
+    $('iceUrl').value = urls || '';
+    $('iceUser').value = pick.username || '';
+    $('iceCred').value = pick.credential || '';
+    if (!turn) showInfo('No TURN server is configured on this deployment — loaded the STUN server File Drop uses instead.');
+    else showOk('Loaded File Drop’s TURN server with a fresh short-lived credential. Click <strong>Gather candidates</strong> and look for a green <em>relay</em> row.');
+  } catch (err) {
+    showError('Could not reach the backend at ' + escHtml(API) + ' — ' + escHtml(err.message));
+  } finally {
+    btn.disabled = false; btn.textContent = old;
+  }
+}
+
+function showInfo(html)  { $('iceOut').innerHTML = `<div class="box-info">${html}</div>`; }
+function showOk(html)    { $('iceOut').innerHTML = `<div class="box-ok">${html}</div>`; }
+function showError(html) { $('iceOut').innerHTML = `<div class="box-error">${html}</div>`; }
+
+// ── Gather ────────────────────────────────────────────────
+$('iceRun').addEventListener('click', run);
+$('iceStop').addEventListener('click', () => finish('Stopped.'));
+
+function buildIceServer() {
+  const urls = $('iceUrl').value.split(',').map(s => s.trim()).filter(Boolean);
+  if (!urls.length) return null;
+  const server = { urls };
+  const user = $('iceUser').value.trim();
+  const cred = $('iceCred').value.trim();
+  if (user || cred) { server.username = user; server.credential = cred; }
+  return server;
+}
+
+async function run() {
+  const server = buildIceServer();
+  if (!server) { showError('Enter at least one ICE server URL (stun: or turn:).'); return; }
+
+  cleanup();
+  rows = [];
+  counts = { host: 0, srflx: 0, prflx: 0, relay: 0 };
+  t0 = performance.now();
+  done = false;
+  $('iceRun').disabled = true; $('iceStop').disabled = false;
+  $('iceStatus').innerHTML = '<span class="spinner"></span> Gathering…';
+
+  renderShell();
+
+  try {
+    pc = new RTCPeerConnection({ iceServers: [server], iceCandidatePoolSize: 0 });
+  } catch (err) {
+    finish(''); showError('Invalid ICE configuration: ' + escHtml(err.message)); return;
+  }
+
+  pc.onicecandidate = ev => {
+    if (!ev.candidate) { finish('Gathering complete.'); return; } // null = done
+    if (!ev.candidate.candidate) return;
+    addRow(ev.candidate);
+  };
+  pc.onicecandidateerror = ev => {
+    // Surfaced by the browser when a STUN/TURN server rejects or times out.
+    addErrorRow(ev);
+  };
+  pc.onicegatheringstatechange = () => {
+    if (pc && pc.iceGatheringState === 'complete') finish('Gathering complete.');
+  };
+
+  // A data channel gives the connection something to gather for.
+  try { pc.createDataChannel('probe'); } catch (_) {}
+  try {
+    const offer = await pc.createOffer({ offerToReceiveAudio: false, offerToReceiveVideo: false });
+    await pc.setLocalDescription(offer);
+  } catch (err) {
+    finish(''); showError('Could not start gathering: ' + escHtml(err.message)); return;
+  }
+
+  // Safety timeout — some networks never emit the terminal null candidate.
+  clearTimeout(run._to);
+  run._to = setTimeout(() => finish('Timed out (15 s) — showing what was gathered.'), 15000);
+}
+
+function typeOf(cand) {
+  const m = / typ (\w+)/.exec(cand);
+  return m ? m[1] : '';
+}
+function protoOf(cand) {
+  const p = cand.split(' ');
+  return (p[2] || '').toLowerCase(); // foundation component protocol priority ip port typ ...
+}
+
+function addRow(c) {
+  const cand = c.candidate;
+  const type = typeOf(cand);
+  if (counts[type] !== undefined) counts[type]++;
+  const dt = (performance.now() - t0);
+  rows.push({
+    t: dt, type,
+    proto: protoOf(cand),
+    address: c.address || '(hidden)',
+    port: c.port ?? '',
+    priority: c.priority ?? '',
+    raw: cand,
+  });
+  renderShell();
+}
+
+function addErrorRow(ev) {
+  rows.push({
+    t: (performance.now() - t0), type: 'error',
+    proto: '', address: (ev.url || ''), port: ev.errorCode || '',
+    priority: '', raw: 'ICE error ' + (ev.errorCode || '') + ' ' + (ev.errorText || ''),
+  });
+  renderShell();
+}
+
+function badge(type) {
+  if (type === 'error') return '<span class="badge" style="background:var(--danger-dim);color:var(--danger)">error</span>';
+  const cls = { host: 'badge-host', srflx: 'badge-srflx', prflx: 'badge-prflx', relay: 'badge-relay' }[type] || 'badge-host';
+  return `<span class="badge ${cls}">${escHtml(type || '?')}</span>`;
+}
+
+function renderShell() {
+  const relay = counts.relay > 0;
+  const srflx = counts.srflx + counts.prflx > 0;
+  const summary = `<div class="summary">
+    <div class="sum-pill ${counts.host ? 'on' : ''}"><span class="n">${counts.host}</span> host</div>
+    <div class="sum-pill ${srflx ? 'on' : ''}"><span class="n">${counts.srflx + counts.prflx}</span> srflx (STUN)</div>
+    <div class="sum-pill ${relay ? 'on-relay' : ''}"><span class="n">${counts.relay}</span> relay (TURN)</div>
+  </div>`;
+
+  const body = rows.map(r => `<tr>
+    <td>${r.t.toFixed(0)} ms</td>
+    <td>${badge(r.type)}</td>
+    <td>${escHtml(r.proto)}</td>
+    <td>${escHtml(String(r.address))}</td>
+    <td>${escHtml(String(r.port))}</td>
+    <td>${escHtml(String(r.priority))}</td>
+  </tr>`).join('');
+
+  const table = rows.length
+    ? `<div class="ice-scroll"><table class="ice-table">
+        <thead><tr><th>Time</th><th>Type</th><th>Proto</th><th>Address</th><th>Port</th><th>Priority</th></tr></thead>
+        <tbody>${body}</tbody></table></div>`
+    : '<div class="hint" style="padding:.6rem 0">Waiting for candidates…</div>';
+
+  $('iceOut').innerHTML = summary + table;
+}
+
+function verdict() {
+  if (counts.relay > 0) return { fn: showAppend, cls: 'box-ok', msg: '✅ <strong>TURN works</strong> — relay candidate(s) were allocated. Peers behind restrictive NAT can connect through this server.' };
+  const hadTurn = $('iceUrl').value.includes('turn');
+  if (hadTurn) return { fn: showAppend, cls: 'box-error', msg: '⚠️ <strong>No relay candidate</strong> — the TURN server did not allocate a relay. Check the URL, username/credential (coturn use-auth-secret credentials expire), and that UDP/TLS ports are open.' };
+  if (counts.srflx + counts.prflx > 0) return { fn: showAppend, cls: 'box-info', msg: 'STUN works — a server-reflexive (srflx) candidate revealed your public address through NAT. Add a TURN server above to test relaying.' };
+  return null;
+}
+
+function showAppend(cls, msg) {
+  const d = document.createElement('div');
+  d.className = cls; d.innerHTML = msg;
+  $('iceOut').appendChild(d);
+}
+
+function finish(statusMsg) {
+  if (done) return;
+  done = true;
+  clearTimeout(run._to);
+  $('iceRun').disabled = false; $('iceStop').disabled = true;
+  $('iceStatus').textContent = statusMsg || '';
+  cleanup();
+  const v = verdict();
+  if (v) v.fn(v.cls, v.msg);
+}
+
+function cleanup() {
+  if (pc) { try { pc.onicecandidate = null; pc.onicecandidateerror = null; pc.close(); } catch (_) {} pc = null; }
+}
+
+$('iceUrl').addEventListener('keydown', e => { if (e.key === 'Enter') run(); });
+
+renderRelatedTools('related-tools', [
+  { path: 'file-drop',       desc: 'Send files device-to-device over the same WebRTC transport' },
+  { path: 'port-checker',    desc: 'Check if the TURN UDP/TLS port is open on your server' },
+  { path: 'my-ip',           desc: 'See your public IPv4 and IPv6 address' },
+  { path: 'network-toolkit', desc: 'DNS, ping, traceroute and port tools in one place' },
+]);
+</script>
+</body>
+</html>

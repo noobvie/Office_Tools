@@ -4,19 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Image to Text (OCR) — Extract Text from Photos &amp; Scans — Office Tools</title>
-  <meta name="description" content="Free OCR tool. Extract text from images, photos, screenshots and scanned documents directly in your browser. 10+ languages, no upload — your images never leave your device.">
-  <meta name="keywords" content="OCR online, image to text, extract text from image, photo to text, picture to text, scanned document to text, screenshot to text, free OCR, Tesseract OCR">
+  <meta name="description" content="Free OCR tool. Extract text from images, photos, screenshots and scanned documents directly in your browser. 17 languages including Vietnamese, Thai, Indonesian, Chinese, Japanese, Korean and Arabic — no upload, your images never leave your device.">
+  <meta name="keywords" content="OCR online, image to text, extract text from image, photo to text, picture to text, scanned document to text, screenshot to text, free OCR, Tesseract OCR, Vietnamese OCR, Thai OCR, Indonesian OCR, Chinese OCR, Japanese OCR, Arabic OCR, multilingual OCR">
   <meta name="robots" content="index, follow">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Office Tools">
   <meta property="og:title" content="Image to Text (OCR) — Extract Text from Photos &amp; Scans — Office Tools">
-  <meta property="og:description" content="Extract text from images, screenshots and scanned documents in your browser. 10+ languages, no upload — 100% private.">
+  <meta property="og:description" content="Extract text from images, screenshots and scanned documents in your browser. 17 languages, no upload — 100% private.">
   <meta property="og:url" content="https://tools.grin.money/tools/ocr/">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Image to Text (OCR) — Office Tools">
-  <meta name="twitter:description" content="Extract text from images and scans in your browser. 10+ languages, no upload.">
+  <meta name="twitter:description" content="Extract text from images and scans in your browser. 17 languages, no upload.">
   <link rel="canonical" href="https://tools.grin.money/tools/ocr/">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Image to Text (OCR)","description":"Extract text from images, photos, screenshots and scanned documents in your browser. Multiple languages, no upload.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/ocr/"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Image to Text (OCR)","description":"Extract text from images, photos, screenshots and scanned documents in your browser. 17 languages including Vietnamese, Thai and Indonesian, no upload.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/ocr/"}</script>
   <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
   <link rel="stylesheet" href="../../css/style.css">
   <style>
@@ -84,6 +84,9 @@
           <option value="chi_tra">Chinese — Traditional (繁體)</option>
           <option value="jpn">Japanese (日本語)</option>
           <option value="kor">Korean (한국어)</option>
+          <option value="vie">Vietnamese (Tiếng Việt)</option>
+          <option value="tha">Thai (ไทย)</option>
+          <option value="ind">Indonesian (Bahasa Indonesia)</option>
           <option value="ara">Arabic (العربية)</option>
           <option value="hin">Hindi (हिन्दी)</option>
         </select>
@@ -201,7 +204,7 @@ document.getElementById('copyBtn').addEventListener('click', function () {
   copyText(document.getElementById('outText').value, this);
 });
 document.getElementById('downloadBtn').addEventListener('click', () => {
-  const blob = new Blob([document.getElementById('outText').value], { type: 'text/plain' });
+  const blob = new Blob(['\uFEFF', document.getElementById('outText').value], { type: 'text/plain;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'ocr-text.txt';

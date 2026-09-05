@@ -207,10 +207,10 @@
         <div class="tool-card-name">PDF Toolkit</div>
         <div class="tool-card-desc">Merge multiple PDFs, extract page ranges, split into individual files, or reorder pages with drag-and-drop thumbnails.</div>
       </a>
-      <a href="tools/pdf-to-text/index.html" class="tool-card" data-keywords="PDF to text, extract text from PDF, PDF to Word, PDF text extractor, PDF to TXT, convert PDF, read PDF" data-name="PDF to Text extract convert Word docx txt copy paste">
+      <a href="tools/pdf-to-text/index.html" class="tool-card" data-keywords="PDF to text, extract text from PDF, scanned PDF to text, PDF OCR, OCR scanned PDF, PDF to Word, PDF text extractor, PDF to TXT, convert PDF, read PDF" data-name="PDF to Text extract convert Word docx txt copy paste scanned OCR">
         <div class="tool-card-icon">📄</div>
         <div class="tool-card-name">PDF to Text</div>
-        <div class="tool-card-desc">Extract text from any PDF. Browse per-page, copy to clipboard, or download as .txt or Word .docx file.</div>
+        <div class="tool-card-desc">Extract text from any PDF, with optional OCR for scanned pages. Browse per-page, copy to clipboard, or download as .txt or Word .docx file.</div>
       </a>
       <a href="tools/image-to-pdf/index.html" class="tool-card" data-keywords="image to PDF, JPG to PDF, PNG to PDF, photo to PDF, convert image to PDF, combine images into PDF, pictures to PDF, JPEG to PDF" data-name="Image to PDF JPG PNG WebP photo convert combine pages A4 Letter">
         <div class="tool-card-icon">🖼️</div>
@@ -589,6 +589,16 @@
         <div class="tool-card-name">File Drop</div>
         <div class="tool-card-desc">Like AirDrop, for every OS — send files or text between any two devices, peer-to-peer and encrypted. Same Wi-Fi auto-discovery or 6-digit code. Files never touch a server.</div>
       </a>
+      <a href="tools/webrtc-ice-test/index.html" class="tool-card" data-keywords="trickle ICE, ICE test, WebRTC test, STUN server test, TURN server test, test TURN server, ICE candidate gathering, srflx candidate, relay candidate, host candidate, coturn test, check TURN works, WebRTC diagnostics, RTCPeerConnection test, NAT type, ice servers" data-name="Trickle ICE Test WebRTC STUN TURN server tester gather ice candidates srflx relay host coturn diagnostics">
+        <div class="tool-card-icon">🧊</div>
+        <div class="tool-card-name">Trickle ICE Test</div>
+        <div class="tool-card-desc">Test a STUN or TURN server by gathering WebRTC ICE candidates live in your browser. See host, srflx and relay candidates — verify that TURN relaying actually works. Runs entirely client-side.</div>
+      </a>
+      <a href="tools/chat-room/index.html" class="tool-card" data-keywords="chat room, temporary chat, anonymous chat, group chat no registration, disposable chat room, private chat link, share files in chat, ephemeral chat, room code chat, throwaway chat, no sign up chat, encrypted chat, quick chat" data-name="Chat Room temporary disposable group chat no registration share code send files auto delete anonymous ephemeral">
+        <div class="tool-card-icon">💬</div>
+        <div class="tool-card-name">Chat Room</div>
+        <div class="tool-card-desc">Create a temporary group chat, share the 8-character code, and anyone worldwide joins — no sign-up. Send messages and files up to 2 GB. Everything is deleted when the last person leaves.</div>
+      </a>
       <a href="tools/port-checker/index.html" class="tool-card" data-keywords="port checker, check if port is open, TCP port scanner, open port test, firewall port check, port scan online, is port open, IPv6 port check, SSH port 22, RDP port 3389, HTTP port 80, HTTPS port 443, MySQL port 3306, Grin node ports, Grin wallet ports, Grin mainnet testnet, network diagnostics" data-name="Port Checker TCP open port test firewall SSH RDP HTTP HTTPS MySQL FTP Grin mainnet testnet IPv4 IPv6">
         <div class="tool-card-icon">🔌</div>
         <div class="tool-card-name">Port Checker</div>
@@ -664,6 +674,24 @@
         <div class="tool-card-name">Subnet Calculator</div>
         <div class="tool-card-desc">Calculate network address, broadcast, subnet mask, host range and total addresses from any IPv4 or IPv6 CIDR. Fully local.</div>
       </a>
+      <!-- ══════════════════════════════════════════════════════════════════════
+           TODO — VPN product card. Placeholder, deliberately NOT live yet.
+
+           Decided 2026-08-27: the VPN manager ships as its OWN repo, with its
+           own name and domain. Office Tools carries only a card + landing page
+           pointing at it — keeps the funnel without coupling the code (this
+           backend runs as www-data; a VPN controller needs root).
+
+           To activate: set href to the landing page, fill name/desc/keywords,
+           uncomment, and add a matching <url> entry to sitemap.xml.
+           Build plan lives in the VPN repo's own design doc.
+
+      <a href="pages/vpn.html" class="tool-card" data-keywords="vpn, wireguard, openvpn, ikev2, self-hosted vpn, vpn server installer" data-name="TBD">
+        <div class="tool-card-icon">🛡️</div>
+        <div class="tool-card-name">TBD</div>
+        <div class="tool-card-desc">TBD</div>
+      </a>
+      ══════════════════════════════════════════════════════════════════════ -->
     </div>
   </section>
 
@@ -677,7 +705,7 @@
         <div class="tool-card-name">Image Converter</div>
         <div class="tool-card-desc">Convert HEIC/HEIF (iPhone) to JPG or PNG, compress images with quality slider, and resize with aspect-ratio lock.</div>
       </a>
-      <a href="tools/ocr/index.html" class="tool-card" data-keywords="OCR online, image to text, extract text from image, photo to text, picture to text, screenshot to text, scanned document to text, free OCR, optical character recognition" data-name="Image to Text OCR extract photo screenshot scan optical character recognition multilingual">
+      <a href="tools/ocr/index.html" class="tool-card" data-keywords="OCR online, image to text, extract text from image, photo to text, picture to text, screenshot to text, scanned document to text, free OCR, optical character recognition, Vietnamese OCR, Thai OCR, Indonesian OCR, Chinese OCR, Japanese OCR, Arabic OCR" data-name="Image to Text OCR extract photo screenshot scan optical character recognition multilingual Vietnamese Thai Indonesian Chinese Japanese Korean Arabic">
         <div class="tool-card-icon">🔎</div>
         <div class="tool-card-name">Image to Text (OCR)</div>
         <div class="tool-card-desc">Extract text from photos, screenshots and scanned documents. 10+ languages, runs in your browser — no upload.</div>

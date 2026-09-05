@@ -30,7 +30,7 @@
 
   <!-- ── PDF & Text ── -->
   <url><loc>https://tools.grin.money/tools/pdf-toolkit/</loc><lastmod>2026-06-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://tools.grin.money/tools/pdf-to-text/</loc><lastmod>2026-06-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://tools.grin.money/tools/pdf-to-text/</loc><lastmod>2026-09-03</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/image-to-pdf/</loc><lastmod>2026-06-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/pdf-enhance/</loc><lastmod>2026-06-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/pdf-to-images/</loc><lastmod>2026-06-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
@@ -96,13 +96,15 @@
   <url><loc>https://tools.grin.money/tools/gradient-generator/</loc><lastmod>2026-06-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/meta-tag-generator/</loc><lastmod>2026-06-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/og-generator/</loc><lastmod>2026-06-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://tools.grin.money/tools/robots-generator/</loc><lastmod>2026-06-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://tools.grin.money/tools/robots-generator/</loc><lastmod>2026-09-03</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/schema-generator/</loc><lastmod>2026-06-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/slug-generator/</loc><lastmod>2026-06-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/favicon-generator/</loc><lastmod>2026-06-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
 
   <!-- ── Network & Security ── -->
   <url><loc>https://tools.grin.money/tools/file-drop/</loc><lastmod>2026-07-06</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://tools.grin.money/tools/chat-room/</loc><lastmod>2026-07-23</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://tools.grin.money/tools/webrtc-ice-test/</loc><lastmod>2026-07-23</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/currency/</loc><lastmod>2026-06-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/my-ip/</loc><lastmod>2026-06-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/vpn-leak-test/</loc><lastmod>2026-06-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
@@ -127,7 +129,7 @@
 
   <!-- ── Media ── -->
   <url><loc>https://tools.grin.money/tools/image-converter/</loc><lastmod>2026-06-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://tools.grin.money/tools/ocr/</loc><lastmod>2026-06-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://tools.grin.money/tools/ocr/</loc><lastmod>2026-09-03</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/image-cropper/</loc><lastmod>2026-06-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/color-converter/</loc><lastmod>2026-06-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://tools.grin.money/tools/contrast-checker/</loc><lastmod>2026-06-20</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
