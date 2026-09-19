@@ -324,6 +324,8 @@ const OT_TOOLS = [
   { name: 'Favicon Generator',       path: 'favicon-generator',     cat: '💻 Development',          icon: '⭐', desc: 'Favicons from image, emoji or initials — multi-size PNG + HTML',       isNew: true },
   // 🎬 Media
   { name: 'YouTube Downloader',      path: 'yt-downloader',         cat: '🎬 Media',                icon: '📥', desc: 'Download YouTube videos as MP4 or audio as MP3' },
+  { name: 'Video Converter',         path: 'video-converter',       cat: '🎬 Media',                icon: '🎬', desc: 'Convert MKV, MOV, AVI, WebM and more to MP4, WebM, GIF — remux or re-encode',  isNew: true },
+  { name: 'Audio Converter',         path: 'audio-converter',       cat: '🎬 Media',                icon: '🎵', desc: 'MP4 to MP3, extract audio from video, convert MP3/M4A/OGG/WAV/FLAC',         isNew: true },
   { name: 'Speech & Voice',          path: 'speech-voice',          cat: '🎬 Media',                icon: '🎙️', desc: 'Transcribe mic or audio to text, or convert text to speech' },
   { name: 'Photo Editor',            path: 'photo-editor',          cat: '🎬 Media',                icon: '🖼️', desc: 'Remove backgrounds, adjust colors and add text to photos' },
   { name: 'Image Converter',         path: 'image-converter',       cat: '🎬 Media',                icon: '🖼️', desc: 'Convert HEIC/HEIF to JPG/PNG, compress and resize images' },
@@ -704,7 +706,8 @@ function openFeedbackModal() {
 function otFmtSize(b) {
   if (b < 1024) return b + ' B';
   if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
-  return (b / 1048576).toFixed(2) + ' MB';
+  if (b < 1073741824) return (b / 1048576).toFixed(2) + ' MB';
+  return (b / 1073741824).toFixed(2) + ' GB';     // the converters take files up to 1 GB
 }
 function otMarkZoneLoaded(zone, files) {
   if (!files || !files.length) return;

@@ -1011,6 +1011,11 @@ input[type="checkbox"] {
 .text-muted { color: var(--text-muted); }
 .text-center { text-align: center; }
 .hidden { display: none !important; }
+/* The `hidden` ATTRIBUTE only works through the UA stylesheet, which any author
+   `display:` beats — so `<button class="btn" hidden>` rendered anyway (.btn is
+   inline-flex), and the converters' Cancel / Download all / Clear list buttons showed
+   from page load. Same rule as .hidden, so `el.hidden = …` is safe on any element. */
+[hidden] { display: none !important; }
 .mono { font-family: 'Courier New', monospace; }
 .flex { display: flex; align-items: center; gap: .5rem; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }

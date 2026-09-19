@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audio Converter — MP4 to MP3 &amp; More — Office Tools</title>
+  <meta name="description" content="Convert MP4 to MP3, extract the audio from any video, or convert between MP3, M4A/AAC, OGG, Opus, WAV, FLAC, AIFF, WMA and AC3. Bitrate, sample rate, mono/stereo and trim options. Batch processing, runs in your browser — no upload.">
+  <meta name="keywords" content="audio converter, mp4 to mp3, video to mp3, extract audio from video, mp3 converter, m4a to mp3, wav to mp3, flac to mp3, ogg converter, opus converter, convert audio online">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="Free Audio Converter — MP4 to MP3, WAV, FLAC, M4A, OGG &amp; Opus Online">
+  <meta property="og:description" content="Convert MP4 to MP3, extract the audio from any video, or convert between MP3, M4A/AAC, OGG, Opus, WAV, FLAC, AIFF, WMA and AC3. Batch processing, runs in your browser — no upload.">
+  <meta property="og:url" content="https://tools.grin.money/tools/audio-converter/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Free Audio Converter — MP4 to MP3, WAV, FLAC, M4A, OGG &amp; Opus Online">
+  <meta name="twitter:description" content="Convert MP4 to MP3, extract the audio from any video, or convert between MP3, M4A/AAC, OGG, Opus, WAV, FLAC, AIFF, WMA and AC3. Batch processing, runs in your browser — no upload.">
+  <link rel="canonical" href="https://tools.grin.money/tools/audio-converter/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Audio Converter","description":"Convert MP4 to MP3, extract the audio from any video, or convert between MP3, M4A/AAC, OGG, Opus, WAV, FLAC, AIFF, WMA and AC3. Batch processing, runs in your browser — no upload.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/audio-converter/"}</script>
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
+    .drop-zone.disabled { cursor: not-allowed; opacity: .55; }
+    .drop-zone input[type=file] { display: none; }
+    .dz-private { font-size: .77rem; margin: .4rem 0 0; }
+
+    /* Engine (ffmpeg.wasm) first-load panel */
+    .engine { margin-top: .85rem; padding: .7rem .85rem; background: var(--bg-secondary); border-radius: var(--radius); font-size: .82rem; }
+    .engine-title { font-weight: 600; color: var(--text); }
+    .engine-sub { color: var(--text-muted); margin-top: .15rem; }
+    .engine.is-error { background: var(--danger-dim); color: var(--danger); }
+    .engine.is-error .engine-title { color: var(--danger); }
+
+    .pbar { height: 6px; background: var(--border); border-radius: 4px; overflow: hidden; margin-top: .45rem; }
+    .pbar-fill { height: 100%; width: 0; background: var(--primary); border-radius: 4px; transition: width .15s linear; }
+    .pbar-fill.indet { width: 40%; animation: indet 1.1s ease-in-out infinite; }
+    @keyframes indet { 0% { margin-left: -40%; } 100% { margin-left: 100%; } }
+
+    /* Options */
+    .opt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .65rem; margin-top: 1rem; }
+    .opt-grid .form-group { margin: 0; min-width: 0; }
+    .opt-grid label { font-size: .8rem; }
+    .opt-hint { font-size: .75rem; color: var(--text-muted); margin-top: .4rem; min-height: 1em; }
+
+    details.trim { margin-top: .85rem; border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem .85rem; }
+    details.trim summary { cursor: pointer; font-size: .86rem; font-weight: 600; color: var(--text); user-select: none; }
+    .trim-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .65rem; margin-top: .65rem; }
+    .trim-grid .form-group { margin: 0; }
+    .trim-grid label { font-size: .8rem; }
+    .trim-note { font-size: .75rem; color: var(--text-muted); margin-top: .5rem; }
+
+    .actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; align-items: center; }
+    .actions .spacer { flex: 1; }
+    .batch-meta { font-size: .78rem; color: var(--text-muted); }
+
+    .notice { margin-top: .85rem; font-size: .82rem; padding: .6rem .85rem; border-radius: var(--radius); }
+    .notice.warn { background: var(--warning-dim); color: var(--warning); }
+    .notice.err  { background: var(--danger-dim);  color: var(--danger); }
+    .notice ul { margin: .3rem 0 0 1.1rem; padding: 0; }
+    .notice li { margin: .1rem 0; word-break: break-word; }
+
+    /* File list */
+    .file-list { margin-top: .85rem; display: flex; flex-direction: column; gap: .45rem; }
+    .file-item {
+      display: grid; grid-template-columns: auto 1fr auto; gap: .35rem .65rem; align-items: center;
+      padding: .55rem .75rem;
+      background: var(--bg-secondary); border-radius: var(--radius);
+      font-size: .84rem;
+    }
+    .fi-icon { font-size: 1.3rem; grid-row: span 2; align-self: start; }
+    .fi-info { min-width: 0; }
+    .fi-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fi-meta { font-size: .76rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fi-side { display: flex; align-items: center; gap: .4rem; justify-content: flex-end; white-space: nowrap; }
+    .fi-status { font-size: .78rem; }
+    .fi-status.st-wait { color: var(--text-muted); }
+    .fi-status.st-busy { color: var(--warning); }
+    .fi-status.st-ok   { color: var(--success); }
+    .fi-status.st-err  { color: var(--danger); }
+    .fi-bar { grid-column: 2 / 4; }
+    .fi-bar .pbar { margin-top: 0; }
+    .fi-err { grid-column: 2 / 4; font-size: .75rem; color: var(--danger); white-space: pre-wrap; word-break: break-word; max-height: 4.6em; overflow: auto; }
+    .ibtn {
+      background: transparent; border: 1px solid var(--border); color: var(--text-muted);
+      border-radius: 6px; cursor: pointer; padding: .25rem .5rem; font-size: .78rem; line-height: 1.2;
+      transition: all .15s;
+    }
+    .ibtn:hover { color: var(--text); border-color: var(--text-muted); }
+    .ibtn.ok   { color: var(--success); border-color: var(--success); }
+    .ibtn.ok:hover { background: var(--success-dim); }
+    .ibtn.bad  { color: var(--danger); border-color: var(--danger); }
+    .ibtn.bad:hover { background: var(--danger-dim); }
+
+    .fmt-badges { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
+
+    @media (max-width: 580px) {
+      .file-item { grid-template-columns: auto 1fr; }
+      .fi-icon { grid-row: span 1; }
+      .fi-side { grid-column: 2; justify-content: flex-start; flex-wrap: wrap; }
+      .ibtn { min-height: 44px; padding: .5rem .85rem; font-size: .85rem; }   /* thumb-sized on touch */
+      .fi-bar, .fi-err { grid-column: 2; }
+      .trim-grid { grid-template-columns: 1fr; }
+      .actions .btn { flex: 1 1 auto; }
+      .actions .spacer { display: none; }
+      .batch-meta { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">Audio Converter</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🎵 Audio Converter</h1>
+    <p>Convert MP4 to MP3, pull the audio out of any video, or convert between MP3, M4A/AAC, OGG, Opus, WAV, FLAC, AIFF, WMA and AC3 — right in your browser.</p>
+  </div>
+
+<section class="tool-about">
+  <h2>About Audio Converter</h2>
+  <p>Need the <strong>MP3 out of an MP4</strong>, a WAV for an editor that won't open M4A, or a batch of FLAC files shrunk to Opus for your phone? Drop in <strong>any audio or video file</strong> — MP4, MOV, MKV, WebM, AVI, MP3, M4A, WAV, FLAC, OGG, WMA, AIFF and more — pick an output format, and download the result. Every file is identified by its actual contents, so a mislabelled extension doesn't matter.</p>
+  <p>Choose a bitrate or quality preset per codec, resample to a specific rate, mix down to mono, or trim a section by start and end time. The conversion runs on a copy of <strong>ffmpeg compiled to WebAssembly</strong>, entirely inside this tab: <strong>your files never leave your browser</strong> and nothing is uploaded to any server. The ~31 MB engine downloads once on first use and is cached by your browser afterwards.</p>
+</section>
+
+  <div class="alert alert-info" id="iosWarn" hidden style="font-size:.84rem;margin-top:0;margin-bottom:1rem">
+    📱 <strong>iPhone / iPad:</strong> Safari limits how much memory a tab may use, so large files (roughly 200 MB and up) can fail or reload the page here. For big conversions use a desktop browser.
+  </div>
+  <div class="alert alert-danger" id="noSupport" hidden style="font-size:.84rem;margin-top:0;margin-bottom:1rem">
+    This browser cannot run the converter (it needs WebAssembly and Web Workers). Please use a current Chrome, Edge, Firefox or Safari.
+  </div>
+
+  <div class="card">
+    <div class="drop-zone" id="dropZone" data-ot-noauto>
+      <div class="dz-prompt">
+        Drop audio or video files here or <strong>click to browse</strong>
+        <p style="font-size:.77rem;margin:.25rem 0 0">Up to 20 files · 1 GB per file · 2 GB per batch</p>
+        <p class="dz-private">🔒 Private — your files never leave this browser.</p>
+      </div>
+      <input type="file" id="fileInput" accept="audio/*,video/*,.mkv,.mka,.ts,.m2ts,.flv,.wma,.wmv,.ape,.wv,.amr,.opus,.aiff,.aif,.ac3,.dts,.caf" multiple>
+    </div>
+
+    <div class="engine" id="engine" hidden>
+      <div class="engine-title" id="engineTitle">Downloading the converter engine (ffmpeg.wasm, ≈31 MB)…</div>
+      <div class="engine-sub" id="engineSub">One-time download — your browser caches it for next time. Nothing about your files is sent anywhere.</div>
+      <div class="pbar"><div class="pbar-fill" id="engineBar"></div></div>
+    </div>
+
+    <div class="opt-grid">
+      <div class="form-group">
+        <label for="fmtSel">Output format</label>
+        <select id="fmtSel"></select>
+      </div>
+      <div class="form-group">
+        <label for="presetSel" id="presetLbl">Quality</label>
+        <select id="presetSel"></select>
+      </div>
+      <div class="form-group">
+        <label for="rateSel">Sample rate</label>
+        <select id="rateSel"></select>
+      </div>
+      <div class="form-group">
+        <label for="chSel">Channels</label>
+        <select id="chSel">
+          <option value="auto">Auto (keep source)</option>
+          <option value="1">Mono</option>
+          <option value="2">Stereo</option>
+        </select>
+      </div>
+    </div>
+    <div class="opt-hint" id="fmtHint"></div>
+
+    <details class="trim" id="trimBox">
+      <summary>✂️ Trim (optional)</summary>
+      <div class="trim-grid">
+        <div class="form-group">
+          <label for="trimStart">Start at</label>
+          <input type="text" id="trimStart" placeholder="0:00" inputmode="decimal" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label for="trimEnd">End at</label>
+          <input type="text" id="trimEnd" placeholder="end of file" inputmode="decimal" autocomplete="off">
+        </div>
+      </div>
+      <div class="trim-note">Formats: <code>90</code> (seconds), <code>1:30</code> or <code>0:01:30.5</code>. Leave a field empty to keep that end. The same trim applies to every file in the batch.</div>
+    </details>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="convertBtn" disabled>Convert all</button>
+      <button class="btn btn-secondary" id="cancelAllBtn" hidden>Cancel</button>
+      <button class="btn btn-secondary" id="zipBtn" hidden>Download all (.zip)</button>
+      <span class="spacer"></span>
+      <span class="batch-meta" id="batchMeta"></span>
+      <button class="btn btn-ghost btn-sm" id="clearBtn" hidden>Clear list</button>
+    </div>
+
+    <div class="notice" id="notice" hidden></div>
+    <div class="file-list" id="fileList"></div>
+  </div>
+
+  <div class="card mt-2" style="font-size:.84rem">
+    <strong>Output formats</strong>
+    <div class="fmt-badges">
+      <span class="badge badge-primary">MP3</span>
+      <span class="badge">M4A / AAC</span>
+      <span class="badge">OGG Vorbis</span>
+      <span class="badge">Opus</span>
+      <span class="badge">WAV 16 / 24-bit</span>
+      <span class="badge">FLAC</span>
+      <span class="badge">AIFF</span>
+      <span class="badge">WMA</span>
+      <span class="badge">AC3</span>
+    </div>
+    <p class="text-muted mt-2" style="font-size:.79rem;margin-bottom:.35rem"><strong>Input:</strong> anything ffmpeg can read — MP4, MOV, M4V, MKV, WebM, AVI, FLV, TS, WMV, 3GP video; MP3, M4A, AAC, WAV, FLAC, OGG, Opus, WMA, AIFF, AMR, APE, WavPack audio, and many more. Video files keep only their first audio track.</p>
+    <p class="text-muted" style="font-size:.79rem;margin-bottom:.35rem"><strong>Limits:</strong> 20 files per batch, 1 GB per file, 2 GB per batch. Files are converted one at a time; audio-only conversions typically run at 30–50× real time on a desktop.</p>
+    <p class="text-muted" style="font-size:.79rem">🔒 Everything runs locally in your browser with ffmpeg.wasm. No file, filename or metadata is uploaded to any server, and there is no analytics on this page.</p>
+  </div>
+
+<div class="page-tags">
+  <span class="page-tag">MP4 to MP3</span>
+  <span class="page-tag">video to MP3</span>
+  <span class="page-tag">M4A to MP3</span>
+  <span class="page-tag">WAV to MP3</span>
+  <span class="page-tag">FLAC to MP3</span>
+  <span class="page-tag">MP3 to WAV</span>
+  <span class="page-tag">convert to Opus</span>
+  <span class="page-tag">extract audio</span>
+</div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG" crossorigin="anonymous"></script>
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script src="../../js/ffmpeg-loader.js"></script>
+<script>
+// ── Helpers ─────────────────────────────────────────────────────────────
+//    escHtml() and otFmtSize() come from common.js; everything ffmpeg-shaped that the
+//    video converter also needs comes from ffmpeg-loader.js. Nothing is re-declared here.
+const fmtSz = otFmtSize, fmtDur = otFFFmtDur, parseTime = otFFParseTime, noExt = otFFNoExt, extOf = otFFExtOf, dlBlob = otFFDownload;
+const safeBase = name => otFFSafeBase(name, 'audio');
+const isIOS = otFFIsIOS;
+
+// ── Output formats — ONLY what the pinned ffmpeg.wasm core was verified to encode
+//    and mux (P1 probe of @ffmpeg/core 0.12.10: -encoders / -formats). Adding a row
+//    here without re-running that probe is how a format that "should work" ships broken.
+const kbps = (list, rec) => list.map(b => ({ v: b + 'k', label: b + ' kbps' + (b === rec ? ' — recommended' : ''), def: b === rec }));
+const FORMATS = {
+  mp3:  { label: 'MP3', ext: 'mp3', mime: 'audio/mpeg', muxer: 'mp3', maxCh: 2,
+          rates: [8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000],
+          presetLabel: 'Bitrate',
+          presets: [...kbps([320, 256, 192, 128, 96, 64], 192),
+                    { v: 'vbr0', label: 'VBR V0 (~245 kbps)' }, { v: 'vbr2', label: 'VBR V2 (~190 kbps)' }, { v: 'vbr4', label: 'VBR V4 (~165 kbps)' }],
+          args: p => (p.startsWith('vbr') ? ['-c:a', 'libmp3lame', '-q:a', p.slice(3)] : ['-c:a', 'libmp3lame', '-b:a', p]).concat(['-id3v2_version', '3']),
+          hint: 'Universal. 192 kbps is transparent for most listeners; VBR V0 is the audiophile choice.' },
+  m4a:  { label: 'M4A (AAC)', ext: 'm4a', mime: 'audio/mp4', muxer: 'ipod',
+          rates: [8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000, 64000, 88200, 96000],
+          presetLabel: 'Bitrate', presets: kbps([256, 192, 160, 128, 96, 64], 160),
+          args: p => ['-c:a', 'aac', '-b:a', p, '-movflags', '+faststart'],
+          hint: 'AAC in an MP4 container — the iPhone / iTunes / YouTube default. Better than MP3 at the same bitrate.' },
+  aac:  { label: 'AAC (raw ADTS)', ext: 'aac', mime: 'audio/aac', muxer: 'adts',
+          rates: [8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000, 64000, 88200, 96000],
+          presetLabel: 'Bitrate', presets: kbps([256, 192, 160, 128, 96, 64], 160),
+          args: p => ['-c:a', 'aac', '-b:a', p],
+          hint: 'Same AAC audio as M4A but as a bare stream with no container — no tags, no seeking index. Pick M4A unless something asks for .aac.' },
+  ogg:  { label: 'OGG (Vorbis)', ext: 'ogg', mime: 'audio/ogg', muxer: 'ogg',
+          presetLabel: 'Quality',
+          presets: [{ v: '10', label: 'q10 (~500 kbps)' }, { v: '8', label: 'q8 (~256 kbps)' }, { v: '6', label: 'q6 (~192 kbps)' },
+                    { v: '5', label: 'q5 (~160 kbps) — recommended', def: true }, { v: '4', label: 'q4 (~128 kbps)' }, { v: '3', label: 'q3 (~112 kbps)' }, { v: '2', label: 'q2 (~96 kbps)' }],
+          args: p => ['-c:a', 'libvorbis', '-q:a', p],
+          hint: 'Open, patent-free. Quality scale is variable bitrate; q5 ≈ 160 kbps.' },
+  opus: { label: 'Opus', ext: 'opus', mime: 'audio/ogg', muxer: 'opus', maxCh: 2,
+          rates: [48000],
+          presetLabel: 'Bitrate', presets: kbps([256, 192, 160, 128, 96, 64], 128),
+          // ffmpeg's BUILT-IN opus encoder, not libopus: in this wasm core libopus over-reads
+          // the heap and traps ("memory access out of bounds") depending on what ran before it
+          // — 7/7 clean on a fresh worker, then 0/3 after mp3+aac+vorbis had run. Measured
+          // 2026-09-18; re-test before switching back when bumping OT_FFMPEG_VER.core.
+          args: p => ['-c:a', 'opus', '-strict', 'experimental', '-b:a', p],
+          hint: 'Modern, open, and the best codec here at 96 kbps and up. Always 48 kHz, mono or stereo. (Encoded by ffmpeg\'s built-in Opus encoder.)' },
+  wav:  { label: 'WAV (PCM)', ext: 'wav', mime: 'audio/wav', muxer: 'wav',
+          presetLabel: 'Bit depth',
+          presets: [{ v: 'pcm_s16le', label: '16-bit (CD quality)', def: true }, { v: 'pcm_s24le', label: '24-bit (studio)' }],
+          args: p => ['-c:a', p],
+          hint: 'Uncompressed — about 10 MB per minute at 16-bit / 44.1 kHz stereo. Converting a lossy file to WAV does not recover quality.' },
+  flac: { label: 'FLAC (lossless)', ext: 'flac', mime: 'audio/flac', muxer: 'flac',
+          presetLabel: 'Compression',
+          presets: [{ v: '5', label: 'Level 5 — default', def: true }, { v: '8', label: 'Level 8 — smallest, slower' }, { v: '0', label: 'Level 0 — fastest' }],
+          args: p => ['-c:a', 'flac', '-compression_level', p],
+          hint: 'Lossless. Every level decodes to identical audio; higher only trades time for a few % of size.' },
+  aiff: { label: 'AIFF (PCM)', ext: 'aiff', mime: 'audio/aiff', muxer: 'aiff',
+          presetLabel: 'Bit depth',
+          presets: [{ v: 'pcm_s16be', label: '16-bit', def: true }, { v: 'pcm_s24be', label: '24-bit' }],
+          args: p => ['-c:a', p],
+          hint: 'Apple\'s uncompressed format — same size as WAV, preferred by Logic / GarageBand.' },
+  wma:  { label: 'WMA', ext: 'wma', mime: 'audio/x-ms-wma', muxer: 'asf', maxCh: 2,
+          rates: [8000, 11025, 16000, 22050, 32000, 44100, 48000],
+          presetLabel: 'Bitrate', presets: kbps([192, 160, 128, 96, 64, 48], 128),
+          args: p => ['-c:a', 'wmav2', '-b:a', p],
+          hint: 'Windows Media Audio (WMA v2) for legacy Windows players and car stereos.' },
+  ac3:  { label: 'AC3 (Dolby Digital)', ext: 'ac3', mime: 'audio/ac3', muxer: 'ac3', maxCh: 6,
+          rates: [32000, 44100, 48000],
+          presetLabel: 'Bitrate', presets: kbps([640, 448, 384, 256, 192, 128], 384),
+          args: p => ['-c:a', 'ac3', '-b:a', p],
+          hint: 'Dolby Digital, up to 5.1 channels — for DVD / Blu-ray authoring and AV receivers. Keeps a 5.1 source as 5.1.' },
+};
+const ALL_RATES = [8000, 11025, 16000, 22050, 32000, 44100, 48000, 88200, 96000];
+const RATE_LABEL = r => (r >= 1000 ? String(r / 1000) + ' kHz' : r + ' Hz');
+
+// ── Guards (client-side; there is no server to rate-limit) ──────────────
+const MAX_FILE  = 1024 * 1024 * 1024;       // 1 GiB per file
+const MAX_FILES = 20;
+const MAX_TOTAL = 2 * 1024 * 1024 * 1024;   // 2 GiB per batch
+/* The INPUT never enters the wasm heap (WORKERFS reads the File lazily), but the OUTPUT
+   does — and the heap is capped at 2 GiB by the core's wasm memory section (verified on
+   @ffmpeg/core 0.12.10), with ffmpeg.FS.readFile making a second in-heap copy on the way
+   out. A 900 MB WAV → WAV would therefore work for minutes and then die with "Cannot
+   enlarge memory" — so a PCM/FLAC output is estimated from duration × rate × channels
+   BEFORE the run and refused in words. Lossy outputs are small and never hit this. */
+const MAX_OUT   = 512 * 1024 * 1024;        // 512 MiB estimated output per file
+const MAX_ZIP   = 512 * 1024 * 1024;        // JSZip builds the archive in memory (STORE ≈ 2× peak)
+
+// ── DOM ────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const dropZone = $('dropZone'), fileInput = $('fileInput');
+const fmtSel = $('fmtSel'), presetSel = $('presetSel'), presetLbl = $('presetLbl'), rateSel = $('rateSel'), chSel = $('chSel'), fmtHint = $('fmtHint');
+const trimStart = $('trimStart'), trimEnd = $('trimEnd');
+const convertBtn = $('convertBtn'), cancelAllBtn = $('cancelAllBtn'), zipBtn = $('zipBtn'), clearBtn = $('clearBtn'), batchMeta = $('batchMeta');
+const listEl = $('fileList');
+// Engine panel, notice box: shared with the video converter (ffmpeg-loader.js).
+const engine = otFFEnginePanel({ panel: $('engine'), title: $('engineTitle'), sub: $('engineSub'), bar: $('engineBar') });
+const ensureEngine = () => engine.ensure();     // resolves to the ffmpeg handle
+const notice = otFFNotice($('notice'));
+const showNotice = notice.show, hideNotice = notice.hide, loopFailed = notice.loopFailed;
+
+// ── State ──────────────────────────────────────────────────────────────
+let items = [];          // { id, file, status, info, out, progress, err, ctrl, startedAt }
+let nextId = 1;
+let converting = false;  // the sequential run loop is active
+let probing = false;     // the sequential probe loop is active
+
+
+// ── Options UI ─────────────────────────────────────────────────────────
+function fillFormats() {
+  fmtSel.innerHTML = Object.keys(FORMATS).map(k => `<option value="${k}">${escHtml(FORMATS[k].label)}</option>`).join('');
+  fmtSel.value = 'mp3';
+  onFormatChange();
+}
+function onFormatChange() {
+  const f = FORMATS[fmtSel.value];
+  presetLbl.textContent = f.presetLabel;
+  presetSel.innerHTML = f.presets.map(p => `<option value="${escHtml(p.v)}"${p.def ? ' selected' : ''}>${escHtml(p.label)}</option>`).join('');
+  const prev = rateSel.value;
+  const allowed = f.rates || ALL_RATES;
+  rateSel.innerHTML = '<option value="auto">Auto (keep source)</option>' +
+    allowed.map(r => `<option value="${r}">${RATE_LABEL(r)}</option>`).join('');
+  rateSel.value = allowed.includes(+prev) ? prev : 'auto';
+  fmtHint.textContent = f.hint;
+}
+fmtSel.addEventListener('change', onFormatChange);
+fillFormats();
+
+// ── Sniffing: otFFProbe() (ffmpeg -i on a name with NO extension, so the demuxer is
+//    chosen by content alone). The parser is shared with the video converter; the one
+//    rule that is OURS is "no audio track → rejected".
+const fmtLabel = otFFFormatLabel;
+async function probeItem(it) {
+  const ff = await ensureEngine();
+  it.ctrl = new AbortController();
+  const r = await otFFProbe(ff, it.file, it.ctrl.signal);
+  if (!r.ok) return r;
+  const a = r.info.audio;
+  // Flatten to the shape this page has always used: the first audio stream's fields on info.
+  const info = { format: r.info.format, duration: r.info.duration, bitrate: r.info.bitrate, video: !!r.info.video,
+                 codec: a ? a.codecLong : '', rate: a ? a.rate : 0, channels: a ? a.channels : 0, layout: a ? a.layout : '' };
+  if (!a) return { ok: false, reason: `No audio track found (${fmtLabel(info.format)} file)`, info };
+  return { ok: true, info };
+}
+
+async function probeLoop() {
+  if (probing) return;
+  probing = true;
+  try {
+    for (;;) {
+      const it = items.find(x => x.status === 'probing');
+      if (!it) break;
+      try {
+        const r = await probeItem(it);
+        if (!items.includes(it)) continue;             // removed while probing
+        if (r.ok) { it.info = r.info; it.status = 'ready'; }
+        else { it.info = r.info || null; it.status = 'rejected'; it.err = r.reason; }
+      } catch (e) {
+        if (!items.includes(it)) continue;
+        const w = otFFErrorText(e, { probing: true });
+        it.status = 'rejected'; it.err = w.cancelled ? 'Cancelled' : w.text;
+      }
+      it.ctrl = null;
+      renderItem(it); refreshActions();
+    }
+  } finally { probing = false; }
+}
+
+// ── Adding files ───────────────────────────────────────────────────────
+/* THE single entry point for files — the file input, the drop zone, a drop anywhere on
+   the page and a clipboard paste all land here, so the limits below cannot be bypassed
+   by picking a different route in. */
+function addFiles(fileList) {
+  const files = Array.from(fileList || []);
+  if (!files.length) return;
+  if (!otFFmpegSupported()) { showNotice('err', 'This browser cannot run the converter (it needs WebAssembly and Web Workers).'); return; }
+  const skipped = [];
+  let total = items.reduce((n, it) => n + it.file.size, 0);
+  let added = 0;
+  for (const f of files) {
+    if (items.length >= MAX_FILES) { skipped.push(`${f.name} — batch is full (${MAX_FILES} files max)`); continue; }
+    if (f.size === 0) { skipped.push(`${f.name} — empty file`); continue; }
+    if (f.size > MAX_FILE) { skipped.push(`${f.name} — ${fmtSz(f.size)} is over the 1 GB per-file limit`); continue; }
+    if (total + f.size > MAX_TOTAL) { skipped.push(`${f.name} — would exceed the 2 GB batch limit`); continue; }
+    if (items.some(it => it.file.name === f.name && it.file.size === f.size && it.file.lastModified === f.lastModified)) { skipped.push(`${f.name} — already in the list`); continue; }
+    total += f.size;
+    items.push({ id: nextId++, file: f, status: 'probing', info: null, out: null, progress: 0, err: '', ctrl: null, startedAt: 0 });
+    added++;
+  }
+  if (skipped.length) showNotice('warn', `${skipped.length} file${skipped.length > 1 ? 's' : ''} not added:`, skipped);
+  else hideNotice();
+  renderList(); refreshActions();
+  if (added) probeLoop().catch(loopFailed('Identifying files'));
+}
+
+dropZone.addEventListener('click', () => { if (!dropZone.classList.contains('disabled')) fileInput.click(); });
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); addFiles(e.dataTransfer && e.dataTransfer.files); });
+fileInput.addEventListener('change', () => { addFiles(fileInput.files); fileInput.value = ''; });
+// A drop that misses the zone would otherwise NAVIGATE the tab to the file and lose the
+// batch; catch it page-wide and treat it as a drop on the zone (the zone's own handler
+// already ran for drops inside it — do not add those twice).
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  if (!dropZone.contains(e.target)) addFiles(e.dataTransfer && e.dataTransfer.files);
+});
+// Ctrl+V with files on the clipboard (Explorer / Finder copy) — same entry, same limits.
+// Text pastes carry no files and fall through to the focused field untouched.
+document.addEventListener('paste', e => {
+  const files = e.clipboardData && e.clipboardData.files;
+  if (files && files.length) { e.preventDefault(); addFiles(files); }
+});
+
+// ── Rendering ──────────────────────────────────────────────────────────
+function itemMeta(it) {
+  const bits = [fmtSz(it.file.size)];
+  if (it.info) {
+    if (it.info.format) bits.push(fmtLabel(it.info.format) + (it.info.video ? ' video' : ''));
+    if (it.info.codec) bits.push(it.info.codec);
+    if (it.info.rate) bits.push(RATE_LABEL(it.info.rate));
+    if (it.info.layout) bits.push(it.info.layout);
+    if (it.info.duration != null) bits.push(fmtDur(it.info.duration));
+  }
+  return bits.join(' · ');
+}
+function statusHtml(it) {
+  switch (it.status) {
+    case 'probing':   return '<span class="fi-status st-busy">Identifying…</span>';
+    case 'ready':     return '<span class="fi-status st-wait">Ready</span>';
+    case 'rejected':  return `<span class="fi-status st-err" title="${escHtml(it.err)}">✗ Rejected</span>`;
+    case 'queued':    return '<span class="fi-status st-wait">Waiting…</span>';
+    case 'running':   return `<span class="fi-status st-busy" data-role="prog">${progressText(it)}</span>`;
+    case 'done':      return `<span class="fi-status st-ok">✓ ${fmtSz(it.out.blob.size)}</span>`;
+    case 'error':     return '<span class="fi-status st-err">✗ Failed</span>';
+    case 'cancelled': return '<span class="fi-status st-err">Cancelled</span>';
+  }
+  return '';
+}
+function progressText(it) {
+  const pct = Math.round((it.progress || 0) * 100);
+  const el = it.startedAt ? Math.round((Date.now() - it.startedAt) / 1000) : 0;
+  return `${pct}% · ${el}s`;
+}
+function buttonsHtml(it) {
+  const b = [];
+  if (it.status === 'done') b.push(`<button class="ibtn ok" data-act="dl" data-id="${it.id}">⬇ Download</button>`);
+  // 'rejected' is retryable too: an engine download that failed is not a bad file.
+  if (it.status === 'error' || it.status === 'cancelled' || it.status === 'rejected') b.push(`<button class="ibtn" data-act="retry" data-id="${it.id}">↻ Retry</button>`);
+  if (it.status === 'running' || it.status === 'queued') b.push(`<button class="ibtn bad" data-act="cancel" data-id="${it.id}">Cancel</button>`);
+  else b.push(`<button class="ibtn" data-act="remove" data-id="${it.id}" title="Remove from list">✕</button>`);
+  return b.join('');
+}
+function itemHtml(it) {
+  const icon = it.info && it.info.video ? '🎬' : '🎵';
+  const err = (it.status === 'error' || it.status === 'rejected') && it.err ? `<div class="fi-err">${escHtml(it.err)}</div>` : '';
+  const bar = it.status === 'running'
+    ? `<div class="fi-bar"><div class="pbar"><div class="pbar-fill${it.progress ? '' : ' indet'}" style="width:${Math.round((it.progress || 0) * 100)}%"></div></div></div>` : '';
+  return `<span class="fi-icon">${icon}</span>
+    <div class="fi-info">
+      <div class="fi-name" title="${escHtml(it.file.name)}">${escHtml(it.file.name)}</div>
+      <div class="fi-meta">${escHtml(itemMeta(it))}${it.out ? ' → ' + escHtml(it.out.name) : ''}</div>
+    </div>
+    <div class="fi-side">${statusHtml(it)}${buttonsHtml(it)}</div>${bar}${err}`;
+}
+function renderList() {
+  listEl.innerHTML = items.map(it => `<div class="file-item" data-id="${it.id}">${itemHtml(it)}</div>`).join('');
+}
+function renderItem(it) {
+  const el = listEl.querySelector(`.file-item[data-id="${it.id}"]`);
+  if (el) el.innerHTML = itemHtml(it);
+}
+function renderProgress(it) {   // hot path: only the two nodes that change
+  const el = listEl.querySelector(`.file-item[data-id="${it.id}"]`);
+  if (!el) return;
+  const p = el.querySelector('[data-role="prog"]');
+  if (p) p.textContent = progressText(it);
+  const f = el.querySelector('.pbar-fill');
+  if (f) { f.classList.toggle('indet', !it.progress); f.style.width = Math.round((it.progress || 0) * 100) + '%'; }
+}
+function refreshActions() {
+  const ready = items.filter(it => it.status === 'ready').length;
+  const done = items.filter(it => it.status === 'done');
+  const active = items.some(it => it.status === 'running' || it.status === 'queued');
+  convertBtn.disabled = converting || ready === 0;
+  convertBtn.textContent = converting ? 'Converting…' : `Convert all${ready ? ` (${ready})` : ''}`;
+  cancelAllBtn.hidden = !active;
+  zipBtn.hidden = done.length < 2;
+  clearBtn.hidden = items.length === 0 || active;
+  dropZone.classList.toggle('disabled', items.length >= MAX_FILES);
+  const total = items.reduce((n, it) => n + it.file.size, 0);
+  batchMeta.textContent = items.length ? `${items.length}/${MAX_FILES} files · ${fmtSz(total)}` + (done.length ? ` · ${done.length} done` : '') : '';
+  const opts = [fmtSel, presetSel, rateSel, chSel, trimStart, trimEnd];
+  for (const o of opts) o.disabled = converting;   // the batch converts with one setting
+}
+
+listEl.addEventListener('click', e => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const it = items.find(x => x.id === +btn.dataset.id);
+  if (!it) return;
+  switch (btn.dataset.act) {
+    case 'dl':     if (it.out) dlBlob(it.out.blob, it.out.name); break;
+    case 'retry':
+      it.err = '';
+      if (it.status === 'rejected') { it.status = 'probing'; renderItem(it); refreshActions(); probeLoop().catch(loopFailed('Identifying files')); }
+      else { it.status = 'queued'; renderItem(it); refreshActions(); runLoop().catch(loopFailed('Conversion')); }
+      break;
+    case 'cancel': cancelItem(it); break;
+    case 'remove': removeItem(it); break;
+  }
+});
+function cancelItem(it) {
+  if (it.status === 'queued') { it.status = 'cancelled'; it.err = ''; renderItem(it); refreshActions(); }
+  else if (it.status === 'running' && it.ctrl) it.ctrl.abort();
+}
+function removeItem(it) {
+  if (it.status === 'running') return;
+  if (it.status === 'probing' && it.ctrl) it.ctrl.abort();
+  items = items.filter(x => x !== it);
+  renderList(); refreshActions();
+}
+cancelAllBtn.addEventListener('click', () => {
+  for (const it of items) if (it.status === 'queued') { it.status = 'cancelled'; renderItem(it); }
+  const run = items.find(it => it.status === 'running');
+  if (run && run.ctrl) run.ctrl.abort();
+  refreshActions();
+});
+clearBtn.addEventListener('click', () => {
+  if (items.some(it => it.status === 'running' || it.status === 'queued')) return;
+  for (const it of items) if (it.status === 'probing' && it.ctrl) it.ctrl.abort();
+  items = [];
+  hideNotice(); renderList(); refreshActions();
+});
+
+// ── Conversion ─────────────────────────────────────────────────────────
+function readOptions() {
+  const f = FORMATS[fmtSel.value];
+  const start = parseTime(trimStart.value), end = parseTime(trimEnd.value);
+  if (Number.isNaN(start) || Number.isNaN(end)) return { error: 'Trim times must look like 90, 1:30 or 0:01:30.5.' };
+  if (start != null && end != null && end <= start) return { error: 'Trim end must be later than trim start.' };
+  return { fmtKey: fmtSel.value, fmt: f, preset: presetSel.value, rate: rateSel.value === 'auto' ? 0 : +rateSel.value, ch: chSel.value === 'auto' ? 0 : +chSel.value, start, end };
+}
+function outNameFor(it, fmt) {
+  let base = safeBase(it.file.name);
+  if (extOf(it.file.name) === fmt.ext || (fmt.ext === 'm4a' && extOf(it.file.name) === 'mp4')) base += '_converted';
+  return `${base}.${fmt.ext}`;
+}
+function buildArgs(it, o, outFile) {
+  const d = it.info && it.info.duration != null ? it.info.duration : null;
+  const args = [];
+  let outDur = d;
+  if (o.start != null) {
+    if (d != null && o.start >= d) throw new Error(`Trim start (${fmtDur(o.start)}) is at or past the end of this file (${fmtDur(d)}).`);
+    args.push('-ss', String(o.start));
+    if (d != null) outDur = d - o.start;
+  }
+  args.push('-i', '{input}');
+  if (o.end != null) {
+    const len = o.end - (o.start || 0);
+    args.push('-t', String(len));
+    outDur = d != null ? Math.min(len, outDur) : len;
+  }
+  // First audio track only; never carry video, subtitles, data or cover art into an audio file.
+  args.push('-vn', '-sn', '-dn', '-map', '0:a:0');
+  args.push(...o.fmt.args(o.preset));
+  if (o.rate) args.push('-ar', String(o.rate));
+  if (o.ch) args.push('-ac', String(o.ch));
+  else if (o.fmt.maxCh && it.info && it.info.channels > o.fmt.maxCh) args.push('-ac', String(o.fmt.maxCh));   // e.g. 5.1 → MP3
+  args.push('-f', o.fmt.muxer, outFile);
+  // Pre-flight the OUTPUT size for the formats whose size we can know (see MAX_OUT).
+  // Lossy outputs are bounded by their bitrate and skip this. Unknown duration/channels
+  // → no estimate → let it run; an under-estimate still ends in the trap message.
+  const est = estimateOut(it, o, outDur);
+  if (est > MAX_OUT) {
+    throw new Error(`The ${o.fmt.label} output would be about ${fmtSz(est)}, more than this tab can hold in memory (${fmtSz(MAX_OUT)}). Trim it, or pick a compressed format such as MP3, M4A or Opus.`);
+  }
+  return { args, outDur };
+}
+function estimateOut(it, o, outDur) {
+  if (!(outDur > 0) || !it.info) return 0;
+  const ch = o.ch || it.info.channels || 2;
+  const rate = o.rate || it.info.rate || 48000;
+  const pcm = /pcm_s24/.test(o.preset) ? 3 : 2;
+  switch (o.fmtKey) {
+    case 'wav': case 'aiff': return outDur * rate * ch * pcm;
+    case 'flac':             return outDur * rate * ch * 2 * 0.7;   // ~60–75 % of 16-bit PCM for real audio
+    default:                 return 0;
+  }
+}
+
+async function convertItem(it, o) {
+  it.ctrl = new AbortController();
+  it.progress = 0; it.startedAt = Date.now();
+  const tick = setInterval(() => renderProgress(it), 500);
+  try {
+    // Inside the try: a per-file problem (trim past the end, engine load failure) must
+    // fail THIS item and let the loop move on, not escape runLoop with the item stuck.
+    const ff = await ensureEngine();
+    const outFile = `out_${it.id}.${o.fmt.ext}`;
+    const { args, outDur } = buildArgs(it, o, outFile);
+    const blob = await ff.run({
+      file: new File([it.file], 'src'),
+      args, outName: outFile, outType: o.fmt.mime,
+      signal: it.ctrl.signal,
+      onProgress: ({ ratio, time }) => {
+        // ffmpeg's own ratio is against the INPUT duration; with a trim we know the output length.
+        let r = outDur > 0 && Number.isFinite(time) ? (time / 1e6) / outDur : ratio;
+        it.progress = Math.min(1, Math.max(0, r || 0));
+      },
+    });
+    if (!blob || !blob.size) throw new Error('ffmpeg produced an empty file');
+    it.out = { blob, name: outNameFor(it, o.fmt) };
+    it.status = 'done'; it.progress = 1;
+  } catch (e) {
+    const w = otFFErrorText(e);
+    if (w.cancelled) { it.status = 'cancelled'; it.err = ''; }
+    else { it.status = 'error'; it.err = w.text; }
+  } finally {
+    clearInterval(tick);
+    it.ctrl = null;
+  }
+}
+
+async function runLoop() {
+  if (converting) return;
+  converting = true;
+  refreshActions();
+  try {
+    for (;;) {
+      const it = items.find(x => x.status === 'queued');
+      if (!it) break;
+      const o = readOptions();
+      if (o.error) { it.status = 'error'; it.err = o.error; renderItem(it); continue; }
+      it.status = 'running'; renderItem(it); refreshActions();
+      await convertItem(it, o);
+      renderItem(it); refreshActions();
+    }
+  } finally {
+    converting = false;
+    refreshActions();
+  }
+}
+
+convertBtn.addEventListener('click', () => {
+  const o = readOptions();
+  if (o.error) { showNotice('err', o.error); return; }
+  hideNotice();
+  for (const it of items) if (it.status === 'ready') { it.status = 'queued'; it.err = ''; renderItem(it); }
+  refreshActions();
+  runLoop().catch(loopFailed('Conversion'));
+});
+
+// ── Download all as ZIP ────────────────────────────────────────────────
+zipBtn.addEventListener('click', async () => {
+  const done = items.filter(it => it.status === 'done');
+  if (done.length < 2) return;
+  const total = done.reduce((n, it) => n + it.out.blob.size, 0);
+  if (total > MAX_ZIP) { showNotice('warn', `The results total ${fmtSz(total)} — too large to zip in memory. Use the per-file Download buttons.`); return; }
+  if (typeof JSZip !== 'function') { showNotice('err', 'The zip library did not load. Use the per-file Download buttons.'); return; }
+  zipBtn.disabled = true;
+  const label = zipBtn.textContent;
+  try {
+    const zip = new JSZip();
+    const used = new Set();
+    for (const it of done) {
+      let name = it.out.name, n = 2;
+      while (used.has(name.toLowerCase())) name = `${noExt(it.out.name)} (${n++}).${extOf(it.out.name)}`;
+      used.add(name.toLowerCase());
+      zip.file(name, it.out.blob);                       // audio is already compressed: STORE, don't deflate
+    }
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' }, m => { zipBtn.textContent = `Zipping… ${Math.round(m.percent)}%`; });
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    dlBlob(blob, `audio-converted-${stamp}.zip`);
+  } catch (e) {
+    showNotice('err', 'Could not build the zip: ' + ((e && e.message) || e));
+  } finally {
+    zipBtn.disabled = false; zipBtn.textContent = label;
+  }
+});
+
+// ── Hand-off from the Video Converter ("🎵 Audio only") ────────────────
+//    Opened as ../audio-converter/#handoff by window.open(); we announce ourselves to
+//    the opener and it posts the File objects back (structured clone — the bytes are
+//    shared, not copied or uploaded). Files from any other source are ignored: the
+//    sender must be our opener and, outside file:, our own origin. They then go
+//    through addFiles() like any other route, so every limit still applies.
+if (location.hash === '#handoff' && window.opener) {
+  const origin = location.origin === 'null' ? '*' : location.origin;
+  window.addEventListener('message', ev => {
+    if (ev.source !== window.opener || (origin !== '*' && ev.origin !== origin)) return;
+    if (!ev.data || ev.data.type !== 'ot-handoff-files' || !Array.isArray(ev.data.files)) return;
+    addFiles(ev.data.files.filter(f => f instanceof File));
+  });
+  try { window.opener.postMessage({ type: 'ot-handoff-ready' }, origin); } catch (_) { /* opener gone */ }
+}
+
+// ── Page init ──────────────────────────────────────────────────────────
+if (isIOS) $('iosWarn').hidden = false;
+if (!otFFmpegSupported()) { $('noSupport').hidden = false; dropZone.classList.add('disabled'); }
+refreshActions();
+window.addEventListener('beforeunload', e => {
+  if (items.some(it => it.status === 'running' || it.status === 'queued')) { e.preventDefault(); e.returnValue = ''; }
+});
+</script>
+</body>
+</html>
