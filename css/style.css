@@ -630,6 +630,53 @@ a:hover { text-decoration: underline; }
   color: var(--warning);
 }
 
+/* ---------- Site Footer (injected by common.js on every page) ---------- */
+.site-footer {
+  border-top: 1px solid var(--border);
+  margin-top: 2rem;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  font-size: .8rem;
+  color: var(--text-muted);
+}
+.site-footer-inner {
+  max-width: 780px;
+  margin: 0 auto;
+}
+.site-footer p { margin: 0; }
+.site-footer p + p { margin-top: .5rem; }
+.site-footer-flag {
+  width: 1.2em;
+  height: .8em;
+  vertical-align: -.08em;
+  border-radius: 2px;
+}
+.site-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .35rem .9rem;
+}
+.site-footer-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color var(--transition);
+}
+.site-footer-links a:hover { color: var(--text); }
+.site-footer-links a.site-footer-donate {
+  color: var(--primary);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+}
+.site-footer-grin {
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
 /* ---------- Tool Page Layout ---------- */
 .tool-main {
   padding: 2rem 1.5rem 4rem;
@@ -1000,6 +1047,8 @@ input[type="checkbox"] {
   .hub-main { padding: 0 1rem 2rem; }
   .cat-filter { padding: .5rem 1rem; top: 48px; }
   .tool-main { padding: 1.25rem 1rem 3rem; }
+  /* Keep the link row clear of the fixed donate heart (bottom 1.5rem + 44px) */
+  .site-footer { padding: 1.5rem 1rem 5rem; }
   .card { padding: 1rem; }
   .tools-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
 }
@@ -1035,13 +1084,15 @@ input[type="checkbox"] {
   overflow: hidden;
 }
 
-body.has-sidebar .tool-main {
+body.has-sidebar .tool-main,
+body.has-sidebar .site-footer {
   margin-left: 220px;
 }
 
 @media (max-width: 768px) {
   .ot-sidebar { display: none; }
-  body.has-sidebar .tool-main { margin-left: 0; }
+  body.has-sidebar .tool-main,
+  body.has-sidebar .site-footer { margin-left: 0; }
 }
 
 .ot-sidebar-head {

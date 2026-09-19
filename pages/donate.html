@@ -16,6 +16,14 @@
       --gy: #FEF102;
       --gy-glow: rgba(254,241,2,.22);
       --gy-glow-s: rgba(254,241,2,.5);
+      /* Yellow on the THEME background (labels, links, divider). Fine on dark/matrix,
+         invisible on the light/anime pages, so those flip it to a dark gold. */
+      --gy-ink: var(--gy);
+      --gy-ink-glow: var(--gy-glow);
+    }
+    [data-theme="light"], [data-theme="anime"] {
+      --gy-ink: #854d0e;
+      --gy-ink-glow: rgba(133,77,14,.35);
     }
 
     /* ── Hero ── */
@@ -169,7 +177,7 @@
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: .16em;
-      color: var(--gy);
+      color: var(--gy-ink);
       margin-bottom: 1rem;
       text-align: center;
     }
@@ -201,10 +209,10 @@
     .g-divider {
       width: 48px;
       height: 3px;
-      background: var(--gy);
+      background: var(--gy-ink);
       border-radius: 2px;
       margin: 3.5rem auto;
-      box-shadow: 0 0 12px var(--gy-glow-s);
+      box-shadow: 0 0 12px var(--gy-ink-glow);
     }
 
     /* ── Properties grid ── */
@@ -349,7 +357,7 @@
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: .13em;
-      color: var(--gy);
+      color: var(--gy-ink);
       margin-bottom: .3rem;
     }
 
@@ -452,7 +460,7 @@
       <strong>MimbleWimble</strong>, the tongue-tying curse from Harry Potter. Then he vanished.
     </p>
     <p>
-      Two years later, <a href="https://grinscan.org/block.html?h=0" target="_blank" rel="noopener" style="color:var(--gy);text-decoration:none;border-bottom:1px solid var(--gy-glow)">Grin launched</a> — no founders' reward, no company, no venture capital,
+      Two years later, <a href="https://grinscan.org/block.html?h=0" target="_blank" rel="noopener" style="color:var(--gy-ink);text-decoration:none;border-bottom:1px solid var(--gy-ink-glow)">Grin launched</a> — no founders' reward, no company, no venture capital,
       no pre-sale. On launch day there were no coins to buy and no one to wire money to.
       Just a genesis block and a GitHub repository.
     </p>
@@ -595,7 +603,7 @@
     <div class="g-spec"><dt>Addresses on-chain</dt><dd>None</dd></div>
     <div class="g-spec"><dt>Amounts on-chain</dt><dd>Hidden</dd></div>
     <div class="g-spec"><dt>Foundation</dt><dd>None</dd></div>
-    <div class="g-spec"><dt>Learn more</dt><dd><a href="https://grin.mw" target="_blank" rel="noopener" style="color:var(--gy)">grin.mw →</a></dd></div>
+    <div class="g-spec"><dt>Learn more</dt><dd><a href="https://grin.mw" target="_blank" rel="noopener" style="color:var(--gy-ink)">grin.mw →</a></dd></div>
   </dl>
 </section>
 
