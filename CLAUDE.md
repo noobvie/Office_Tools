@@ -19,6 +19,23 @@ cd yt-server && npm install && npm start
 
 **Frontend:** No build step. Open `index.html` or any `tools/<name>/index.html` directly in a browser, or serve statically. Point `js/config.js` → `localhost:3001` for backend features.
 
+**Mechanical sweep — run before committing anything under `tools/`, `js/`, `index.html`, `sitemap.xml`:**
+```bash
+node scripts/check-tools.js            # the gate: exit 1 on any finding not in the baseline (~1 s)
+node scripts/check-tools.js --strict   # everything, baseline ignored — the full debt
+node scripts/check-tools.js --verbose  # also list the baselined findings
+node scripts/check-tools.js --update-baseline   # accept the current findings; commit the JSON and say why
+```
+It checks cross-tool invariants nobody checks by reading one page: tool dir ↔ hub card ↔ `OT_TOOLS`
+↔ sitemap ↔ category all agree; required `<head>`; every CDN script pinned to x.y.z with SRI;
+`innerHTML` fed data goes through an escape helper (heuristic); no `console.log`; no `#hex` or
+undefined `var(--x)` in a page's CSS; resources load only from operator/CDN/allow-listed hosts;
+`node --check` + every inline `<script>` compiled + every ld+json parsed. Pre-existing findings
+live in `scripts/check-tools.baseline.json` (a ratchet: new ones fail, fixed ones are reported as
+stale so the debt only shrinks). Policy tables (`HUB_CAT_MAP`, `FILE_HOST_ALLOW`) are at the top of
+the script — adding a third-party host or a hub category is an edit there, not a baseline entry.
+`scripts/check-html.js` is the theme-init subset and still runs alone.
+
 **Deploy to server:**
 ```bash
 sudo bash deploy.sh          # install/update/add domain
@@ -199,6 +216,9 @@ Most tools are 100% browser-local. Backend is only required for: URL Shortener, 
 4. Add a `<url>` entry to `sitemap.xml` (`https://tools.grin.money/tools/<name>/`, today's date as `lastmod`)
 5. If it needs backend APIs, add routes to `office-tools-server.js` before `// ── Start ──`
 6. Tools must be mobile-responsive, use CSS variables (not hardcoded colors), and include no external analytics or cookies
+7. `node scripts/check-tools.js` passes with **no new findings** — steps 2–4 and rule 6 are what it
+   enforces, and a new tool must not add to the baseline (a favicon `<link>`, SRI on every CDN
+   script, and `escHtml` on every interpolation are cheaper on day one than ever again)
 
 > **If Related Tools / sidebar / search are missing on a deployed tool page**, the usual cause is a **stale `js/common.js`** (cached or not redeployed) whose `OT_TOOLS` predates the tool — `autoRelatedTools()` can't find the current path and bails. Hard-refresh / redeploy `common.js`, don't add manual markup.
 
