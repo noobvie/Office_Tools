@@ -34,6 +34,7 @@ const multer    = require('multer');
 const { makeRateLimiter } = require('./lib/rate-limit');
 const safeFetch = require('./lib/safe-fetch');
 const proxyRewrite = require('./lib/proxy-rewrite');
+const { makeRedirectsHandler } = require('./lib/redirects-route');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -938,8 +939,9 @@ app.get(['/ip', '/api/ip'], publicCors, (req, res) => {
 //
 //   GET /api/net/uptime?url=        is a site up? status, latency, redirect, SSL expiry
 //   GET /api/net/proxy?url=&self=&strip=   reader-mode fetch + HTML link/asset rewrite
+//   GET /api/net/redirects?url=    every hop of a redirect chain (URL Expander)
 //
-// SSRF guard: both routes go through lib/safe-fetch.js. Every hop — the first URL and
+// SSRF guard: all three routes go through lib/safe-fetch.js. Every hop — the first URL and
 // every redirect target — is validated at CONNECT time on the exact address the socket
 // uses (no check-then-fetch rebinding window), and a redirect to a private / loopback /
 // link-local / cloud-metadata address is refused before any connection is made.
@@ -1077,6 +1079,17 @@ app.get('/api/net/proxy', proxyRLMiddleware, async (req, res) => {
     res.status(502).json({ error: 'Proxy fetch failed: ' + String(reason) });
   }
 });
+
+// GET /api/net/redirects?url=   (URL Expander — tools/url-expander)
+// Every hop of a redirect chain, facts only: lib/redirects-route.js (contract, input
+// checks, the 16-request global in-flight cap, abort on client disconnect) over
+// traceRedirects. Normal CORS_ORIGINS allowlist, NOT publicCors. Its own 12/min limiter:
+// one expansion is up to 11 outbound requests, so it does not share netRL's budget.
+const redirectRL = makeRateLimiter({
+  windowMs: 60_000, max: 12,
+  message: 'Rate limit: 12 expansions/minute. Please wait a minute.',
+});
+app.get('/api/net/redirects', redirectRL.middleware, makeRedirectsHandler());
 
 // ── Email tools — validation, deliverability, DNSBL, disposable, temp inbox ──
 //
