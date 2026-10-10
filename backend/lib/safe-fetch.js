@@ -10,6 +10,7 @@
 //   const sf = require('./lib/safe-fetch');
 //   const { url } = sf.normalizeUserUrl(req.query.url);       // throws SafeFetchError (400)
 //   const r = await sf.safeRequest(url, { maxBytes: 12 << 20 });  // one hop, no redirects
+//   const f = await sf.fetchFollow(url, { maxBytes: 12 << 20 });  // 3xx followed, each hop guarded
 //   const t = await sf.traceRedirects(url);                     // every hop, validated
 //   const cert = await sf.certInfo(t.final.url, t.final.ip);    // TLS to the PINNED ip
 //
@@ -501,6 +502,7 @@ function createSafeFetcher({ classify = (ip) => isPublicIp(ip), resolve = dns.lo
         out.final = {
           url: current.href, status: r.status, contentType: _mime(r.headers['content-type']),
           title: r.html ? findTitle(r.html) : null, ip: r.remoteAddress,
+          server: r.headers.server || null,
         };
         if (r.html) out.jsRedirectHint = findJsRedirect(r.html, current);
         return finish('final');
@@ -523,6 +525,45 @@ function createSafeFetcher({ classify = (ip) => isPublicIp(ip), resolve = dns.lo
       if (out.hops.length > maxHops) return finish('max-hops', `${target.href} — more than ${maxHops} redirects, not fetched`);
       seen.add(target.href);
       current = target;
+    }
+  }
+
+  // GET `input` and follow HTTP 3xx + Location (only those; a Refresh or meta refresh is
+  // the caller's page, not a hop) up to maxRedirects, every hop a separate guarded
+  // safeRequest. Resolves the final safeRequest result, whose `url` is the final URL, plus
+  // `redirects` (count). A redirect's body is never read. One budget covers the whole
+  // chain. Rejects like safeRequest, plus ERR_TOO_MANY_REDIRECTS, ERR_BAD_REDIRECT and
+  // ERR_UNSUPPORTED_PROTOCOL (a Location to a non-web scheme). ERR_SSRF_BLOCKED carries
+  // `redirects` so a caller can tell a private INPUT (0) from a private redirect target.
+  async function fetchFollow(input, {
+    headers = {}, maxBytes = 1024 * 1024, maxRedirects = 10, totalTimeoutMs = 15000, signal,
+  } = {}) {
+    const startedAt = Date.now();
+    let current = _toUrl(input);
+    for (let redirects = 0; ; redirects++) {
+      const remaining = totalTimeoutMs - (Date.now() - startedAt);
+      if (remaining <= 0) throw new SafeFetchError('ERR_HOP_TIMEOUT', `No complete response within ${totalTimeoutMs} ms`, current.href);
+      let r;
+      try {
+        r = await safeRequest(current, {
+          headers, maxBytes, timeoutMs: remaining, signal,
+          readBody: (status, h) => !(REDIRECT_CODES.has(status) && h.location),
+        });
+      } catch (e) {
+        if (e && typeof e === 'object') e.redirects = redirects;
+        throw e;
+      }
+      if (!(REDIRECT_CODES.has(r.status) && r.headers.location)) return { ...r, redirects };
+      if (redirects >= maxRedirects) {
+        throw Object.assign(new SafeFetchError('ERR_TOO_MANY_REDIRECTS', `More than ${maxRedirects} redirects`, current.href), { redirects });
+      }
+      let next;
+      try { next = new URL(String(r.headers.location), current); }
+      catch { throw Object.assign(new SafeFetchError('ERR_BAD_REDIRECT', _ERR_TEXT.ERR_BAD_REDIRECT, current.href), { redirects }); }
+      if (next.protocol !== 'http:' && next.protocol !== 'https:') {
+        throw Object.assign(new SafeFetchError('ERR_UNSUPPORTED_PROTOCOL', 'Redirect to a non-web scheme', current.href), { redirects });
+      }
+      current = next;
     }
   }
 
@@ -567,7 +608,7 @@ function createSafeFetcher({ classify = (ip) => isPublicIp(ip), resolve = dns.lo
     });
   }
 
-  return { classify, guardedLookup, safeRequest, traceRedirects, certInfo };
+  return { classify, guardedLookup, safeRequest, fetchFollow, traceRedirects, certInfo };
 }
 
 const _default = createSafeFetcher();
@@ -580,6 +621,7 @@ module.exports = {
   createSafeFetcher,
   guardedLookup:  _default.guardedLookup,
   safeRequest:    _default.safeRequest,
+  fetchFollow:    _default.fetchFollow,
   traceRedirects: _default.traceRedirects,
   certInfo:       _default.certInfo,
   // pure parsers, exported for tests and the route layer

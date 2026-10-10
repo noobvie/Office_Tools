@@ -476,7 +476,7 @@ describe('traceRedirects', () => {
       assert.equal(typeof h.ms, 'number');
     }
     assert.equal(t.hops[0].server, 'fixture');
-    assert.deepEqual(t.final, { url: `http://127.0.0.1:${A}/ok`, status: 200, contentType: 'text/html', title: 'Landing & Page', ip: '127.0.0.1' });
+    assert.deepEqual(t.final, { url: `http://127.0.0.1:${A}/ok`, status: 200, contentType: 'text/html', title: 'Landing & Page', ip: '127.0.0.1', server: null });
     assert.equal(t.stopDetail, null);
     assert.equal(t.jsRedirectHint, null);
   });
@@ -641,6 +641,51 @@ describe('traceRedirects', () => {
     const ac = new AbortController();
     setTimeout(() => ac.abort(), 100);
     await assert.rejects(T('/hang', { signal: ac.signal, hopTimeoutMs: 5000 }), { code: 'ERR_ABORTED' });
+  });
+});
+
+describe('fetchFollow (the proxy route transport)', () => {
+  const F = (p, o) => fx.fetchFollow(`http://127.0.0.1:${A}${p}`, o);
+
+  test('follows a 3-hop chain and returns the final body + URL', async () => {
+    const r = await F('/c3');
+    assert.equal(r.status, 200);
+    assert.equal(r.url, `http://127.0.0.1:${A}/ok`);
+    assert.equal(r.redirects, 3);
+    assert.match(r.body.toString(), /Landing &amp; Page/);
+  });
+  test('redirect to 127.0.0.1 → ERR_SSRF_BLOCKED (redirects 1), the target saw ZERO connections', async () => {
+    const before = { ...hitsB };
+    await assert.rejects(F('/to-private'), e => e.code === 'ERR_SSRF_BLOCKED' && e.redirects === 1);
+    await assert.rejects(F('/to-private-name'), { code: 'ERR_SSRF_BLOCKED' });
+    await assert.rejects(F('/to-metadata'), { code: 'ERR_SSRF_BLOCKED' });
+    assert.deepEqual(hitsB, before);
+  });
+  test('a private INPUT → ERR_SSRF_BLOCKED with redirects 0', async () => {
+    const before = { ...hitsB };
+    await assert.rejects(fx.fetchFollow(`http://127.0.0.1:${B}/`), e => e.code === 'ERR_SSRF_BLOCKED' && e.redirects === 0);
+    assert.deepEqual(hitsB, before);
+  });
+  test('more than maxRedirects → ERR_TOO_MANY_REDIRECTS; exactly maxRedirects is fine', async () => {
+    assert.equal((await F('/chain/3', { maxRedirects: 3 })).status, 200);
+    await assert.rejects(F('/chain/4', { maxRedirects: 3 }), { code: 'ERR_TOO_MANY_REDIRECTS' });
+    await assert.rejects(F('/loop-a'), { code: 'ERR_TOO_MANY_REDIRECTS' });
+  });
+  test('non-web-scheme and unparseable Location are refused', async () => {
+    await assert.rejects(F('/js-scheme'), { code: 'ERR_UNSUPPORTED_PROTOCOL' });
+    await assert.rejects(F('/bad-loc'), { code: 'ERR_BAD_REDIRECT' });
+  });
+  test('the byte cap applies to the final DECODED body (gzip bomb)', async () => {
+    await assert.rejects(F('/bomb-gz', { maxBytes: 1024 * 1024 }), { code: 'ERR_BODY_TOO_LARGE' });
+  });
+  test('a 3xx body is never read', async () => {
+    const r = await F('/redirect-endless-body', { totalTimeoutMs: 3000 });
+    assert.equal(r.status, 200);
+  });
+  test('one budget covers the whole chain', async () => {
+    const t0 = Date.now();
+    await assert.rejects(F('/slow/9', { totalTimeoutMs: 700 }), { code: 'ERR_HOP_TIMEOUT' });
+    assert.ok(Date.now() - t0 < 1500);
   });
 });
 
