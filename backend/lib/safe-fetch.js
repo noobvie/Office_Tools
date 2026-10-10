@@ -201,9 +201,14 @@ function _attrs(tagInner) {
 
 function _stripComments(html) { return html.replace(/<!--[\s\S]*?(?:-->|$)/g, ''); }
 
+// The page parsers run on hostile HTML on the event loop, so every pattern must be
+// LINEAR: a tag body is `[^<>]*`, never `[^>]*` — from each of N unclosed `<meta`s,
+// `[^>]*` scans to the end of the input, which is O(N²) (R1: 64 KiB of `<meta` took
+// 0.67 s per hop, ten hops per request).
+
 // First <meta http-equiv="refresh"> → parseRefresh() result, or null.
 function findMetaRefresh(html) {
-  const re = /<meta\b([^>]*)>/gi;
+  const re = /<meta\b([^<>]*)>/gi;
   let m;
   const text = _stripComments(html);
   while ((m = re.exec(text))) {
@@ -216,10 +221,16 @@ function findMetaRefresh(html) {
   return null;
 }
 
+// The FIRST <title> only (as a browser does). Its close tag is searched for once:
+// retrying from every later `<title` would be O(N²) on an unclosed one.
 function findTitle(html) {
-  const m = /<title\b[^>]*>([\s\S]*?)<\/title>/i.exec(_stripComments(html));
-  if (!m) return null;
-  const t = _decodeEntities(m[1]).replace(/\s+/g, ' ').trim();
+  const text = _stripComments(html);
+  const open = /<title\b[^<>]*>/i.exec(text);
+  if (!open) return null;
+  const from = open.index + open[0].length;
+  const end = text.slice(from).search(/<\/title\s*>/i);
+  if (end === -1) return null;
+  const t = _decodeEntities(text.slice(from, from + end)).replace(/\s+/g, ' ').trim();
   return t ? t.slice(0, 300) : null;
 }
 
@@ -608,7 +619,37 @@ function createSafeFetcher({ classify = (ip) => isPublicIp(ip), resolve = dns.lo
     });
   }
 
-  return { classify, guardedLookup, safeRequest, fetchFollow, traceRedirects, certInfo };
+  // For callers that hand an ADDRESS to something outside this module — a raw TCP probe
+  // (portcheck), or a ping / traceroute child process. Resolves `host` to ONE public IP;
+  // the caller must use that IP, never the name (a second resolution is a rebinding
+  // window). Unlike the HTTP fetches above, a mixed answer picks its first public
+  // address instead of refusing: nothing ever connects to the name, so the private
+  // answers are simply never used. `family` 4 | 6 restricts the pick to that family.
+  // → Promise<ip>; rejects Error with a user-safe message (codes ERR_SSRF_BLOCKED / ENOTFOUND).
+  function resolvePublicTarget(input, { family } = {}) {
+    return new Promise((resolveP, rejectP) => {
+      const host = _bare(String(input ?? '').trim());
+      if (net.isIP(host)) {
+        if (!classify(host, undefined)) return rejectP(Object.assign(new Error('Target is a private or reserved address'), { code: 'ERR_SSRF_BLOCKED' }));
+        return resolveP(host);
+      }
+      // A hostname, or nothing. This also keeps an option-shaped "-f" out of argv.
+      if (!host || host.length > 253 || /^-|[\s\0/\\?#@%:]/.test(host)) {
+        return rejectP(Object.assign(new Error('Invalid host'), { code: 'ERR_BAD_URL' }));
+      }
+      resolve(host, { all: true }, (err, addrs) => {
+        if (err || !Array.isArray(addrs) || !addrs.length) return rejectP(Object.assign(new Error('DNS resolution failed'), { code: 'ENOTFOUND' }));
+        const fam = Number(family) === 4 || Number(family) === 6 ? Number(family) : 0;
+        const pool = fam ? addrs.filter(a => a.family === fam) : addrs;
+        if (!pool.length) return rejectP(Object.assign(new Error(`Host has no IPv${fam} address`), { code: 'ENOTFOUND' }));
+        const ok = pool.find(a => classify(a.address, undefined));
+        if (!ok) return rejectP(Object.assign(new Error('Host resolves only to private or reserved addresses'), { code: 'ERR_SSRF_BLOCKED' }));
+        resolveP(ok.address);
+      });
+    });
+  }
+
+  return { classify, guardedLookup, safeRequest, fetchFollow, traceRedirects, certInfo, resolvePublicTarget };
 }
 
 const _default = createSafeFetcher();
@@ -624,6 +665,7 @@ module.exports = {
   fetchFollow:    _default.fetchFollow,
   traceRedirects: _default.traceRedirects,
   certInfo:       _default.certInfo,
+  resolvePublicTarget: _default.resolvePublicTarget,
   // pure parsers, exported for tests and the route layer
   parseRefresh,
   findMetaRefresh,

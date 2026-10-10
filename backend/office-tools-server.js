@@ -33,6 +33,7 @@ const { DatabaseSync } = require('node:sqlite');
 const multer    = require('multer');
 const { makeRateLimiter } = require('./lib/rate-limit');
 const safeFetch = require('./lib/safe-fetch');
+const proxyRewrite = require('./lib/proxy-rewrite');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -270,22 +271,9 @@ function publicCors(req, res, next) {
 // routes (which refuse a host if ANY answer is private), a probe picks one public
 // address from a mixed answer: it connects to that IP only, never to the name.
 
-// Resolve host → a public IP to connect to, or throw. IP inputs are validated directly.
-function resolvePublicTarget(host) {
-  return new Promise((resolve, reject) => {
-    const clean = host.replace(/^\[|\]$/g, '');
-    if (net.isIP(clean)) {
-      if (!safeFetch.isPublicIp(clean)) return reject(new Error('Target is a private or reserved address'));
-      return resolve(clean);
-    }
-    dns.lookup(clean, { all: true }, (err, addrs) => {
-      if (err || !addrs || !addrs.length) return reject(new Error('DNS resolution failed'));
-      const ok = addrs.find(a => safeFetch.isPublicIp(a.address));
-      if (!ok) return reject(new Error('Host resolves only to private or reserved addresses'));
-      resolve(ok.address);
-    });
-  });
-}
+// Resolve host → a public IP to connect to, or throw: safeFetch.resolvePublicTarget.
+// It is shared with ping / traceroute, which pass the IP (never the name) to the child.
+const resolvePublicTarget = safeFetch.resolvePublicTarget;
 
 // Per-IP limiter for the public probe endpoints (a setup page may check a few hosts ×
 // ports and reload). Kept separate from ping/resolve (netRL, 10/min). The cap keys on the
@@ -699,12 +687,16 @@ const _netRL = makeRateLimiter({
 function netRLMiddleware(req, res, next) { return _netRL.middleware(req, res, next); }
 
 // GET /api/net/ping?host=&count=&family=   (SSE stream)
-app.get('/api/net/ping', netRLMiddleware, (req, res) => {
+app.get('/api/net/ping', netRLMiddleware, async (req, res) => {
   const host  = String(req.query.host || '').trim().replace(/^\[|\]$/g, '');
   const count = Math.min(10, Math.max(1, parseInt(req.query.count, 10) || 4));
   const fam   = String(req.query.family || 'auto'); // 'auto' | '4' | '6'
 
   if (!validNetHost(host)) return res.status(400).json({ error: 'Invalid host' });
+  // SSRF: the child gets a validated PUBLIC IP, never the name (no second resolution).
+  let target;
+  try { target = await resolvePublicTarget(host, { family: fam }); }
+  catch (e) { return res.status(400).json({ error: e.message }); }
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -716,13 +708,13 @@ app.get('/api/net/ping', netRLMiddleware, (req, res) => {
     cmd  = 'ping';
     args = ['-n', String(count)];
     if (fam === '6') args.push('-6');
-    args.push(host);
+    args.push(target);
   } else {
     cmd  = 'ping';
     args = ['-c', String(count)];
     if (fam === '4') args.push('-4');
     else if (fam === '6') args.push('-6');
-    args.push(host);
+    args.push(target);
   }
 
   const proc = spawn(cmd, args, { timeout: 30000 });
@@ -741,12 +733,16 @@ app.get('/api/net/ping', netRLMiddleware, (req, res) => {
 });
 
 // GET /api/net/traceroute?host=&maxhops=&family=   (SSE stream)
-app.get('/api/net/traceroute', netRLMiddleware, (req, res) => {
+app.get('/api/net/traceroute', netRLMiddleware, async (req, res) => {
   const host    = String(req.query.host || '').trim().replace(/^\[|\]$/g, '');
   const maxhops = Math.min(30, Math.max(1, parseInt(req.query.maxhops, 10) || 30));
   const fam     = String(req.query.family || 'auto');
 
   if (!validNetHost(host)) return res.status(400).json({ error: 'Invalid host' });
+  // SSRF: the child gets a validated PUBLIC IP, never the name (no second resolution).
+  let target;
+  try { target = await resolvePublicTarget(host, { family: fam }); }
+  catch (e) { return res.status(400).json({ error: e.message }); }
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -758,13 +754,13 @@ app.get('/api/net/traceroute', netRLMiddleware, (req, res) => {
     cmd  = 'tracert';
     args = ['-h', String(maxhops)];
     if (fam === '6') args.push('-6');
-    args.push(host);
+    args.push(target);
   } else {
     cmd  = 'traceroute';
     args = ['-m', String(maxhops)];
     if (fam === '4') args.push('-4');
     else if (fam === '6') args.push('-6');
-    args.push(host);
+    args.push(target);
   }
 
   const proc = spawn(cmd, args, { timeout: 120000 });
@@ -1017,57 +1013,7 @@ const proxyRLMiddleware = makeRateLimiter({
 
 const _PROXY_MAX_BYTES = 12 * 1024 * 1024; // 12 MB cap per resource
 
-function _absolutize(ref, base) { try { return new URL(ref, base).href; } catch { return null; } }
-function _proxify(absUrl, selfBase) { return `${selfBase}?url=${encodeURIComponent(absUrl)}&self=${encodeURIComponent(selfBase)}`; }
-
-// Reader-mode HTML rewrite: absolutise + route links/assets back through the proxy.
-function _rewriteHtml(html, baseUrl, selfBase, stripScripts) {
-  // Drop directives that would block rewritten/proxied content
-  html = html.replace(/<meta[^>]+http-equiv\s*=\s*["']?content-security-policy["']?[^>]*>/gi, '');
-  html = html.replace(/\sintegrity\s*=\s*("|')[^"']*\1/gi, '');
-  html = html.replace(/\scrossorigin(\s*=\s*("|')[^"']*\2)?/gi, '');
-
-  if (stripScripts) {
-    html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
-    html = html.replace(/<script\b[^>]*\/?>/gi, '');
-    html = html.replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, ''); // inline handlers
-  }
-
-  // CSS url(...)
-  html = html.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gi, (m, q, ref) => {
-    if (/^(data:|#)/i.test(ref.trim())) return m;
-    const abs = _absolutize(ref.trim(), baseUrl);
-    return abs ? `url(${q}${_proxify(abs, selfBase)}${q})` : m;
-  });
-
-  // srcset (comma-separated candidate list)
-  html = html.replace(/\ssrcset\s*=\s*("|')(.*?)\1/gi, (m, q, val) => {
-    const out = val.split(',').map(part => {
-      const seg = part.trim().split(/\s+/);
-      if (seg[0] && !/^data:/i.test(seg[0])) {
-        const abs = _absolutize(seg[0], baseUrl);
-        if (abs) seg[0] = _proxify(abs, selfBase);
-      }
-      return seg.join(' ');
-    }).join(', ');
-    return ` srcset=${q}${out}${q}`;
-  });
-
-  // href / src / action / poster
-  html = html.replace(/\s(href|src|action|poster)\s*=\s*("|')(.*?)\2/gi, (m, attr, q, ref) => {
-    const t = ref.trim();
-    if (!t || /^(data:|mailto:|tel:|javascript:|#)/i.test(t)) return m;
-    const abs = _absolutize(t, baseUrl);
-    return abs ? ` ${attr}=${q}${_proxify(abs, selfBase)}${q}` : m;
-  });
-
-  // A small banner so the user knows they are inside the proxy
-  const banner = `<div style="all:initial;display:block;font:13px/1.4 system-ui,sans-serif;background:#1a1a2e;color:#e0e0e0;padding:8px 14px;border-bottom:2px solid #6c5ce7;position:sticky;top:0;z-index:2147483647">🛡️ Viewed via Office Tools web proxy — <span style="color:#a29bfe">${baseUrl.replace(/"/g, '&quot;').replace(/</g, '&lt;')}</span></div>`;
-  if (/<body[^>]*>/i.test(html)) html = html.replace(/(<body[^>]*>)/i, `$1${banner}`);
-  else html = banner + html;
-
-  return html;
-}
+// HTML rewrite + response headers: lib/proxy-rewrite.js (linear patterns, sandboxed origin).
 
 // GET /api/net/proxy?url=&self=&strip=
 app.get('/api/net/proxy', proxyRLMiddleware, async (req, res) => {
@@ -1103,9 +1049,12 @@ app.get('/api/net/proxy', proxyRLMiddleware, async (req, res) => {
     // Frame-safe headers so the result can render in our iframe
     res.removeHeader?.('X-Frame-Options');
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    const isHtml = /text\/html|application\/xhtml/i.test(ct);
+    // Sandboxed (opaque origin): proxied content must never run as OUR origin.
+    for (const [k, v] of Object.entries(proxyRewrite.proxyHeaders(isHtml))) res.setHeader(k, v);
 
-    if (/text\/html|application\/xhtml/i.test(ct)) {
-      const html = _rewriteHtml(buf.toString('utf8'), finalUrl, selfBase, stripScripts);
+    if (isHtml) {
+      const html = proxyRewrite.rewriteHtml(buf.toString('utf8'), finalUrl, selfBase, stripScripts);
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       return res.status(r.status < 400 ? 200 : r.status).send(html);
     }
