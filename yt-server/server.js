@@ -103,6 +103,7 @@ const crypto    = require('crypto');
 const fs        = require('fs');
 const os        = require('os');
 const EventEmitter = require('events');
+const { checkVideoUrl } = require('./url-guard');
 
 /* ── Config ─────────────────────────────────────────────────── */
 const PORT       = parseInt(process.env.PORT    || '9000', 10);
@@ -222,21 +223,16 @@ app.post('/', async (req, res) => {
 
   /* ── Validate ── */
   if (!url) return res.json({ status: 'error', error: { code: 'missing_url' } });
-  try {
-    const u = new URL(url);
-    // Soft-restrict to known video hosts (YouTube, shorts, music, etc.)
-    const allowed = ['youtube.com', 'youtu.be', 'music.youtube.com'];
-    if (!allowed.some(h => u.hostname.endsWith(h))) {
-      return res.json({ status: 'error', error: { code: 'unsupported_host' } });
-    }
-  } catch {
-    return res.json({ status: 'error', error: { code: 'invalid_url' } });
-  }
+  // SSRF guard (url-guard.js): exact host allowlist, and yt-dlp only ever gets the
+  // canonical href of what was checked — never the raw `url`.
+  const checked = checkVideoUrl(url);
+  if (checked.error) return res.json({ status: 'error', error: { code: checked.error } });
+  const videoUrl = checked.href;
 
   /* ── Fetch video metadata (title) ── */
   let title = 'download';
   try {
-    title = await getTitle(url);
+    title = await getTitle(videoUrl);
   } catch (e) {
     return res.json({ status: 'error', error: { code: e.message.slice(0, 200) } });
   }
@@ -255,7 +251,7 @@ app.post('/', async (req, res) => {
   jobs.set(jobId, { tmpPath, filename, status: 'pending', error: null, emitter, expires: Date.now() + JOB_TTL });
 
   /* ── Start download in background ── */
-  startDownload({ jobId, url, tmpPath, isAudio, wantMp3, videoQuality, audioBitrate });
+  startDownload({ jobId, url: videoUrl, tmpPath, isAudio, wantMp3, videoQuality, audioBitrate });
 
   /* ── Respond immediately ── */
   res.json({ status: 'tunnel', url: `/stream/${jobId}`, filename });

@@ -10,6 +10,8 @@ cd backend && npm install
 npm start          # production
 npm run dev        # nodemon watch mode
 node --check office-tools-server.js  # syntax check only
+npm test           # node:test suite (backend/test/), zero dependencies
+HOST=127.0.0.1 PORT=3999 npm start   # local smoke test: bind loopback only (HOST unset = all interfaces, the default)
 ```
 
 **YT server (port 9000):**
@@ -112,7 +114,18 @@ req.on('close', () => proc.kill());
 
 **SQLite** uses `better-sqlite3` (synchronous). Tables: `short_urls`, `pastes`, `file_shares`. DB path defaults to `/opt/office-tools/data/tools.db`.
 
-**child_process / host input** — always sanitize host strings with a strict character whitelist before passing to `spawn()`: `/^[a-zA-Z0-9.\-:\[\]_]+$/`.
+**child_process / host input** — always sanitize host strings with a strict character whitelist before passing to `spawn()`: `/^[a-zA-Z0-9.\-:\[\]_]+$/`, then resolve with `resolvePublicTarget` and hand the child the pinned IP, never the name (ping/traceroute do this).
+
+**Outbound fetches — SSRF rule.** Every server-side request to a user-influenced address (uptime, proxy,
+redirects, portcheck, ping, traceroute, any cert probe) goes through `backend/lib/safe-fetch.js`. Never call
+`fetch()`, `http(s).request`, `tls.connect` or `net.connect` on one directly. Why: the lib validates the address
+at CONNECT time on the exact DNS answer the socket uses (no rebinding window, and no `redirect:'follow'` that
+skips the check after hop 1); it classifies IP literals itself, because Node never calls `lookup` for those;
+its `lookup` honours the `{all:true}` shape that `autoSelectFamily` uses; and its byte cap counts DECODED bytes
+(a gzip bomb). `isPublicIp` is the ONE classifier — never add a second list. Fixed-host calls (DoH, rdap,
+hackertarget, ip-api, Gemini) stay on `fetch`. Any new regex over fetched HTML must be linear — see the
+header of `lib/proxy-rewrite.js`. ⚠ "URLs are never logged" is true of the backend only: nginx's default
+`access_log` still writes `?url=` for `/tools-api/api/net/(redirects|uptime|proxy)` (open, deploy-level).
 
 ### Theme system
 
@@ -137,6 +150,7 @@ Four themes: `light` → `dark` → `matrix` → `anime`. Set via `data-theme` o
 | `GET /api/net/ping` | SSE-streamed ping (Windows/Linux) | SSE |
 | `GET /api/net/traceroute` | SSE-streamed traceroute | SSE |
 | `GET /api/net/ptr?ip=` | Reverse DNS via `dns.reverse()` | JSON |
+| `GET /api/net/redirects?url=` | URL Expander: every hop of a redirect chain (3xx, `Refresh:`, meta refresh; JS detected, never followed), each hop SSRF-guarded via `lib/safe-fetch.js`. Handler in `lib/redirects-route.js`. Own limiter `redirectRL` 12/min + a global in-flight cap of 16 (→ 503 `{error:'busy'}`); aborts the trace on client disconnect; `CORS_ORIGINS`, not `publicCors`; URLs never logged | `{input, start, hops:[{n,url,host,ip,status,kind,next,ms,server}], final:{url,status,contentType,title,ip,server}\|null, stop, stopDetail, jsRedirectHint, totalMs}` — `stop` ∈ final/max-hops/loop/blocked/non-web-scheme/timeout/error. 400 `{error}` bad/over-2048-char input, 403 `{error,url}` private input |
 | `GET /ip` (alias `/api/ip`) | Public IP echo (ipify-style, **open CORS** `publicCors`, 60/min) — the caller's source IP only. Short public URL `…/tools-api/ip` (nginx strips `/tools-api/`). Echoes whichever family the connection used; `curl -4`/`-6` to pin one | `text/plain` default; `?format=json` → `{ip,family,ipv4,ipv6}` (only the connected family filled, other `null`); `?format=jsonp&callback=` (same object) |
 | `GET /api/domain/dns?domain=&type=` | DoH proxy — A/AAAA/MX/NS/TXT/CNAME/SOA/CAA | JSON |
 | `GET /api/domain/whois`, `rdap`, `availability` | Domain info | JSON |
@@ -182,7 +196,7 @@ object (the "Both at once" card), where a family with no connectivity reads `nul
   card stays hidden until both are set.
 
 **`portcheck` / `portcheckbatch` are a PUBLIC service** (open CORS `*`, not the `CORS_ORIGINS` allowlist that guards every other route) so any external page — e.g. a Grin solo-pool setup page on any domain — can verify its own stratum port. Two safeguards make this safe and must stay in place:
-- **SSRF guard** (`resolvePublicTarget` → `ipIsPublic`): rejects loopback/private/link-local/CGNAT/reserved/IPv4-mapped targets and resolves hostnames to a validated **public** IP *before* connecting, so the endpoint can't be used to probe the server's own internal network or cloud metadata (`169.254.169.254`). DNS-rebinding is defeated by connecting to the resolved IP, not the raw hostname.
+- **SSRF guard** (`resolvePublicTarget` in `backend/lib/safe-fetch.js`, classifying with `isPublicIp`, the one classifier every outbound route shares; `/api/net/ping` and `/api/net/traceroute` use the same function and hand the child process the resolved IP, never the name): rejects loopback/private/link-local/CGNAT/reserved/IPv4-mapped targets and resolves hostnames to a validated **public** IP *before* connecting, so the endpoint can't be used to probe the server's own internal network or cloud metadata (`169.254.169.254`). DNS-rebinding is defeated by connecting to the resolved IP, not the raw hostname.
 - **Rate limit** `probeRLMiddleware`: 40 req/min per IP (separate from `netRLMiddleware`'s 10/min on ping/resolve/ptr). Raising this is only safe while the SSRF guard is intact.
 
 Consumed by the Grin Node Toolkit solo-mining setup page (`web/07_mining_pool_solo/setup-solo-mining.html`, configured via its `data/config.json` → `portcheck_api`) to render live "🟢 reachable / 🔴 unreachable" pills.
@@ -206,7 +220,7 @@ installer — use `env_ensure`, never `cat > .env`, or a re-run silently drops t
 
 ### What needs the backend vs. what doesn't
 
-Most tools are 100% browser-local. Backend is only required for: URL Shortener, Pastebin, File Share, Port Checker, Domain Checker, Network Toolkit, and the five email tools (Email Validator, Email Deliverability, DNSBL Checker, Disposable Email Detector, Temp Inbox). The site works without a running backend — those tools just show an error (the Disposable Email Detector degrades to a small client-side blocklist).
+Most tools are 100% browser-local. Backend is only required for: URL Shortener, Pastebin, File Share, Port Checker, Domain Checker, Network Toolkit, URL Expander, and the five email tools (Email Validator, Email Deliverability, DNSBL Checker, Disposable Email Detector, Temp Inbox). The site works without a running backend — those tools just show an error (the Disposable Email Detector degrades to a small client-side blocklist).
 
 ### Adding a new tool checklist
 

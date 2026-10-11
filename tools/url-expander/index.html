@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="matrix">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>URL Expander &amp; Redirect Checker — Unshorten Any Link | Office Tools</title>
+  <meta name="description" content="Expand a short link without opening it. See every redirect hop (301, 302, Refresh, meta refresh), the final destination, tracking parameters, and warnings for look-alike or hidden addresses.">
+  <meta name="keywords" content="url expander, unshorten url, unshorten link, link expander, redirect checker, redirect chain checker, where does this link go, bit.ly expander, short url checker, check short link safety, tinyurl expander, t.co expander, 301 redirect checker, meta refresh checker">
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Office Tools">
+  <meta property="og:title" content="URL Expander &amp; Redirect Checker">
+  <meta property="og:description" content="See where a short link really goes — every redirect hop, the final URL and safety warnings, without opening it.">
+  <meta property="og:url" content="https://tools.grin.money/tools/url-expander/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="URL Expander &amp; Redirect Checker">
+  <meta name="twitter:description" content="Unshorten any link and see every redirect hop before you click.">
+  <link rel="canonical" href="https://tools.grin.money/tools/url-expander/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"URL Expander & Redirect Checker","description":"Expand short links and trace every redirect hop (HTTP 3xx, Refresh header, meta refresh) to the final destination, with warnings for look-alike domains, hidden login parts and tracking parameters.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/url-expander/"}</script>
+  <script type="application/ld+json">[{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Office Tools","item":"https://tools.grin.money/"},{"@type":"ListItem","position":2,"name":"Network Tools","item":"https://tools.grin.money/tools/network-toolkit/"},{"@type":"ListItem","position":3,"name":"URL Expander & Redirect Checker","item":"https://tools.grin.money/tools/url-expander/"}]},{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Does expanding a link open it in my browser?","acceptedAnswer":{"@type":"Answer","text":"No. Our server requests each hop and reports what it found. Your browser never visits the link, and the final address is shown as plain text, not as a clickable link."}},{"@type":"Question","name":"Is it safe to expand any link?","acceptedAnswer":{"@type":"Answer","text":"Do not paste one-time links such as password resets, magic login links or unsubscribe links. Our server visits every hop, and expanding such a link can use it up."}},{"@type":"Question","name":"Are JavaScript redirects followed?","acceptedAnswer":{"@type":"Answer","text":"No. Scripts are never run. Common JavaScript redirects found on the final page are reported as a warning, but not followed."}}]}]</script>
+  <link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+  <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    .ux-form { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+    .ux-form input[type="text"] {
+      flex: 1; min-width: 0; width: 100%; padding: .6rem .9rem;
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-secondary); color: var(--text);
+      font-size: .92rem; font-family: 'Courier New', monospace;
+      outline: none; transition: border-color .15s; box-sizing: border-box;
+    }
+    .ux-form input[type="text"]:focus { border-color: var(--primary); }
+    .ux-examples { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-top: .5rem; font-size: .82rem; color: var(--text-muted); }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+    .box-error { background: var(--danger-dim); color: var(--danger); border-radius: var(--radius); padding: .65rem .9rem; font-size: .86rem; font-weight: 600; margin-top: .75rem; overflow-wrap: anywhere; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: .4rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .banner { margin-top: .9rem; padding: .8rem 1rem; border-radius: var(--radius); font-weight: 700; font-size: 1rem; border: 1px solid; overflow-wrap: anywhere; }
+    .banner small { display: block; font-weight: 400; font-size: .84rem; margin-top: .3rem; color: var(--text); }
+    .banner-ok   { background: var(--success-dim); color: var(--success); border-color: var(--success); }
+    .banner-warn { background: var(--warning-dim); color: var(--warning); border-color: var(--warning); }
+    .banner-bad  { background: var(--danger-dim);  color: var(--danger);  border-color: var(--danger); }
+
+    .ux-section { margin-top: 1rem; }
+    .ux-section h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin: 0 0 .45rem; }
+    .dest { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: .7rem .85rem; }
+    .dest + .dest { margin-top: .5rem; }
+    .dest-label { font-size: .75rem; color: var(--text-muted); font-weight: 600; margin-bottom: .3rem; }
+    .dest-row { display: flex; gap: .5rem; align-items: flex-start; }
+    .dest-row .url-text { flex: 1; min-width: 0; }
+    .dest-row .btn { flex-shrink: 0; }
+    .dest-meta { font-size: .8rem; color: var(--text-muted); margin-top: .35rem; overflow-wrap: anywhere; }
+    .url-text { font-family: 'Courier New', monospace; font-size: .88rem; color: var(--text); overflow-wrap: anywhere; word-break: break-all; }
+    .inv { display: inline-block; font-family: 'Courier New', monospace; font-size: .72rem; font-weight: 700; line-height: 1.3; padding: 0 .25em; margin: 0 .1em; border-radius: 4px; background: var(--danger-dim); color: var(--danger); border: 1px solid var(--danger); white-space: nowrap; word-break: normal; vertical-align: baseline; }
+
+    .flag-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
+    .flag { padding: .5rem .75rem; border-radius: var(--radius); font-size: .85rem; border-left: 3px solid; overflow-wrap: anywhere; color: var(--text); }
+    .flag-warn { background: var(--warning-dim); border-color: var(--warning); }
+    .flag-note { background: var(--bg-secondary); border-color: var(--border); }
+    .flag code, .hop code { font-family: 'Courier New', monospace; word-break: break-all; }
+
+    .hop-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+    .hop { background: var(--bg-secondary); border: 1px solid var(--border); border-left: 3px solid var(--primary); border-radius: var(--radius); padding: .6rem .8rem; min-width: 0; }
+    .hop-head { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; font-size: .82rem; }
+    .hop-n { font-weight: 800; color: var(--text); }
+    .hop-host { font-weight: 700; color: var(--text); overflow-wrap: anywhere; }
+    .tag-kind { background: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border); }
+    .hop .url-text { margin-top: .35rem; }
+    .hop-next { margin-top: .3rem; font-size: .82rem; color: var(--text-muted); }
+    .hop-meta { margin-top: .3rem; font-size: .76rem; color: var(--text-muted); overflow-wrap: anywhere; }
+    .ux-foot { font-size: .8rem; color: var(--text-muted); margin-top: .8rem; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="../../index.html" class="header-logo"><span class="logo-icon">🛠️</span> Office Tools</a>
+  <span class="header-tool-name">URL Expander</span>
+  <div class="header-actions">
+    <button class="theme-toggle" id="themeToggle"></button>
+  </div>
+</header>
+
+<main class="tool-main">
+  <div class="tool-header">
+    <h1>🧭 URL Expander &amp; Redirect Checker</h1>
+    <p>See where a short link really goes — every redirect hop, the final destination and safety warnings — without opening it.</p>
+  </div>
+
+  <section class="tool-about">
+    <h2>About the URL Expander</h2>
+    <p>Paste a short or suspicious link (bit.ly, t.co, tinyurl, a link from an email…) and this tool follows it <strong>one hop at a time</strong>: HTTP redirects (301, 302, 303, 307, 308), the <code>Refresh</code> header and <code>&lt;meta http-equiv="refresh"&gt;</code>. It shows each hop's status, host and server address, then the final destination as <strong>plain text with a Copy button — never as a clickable link</strong>, so you can decide before you visit. Tracking parameters such as <code>utm_source</code> or <code>fbclid</code> are detected and a clean copy is offered.</p>
+    <p><strong>Our server, not your browser, visits every hop.</strong> That keeps your address hidden from the link's owner, but it also means: <strong>do not paste one-time links</strong> — password resets, magic login links, unsubscribe or confirmation links. Expanding one can use it up. <strong>JavaScript is never run</strong>: common script redirects on the final page are reported as a warning but not followed. Some link services send bots and real browsers to different places, so a browser may still end up somewhere else. Links that point at private or internal addresses are refused and never fetched.</p>
+  </section>
+
+  <div class="card">
+    <form class="ux-form" id="uxForm" novalidate>
+      <label for="urlInput" class="sr-only">Link to expand</label>
+      <input type="text" id="urlInput" maxlength="2048" placeholder="bit.ly/abc or https://short.link/xyz" autocomplete="off" spellcheck="false" inputmode="url">
+      <button type="submit" class="btn btn-primary" id="expandBtn">Expand</button>
+    </form>
+    <div class="ux-examples">
+      <span>Try:</span>
+      <button type="button" class="btn btn-ghost btn-sm" data-ex="http://github.com">http://github.com</button>
+      <button type="button" class="btn btn-ghost btn-sm" data-ex="http://google.com">http://google.com</button>
+    </div>
+    <div id="result" aria-live="polite"></div>
+  </div>
+
+  <section class="tool-related" id="related-tools"></section>
+
+<div class="page-tags">
+  <span class="page-tag">url expander</span>
+  <span class="page-tag">unshorten link</span>
+  <span class="page-tag">redirect checker</span>
+  <span class="page-tag">where does this link go</span>
+  <span class="page-tag">bit.ly expander</span>
+  <span class="page-tag">tracking parameter remover</span>
+</div>
+</main>
+
+<script src="../../js/config.js"></script>
+<script src="../../js/common.js"></script>
+<script>
+'use strict';
+const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* Invisible / bidi / control code points. D6's set (zero-width U+200B–200F, embeddings and
+   overrides U+202A–202E, isolates U+2066–2069, BOM U+FEFF) plus the other invisible formatters
+   (soft hyphen, U+2060–2064, the Arabic letter mark U+061C) and C0/C1 controls. An RLO inside
+   a URL is how evil.com/<U+202E>fdp.exe displays as …exe.pdf, so none of them is ever passed
+   through. Keep every one of them as a \u escape: a literal one in this file is invisible in
+   review, reorders the line in an editor, and is silently dropped by tools that strip them. */
+const INVISIBLE_RE = /[\u0000-\u001F\u007F-\u009F\u00AD\u061C\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/g;
+function hasInvisible(s) { return new RegExp(INVISIBLE_RE.source).test(String(s ?? '')); }
+
+/* The ONLY way a scanned string reaches markup: split the RAW string on invisibles, escape each
+   text part, and put a visible ⟨U+XXXX⟩ badge where each invisible was. The badge markup is ours
+   and never escaped; the URL text always is. */
+function showText(raw) {
+  const s = String(raw ?? '');
+  let out = '', last = 0;
+  for (const m of s.matchAll(INVISIBLE_RE)) {
+    const cp = m[0].codePointAt(0).toString(16).toUpperCase().padStart(4, '0');
+    out += escHtml(s.slice(last, m.index)) + '<span class="inv">⟨U+' + cp + '⟩</span>';
+    last = m.index + m[0].length;
+  }
+  return out + escHtml(s.slice(last));
+}
+
+function parseUrl(s) {
+  if (typeof s !== 'string' || !s) return null;
+  try { return new URL(s); } catch { return null; }
+}
+
+/* Copy values live here, never in an attribute: a button carries only its index. What is
+   copied is exactly what is displayed (a parsed URL's href, which percent-encodes any
+   invisible code point), so copy-then-paste cannot carry something the eye did not see. */
+let copyVals = [];
+function copyBtn(val, what) {
+  const i = copyVals.push(val) - 1;
+  return '<button type="button" class="btn btn-ghost btn-sm" data-copy="' + i + '" aria-label="Copy ' + escHtml(what) + '">Copy</button>';
+}
+
+const TRACKING_EXACT = new Set(['fbclid','gclid','dclid','msclkid','mc_eid','mc_cid','igshid','yclid','_hsenc','_hsmi','ref_src']);
+function isTrackingKey(k) { k = k.toLowerCase(); return k.startsWith('utm_') || TRACKING_EXACT.has(k); }
+
+/* Remove tracking params by editing the raw query string, so every other parameter keeps
+   its exact original encoding and order. → { href, removed[] } or null. */
+function cleanUrl(u) {
+  if (!u || !u.search) return null;
+  const kept = [], removed = [];
+  for (const pair of u.search.slice(1).split('&')) {
+    if (!pair) continue;
+    const rawKey = pair.split('=')[0];
+    let key;
+    try { key = decodeURIComponent(rawKey.replace(/\+/g, ' ')); } catch { key = rawKey; }
+    if (isTrackingKey(key)) removed.push(key); else kept.push(pair);
+  }
+  if (!removed.length) return null;
+  const c = new URL(u.href);
+  c.search = kept.length ? '?' + kept.join('&') : '';
+  return { href: c.href, removed };
+}
+
+/* Read the input exactly as the server's normalizeUserUrl() does (backend/lib/safe-fetch.js):
+   "word:" followed by a DIGIT is a host:port, not a scheme. Without the (?!\d), the page reads
+   paypal.com:443@evil.example as a URL with the scheme "paypal.com:" while the server strips
+   paypal.com:443 as a login part and fetches evil.example, so the userinfo warning never fires. */
+const HAS_SCHEME_RE = /^[a-z][a-z0-9+.-]*:(?!\d)/i;
+function hasScheme(s) { return HAS_SCHEME_RE.test(String(s ?? '').trim()); }
+function inputAsServerSees(raw) {
+  const s = String(raw ?? '').trim();
+  return hasScheme(s) ? s : 'https://' + s.replace(/^[/\\]+/, '');
+}
+
+const IPV4_RE = /^\d{1,3}(?:\.\d{1,3}){3}$/;
+function isIpLiteral(host) { return IPV4_RE.test(host) || host.startsWith('['); }
+function hostOf(s) { const u = parseUrl(s); return u ? u.hostname : ''; }
+
+/* All warning flags are computed here (D5: the server returns facts only). */
+function computeFlags(d, inputRaw) {
+  const flags = [];
+  const add = (level, html) => { if (!flags.some(f => f.html === html)) flags.push({ level, html }); };
+
+  function checkUrl(raw, where) {
+    if (typeof raw !== 'string' || !raw) return;
+    const u = parseUrl(raw);
+    if (hasInvisible(raw)) add('warn', `Hidden or direction-changing characters in the ${escHtml(where)}: <code>${showText(raw)}</code>. They can make an address read differently from what it is.`);
+    if (!u) { add('warn', `The ${escHtml(where)} is not a valid URL: <code>${showText(raw)}</code>`); return; }
+    if (u.username || u.password) add('warn', `Login part before <code>@</code> in the ${escHtml(where)}: <code>${showText(u.username)}</code> is <strong>not</strong> the website. The real host is <code>${showText(u.hostname)}</code>.`);
+    if (u.protocol === 'http:' || u.protocol === 'https:') {
+      if (isIpLiteral(u.hostname)) add('warn', `The ${escHtml(where)} uses a bare IP address (<code>${showText(u.hostname)}</code>) instead of a domain name.`);
+      if (u.port) add('note', `Non-standard port <code>:${escHtml(u.port)}</code> on <code>${showText(u.hostname)}</code>.`);
+      if (u.hostname.split('.').some(l => l.startsWith('xn--'))) add('warn', `International domain <code>${showText(u.hostname)}</code> (punycode <code>xn--</code>). It may use look-alike characters — check it carefully.`);
+    }
+  }
+
+  // The input: userinfo is stripped from `start`, so flag it from what the user typed.
+  checkUrl(inputAsServerSees(inputRaw), 'link you entered');
+
+  const hops = Array.isArray(d.hops) ? d.hops : [];
+  for (const h of hops) {
+    if (!h || typeof h !== 'object') continue;
+    checkUrl(h.url, `hop ${Number(h.n) || '?'} address`);
+    checkUrl(h.next, `redirect target of hop ${Number(h.n) || '?'}`);
+    const a = parseUrl(h.url), b = parseUrl(h.next);
+    if (a && b) {
+      if (a.protocol === 'https:' && b.protocol === 'http:') add('warn', `Security downgrade at hop ${Number(h.n) || '?'}: <code>https</code> → <code>http</code> (unencrypted).`);
+      if ((b.protocol === 'http:' || b.protocol === 'https:') && a.hostname !== b.hostname) {
+        const bare = x => x.replace(/^www\./, '');
+        if (bare(a.hostname) === bare(b.hostname)) add('note', `Hop ${Number(h.n) || '?'} only adds or removes <code>www.</code> (<code>${showText(a.hostname)}</code> → <code>${showText(b.hostname)}</code>).`);
+        else add('note', `Site changes at hop ${Number(h.n) || '?'}: <code>${showText(a.hostname)}</code> → <code>${showText(b.hostname)}</code>.`);
+      }
+    }
+  }
+
+  const fin = d.final && typeof d.final === 'object' ? d.final : null;
+  if (fin) {
+    checkUrl(fin.url, 'final destination');
+    if (hasInvisible(fin.title)) add('warn', 'The final page title contains hidden or direction-changing characters.');
+    const c = cleanUrl(parseUrl(fin.url));
+    if (c) add('note', `Tracking parameters on the final URL: ${c.removed.map(k => '<code>' + showText(k) + '</code>').join(', ')}. A clean copy is offered above.`);
+  }
+  const js = d.jsRedirectHint && typeof d.jsRedirectHint === 'object' ? d.jsRedirectHint : null;
+  if (js) {
+    add('warn', `The final page contains a JavaScript redirect (<code>${escHtml(js.via)}</code>) to <code>${showText(js.url)}</code>. We never run scripts, so a real browser may go there instead.`);
+    checkUrl(js.url, 'JavaScript redirect target');
+  }
+  if (d.stop === 'non-web-scheme') add('warn', `The chain ends in a non-web address (<code>${showText(d.stopDetail)}</code>) — an app link, script or similar. It was not opened.`);
+  return flags;
+}
+
+// Own keys only: a stop/kind value of "constructor" or "__proto__" must not reach Object.prototype.
+const ownKey = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+
+const STOP_TEXT = {
+  final:            ['banner-ok',   '✅ Expanded', ''],
+  blocked:          ['banner-bad',  '⛔ Stopped: the link redirects to a private or internal address', 'We refused to follow it. Public links do not normally do this — treat it as suspicious.'],
+  loop:             ['banner-warn', '🔁 Redirect loop', 'The link keeps sending you back to an address it already visited, so it never arrives anywhere.'],
+  'max-hops':       ['banner-warn', '⚠️ Too many redirects', 'We stopped after 10 redirects. A browser would usually give up too.'],
+  'non-web-scheme': ['banner-warn', '⚠️ The link ends in a non-web address', 'It points to an app link, script or similar rather than a web page. It was not opened.'],
+  timeout:          ['banner-warn', '⏱️ A site in the chain did not answer in time', ''],
+  error:            ['banner-bad',  '❌ Could not finish following the link', ''],
+};
+
+function bannerHtml(d, hopCount, inputRaw) {
+  const [cls, title, sub] = ownKey(STOP_TEXT, d.stop) ? STOP_TEXT[d.stop] : ['banner-warn', '⚠️ Stopped', ''];
+  let head = title;
+  if (d.stop === 'final') head = hopCount ? `✅ Followed ${hopCount} redirect${hopCount === 1 ? '' : 's'} to the final destination` : '✅ No redirects — this link goes straight to its destination';
+  let small = sub ? escHtml(sub) : '';
+  if ((d.stop === 'timeout' || d.stop === 'error') && d.stopDetail) small = showText(d.stopDetail);
+  if (d.stop === 'error' && !hasScheme(inputRaw) && hopCount === 0) {
+    small += (small ? '<br>' : '') + 'We tried <code>https://</code>. If the site only speaks plain http, try again with <code>http://</code> in front.';
+  }
+  return `<div class="banner ${cls}">${escHtml(head)}${small ? `<small>${small}</small>` : ''}</div>`;
+}
+
+function destHtml(label, raw, what, meta) {
+  const u = parseUrl(raw);
+  const shown = u ? u.href : String(raw ?? '');
+  // Copy only a web address: a javascript:/intent:/data: value is shown, never handed to the clipboard.
+  const btn = u && (u.protocol === 'http:' || u.protocol === 'https:') ? copyBtn(u.href, what) : '';
+  return `<div class="dest"><div class="dest-label">${escHtml(label)}</div>
+    <div class="dest-row"><div class="url-text">${showText(shown)}</div>${btn}</div>${meta ? `<div class="dest-meta">${meta}</div>` : ''}</div>`;
+}
+
+function statusBadge(code) {
+  const n = Number(code);
+  const cls = n >= 500 ? 'badge-danger' : n >= 400 ? 'badge-warning' : n >= 300 ? 'badge-primary' : n >= 200 ? 'badge-success' : 'tag-kind';
+  return `<span class="badge ${cls}">${Number.isFinite(n) && n ? escHtml(n) : '—'}</span>`;
+}
+const KIND_TEXT = { http: 'HTTP redirect', 'refresh-header': 'Refresh header', 'meta-refresh': 'meta refresh' };
+
+function hopHtml(h) {
+  const meta = [];
+  if (h.ip) meta.push('IP ' + showText(h.ip));
+  if (Number.isFinite(Number(h.ms))) meta.push(escHtml(Number(h.ms)) + ' ms');
+  if (h.server) meta.push('server ' + showText(h.server));
+  const next = parseUrl(h.next);
+  return `<li class="hop">
+    <div class="hop-head"><span class="hop-n">#${escHtml(Number(h.n) || '?')}</span>${statusBadge(h.status)}<span class="badge tag-kind">${escHtml(ownKey(KIND_TEXT, h.kind) ? KIND_TEXT[h.kind] : (h.kind || '—'))}</span><span class="hop-host">${showText(h.host || hostOf(h.url))}</span></div>
+    <div class="url-text">${showText(h.url)}</div>
+    ${h.next ? `<div class="hop-next">→ <span class="url-text">${showText(next ? next.href : h.next)}</span></div>` : ''}
+    ${meta.length ? `<div class="hop-meta">${meta.join(' · ')}</div>` : ''}
+  </li>`;
+}
+
+function renderResult(d, inputRaw) {
+  copyVals = [];
+  const hops = (Array.isArray(d.hops) ? d.hops : []).filter(h => h && typeof h === 'object');
+  const parts = [bannerHtml(d, hops.length, inputRaw)];
+
+  // Destination
+  const dest = [];
+  const fin = d.final && typeof d.final === 'object' ? d.final : null;
+  if (fin && fin.url) {
+    const meta = [];
+    if (fin.title) meta.push('Page title: ' + showText(fin.title));
+    const m2 = [];
+    if (fin.status) m2.push('HTTP ' + escHtml(fin.status));
+    if (fin.contentType) m2.push(showText(fin.contentType));
+    if (fin.ip) m2.push('IP ' + showText(fin.ip));
+    if (fin.server) m2.push('server ' + showText(fin.server));
+    if (m2.length) meta.push(m2.join(' · '));
+    dest.push(destHtml('Final destination (not opened)', fin.url, 'final destination', meta.join('<br>')));
+    const c = cleanUrl(parseUrl(fin.url));
+    if (c) dest.push(destHtml('Clean URL — tracking parameters removed', c.href, 'clean URL', 'Removed: ' + c.removed.map(showText).join(', ')));
+  } else if (hops.length && hops[hops.length - 1].next) {
+    const last = hops[hops.length - 1].next;
+    const label = d.stop === 'blocked' ? 'Refused address (not fetched)' : d.stop === 'loop' ? 'Repeated address (not fetched again)' : 'Last address reached (not fetched)';
+    dest.push(destHtml(label, last, 'last address', ''));
+  } else if (d.stop === 'non-web-scheme' && d.stopDetail) {
+    dest.push(destHtml('Non-web address (not opened)', d.stopDetail, 'non-web address', ''));
+  }
+  if (dest.length) parts.push(`<section class="ux-section"><h2>Destination</h2>${dest.join('')}</section>`);
+
+  // Warnings
+  const flags = computeFlags(d, inputRaw);
+  if (flags.length) {
+    parts.push(`<section class="ux-section"><h2>Warnings &amp; notes</h2><ul class="flag-list">${flags.map(f => `<li class="flag flag-${f.level === 'warn' ? 'warn' : 'note'}">${f.level === 'warn' ? '⚠️ ' : 'ℹ️ '}${f.html}</li>`).join('')}</ul></section>`);
+  }
+
+  // Hops
+  if (hops.length) {
+    parts.push(`<section class="ux-section"><h2>Redirect chain (${escHtml(hops.length)} hop${hops.length === 1 ? '' : 's'})</h2><ol class="hop-list">${hops.map(hopHtml).join('')}</ol></section>`);
+  }
+  const total = Number(d.totalMs);
+  parts.push(`<div class="ux-foot">Checked from our server${Number.isFinite(total) ? ' in ' + escHtml(total) + ' ms' : ''}. Nothing on this page is a clickable link to the scanned address.</div>`);
+  return parts.join('');
+}
+
+let inflight = null;
+async function expand() {
+  const input = document.getElementById('urlInput');
+  const raw = input.value.trim();
+  if (!raw) { input.focus(); return; }
+  const el = document.getElementById('result');
+  const btn = document.getElementById('expandBtn');
+  if (inflight) inflight.abort();
+  const ctl = new AbortController();
+  inflight = ctl;
+  btn.disabled = true;
+  el.setAttribute('aria-busy', 'true');
+  el.innerHTML = `<div style="padding:.75rem 0"><span class="spinner"></span> Following <code>${showText(raw)}</code>…</div>`;
+
+  let html;
+  try {
+    const r = await fetch(`${API}/api/net/redirects?url=${encodeURIComponent(raw)}`, { signal: ctl.signal });
+    let d = null;
+    try { d = await r.json(); } catch { d = null; }
+    if (r.status === 429) html = `<div class="box-error">Too many checks — please wait a minute and try again.</div>`;
+    else if (r.status === 503 && d && d.error === 'busy') html = `<div class="box-error">The server is busy right now — please try again in a moment.</div>`;
+    else if (!r.ok) html = `<div class="box-error">${showText(d && d.error ? d.error : 'Server error (HTTP ' + r.status + ')')}</div>`;
+    else if (!d || typeof d !== 'object') html = `<div class="box-error">The server sent an unreadable answer.</div>`;
+    else html = renderResult(d, raw);
+  } catch (err) {
+    if (ctl.signal.aborted) return;   // superseded by a newer request
+    html = `<div class="box-error">Network error: ${escHtml(err.message)} — is the backend running?</div>`;
+  }
+  if (inflight !== ctl) return;
+  inflight = null;
+  btn.disabled = false;
+  el.removeAttribute('aria-busy');
+  el.innerHTML = html;
+}
+
+document.getElementById('uxForm').addEventListener('submit', e => { e.preventDefault(); expand(); });
+document.querySelectorAll('[data-ex]').forEach(b =>
+  b.addEventListener('click', () => { document.getElementById('urlInput').value = b.dataset.ex; expand(); })
+);
+document.getElementById('result').addEventListener('click', e => {
+  const b = e.target.closest('[data-copy]');
+  if (!b) return;
+  const v = copyVals[Number(b.dataset.copy)];
+  if (typeof v === 'string') copyText(v, b);
+});
+
+renderRelatedTools('related-tools', [
+  { path: 'website-status', desc: 'Is the destination site up? Status, response time and SSL' },
+  { path: 'web-proxy',      desc: 'View a page through our server instead of your browser' },
+  { path: 'url-shortener',  desc: 'Create your own short links' },
+  { path: 'url-encoder',    desc: 'Decode percent-encoded parts of a URL' },
+]);
+</script>
+</body>
+</html>

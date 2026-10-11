@@ -5,7 +5,8 @@
   "main": "office-tools-server.js",
   "scripts": {
     "start": "node office-tools-server.js",
-    "dev": "nodemon office-tools-server.js"
+    "dev": "nodemon office-tools-server.js",
+    "test": "node --test \"test/**/*.test.js\""
   },
   "dependencies": {
     "cors": "^2.8.5",
