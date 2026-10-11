@@ -10,6 +10,10 @@
  *
  * Usage:  node scripts/check-html.js
  * Exit code 0 = all OK, 1 = one or more violations found.
+ *
+ * This file is also a library: scripts/check-tools.js (the full mechanical sweep)
+ * requires it for the theme-init rule so the two never drift apart. Keep the CLI
+ * behaviour identical when run directly.
  */
 
 const fs   = require('fs');
@@ -20,47 +24,53 @@ const TOOLS_DIR      = path.join(__dirname, '..', 'tools');
 const THEME_INIT_REF = 'localStorage.getItem("ot-theme")';
 const STYLESHEET_REF = '<link rel="stylesheet" href="../../css/style.css">';
 
-const dirs = fs.readdirSync(TOOLS_DIR, { withFileTypes: true })
-  .filter(d => d.isDirectory())
-  .map(d => path.join(TOOLS_DIR, d.name, 'index.html'));
-
-let errors = 0;
-
-for (const file of dirs) {
-  if (!fs.existsSync(file)) {
-    console.error(`MISSING  ${file}`);
-    errors++;
-    continue;
-  }
-
-  const html = fs.readFileSync(file, 'utf8');
-  const hasThemeInit  = html.includes(THEME_INIT_REF);
-  const hasStylesheet = html.includes(STYLESHEET_REF);
-
-  // theme-init must appear before the stylesheet
+/**
+ * Theme-init / stylesheet ordering check for one page's HTML.
+ * Returns null when the page is fine, otherwise a one-line reason.
+ */
+function checkThemeInit(html) {
   const initPos  = html.indexOf(THEME_INIT_REF);
   const stylePos = html.indexOf(STYLESHEET_REF);
-  const correctOrder = hasThemeInit && hasStylesheet && initPos < stylePos;
+  if (initPos < 0)        return 'missing inline theme-init <script>';
+  if (stylePos < 0)       return 'missing style.css <link> tag';
+  if (initPos > stylePos) return 'theme-init must come before style.css';
+  return null;
+}
 
-  const rel = path.relative(path.join(__dirname, '..'), file);
+function toolPages() {
+  return fs.readdirSync(TOOLS_DIR, { withFileTypes: true })
+    .filter(d => d.isDirectory())
+    .map(d => path.join(TOOLS_DIR, d.name, 'index.html'));
+}
 
-  if (!hasThemeInit) {
-    console.error(`FAIL  ${rel}  — missing inline theme-init <script>`);
-    errors++;
-  } else if (!hasStylesheet) {
-    console.error(`FAIL  ${rel}  — missing style.css <link> tag`);
-    errors++;
-  } else if (!correctOrder) {
-    console.error(`FAIL  ${rel}  — theme-init must come before style.css`);
-    errors++;
+function main() {
+  const dirs = toolPages();
+  let errors = 0;
+
+  for (const file of dirs) {
+    const rel = path.relative(path.join(__dirname, '..'), file);
+    if (!fs.existsSync(file)) {
+      console.error(`MISSING  ${file}`);
+      errors++;
+      continue;
+    }
+    const reason = checkThemeInit(fs.readFileSync(file, 'utf8'));
+    if (reason) {
+      console.error(`FAIL  ${rel}  — ${reason}`);
+      errors++;
+    } else {
+      console.log(`OK    ${rel}`);
+    }
+  }
+
+  if (errors > 0) {
+    console.error(`\n${errors} violation(s) found.`);
+    process.exit(1);
   } else {
-    console.log(`OK    ${rel}`);
+    console.log(`\nAll ${dirs.length} tool pages passed.`);
   }
 }
 
-if (errors > 0) {
-  console.error(`\n${errors} violation(s) found.`);
-  process.exit(1);
-} else {
-  console.log(`\nAll ${dirs.length} tool pages passed.`);
-}
+module.exports = { checkThemeInit, toolPages, THEME_INIT_REF, STYLESHEET_REF, TOOLS_DIR };
+
+if (require.main === module) main();

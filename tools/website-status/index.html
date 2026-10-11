@@ -82,6 +82,7 @@
       <button class="btn btn-ghost btn-sm" data-ex="https://example.com">example.com</button>
     </div>
     <div id="result"></div>
+    <div style="font-size:.8rem;color:var(--text-muted);margin-top:.6rem">See every hop → <a href="../url-expander/">URL Expander</a></div>
   </div>
 
   <section class="tool-related" id="related-tools"></section>
@@ -165,6 +166,7 @@ async function checkSite() {
 }
 
 renderRelatedTools('related-tools', [
+  { path: 'url-expander', desc: 'See every redirect hop of a link without opening it' },
   { path: 'web-proxy',   desc: 'View a site blocked in your region through our server' },
   { path: 'ping',        desc: 'Check latency and reachability of a host' },
   { path: 'port-checker', desc: 'Test whether a TCP port is open' },
