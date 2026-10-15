@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Color Contrast Checker — Office Tools</title>
   <meta name="description" content="Check color contrast ratios against WCAG 2.1 AA and AAA accessibility standards. Enter foreground and background colors for instant compliance feedback with a live preview.">
   <meta name="keywords" content="WCAG contrast checker, color contrast ratio, accessibility contrast, AA AAA compliance, web accessibility, contrast analyzer">
@@ -57,8 +58,8 @@
     .wcag-badge .ws { font-size: 1.1rem; font-weight: 900; margin-top: .2rem; }
     .wcag-badge.pass { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.3); }
     .wcag-badge.fail { background: rgba(239,68,68,.1);  border-color: rgba(239,68,68,.25); }
-    .wcag-badge.pass .ws { color: #16a34a; }
-    .wcag-badge.fail .ws { color: #dc2626; }
+    .wcag-badge.pass .ws { color: var(--success); }
+    .wcag-badge.fail .ws { color: var(--danger); }
 
     .color-inputs {
       display: grid;
@@ -204,7 +205,7 @@ const presetRow = document.getElementById('presetRow');
 PRESETS.forEach(p => {
   const el = document.createElement('div');
   el.className = 'preset-pair';
-  el.innerHTML = `<div class="dot" style="background:${p.bg};border:1px solid rgba(0,0,0,.15)"></div><div class="dot" style="background:${p.fg};border:1px solid rgba(0,0,0,.15)"></div><span>${p.label}</span>`;
+  el.innerHTML = `<div class="dot" style="background:${escHtml(p.bg)};border:1px solid rgba(0,0,0,.15)"></div><div class="dot" style="background:${escHtml(p.fg)};border:1px solid rgba(0,0,0,.15)"></div><span>${escHtml(p.label)}</span>`;
   el.addEventListener('click', () => {
     setColors(p.fg, p.bg);
   });
@@ -263,8 +264,8 @@ function update() {
   grid.innerHTML = levels.map(lv => {
     const pass = ratio >= lv.req;
     return `<div class="wcag-badge ${pass ? 'pass' : 'fail'}">
-      <div class="wl">${lv.label}</div>
-      <div class="ws">${pass ? '✓ Pass' : '✗ Fail'} <span style="font-size:.8rem;font-weight:600">(${lv.req}:1)</span></div>
+      <div class="wl">${escHtml(lv.label)}</div>
+      <div class="ws">${pass ? '✓ Pass' : '✗ Fail'} <span style="font-size:.8rem;font-weight:600">(${escHtml(lv.req)}:1)</span></div>
     </div>`;
   }).join('');
 

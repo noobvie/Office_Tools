@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>PDF Toolkit — Office Tools</title>
   <meta name="description" content="Merge multiple PDFs, split or extract pages, reorder with drag-and-drop, and compress PDF file size. Free, runs entirely in your browser.">
   <meta name="keywords" content="PDF merger, merge PDF online, split PDF, extract PDF pages, reorder PDF pages, compress PDF, reduce PDF size, combine PDF, PDF tools free">
@@ -382,9 +383,9 @@
 </div>
 </main>
 
-<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js" integrity="sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG" crossorigin="anonymous"></script>
 <script src="../../js/common.js"></script>
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -464,7 +465,7 @@ function renderBuildSourceList() {
   listEl.innerHTML = buildSources.map((s, i) => `
     <div class="merge-row" data-si="${i}">
       <span class="merge-name">${escHtml(s.file.name)}</span>
-      <span class="merge-size">${s.type === 'pdf' ? (s.pageCount || '…') + ' p · ' : '1 img · '}${fmtSz(s.file.size)}</span>
+      <span class="merge-size">${escHtml(s.type === 'pdf' ? (s.pageCount || '…') + ' p · ' : '1 img · ')}${fmtSz(s.file.size)}</span>
       <button class="merge-del" data-si="${i}" title="Remove">&#10005;</button>
     </div>`).join('');
   listEl.querySelectorAll('.merge-del').forEach(btn =>
@@ -551,19 +552,19 @@ function renderBuildThumbGrid() {
   const total = buildPages.length;
   grid.innerHTML = buildPages.map((pg, di) => {
     const src   = buildSources[pg.srcIdx];
-    const label = src.type === 'pdf' ? `p${pg.pageIdx + 1}` : src.file.name.slice(0, 8);
+    const label = src.type === 'pdf' ? `p${Number(pg.pageIdx) + 1}` : src.file.name.slice(0, 8);
     const inner = pg.thumbSrc
-      ? `<img src="${pg.thumbSrc}" alt="${label}" draggable="false">`
-      : `<div style="aspect-ratio:0.77;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:.75rem;color:var(--text-muted)">${label}</div>`;
+      ? `<img src="${escHtml(pg.thumbSrc)}" alt="${escHtml(label)}" draggable="false">`
+      : `<div style="aspect-ratio:0.77;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:.75rem;color:var(--text-muted)">${escHtml(label)}</div>`;
     return `
-      <div class="thumb-item" draggable="true" data-di="${di}">
+      <div class="thumb-item" draggable="true" data-di="${Number(di)}">
         ${inner}
         <div class="thumb-nav">
-          <button class="thumb-mv thumb-mv-l" data-di="${di}" title="Move left" ${di === 0 ? 'disabled' : ''}>&#9664;</button>
-          <span>${di + 1}</span>
-          <button class="thumb-mv thumb-mv-r" data-di="${di}" title="Move right" ${di === total - 1 ? 'disabled' : ''}>&#9654;</button>
+          <button class="thumb-mv thumb-mv-l" data-di="${Number(di)}" title="Move left" ${Number(di) === 0 ? 'disabled' : ''}>&#9664;</button>
+          <span>${Number(di) + 1}</span>
+          <button class="thumb-mv thumb-mv-r" data-di="${Number(di)}" title="Move right" ${Number(di) === total - 1 ? 'disabled' : ''}>&#9654;</button>
         </div>
-        <button class="thumb-del" data-di="${di}" title="Remove">&#10005;</button>
+        <button class="thumb-del" data-di="${Number(di)}" title="Remove">&#10005;</button>
       </div>`;
   }).join('');
 

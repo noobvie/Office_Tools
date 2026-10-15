@@ -52,10 +52,10 @@ const OTAuth = (() => {
           <div style="font-size:2.5rem">⏳</div>
           <h2 style="margin:.75rem 0 .5rem;font-size:1.3rem">Daily Limit Reached</h2>
           <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.25rem">
-            You've used your ${cfg().FREE_DAILY_LIMIT || 10} free uses for today. Come back tomorrow!<br>
+            You've used your ${Number(cfg().FREE_DAILY_LIMIT) || 10} free uses for today. Come back tomorrow!<br>
             If these tools save you time, consider supporting Grin development.
           </p>
-          <a href="${root}pages/donate.html" class="btn btn-primary"
+          <a href="${_rootPath()}pages/donate.html" class="btn btn-primary"
              style="display:block;margin-bottom:.6rem;text-decoration:none">❤️ Support Grin</a>
           <button onclick="document.getElementById('ot-gate-modal').remove()"
             style="margin-top:.75rem;background:none;border:none;cursor:pointer;font-size:.82rem;color:var(--text-muted)">

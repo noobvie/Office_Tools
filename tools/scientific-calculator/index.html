@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Scientific Calculator — Trig, Log, Powers — Office Tools</title>
   <meta name="description" content="Free online scientific calculator with trigonometry, logarithms, powers, roots, factorial, constants and memory. Works in degrees or radians. Runs in your browser.">
   <meta name="keywords" content="scientific calculator, online calculator, trigonometry calculator, logarithm calculator, sin cos tan, square root, factorial, exponent calculator, math calculator">
@@ -36,13 +37,13 @@
     .key:active { transform: scale(.96); }
     .key.fn { font-size: .82rem; color: var(--text-muted); }
     .key.op { color: var(--primary); font-weight: 700; }
-    .key.eq { background: var(--primary); color: #fff; border-color: var(--primary); grid-row: span 1; }
+    .key.eq { background: var(--primary); color: var(--on-primary); border-color: var(--primary); grid-row: span 1; }
     .key.danger { color: var(--danger); }
     .topbar { display: flex; gap: .5rem; align-items: center; margin-bottom: .75rem; flex-wrap: wrap; }
     .seg { display: inline-flex; border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
     .seg button { padding: .35rem .7rem; border: none; background: none; cursor: pointer;
       font-size: .8rem; font-weight: 700; color: var(--text); }
-    .seg button.active { background: var(--primary); color: #fff; }
+    .seg button.active { background: var(--primary); color: var(--on-primary); }
     .mem-ind { font-size: .72rem; color: var(--primary); font-weight: 700; margin-left: auto; min-height: 1em; }
   </style>
 </head>

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Audio Converter — MP4 to MP3 &amp; More — Office Tools</title>
   <meta name="description" content="Convert MP4 to MP3, extract the audio from any video, or convert between MP3, M4A/AAC, OGG, Opus, WAV, FLAC, AIFF, WMA and AC3. Bitrate, sample rate, mono/stereo and trim options. Batch processing, runs in your browser — no upload.">
   <meta name="keywords" content="audio converter, mp4 to mp3, video to mp3, extract audio from video, mp3 converter, m4a to mp3, wav to mp3, flac to mp3, ogg converter, opus converter, convert audio online">
@@ -367,7 +368,7 @@ function onFormatChange() {
   const prev = rateSel.value;
   const allowed = f.rates || ALL_RATES;
   rateSel.innerHTML = '<option value="auto">Auto (keep source)</option>' +
-    allowed.map(r => `<option value="${r}">${RATE_LABEL(r)}</option>`).join('');
+    allowed.map(r => `<option value="${escHtml(r)}">${RATE_LABEL(r)}</option>`).join('');
   rateSel.value = allowed.includes(+prev) ? prev : 'auto';
   fmtHint.textContent = f.hint;
 }
@@ -513,7 +514,7 @@ function itemHtml(it) {
     <div class="fi-side">${statusHtml(it)}${buttonsHtml(it)}</div>${bar}${err}`;
 }
 function renderList() {
-  listEl.innerHTML = items.map(it => `<div class="file-item" data-id="${it.id}">${itemHtml(it)}</div>`).join('');
+  listEl.innerHTML = items.map(it => `<div class="file-item" data-id="${escHtml(it.id)}">${itemHtml(it)}</div>`).join('');
 }
 function renderItem(it) {
   const el = listEl.querySelector(`.file-item[data-id="${it.id}"]`);

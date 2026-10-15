@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>File Compressor &amp; Extractor — Free ZIP Tool, No Upload | Office Tools</title>
   <meta name="description" content="Compress files into a ZIP archive or extract any ZIP — entirely in your browser. No file upload, no server, 100% private. Works offline.">
   <meta name="keywords" content="file compressor online, zip files online, extract zip browser, compress zip no upload, online zip tool, free zip extractor, zip archive creator, browser zip tool, client-side zip, compress without software, password protected zip, encrypt zip online, extract zip file with password, decrypt zip file browser, zip aes encryption, open password protected zip">
@@ -313,7 +314,7 @@
 </main>
 
 <!-- zip.js via CDN (replaces JSZip — adds AES-256 password support) -->
-<script src="https://cdn.jsdelivr.net/npm/@zip.js/zip.js@2/dist/zip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zip.js/zip.js@2.23.0/dist/zip.min.js" integrity="sha384-7MlZdjdnutnhVAfTug5IS9fCSw0MpXxwAEG1HDDO6UUjVZ0liUmHV98qGUXFIX2k" crossorigin="anonymous"></script>
 <script src="../../js/config.js"></script>
 <script src="../../js/common.js"></script>
 <script>
@@ -376,7 +377,7 @@
     compFiles.forEach((f, i) => {
       const row = document.createElement('div');
       row.className = 'file-row';
-      row.innerHTML = `<span class="fr-name" title="${f.name}">📄 ${f.name}</span>
+      row.innerHTML = `<span class="fr-name" title="${escHtml(f.name)}">📄 ${escHtml(f.name)}</span>
         <span class="fr-size">${fmtSize(f.size)}</span>
         <button class="fr-del" data-i="${i}" title="Remove">✕</button>`;
       compFileList.appendChild(row);
@@ -575,11 +576,11 @@
         const row = document.createElement('div');
         row.className = 'ext-file-row';
         row.innerHTML = `
-          <span class="ext-file-name" title="${path}">
-            ${folder ? `<span style="color:var(--text-muted);font-size:.75rem">${folder}/</span>` : ''}${fname}
+          <span class="ext-file-name" title="${escHtml(path)}">
+            ${folder ? `<span style="color:var(--text-muted);font-size:.75rem">${escHtml(folder)}/</span>` : ''}${escHtml(fname)}
           </span>
           <span class="ext-file-size">${fmtSize(entry.uncompressedSize)}</span>
-          <button class="fr-dl" data-path="${path}">⬇ Save</button>`;
+          <button class="fr-dl" data-path="${escHtml(path)}">⬇ Save</button>`;
         extFileList.appendChild(row);
       });
 

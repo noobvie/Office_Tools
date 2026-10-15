@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Word Memory — Free Vocabulary Memory Test | Play at Work | Office Tools</title>
   <meta name="description" content="Study a list of words, then identify which ones you saw. Free browser word memory test — no download needed. Great office brain training game.">
   <meta name="keywords" content="word memory test online free, vocabulary memory game, word recall test, brain training game browser, office break game, cognitive test free, word recognition game, play at work">
@@ -21,9 +22,9 @@
     .word-list { display:flex; flex-wrap:wrap; gap:.5rem; justify-content:center; padding:.75rem; background:var(--bg); border:1.5px solid var(--border); border-radius:var(--radius-lg); min-height:80px; width:100%; box-sizing:border-box; }
     .word-pill { padding:.3rem .75rem; border-radius:99px; font-weight:600; font-size:.95rem; background:var(--bg-card); border:1.5px solid var(--border); }
     .word-btn { padding:.35rem .85rem; border-radius:99px; font-weight:600; font-size:.95rem; border:2px solid var(--border); cursor:pointer; transition:background .15s, border-color .15s; background:var(--bg-card); }
-    .word-btn.seen    { background:var(--primary); color:#fff; border-color:var(--primary); }
-    .word-btn.correct { background:var(--success); color:#fff; border-color:var(--success); }
-    .word-btn.wrong   { background:var(--danger);  color:#fff; border-color:var(--danger); }
+    .word-btn.seen    { background:var(--primary); color:var(--on-primary); border-color:var(--primary); }
+    .word-btn.correct { background:var(--success); color:var(--on-primary); border-color:var(--success); }
+    .word-btn.wrong   { background:var(--danger);  color:var(--on-primary); border-color:var(--danger); }
     .hud { display:flex; gap:.75rem; flex-wrap:wrap; justify-content:center; }
     .hud-box { background:var(--bg); border:1.5px solid var(--border); border-radius:var(--radius); padding:.35rem .9rem; text-align:center; min-width:80px; }
     .hud-box small { display:block; font-size:.7rem; color:var(--text-muted); text-transform:uppercase; }

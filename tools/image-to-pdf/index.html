@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Image to PDF — JPG, PNG &amp; iPhone HEIC to PDF Converter — Office Tools</title>
   <meta name="description" content="Convert JPG, PNG, WebP and iPhone HEIC/HEIF images into a single PDF. Reorder pages, choose A4 or Letter size, set orientation and margins. Free, runs in your browser — no upload.">
   <meta name="keywords" content="image to PDF, JPG to PDF, PNG to PDF, HEIC to PDF, iPhone photo to PDF, photo to PDF, convert image to PDF, combine images into PDF, pictures to PDF, JPEG to PDF online">
@@ -121,7 +122,7 @@
 </div>
 </main>
 
-<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js" integrity="sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI" crossorigin="anonymous"></script>
 <script src="../../js/config.js"></script>
 <script src="../../js/common.js"></script>
 <script>
@@ -160,7 +161,7 @@ function render() {
     const div = document.createElement('div');
     div.className = 'thumb';
     div.innerHTML = `
-      <img src="${img.url}" alt="page ${i + 1}">
+      <img src="${escHtml(img.url)}" alt="page ${i + 1}">
       <div class="thumb-bar">
         <span class="thumb-idx">#${i + 1}</span>
         <span class="thumb-btns">

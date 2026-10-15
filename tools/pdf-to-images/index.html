@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>PDF to Images — Convert PDF Pages to PNG or JPG | Office Tools</title>
   <meta name="description" content="Convert each page of a PDF into PNG or JPG images. Choose resolution, pick a page range, and download individually or as a ZIP — all in your browser, no upload.">
   <meta name="keywords" content="pdf to images, pdf to jpg, pdf to png, convert pdf to image, export pdf pages, pdf page to picture, pdf to jpeg online, extract pdf images">
@@ -99,8 +100,8 @@
 </div>
 </main>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG" crossorigin="anonymous"></script>
 <script src="../../js/config.js"></script>
 <script src="../../js/common.js"></script>
 <script>
@@ -185,7 +186,7 @@ async function run() {
       const url = URL.createObjectURL(blob);
       const cell = document.createElement('div');
       cell.className = 'img-cell';
-      cell.innerHTML = `<img src="${url}" alt="page ${n}"><div class="cap">Page ${n} · ${(blob.size / 1024).toFixed(0)} KB</div>`;
+      cell.innerHTML = `<img src="${escHtml(url)}" alt="page ${n}"><div class="cap">Page ${n} · ${(blob.size / 1024).toFixed(0)} KB</div>`;
       const a = document.createElement('a');
       a.className = 'btn btn-secondary'; a.href = url; a.download = name; a.textContent = 'Download';
       cell.appendChild(a);

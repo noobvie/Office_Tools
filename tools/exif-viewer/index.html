@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>EXIF Viewer &amp; Remover — Photo Metadata — Office Tools</title>
   <meta name="description" content="View the EXIF metadata in your photos — camera, lens, exposure, date and GPS location — then download a clean copy with all metadata stripped. Private: runs locally, no upload.">
   <meta name="keywords" content="EXIF viewer, EXIF remover, remove EXIF data, photo metadata, strip metadata, GPS location photo, remove GPS from photo, image metadata viewer, clean photo metadata">
@@ -95,7 +96,7 @@
   </div>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js" integrity="sha384-KrOocIA+lZcNUz2MDavnT/FuX+CbTREJihUi0bp8QUSwhE2AkGTNpv2b7yMbBkx5" crossorigin="anonymous"></script>
 <script src="../../js/config.js"></script>
 <script src="../../js/common.js"></script>
 <script>
@@ -145,8 +146,8 @@ async function handle(file) {
   if (data.latitude != null && data.longitude != null) {
     const lat = data.latitude.toFixed(6), lon = data.longitude.toFixed(6);
     $('gpsWarn').innerHTML =
-      `<div class="gps-warn">⚠ <strong>This photo contains GPS location:</strong> ${lat}, ${lon} ` +
-      `&nbsp;<a href="https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=15/${lat}/${lon}" target="_blank" rel="noopener">view on map ↗</a><br>` +
+      `<div class="gps-warn">⚠ <strong>This photo contains GPS location:</strong> ${escHtml(lat)}, ${escHtml(lon)} ` +
+      `&nbsp;<a href="https://www.openstreetmap.org/?mlat=${escHtml(lat)}&mlon=${escHtml(lon)}#map=15/${escHtml(lat)}/${escHtml(lon)}" target="_blank" rel="noopener">view on map ↗</a><br>` +
       `Anyone you share the original with can see where it was taken. Download the stripped copy below to remove it.</div>`;
   }
 

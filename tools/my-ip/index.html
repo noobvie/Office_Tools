@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>What Is My IP? — Office Tools</title>
   <meta name="description" content="Check your public IP address instantly. Reveals IPv4 or IPv6, ISP name, country, city, approximate coordinates, and your network's IPv6 support status. No signup needed.">
   <meta name="keywords" content="what is my IP, find my IP address, check my IP, public IP lookup, my IPv4 IPv6, ISP lookup, what is my IP address right now">
@@ -377,18 +378,18 @@ function renderIp() {
     ];
     document.getElementById('detailGrid').innerHTML = details.map(d => `
       <div class="detail-card">
-        <div class="lbl">${d.lbl}</div>
+        <div class="lbl">${escHtml(d.lbl)}</div>
         <div class="val">${escHtml(d.val)}</div>
       </div>`).join('');
     document.getElementById('detailCard').classList.remove('hidden');
 
     if (ipData.lat && ipData.lon) {
       const loc     = [ipData.city, ipData.regionName, country].filter(Boolean).join(', ');
-      const mapLink = `https://www.openstreetmap.org/?mlat=${ipData.lat}&mlon=${ipData.lon}&zoom=10`;
+      const mapLink = `https://www.openstreetmap.org/?mlat=${encodeURIComponent(ipData.lat)}&mlon=${encodeURIComponent(ipData.lon)}&zoom=10`;
       document.getElementById('mapLabel').textContent = loc;
       document.getElementById('mapCoord').textContent = `${ipData.lat}°, ${ipData.lon}°`;
       document.getElementById('mapBox').innerHTML += `
-        <a href="${mapLink}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm mt-2" style="margin-top:.75rem">🗺️ Open in OpenStreetMap</a>`;
+        <a href="${escHtml(mapLink)}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm mt-2" style="margin-top:.75rem">🗺️ Open in OpenStreetMap</a>`;
       document.getElementById('locationCard').classList.remove('hidden');
     }
   }
@@ -416,7 +417,7 @@ document.getElementById('verifyBtn').addEventListener('click', async () => {
     { name: 'ip-api.com',  url: `${API}/api/ip/geo?ip=${encodeURIComponent(myIp || '')}`, parse: d => d.query },
   ];
   grid.innerHTML = sources.map(s =>
-    `<div class="detail-card" id="vsrc-${s.name}"><div class="lbl">${s.name}</div><div class="val"><span class="loading-pulse"></span></div></div>`
+    `<div class="detail-card" id="vsrc-${escHtml(s.name)}"><div class="lbl">${escHtml(s.name)}</div><div class="val"><span class="loading-pulse"></span></div></div>`
   ).join('');
 
   sources.forEach(async s => {
@@ -444,7 +445,7 @@ function renderApiEndpoints() {
   const list = document.getElementById('apiEndpointList');
   list.innerHTML = rows.map((r, i) => `
     <div class="api-endpoint">
-      <div class="ep-meta"><div class="ep-label">${r.label}</div></div>
+      <div class="ep-meta"><div class="ep-label">${escHtml(r.label)}</div></div>
       <code>${escHtml(r.url)}</code>
       <a class="btn btn-secondary btn-sm" href="${escHtml(r.url)}" target="_blank" rel="noopener" title="Open in a new tab">↗ Open</a>
       <button class="btn btn-secondary btn-sm" id="copyEp${i}" title="Copy this URL">📋 Copy</button>
@@ -470,7 +471,7 @@ function renderCombinedEndpoints() {
   const list = document.getElementById('combinedEndpointList');
   list.innerHTML = rows.map((r, i) => `
     <div class="api-endpoint">
-      <div class="ep-meta"><div class="ep-label">${r.label}</div></div>
+      <div class="ep-meta"><div class="ep-label">${escHtml(r.label)}</div></div>
       <code>${escHtml(r.url)}</code>
       <a class="btn btn-secondary btn-sm" href="${escHtml(r.url)}" target="_blank" rel="noopener" title="Open in a new tab">↗ Open</a>
       <button class="btn btn-secondary btn-sm" id="copyCmb${i}" title="Copy this URL">📋 Copy</button>

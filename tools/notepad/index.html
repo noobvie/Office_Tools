@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Online Notepad — Auto-Save Scratch Pad — Office Tools</title>
   <meta name="description" content="A fast online notepad that auto-saves everything to your browser's local storage. No login, no account — your notes are always there when you come back. Download as .txt.">
   <meta name="keywords" content="online notepad, browser notepad, auto-save notepad, scratch pad online, quick notes browser, local storage notepad">
@@ -31,7 +32,7 @@
       transition: all var(--transition);
       border-bottom: none; position: relative;
     }
-    .np-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 700; }
+    .np-tab.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); font-weight: 700; }
     .np-tab-name { outline: none; border: none; background: transparent; color: inherit; font: inherit; cursor: text; max-width: 90px; }
     .np-area {
       width: 100%; box-sizing: border-box; min-height: 380px; resize: vertical;
@@ -43,7 +44,7 @@
       font-family: inherit;
     }
     .np-area:focus { border-color: var(--primary); }
-    .save-indicator { font-size: .78rem; color: #22c55e; opacity: 0; transition: opacity .5s; }
+    .save-indicator { font-size: .78rem; color: var(--success); opacity: 0; transition: opacity .5s; }
     .save-indicator.show { opacity: 1; }
     .stats-row { font-size: .78rem; color: var(--text-muted); }
   </style>

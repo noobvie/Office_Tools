@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Quick Photo Editor — Remove Background, Resize, Color Adjust, Add Text | Office Tools</title>
   <meta name="description" content="Edit photos in your browser — remove backgrounds, resize to social media sizes, adjust colors, add text, draw shapes, and replace colors. No upload, no server, 100% private. Supports PNG, JPG, GIF, BMP, WEBP, SVG.">
   <meta name="keywords" content="remove background online free, photo editor browser no upload, background remover ai, add text to photo online, resize image social media, passport photo resize, color adjustment tool, recolor image online, image editor no install, crop resize image browser">
@@ -158,7 +159,7 @@
       margin-bottom: .65rem;
       display: none;
     }
-    .info-banner.warn { background: var(--warning-dim,#fef3c7); color: #92400e; }
+    .info-banner.warn { background: var(--warning-dim); color: var(--text); }
     .info-banner.info { background: var(--primary-dim,#eef2ff); color: var(--primary); }
 
     /* ── Toolbar row ── */
@@ -433,9 +434,9 @@
 </main>
 
 <!-- StackBlur for blur operations -->
-<script src="https://cdn.jsdelivr.net/npm/stackblur-canvas@2.7.0/dist/stackblur.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stackblur-canvas@2.7.0/dist/stackblur.min.js" integrity="sha384-aRphc3I+1SEaMQr0ORurUkotqxVyTP92TwL16cT8T+oVnYyw+bJ5b/aEZKJ5L1tW" crossorigin="anonymous"></script>
 <!-- PDF.js for PDF input -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
 <script src="../../js/config.js"></script>
 <script src="../../js/common.js"></script>
 <script>
@@ -821,7 +822,7 @@
     }
     const btn = document.createElement('button');
     btn.className = 'preset-btn';
-    btn.innerHTML = `<strong>${p.name}</strong><br><span style="color:var(--text-muted)">${p.w} × ${p.h}</span>`;
+    btn.innerHTML = `<strong>${escHtml(p.name)}</strong><br><span style="color:var(--text-muted)">${escHtml(p.w)} × ${escHtml(p.h)}</span>`;
     btn.addEventListener('click', () => applyResize(p.w, p.h));
     presetGrid.appendChild(btn);
   });

@@ -68,13 +68,10 @@
       display: inline-block; border-radius: 20px;
       padding: .18rem .65rem; font-size: .72rem; font-weight: 700;
     }
-    .sbadge-ok      { background: #d1fae5; color: #059669; }
-    .sbadge-warn    { background: #fef3c7; color: #d97706; }
-    .sbadge-danger  { background: #fee2e2; color: #dc2626; }
+    .sbadge-ok      { background: var(--success-dim); color: var(--success); }
+    .sbadge-warn    { background: var(--warning-dim); color: var(--warning); }
+    .sbadge-danger  { background: var(--danger-dim); color: var(--danger); }
     .sbadge-neutral { background: var(--primary-dim); color: var(--primary); }
-    [data-theme="dark"] .sbadge-ok     { background: #064e3b; color: #6ee7b7; }
-    [data-theme="dark"] .sbadge-warn   { background: #451a03; color: #fcd34d; }
-    [data-theme="dark"] .sbadge-danger { background: #450a0a; color: #fca5a5; }
     [data-theme="matrix"] .sbadge-ok, [data-theme="matrix"] .sbadge-warn,
     [data-theme="matrix"] .sbadge-danger, [data-theme="matrix"] .sbadge-neutral {
       background: var(--primary-dim); color: var(--primary);
@@ -159,18 +156,17 @@
       border: 1.5px solid var(--border); border-radius: var(--radius);
       padding: .65rem .9rem; display: flex; align-items: center; gap: .55rem;
     }
-    .avail-card.available   { border-color: #059669; background: #d1fae510; }
+    .avail-card.available   { border-color: var(--success); background: color-mix(in srgb, var(--success) 8%, transparent); }
     .avail-card.taken       { border-color: var(--border); opacity: .7; }
     .avail-card.unknown     { border-color: var(--border); opacity: .6; }
-    [data-theme="dark"] .avail-card.available { background: #06160f; border-color: #6ee7b7; }
     .avail-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-    .avail-dot.green  { background: #059669; }
-    .avail-dot.red    { background: #dc2626; }
+    .avail-dot.green  { background: var(--success); }
+    .avail-dot.red    { background: var(--danger); }
     .avail-dot.gray   { background: var(--text-muted); }
     .avail-name { font-family: 'Courier New', monospace; font-size: .85rem; font-weight: 700; flex: 1; }
     .avail-status { font-size: .72rem; font-weight: 700; }
-    .avail-status.green { color: #059669; }
-    .avail-status.red   { color: #dc2626; }
+    .avail-status.green { color: var(--success); }
+    .avail-status.red   { color: var(--danger); }
     .avail-status.gray  { color: var(--text-muted); }
 
     /* ── AI suggestions ── */
@@ -512,7 +508,7 @@ let currentDomain = '';
 
 async function lookupWhois(domain) {
   const out = document.getElementById('whoisResult');
-  out.innerHTML = spinnerHtml(`Looking up ${domain}…`);
+  out.innerHTML = spinnerHtml(`Looking up ${escHtml(domain)}…`);
 
   try {
     // Try RDAP first — structured data
@@ -549,7 +545,7 @@ function renderRdap(domain, rdap) {
     else                     expBadge = '<span class="sbadge sbadge-ok">Active</span>';
   }
 
-  const statusBadges = (rdap.status || []).slice(0, 4).map(s => {
+  const statusBadgesHtml = (rdap.status || []).slice(0, 4).map(s => {
     const cls = s.toLowerCase().includes('lock') ? 'sbadge-neutral' : 'sbadge-ok';
     return `<span class="sbadge ${cls}">${escHtml(s.replace('client', '').replace('server', '').trim())}</span>`;
   }).join('');
@@ -563,7 +559,7 @@ function renderRdap(domain, rdap) {
       <div class="dom-hero">
         <div class="dom-name">${escHtml(domain)}</div>
         <div class="dom-sub">RDAP lookup · ${rdap.cached ? 'cached' : 'live'}</div>
-        <div class="status-badges">${expBadge} ${statusBadges}</div>
+        <div class="status-badges">${expBadge} ${statusBadgesHtml}</div>
       </div>
 
       <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin:.5rem 0 .25rem">
@@ -735,7 +731,7 @@ function renderAvailability(data) {
     <div class="card mt-2">
       <div style="margin-bottom:.6rem">
         <strong style="font-size:.95rem;font-family:'Courier New',monospace">${escHtml(data.base)}</strong>
-        <span style="font-size:.8rem;color:var(--text-muted);margin-left:.5rem">${available} of ${data.results.length} TLDs available</span>
+        <span style="font-size:.8rem;color:var(--text-muted);margin-left:.5rem">${escHtml(available)} of ${data.results.length} TLDs available</span>
       </div>
       <div class="avail-grid">
         ${data.results.map(r => {
@@ -743,10 +739,10 @@ function renderAvailability(data) {
           const dot   = r.available === true ? 'green' : r.available === false ? 'red' : 'gray';
           const label = r.available === true ? 'Available' : r.available === false ? 'Taken' : 'Unknown';
           const lcls  = dot;
-          return `<div class="avail-card ${cls}">
-            <div class="avail-dot ${dot}"></div>
+          return `<div class="avail-card ${escHtml(cls)}">
+            <div class="avail-dot ${escHtml(dot)}"></div>
             <span class="avail-name">${escHtml(r.domain)}</span>
-            <span class="avail-status ${lcls}">${label}</span>
+            <span class="avail-status ${escHtml(lcls)}">${escHtml(label)}</span>
           </div>`;
         }).join('')}
       </div>

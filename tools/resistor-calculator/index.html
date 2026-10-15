@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Resistor Color Code Calculator (4/5/6 Band) — Office Tools</title>
   <meta name="description" content="Decode resistor color bands to resistance, or convert a resistance value to color bands. Supports 4, 5 and 6-band resistors with tolerance and temperature coefficient. Free online tool.">
   <meta name="keywords" content="resistor color code, resistor calculator, 4 band resistor, 5 band resistor, 6 band resistor, color code chart, ohm color bands, resistance to color, tolerance">
@@ -23,7 +24,7 @@
     .band-count { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: 1rem; }
     .band-count .cat-btn { padding: .4rem .85rem; border-radius: 2rem; border: 1.5px solid var(--border);
       background: none; cursor: pointer; font-size: .85rem; color: var(--text); }
-    .band-count .cat-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 700; }
+    .band-count .cat-btn.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); font-weight: 700; }
     .resistor { display: flex; align-items: center; justify-content: center; gap: 2px; height: 60px;
       background: linear-gradient(var(--bg-secondary), var(--bg)); border: 1.5px solid var(--border);
       border-radius: 8px; margin: 1rem 0; padding: 0 30px; position: relative; }
@@ -150,7 +151,7 @@ const bandCount = document.getElementById('bandCount');
 
 function makeSelect(id, options, current, labelText) {
   const wrap = document.createElement('div');
-  wrap.innerHTML = `<label for="${id}">${labelText}</label>`;
+  wrap.innerHTML = `<label for="${escHtml(id)}">${escHtml(labelText)}</label>`;
   const s = document.createElement('select');
   s.id = id;
   options.forEach(c => { const o=document.createElement('option'); o.value=c; o.textContent=c.charAt(0).toUpperCase()+c.slice(1); if(c===current)o.selected=true; s.appendChild(o); });
@@ -178,7 +179,7 @@ function fmtOhms(v) {
 }
 
 function renderResistor(view, colorList) {
-  view.innerHTML = colorList.map(c => `<div class="rband" style="background:${COLORS[c]?COLORS[c].hex:'transparent'}"></div>`).join('');
+  view.innerHTML = colorList.map(c => `<div class="rband" style="background:${escHtml(COLORS[c] ? COLORS[c].hex : 'transparent')}"></div>`).join('');
 }
 
 function decode() {

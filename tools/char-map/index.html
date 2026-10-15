@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Character Map &amp; Symbol Picker — Office Tools</title>
   <meta name="description" content="Browse and copy special characters, symbols, arrows, math operators, currency signs, and emoji. Click any character to copy it to your clipboard. Free online character map.">
   <meta name="keywords" content="character map, special characters, copy symbols, unicode symbols, arrow symbols, math symbols, currency symbols, emoji picker">
@@ -23,7 +24,7 @@
     .cat-bar { display: flex; gap: .35rem; flex-wrap: wrap; margin-bottom: .75rem; }
     .cat-btn { padding: .35rem .75rem; border-radius: 2rem; border: 1.5px solid var(--border);
       background: none; cursor: pointer; font-size: .82rem; color: var(--text); transition: all var(--transition); }
-    .cat-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 700; }
+    .cat-btn.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); font-weight: 700; }
     .char-grid { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .5rem; }
     .char-tile {
       width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
@@ -41,7 +42,7 @@
     .char-tile:hover .tooltip { display: block; }
     .char-tile .copied-tip {
       display: none; position: absolute; inset: 0; background: var(--primary);
-      color: #fff; font-size: .65rem; align-items: center; justify-content: center;
+      color: var(--on-primary); font-size: .65rem; align-items: center; justify-content: center;
       border-radius: var(--radius);
     }
     .char-tile.copied .copied-tip { display: flex; }
@@ -318,7 +319,7 @@ function renderRecent() {
   }
   strip.innerHTML = recent.map(ch => {
     const entry = CHARS.find(c => c.ch === ch);
-    return `<div class="char-tile" title="${entry ? entry.name : ch}" onclick="copyCh('${ch.replace(/'/g,"\\'")}', this)">${ch}<div class="copied-tip">✓</div></div>`;
+    return `<div class="char-tile" title="${escHtml(entry ? entry.name : ch)}" data-ch="${escHtml(ch)}" onclick="copyCh(this.dataset.ch, this)">${escHtml(ch)}<div class="copied-tip">✓</div></div>`;
   }).join('');
 }
 
@@ -336,7 +337,7 @@ function copyCh(ch, el) {
 
 function buildCatBar() {
   const bar = document.getElementById('catBar');
-  bar.innerHTML = CATS.map(cat => `<button class="cat-btn${cat === activeCat ? ' active' : ''}" data-cat="${cat}">${cat}</button>`).join('');
+  bar.innerHTML = CATS.map(cat => `<button class="cat-btn${cat === activeCat ? ' active' : ''}" data-cat="${escHtml(cat)}">${escHtml(cat)}</button>`).join('');
   bar.querySelectorAll('.cat-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       activeCat = btn.dataset.cat;
@@ -357,10 +358,9 @@ function renderGrid(query) {
   });
   grid.innerHTML = filtered.map(c => {
     const cp = c.ch.codePointAt(0).toString(16).toUpperCase().padStart(4,'0');
-    const safe = c.ch.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    return `<div class="char-tile" onclick="copyCh('${safe}', this)">
-      ${c.ch}
-      <div class="tooltip">U+${cp}<br>${c.name}</div>
+    return `<div class="char-tile" data-ch="${escHtml(c.ch)}" onclick="copyCh(this.dataset.ch, this)">
+      ${escHtml(c.ch)}
+      <div class="tooltip">U+${escHtml(cp)}<br>${escHtml(c.name)}</div>
       <div class="copied-tip">✓</div>
     </div>`;
   }).join('');

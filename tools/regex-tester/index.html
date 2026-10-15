@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Regex Tester — Office Tools</title>
   <meta name="description" content="Test regular expressions live with real-time match highlighting, capture groups, and global/case-insensitive/multiline flag toggles. Free online regex tester — no signup.">
   <meta name="keywords" content="regex tester, regular expression tester, online regex, regex debugger, regex match highlighter, regex groups">
@@ -186,7 +187,7 @@ function run() {
   const text = document.getElementById('rxInput').value;
   const charCount = text.length;
   let matchCount = 0;
-  let highlighted = '';
+  let highlightedHtml = '';
   let matchRows = '';
   let lastIdx = 0;
 
@@ -201,27 +202,27 @@ function run() {
     }
     matchCount = allMatches.length;
     allMatches.forEach((am, i) => {
-      highlighted += escHtml(text.slice(lastIdx, am.idx));
-      highlighted += '<mark>' + escHtml(am.match) + '</mark>';
+      highlightedHtml += escHtml(text.slice(lastIdx, am.idx));
+      highlightedHtml += '<mark>' + escHtml(am.match) + '</mark>';
       lastIdx = am.idx + am.len;
       const grps = am.groups.map((g,gi) => `<span style="opacity:.7">$${gi+1}: ${escHtml(String(g ?? ''))}</span>`).join(' ');
       matchRows += `<tr><td>${i+1}</td><td>${am.idx}</td><td>${am.len}</td><td>${escHtml(am.match)}</td><td>${grps || '—'}</td></tr>`;
     });
-    highlighted += escHtml(text.slice(lastIdx));
+    highlightedHtml += escHtml(text.slice(lastIdx));
   } else {
     const m = rx.exec(text);
     if (m) {
       matchCount = 1;
-      highlighted = escHtml(text.slice(0, m.index)) + '<mark>' + escHtml(m[0]) + '</mark>' + escHtml(text.slice(m.index + m[0].length));
+      highlightedHtml = escHtml(text.slice(0, m.index)) + '<mark>' + escHtml(m[0]) + '</mark>' + escHtml(text.slice(m.index + m[0].length));
       const grps = [...m].slice(1).map((g,gi) => `<span style="opacity:.7">$${gi+1}: ${escHtml(String(g ?? ''))}</span>`).join(' ');
       matchRows = `<tr><td>1</td><td>${m.index}</td><td>${m[0].length}</td><td>${escHtml(m[0])}</td><td>${grps || '—'}</td></tr>`;
     } else {
-      highlighted = escHtml(text);
+      highlightedHtml = escHtml(text);
     }
   }
 
-  document.getElementById('matchPreview').innerHTML = highlighted;
-  document.getElementById('rxStats').innerHTML = `Characters: ${charCount} &nbsp;|&nbsp; Matches: <strong>${matchCount}</strong>`;
+  document.getElementById('matchPreview').innerHTML = highlightedHtml;
+  document.getElementById('rxStats').innerHTML = `Characters: ${escHtml(charCount)} &nbsp;|&nbsp; Matches: <strong>${escHtml(matchCount)}</strong>`;
 
   if (matchRows) {
     document.getElementById('matchList').innerHTML = `<table class="match-table"><thead><tr><th>#</th><th>Index</th><th>Length</th><th>Match</th><th>Groups</th></tr></thead><tbody>${matchRows}</tbody></table>`;

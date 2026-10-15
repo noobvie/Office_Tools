@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>HTML / CSS / JS Beautifier &amp; Minifier — Office Tools</title>
   <meta name="description" content="Beautify or minify HTML, CSS, and JavaScript online. Format messy code with proper indentation, or compress it to save bytes. Runs locally in your browser — no upload.">
   <meta name="keywords" content="HTML beautifier, CSS beautifier, JS beautifier, javascript formatter, code minifier, HTML minifier, CSS minifier, format code online, pretty print HTML">
@@ -33,7 +34,7 @@
     .seg { display: inline-flex; border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
     .seg button { padding: .45rem .95rem; border: none; background: none; cursor: pointer;
       font-size: .85rem; font-weight: 700; color: var(--text); }
-    .seg button.active { background: var(--primary); color: #fff; }
+    .seg button.active { background: var(--primary); color: var(--on-primary); }
     .ctl-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
     .field-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); }
     .stat { font-size: .8rem; color: var(--text-muted); margin-top: .5rem; }
@@ -122,9 +123,9 @@
   </div>
 </main>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify-css.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify-html.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify.min.js" integrity="sha384-KDFWMN6ZABhcMaACFKV7HP4D0Eqzn0SujQnlv05qo1yS61A/vAQxClSdH8mobTn/" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify-css.min.js" integrity="sha384-hLSGh4xWwjFAFwevg4XHWcoUQfqYNeEkqXQ0+defmwZqVW6MdiUmLsCODtJ1zneO" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.1/beautify-html.min.js" integrity="sha384-EhDs1rq5YpojkjwQGOSyqWZM5GI0BtOfs8OqoSS4NM/tNDSoqsshG8YYza2eBUJX" crossorigin="anonymous"></script>
 <script src="../../js/config.js"></script>
 <script src="../../js/common.js"></script>
 <script>

@@ -788,7 +788,7 @@ function renderPlanStrip(o) {
   const mix = `(${enc.length} re-encode${enc.length > 1 ? 's' : ''}, ${planned.length - enc.length} remux)`;
   let head = !enc.length ? `${files} can be remuxed — no re-encoding, seconds each`
     : total < 10 ? `Estimated under 10 s for ${files} ${mix}`
-    : `Estimated ≈ ${escHtml(fmtEst(total))} for ${files} ${mix}`;
+    : `Estimated ≈ ${fmtEst(total)} for ${files} ${mix}`;
   let sub = enc.length
     ? `${total * 1.6 >= 15 ? `Likely between ${lo} and ${hi}. ` : ''}Re-encoding runs on one CPU thread inside the browser${calibState === 'done' ? ', timed on this device' : ''}; pick a lower resolution or the Fast preset to bring it down.`
     : 'Streams are copied bit-for-bit into the new container: same quality, same size.';
@@ -799,7 +799,7 @@ function renderPlanStrip(o) {
   if (kept) sub += ` ⚠ ${kept === 1 ? 'One file keeps' : kept + ' files keep'} a codec browsers do not play — see the row, or tick Re-encode.`;
   planEl.hidden = false;
   planEl.classList.toggle('slow', total > SLOW_WARN);
-  planEl.innerHTML = `<div>${total > SLOW_WARN ? '⏳ ' : ''}${head}</div><div class="plan-sub">${sub}</div>`;
+  planEl.innerHTML = `<div>${total > SLOW_WARN ? '⏳ ' : ''}${escHtml(head)}</div><div class="plan-sub">${escHtml(sub)}</div>`;
 }
 
 // ── Rendering ──────────────────────────────────────────────────────────
@@ -861,7 +861,7 @@ function itemHtml(it) {
     <div class="fi-side">${statusHtml(it)}${buttonsHtml(it)}</div>${plan}${bar}${err}`;
 }
 function renderList() {
-  listEl.innerHTML = items.map(it => `<div class="file-item" data-id="${it.id}">${itemHtml(it)}</div>`).join('');
+  listEl.innerHTML = items.map(it => `<div class="file-item" data-id="${escHtml(it.id)}">${itemHtml(it)}</div>`).join('');
 }
 function renderItem(it) {
   const el = listEl.querySelector(`.file-item[data-id="${it.id}"]`);

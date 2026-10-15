@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Image Palette Extractor — Office Tools</title>
   <meta name="description" content="Upload any image to extract its dominant colors as HEX swatches and ready-to-use CSS variables. Get a beautiful color palette from photos in seconds. Free, browser-based.">
   <meta name="keywords" content="color palette extractor, image color picker, dominant colors, extract palette from image, HEX from photo, design color palette">
@@ -299,7 +300,7 @@ function renderPalette(palette) {
     const pct = Math.round(p.count / total * 100);
     const tile = document.createElement('div');
     tile.className = 'color-tile';
-    tile.innerHTML = `<div class="tile-swatch" style="background:${hex}"></div><div class="tile-hex">${hex}</div><div class="tile-pct">${pct}%</div>`;
+    tile.innerHTML = `<div class="tile-swatch" style="background:${escHtml(hex)}"></div><div class="tile-hex">${escHtml(hex)}</div><div class="tile-pct">${pct}%</div>`;
     tile.addEventListener('click', () => copyText(hex, tile.querySelector('.tile-hex')));
     row.appendChild(tile);
   });

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Color Converter — Office Tools</title>
   <meta name="description" content="Convert colors between HEX, RGB, HSL, HSV, and CMYK formats instantly. Generates shades and tints, recognizes 140+ named CSS colors. Live preview in all themes.">
   <meta name="keywords" content="color converter, HEX to RGB, RGB to HSL, CMYK converter, color code converter, CSS color, color picker, color format converter">
@@ -282,7 +283,7 @@ function update(hex) {
   grid.innerHTML = formats.map(f => `
     <div class="format-card">
       <div class="copy-row">
-        <div class="label">${f.label}</div>
+        <div class="label">${escHtml(f.label)}</div>
         <button class="btn btn-ghost btn-sm" onclick="copyText('${escHtml(f.value)}',this)">Copy</button>
       </div>
       <div class="value">${escHtml(f.value)}</div>
@@ -338,9 +339,9 @@ function renderNamedColors(filter = '') {
   const grid = document.getElementById('namedGrid');
   const entries = Object.entries(NAMED_COLORS).filter(([name]) => !filter || name.includes(filter.toLowerCase()));
   grid.innerHTML = entries.map(([name, hex]) => `
-    <div class="named-swatch" onclick="update('${hex}');document.getElementById('hexInput').value='${hex}'">
-      <div class="dot" style="background:${hex}"></div>
-      <span class="name">${name}</span>
+    <div class="named-swatch" onclick="update('${escHtml(hex)}');document.getElementById('hexInput').value='${escHtml(hex)}'">
+      <div class="dot" style="background:${escHtml(hex)}"></div>
+      <span class="name">${escHtml(name)}</span>
     </div>`).join('');
 }
 

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Markdown ↔ HTML Converter — Office Tools</title>
   <meta name="description" content="Convert Markdown to HTML and HTML to Markdown, both directions, with a live rendered preview. Supports GitHub-flavored Markdown. Copy clean output. Runs locally in your browser.">
   <meta name="keywords" content="markdown to html, html to markdown, markdown converter, md to html, html to md, GFM converter, markdown html, convert markdown online">
@@ -29,7 +30,7 @@
     .field-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: .35rem; }
     .seg { display: inline-flex; border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 1rem; }
     .seg button { padding: .45rem .9rem; border: none; background: none; cursor: pointer; font-size: .84rem; font-weight: 700; color: var(--text); }
-    .seg button.active { background: var(--primary); color: #fff; }
+    .seg button.active { background: var(--primary); color: var(--on-primary); }
     .preview { min-height: 360px; border: 1px solid var(--border); border-radius: var(--radius);
       padding: 1rem 1.2rem; overflow: auto; background: var(--bg-card); }
     .preview h1,.preview h2,.preview h3 { margin: .6em 0 .3em; }
@@ -108,8 +109,8 @@ Write **Markdown** here and see the _HTML_ on the right.
   </div>
 </main>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/turndown/7.1.3/turndown.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js" integrity="sha384-/TQbtLCAerC3jgaim+N78RZSDYV7ryeoBCVqTuzRrFec2akfBkHS7ACQ3PQhvMVi" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/turndown/7.1.3/turndown.min.js" integrity="sha384-vfZXEO4Ys07yoAT1ERGAxt5Hrx+6/VHQ5xOjMDpsHzz/NO6TOBaVx4GnQhhMIwak" crossorigin="anonymous"></script>
 <script src="../../js/config.js"></script>
 <script src="../../js/common.js"></script>
 <script>
@@ -123,11 +124,11 @@ function convert() {
   try {
     if (dir === 'md2html') {
       out = (typeof marked !== 'undefined') ? marked.parse(src) : src;
-      $('preview').innerHTML = out;
+      otSetSafeHtml($('preview'), out);
     } else {
       out = td ? td.turndown(src) : src;
-      // preview the HTML input as rendered
-      $('preview').innerHTML = src;
+      // preview the HTML input as rendered (scripts and handlers stripped)
+      otSetSafeHtml($('preview'), src);
     }
   } catch (e) {
     out = '<!-- conversion error: ' + (e.message || e) + ' -->';

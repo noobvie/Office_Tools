@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Date &amp; Time Calculator — Office Tools</title>
   <meta name="description" content="All-in-one date and time calculator: date difference, add/subtract days, age calculator, countdown, time unit converter (seconds to minutes to hours), Excel serial number to date/time, decimal hours to HH:MM:SS, and duration adder. Free, no login.">
   <meta name="keywords" content="date calculator, date difference, age calculator, days between dates, countdown calculator, add days to date, time unit converter, seconds to minutes, minutes to hours, Excel time number, Excel serial date, decimal hours to time, HH:MM to decimal, duration calculator, time to decimal, timesheet calculator">
@@ -582,7 +583,7 @@ document.getElementById('decConvertBtn').addEventListener('click', () => {
     const mm = Math.floor((totalSec % 3600) / 60);
     const ss = totalSec % 60;
     out.innerHTML = `${pad(hh)}:${pad(mm)}:${pad(ss)}
-      <div class="dec-sub">${dec} decimal hours = ${hh}h ${mm}m ${ss}s</div>`;
+      <div class="dec-sub">${escHtml(dec)} decimal hours = ${escHtml(hh)}h ${escHtml(mm)}m ${escHtml(ss)}s</div>`;
   } else {
     const raw = document.getElementById('decHMSInput').value.trim();
     // Accept H:MM, H:MM:SS, or plain "Xh Ym Zs"
@@ -602,7 +603,7 @@ document.getElementById('decConvertBtn').addEventListener('click', () => {
     if (!totalSec) return;
     const dec = totalSec / 3600;
     out.innerHTML = `${parseFloat(dec.toFixed(6))} h
-      <div class="dec-sub">${raw} = ${parseFloat(dec.toFixed(6))} decimal hours</div>`;
+      <div class="dec-sub">${escHtml(raw)} = ${parseFloat(dec.toFixed(6))} decimal hours</div>`;
   }
   out.classList.remove('hidden');
 });
@@ -624,7 +625,7 @@ function addDurEntry(sign = '+') {
       <option value="-1" ${sign === '-' ? 'selected' : ''}>−</option>
     </select>
     <input type="text" class="dur-val" placeholder="e.g. 1h30m or 1:30:00">
-    <button class="dur-remove" title="Remove" onclick="document.getElementById('${id}').remove()">✕</button>
+    <button class="dur-remove" title="Remove" onclick="document.getElementById('${escHtml(id)}').remove()">✕</button>
   `;
   document.getElementById('durList').appendChild(div);
 }

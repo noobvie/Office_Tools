@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Image Upscaler — Enlarge &amp; Sharpen Photos | Office Tools</title>
   <meta name="description" content="Upscale and sharpen images 2×, 3× or 4× in your browser. High-quality stepped resampling with unsharp masking and denoise — enlarge low-resolution photos with no upload.">
   <meta name="keywords" content="image upscaler, upscale image, enlarge image, increase image resolution, sharpen photo, photo enhancer, make image bigger, 2x 4x upscale, image enlarger online">
@@ -58,7 +59,7 @@
     .cmp-handle { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--primary); left: 50%; transform: translateX(-50%); cursor: ew-resize; z-index: 3; }
     .cmp-handle::after {
       content: '⇆'; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
-      width: 30px; height: 30px; border-radius: 50%; background: var(--primary); color: #fff;
+      width: 30px; height: 30px; border-radius: 50%; background: var(--primary); color: var(--on-primary);
       display: flex; align-items: center; justify-content: center; font-size: .95rem; box-shadow: var(--shadow-md);
     }
     .cmp-label { position: absolute; top: .5rem; padding: .15rem .55rem; font-size: .72rem; font-weight: 700; border-radius: 20px; background: rgba(0,0,0,.6); color: #fff; z-index: 2; }
@@ -186,7 +187,7 @@
 </div>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/stackblur-canvas@2.7.0/dist/stackblur.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stackblur-canvas@2.7.0/dist/stackblur.min.js" integrity="sha384-aRphc3I+1SEaMQr0ORurUkotqxVyTP92TwL16cT8T+oVnYyw+bJ5b/aEZKJ5L1tW" crossorigin="anonymous"></script>
 <script src="../../js/config.js"></script>
 <script src="../../js/common.js"></script>
 <script>
@@ -243,7 +244,8 @@ function updateTargetInfo() {
     const f = Math.sqrt(MAX_OUT_PIXELS / (tw * th));
     tw = Math.round(tw * f); th = Math.round(th * f); capped = true;
   }
-  targetInfo.innerHTML = `Output: <b>${tw} × ${th}</b> px` + (capped ? ' <span style="color:var(--warning)">(capped at 40 MP)</span>' : '');
+  const cappedHtml = capped ? ' <span style="color:var(--warning)">(capped at 40 MP)</span>' : '';
+  targetInfo.innerHTML = `Output: <b>${escHtml(tw)} × ${escHtml(th)}</b> px` + cappedHtml;
 }
 
 bindDrop(drop, fileEl, async files => {
@@ -252,7 +254,7 @@ bindDrop(drop, fileEl, async files => {
   try { f = await otNormalizeImage(f); } catch (e) { alert('Could not read this image.'); return; }   // iPhone HEIC → PNG
   const url = URL.createObjectURL(f);
   srcImg = await loadImg(url);
-  srcInfo.innerHTML = `Source: <b>${srcImg.naturalWidth} × ${srcImg.naturalHeight}</b> px`;
+  srcInfo.innerHTML = `Source: <b>${escHtml(srcImg.naturalWidth)} × ${escHtml(srcImg.naturalHeight)}</b> px`;
   controls.style.display = '';
   cmp.style.display = 'none';
   resultRow.style.display = 'none';
@@ -339,19 +341,26 @@ function canvasToBlob(canvas, mime, q) {
 // then cached by the browser. UpscalerJS handles tiling so large images don't
 // exhaust browser memory. Nothing is uploaded.
 const AI_CDN = {
-  tf:    'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js',
-  ups:   'https://cdn.jsdelivr.net/npm/upscaler@1.0.0-beta.19/dist/browser/umd/upscaler.min.js',
-  model: 'https://cdn.jsdelivr.net/npm/@upscalerjs/esrgan-slim@1.0.0-beta.19/dist/umd/x4.min.js',
+  // SRI: `openssl dgst -sha384 -binary <file> | openssl base64 -A`; recompute on every version bump.
+  tf:    { src: 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js',
+           sri: 'sha384-vE8hbVJ4lezako5rlvE7bY0BVzWlFhZncPlckrqNwcUQpVtgbENTgZ8TBbnPjZre' },
+  ups:   { src: 'https://cdn.jsdelivr.net/npm/upscaler@1.0.0-beta.19/dist/browser/umd/upscaler.min.js',
+           sri: 'sha384-pZ3l1NgemraExJ0i9RM7LtP5gyzKTP7sUD1IWACiWMT8RkpU9RJVSK4BtAkF+y9Q' },
+  // This URL answers 404 (esrgan-slim has no beta.19 release), so the catch in ensureAI always
+  // falls back to Upscaler's bundled model. No hash exists to record; do not point it at a
+  // different version without adding one.
+  model: { src: 'https://cdn.jsdelivr.net/npm/@upscalerjs/esrgan-slim@1.0.0-beta.19/dist/umd/x4.min.js', sri: null },
   // UMD global the model script exposes — first match wins; if none, the
   // Upscaler default model is used instead.
   modelGlobals: ['ESRGANSlim4x', 'ESRGANSlim', 'esrganSlim4x', 'esrganSlim'],
 };
 let _aiUpscaler = null, _aiLoading = null;
 
-function loadScript(src) {
+function loadScript({ src, sri }) {
   return new Promise((ok, err) => {
     const s = document.createElement('script');
     s.src = src; s.onload = ok; s.onerror = () => err(new Error('Failed to load ' + src));
+    if (sri) { s.integrity = sri; s.crossOrigin = 'anonymous'; }
     document.head.appendChild(s);
   });
 }
@@ -465,7 +474,8 @@ async function run() {
     syncAfterWidth();
     window.addEventListener('resize', syncAfterWidth);
 
-    resultInfo.innerHTML = `<b>${tw} × ${th}</b> px · ${(resultBlob.size / 1048576).toFixed(2)} MB · ${fmtEl.value.toUpperCase()}` + (usedAI ? ' · AI' : '');
+    const aiHtml = usedAI ? ' · AI' : '';
+    resultInfo.innerHTML = `<b>${escHtml(tw)} × ${escHtml(th)}</b> px · ${(resultBlob.size / 1048576).toFixed(2)} MB · ${escHtml(fmtEl.value.toUpperCase())}` + aiHtml;
     resultRow.style.display = 'flex';
   } catch (e) {
     alert('Upscale failed: ' + (e.message || e));

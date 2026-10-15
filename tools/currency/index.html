@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Currency &amp; Crypto Converter — Live Rates for 40+ Fiat + BTC, ETH, XMR, GRIN</title>
   <meta name="description" content="Convert 40+ fiat currencies and crypto (Bitcoin, Ethereum, Monero, Grin) with live exchange rates. Includes USD, EUR, GBP, JPY, BTC, ETH, XMR, GRIN and a quick-compare table. Free, no login.">
   <meta name="keywords" content="currency converter, crypto converter, exchange rate, USD to BTC, bitcoin price calculator, ethereum converter, monero XMR price, grin GRIN price, USD to EUR, live forex rates, cryptocurrency converter, free currency calculator, bitcoin to usd, eth to usd">
@@ -133,7 +134,7 @@
       letter-spacing: .02em;
     }
     .crypto-tab:hover  { border-color: var(--primary); color: var(--primary); }
-    .crypto-tab.active { border-color: var(--primary); background: var(--primary); color: #fff; }
+    .crypto-tab.active { border-color: var(--primary); background: var(--primary); color: var(--on-primary); }
 
     .cf-row {
       display: flex;
@@ -271,7 +272,7 @@
     </p>
   </div>
 
-  <div class="card mt-2" style="border-left:3px solid var(--warning,#f59e0b);background:var(--surface2,#1e1e1e)">
+  <div class="card mt-2" style="border-left:3px solid var(--warning,#f59e0b);background:var(--bg-secondary)">
     <p style="font-size:.78rem;color:var(--text-muted);margin:0;line-height:1.6">
       <strong style="color:var(--text)">⚠ Disclaimer:</strong>
       Exchange rates and crypto prices shown here are <strong>estimates for informational purposes only</strong>
@@ -485,7 +486,7 @@ function renderPopular() {
     const card = document.createElement('div');
     card.className = 'popular-card';
     const rateStr = rate ? fmtFiat(rate) : '—';
-    card.innerHTML = `<div class="pair">${a} / ${b}</div><div class="rate-val">${rateStr}</div>`;
+    card.innerHTML = `<div class="pair">${escHtml(a)} / ${escHtml(b)}</div><div class="rate-val">${escHtml(rateStr)}</div>`;
     card.addEventListener('click', () => {
       document.getElementById('fromCurrency').value = `${a} — ${CURRENCIES[a]}`;
       document.getElementById('toCurrency').value   = `${b} — ${CURRENCIES[b]}`;
@@ -500,11 +501,10 @@ function renderQuickTable(from, to) {
   const head = document.getElementById('quickTableHead');
   const body = document.getElementById('quickTableBody');
   document.getElementById('tableHeader').textContent = `${from} → ${to}`;
-  head.innerHTML = `<tr style="border-bottom:1.5px solid var(--border)"><th style="padding:.4rem .6rem;text-align:left">${from}</th><th style="padding:.4rem .6rem;text-align:left">${to}</th></tr>`;
+  head.innerHTML = `<tr style="border-bottom:1.5px solid var(--border)"><th style="padding:.4rem .6rem;text-align:left">${escHtml(from)}</th><th style="padding:.4rem .6rem;text-align:left">${escHtml(to)}</th></tr>`;
   body.innerHTML = amounts.map((a, i) => {
     const r  = convertAmount(a, from, to);
-    const bg = i % 2 === 0 ? '' : `style="background:var(--bg-secondary)"`;
-    return `<tr ${bg}><td style="padding:.4rem .6rem;font-weight:600">${a.toLocaleString()}</td><td style="padding:.4rem .6rem;font-family:monospace">${r !== null ? fmtFiat(r) : '—'}</td></tr>`;
+        return `<tr ${i % 2 === 0 ? '' : 'style="background:var(--bg-secondary)"'}><td style="padding:.4rem .6rem;font-weight:600">${a.toLocaleString()}</td><td style="padding:.4rem .6rem;font-family:monospace">${r !== null ? escHtml(fmtFiat(r)) : '—'}</td></tr>`;
   }).join('');
 }
 

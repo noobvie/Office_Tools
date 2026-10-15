@@ -127,6 +127,28 @@ function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+/* Render user-supplied HTML (a markdown/HTML preview) into `el` without running it.
+   DOMParser documents are inert (no script, no resource loads), so the scrub happens before anything is live;
+   the nodes are then MOVED into the page, never serialised and re-parsed (that round trip is how mutation-XSS works).
+   Dropped: active/embedding elements, every on* attribute, and href/src/action values that are javascript:, vbscript:
+   or data: (data:image/png|jpeg|gif|webp on <img src> stays). Links keep working; scripts, handlers and forms do not. */
+function otSetSafeHtml(el, html) {
+  const doc = new DOMParser().parseFromString(String(html ?? ''), 'text/html');
+  doc.querySelectorAll('script,style,iframe,frame,frameset,object,embed,applet,link,meta,base,form,svg,math,noscript,template')
+    .forEach(n => n.remove());
+  const URL_ATTRS = ['href', 'src', 'xlink:href', 'action', 'formaction', 'poster', 'background', 'ping'];
+  doc.body.querySelectorAll('*').forEach(n => {
+    for (const a of [...n.attributes]) {
+      const name = a.name.toLowerCase();
+      const val = a.value.replace(/[\u0000- ]+/g, '').toLowerCase();   // browsers ignore control chars/whitespace inside a scheme
+      const badUrl = URL_ATTRS.includes(name) && /^(?:javascript|vbscript|data):/.test(val)
+        && !(n.localName === 'img' && name === 'src' && /^data:image\/(?:png|jpe?g|gif|webp);/.test(val));
+      if (name.startsWith('on') || name === 'srcdoc' || badUrl) n.removeAttribute(a.name);
+    }
+  });
+  el.replaceChildren(...doc.body.childNodes);
+}
+
 /* ---------- Header Search (tool pages) ---------- */
 function initHeaderSearch() {
   const header = document.querySelector('.site-header');
@@ -206,8 +228,8 @@ function initHeaderSearch() {
       drop.innerHTML = '<div class="hsd-empty">No tools found</div>';
     } else {
       drop.innerHTML = pool.slice(0, 8).map(t =>
-        `<a class="hsd-item${t.path === currentPath ? ' hsd-current' : ''}" href="${root}tools/${t.path}/">` +
-        `<span class="hsd-icon">${t.icon}</span>` +
+        `<a class="hsd-item${t.path === currentPath ? ' hsd-current' : ''}" href="${escHtml(root)}tools/${escHtml(t.path)}/">` +
+        `<span class="hsd-icon">${escHtml(t.icon)}</span>` +
         `<span class="hsd-name">${escHtml(t.name)}</span>` +
         `<span class="hsd-cat">${escHtml(t.cat.replace(/^\S+\s/, ''))}</span></a>`
       ).join('');
@@ -356,6 +378,7 @@ const OT_TOOLS = [
   { name: 'Online Traceroute',       path: 'traceroute',            cat: '🌐 Network & Web',        icon: '🔍', desc: 'Trace the network path hop by hop with live streaming output' },
   { name: 'DNS Lookup',              path: 'dns-lookup',            cat: '🌐 Network & Web',        icon: '📋', desc: 'Query A, AAAA, MX, NS, TXT, CNAME, SOA and CAA records' },
   { name: 'Reverse DNS Lookup',      path: 'reverse-dns',           cat: '🌐 Network & Web',        icon: '🔄', desc: 'Resolve any IPv4 or IPv6 address to its hostname via PTR' },
+  { name: 'Network Tools',           path: 'network-toolkit',       cat: '🌐 Network & Web',        icon: '🌐', desc: 'Ping, traceroute, DNS, reverse DNS, IPv6 and subnet tools in one hub' },
   { name: 'Email Validator',         path: 'email-validator',       cat: '🌐 Network & Web',        icon: '📧', desc: 'Check email syntax, MX records and disposable/role-based flags',       isNew: true },
   { name: 'Email Deliverability',    path: 'email-deliverability',  cat: '🌐 Network & Web',        icon: '✉️', desc: 'SPF, DKIM, DMARC, MX, MTA-STS and BIMI with a config score',           isNew: true },
   { name: 'DNSBL Blacklist Checker', path: 'dnsbl-checker',         cat: '🌐 Network & Web',        icon: '🚫', desc: 'Is an IP on Spamhaus, SpamCop, Barracuda or other blocklists?',        isNew: true },
@@ -465,7 +488,7 @@ function renderBreadcrumbs() {
   nav.className = 'tool-breadcrumb';
   nav.setAttribute('aria-label', 'Breadcrumb');
   nav.innerHTML =
-    `<a href="${root}">🛠️ Office Tools</a>` +
+    `<a href="${escHtml(root)}">🛠️ Office Tools</a>` +
     `<span class="bc-sep" aria-hidden="true">›</span>` +
     `<span class="bc-current" aria-current="page">${escHtml(name)}</span>`;
   main.insertBefore(nav, main.firstChild);
@@ -591,17 +614,17 @@ function renderSiteFooter() {
   const path = window.location.pathname;
   const onHub    = !/\/(tools|pages)\//.test(path);
   const onDonate = path.endsWith('/donate.html');
-  const flag = `<svg class="site-footer-flag" viewBox="0 0 27 18" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Yellow flag with three red stripes"><rect width="27" height="18" fill="#FFCD00"/><rect y="4" width="27" height="2" fill="#DA251D"/><rect y="8" width="27" height="2" fill="#DA251D"/><rect y="12" width="27" height="2" fill="#DA251D"/></svg>`;
+  const flagSvg = `<svg class="site-footer-flag" viewBox="0 0 27 18" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Yellow flag with three red stripes"><rect width="27" height="18" fill="#FFCD00"/><rect y="4" width="27" height="2" fill="#DA251D"/><rect y="8" width="27" height="2" fill="#DA251D"/><rect y="12" width="27" height="2" fill="#DA251D"/></svg>`;
   const grin = `<svg class="site-footer-grin" viewBox="0 0 191 191" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="95.5" cy="95.5" r="95.5"/><circle fill="#FEF102" cx="95.3" cy="95.5" r="85.3"/><path d="${OT_GRIN_PATH}"/></svg>`;
   const links = [];
-  if (!onHub)    links.push(`<a href="${root}">🛠️ All tools</a>`);
+  if (!onHub)    links.push(`<a href="${escHtml(root)}">🛠️ All tools</a>`);
   if (!onDonate) links.push(`<a href="${root}pages/donate.html" class="site-footer-donate">Donate me 1 ツ ${grin}</a>`);
   links.push(`<a href="${root}pages/privacy.html">Privacy &amp; Cookie Notice</a>`);
   const footer = document.createElement('footer');
   footer.className = 'site-footer';
   footer.innerHTML =
     `<div class="site-footer-inner">` +
-      `<p>From Saigon with ❤️ ${flag}</p>` +
+      `<p>From Saigon with ❤️ ${flagSvg}</p>` +
       `<p class="site-footer-links">${links.join('')}</p>` +
     `</div>`;
   document.body.appendChild(footer);
@@ -654,7 +677,7 @@ function openFeedbackModal() {
       <p>Report a broken tool, suggest a feature, or leave any comment. No login needed &mdash; or reach me directly on the <a href="https://forum.grin.mw/u/hellogrin" target="_blank" rel="noopener" style="color:var(--primary)">Grin forum @hellogrin</a>.</p>
       <textarea id="ot-fb-msg" placeholder="Describe the issue or suggestion… (min 10 characters)" maxlength="2000"></textarea>
       <div style="display:flex;align-items:center;gap:.6rem;font-size:.88rem">
-        <label for="ot-fb-captcha" style="white-space:nowrap;color:var(--text-muted)">What is ${ca} + ${cb}?</label>
+        <label for="ot-fb-captcha" style="white-space:nowrap;color:var(--text-muted)">What is ${escHtml(ca)} + ${escHtml(cb)}?</label>
         <input id="ot-fb-captcha" type="number" min="0" max="99" placeholder="Answer"
           style="width:80px;padding:.35rem .6rem;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--bg-secondary);color:var(--text);font-size:.9rem;font-family:inherit;outline:none">
       </div>
@@ -841,6 +864,8 @@ document.addEventListener('DOMContentLoaded', () => {
    never receive one pay nothing. The original HEIC File is not retained; only the
    converted PNG Blob is returned, so nothing is uploaded and no temp copy lingers. */
 const OT_HEIC_SRC = 'https://cdn.jsdelivr.net/npm/heic-to@1.5.2/dist/iife/heic-to.js';
+/* SRI of the pinned file: `openssl dgst -sha384 -binary <file> | openssl base64 -A`. Recompute on every version bump. */
+const OT_HEIC_SRI = 'sha384-cVm8gaWQ5+URpoh6ACKXpm8TuyoHkfIDDBkxvDoUdIZ18w8nV5en0lVQvWMwO/6S';
 let _otHeicLoader = null;
 
 function otIsHeic(f) {
@@ -854,8 +879,10 @@ function otLoadHeic() {
   _otHeicLoader = new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = OT_HEIC_SRC;
+    s.integrity = OT_HEIC_SRI;
+    s.crossOrigin = 'anonymous';
     s.onload  = () => resolve();
-    s.onerror = () => { _otHeicLoader = null; reject(new Error('Could not load the HEIC decoder')); };
+    s.onerror = () => { _otHeicLoader = null; reject(new Error('Could not load the HEIC decoder (network error, or the file failed its integrity check)')); };
     document.head.appendChild(s);
   });
   return _otHeicLoader;

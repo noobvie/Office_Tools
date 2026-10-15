@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>PDF to Text — Office Tools</title>
   <meta name="description" content="Extract text from any PDF file online, with opt-in OCR for scanned PDFs that have no text layer. Browse extracted content page by page, copy to clipboard, or download as a .txt or Word .docx file. Privacy-safe — nothing is uploaded.">
   <meta name="keywords" content="PDF to text, extract text from PDF, scanned PDF to text, PDF OCR, OCR scanned PDF, PDF to Word, PDF text extractor, PDF to TXT, convert PDF online, read PDF text">
@@ -360,8 +361,8 @@
 </div>
 </main>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js" integrity="sha384-4xaIisuLEy2lo2HkB2C4rEf7v8jbTb2kuogX6TkuEt9feTWKBSFSOzsqNNbV+sKh" crossorigin="anonymous"></script>
 <script src="../../js/common.js"></script>
 <script src="../../js/vietnamese.js"></script>
 <script>
@@ -410,7 +411,8 @@ const OCR_MAX_EDGE_PX  = IS_SMALL_DEVICE ? 2200 : 4000;
 const OCR_MAX_AREA_PX  = IS_SMALL_DEVICE ? 3.5e6 : 1.1e7;
 
 const OCR_LOAD_SHARE   = 6;      // % of the bar reserved for the engine download
-const TESSERACT_SRC    = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+const TESSERACT_SRC    = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+const TESSERACT_SRI    = 'sha384-GJqSu7vueQ9qN0E9yLPb3Wtpd7OrgK8KmYzC8T1IysG1bcvxvIO4qtYR/D3A991F';   // openssl dgst -sha384 -binary | openssl base64 -A
 
 // Tesseract ships two model families from the same host. The default is a
 // quantised integer model tuned for speed; "_best" is the float LSTM one.
@@ -785,7 +787,7 @@ function updateVnProofCard() {
   document.getElementById('vnProofList').innerHTML = vnProofSubs.map(s =>
     `<li><span class="vn-proof-from">${escHtml(s.from)}</span> → `
     + `<span class="vn-proof-to">${escHtml(s.to)}</span> `
-    + `<span class="vn-proof-why">(${s.count}× vs ${s.altCount}×)</span></li>`).join('');
+    + `<span class="vn-proof-why">(${escHtml(s.count)}× vs ${escHtml(s.altCount)}×)</span></li>`).join('');
 
   document.getElementById('vnProofApplyBtn').style.display = vnProofOn ? 'none' : '';
   document.getElementById('vnProofUndoBtn').style.display = vnProofOn ? '' : 'none';
@@ -1174,7 +1176,7 @@ function updatePerPageMore() {
     `<p class="page-more-note">Showing ${perPageRendered.toLocaleString()} of ` +
     `${pagesText.length.toLocaleString()} pages. The rest are already extracted and are ` +
     `included in Copy All and both downloads - they are just not drawn yet.</p>` +
-    `<button class="btn btn-secondary btn-sm" id="perPageMoreBtn">Show ${next} more ` +
+    `<button class="btn btn-secondary btn-sm" id="perPageMoreBtn">Show ${escHtml(next)} more ` +
     `page${next !== 1 ? 's' : ''}</button>`;
   document.getElementById('perPageMoreBtn').addEventListener('click', renderPerPageBatch);
 }
@@ -1369,6 +1371,8 @@ function loadTesseract() {
   tesseractLoad = new Promise((resolve, reject) => {
     const el = document.createElement('script');
     el.src = TESSERACT_SRC;
+    el.integrity = TESSERACT_SRI;
+    el.crossOrigin = 'anonymous';
     el.async = true;
     el.onload = () => window.Tesseract
       ? resolve()

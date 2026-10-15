@@ -206,14 +206,14 @@ function subnetCalc() {
       <div class="result-cell"><div class="rc-label">Last Host</div><div class="rc-val">${escHtml(result.lastHost)}</div></div>
       <div class="result-cell"><div class="rc-label">Usable Hosts</div><div class="rc-val">${result.totalHosts.toLocaleString()}</div></div>
       <div class="result-cell"><div class="rc-label">Total Addresses</div><div class="rc-val">${result.totalAddr.toLocaleString()}</div></div>
-      <div class="result-cell"><div class="rc-label">CIDR</div><div class="rc-val">${escHtml(result.network)}/${result.prefix}</div></div>
+      <div class="result-cell"><div class="rc-label">CIDR</div><div class="rc-val">${escHtml(result.network)}/${escHtml(result.prefix)}</div></div>
     </div>`;
   } else {
     el.innerHTML = `<div class="result-grid">
-      <div class="result-cell" style="grid-column:1/-1"><div class="rc-label">Network Address / CIDR</div><div class="rc-val">${escHtml(result.network)}/${result.prefix}</div></div>
+      <div class="result-cell" style="grid-column:1/-1"><div class="rc-label">Network Address / CIDR</div><div class="rc-val">${escHtml(result.network)}/${escHtml(result.prefix)}</div></div>
       <div class="result-cell" style="grid-column:1/-1"><div class="rc-label">First Address</div><div class="rc-val">${escHtml(result.firstHost)}</div></div>
       <div class="result-cell" style="grid-column:1/-1"><div class="rc-label">Last Address</div><div class="rc-val">${escHtml(result.lastHost)}</div></div>
-      <div class="result-cell"><div class="rc-label">Prefix Length</div><div class="rc-val">/${result.prefix}</div></div>
+      <div class="result-cell"><div class="rc-label">Prefix Length</div><div class="rc-val">/${escHtml(result.prefix)}</div></div>
       <div class="result-cell"><div class="rc-label">Total Addresses</div><div class="rc-val">${fmtBig(result.totalAddr)}</div></div>
     </div>
     <div class="box-info">IPv6 has no broadcast address — every address in the range is usable.</div>`;

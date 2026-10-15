@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Memory Match — Free Card Matching Game | Play at Work | Office Tools</title>
   <meta name="description" content="Flip and match emoji pairs in this free browser-based memory card game. 3 grid sizes, timer and move counter. Great office break game — no download needed.">
   <meta name="keywords" content="memory card game online free, matching pairs game, flip card game browser, office break game, concentration game, memory game no download, free online memory game, play at work">
@@ -33,7 +34,7 @@
       position:absolute; inset:0; backface-visibility:hidden; border-radius:10px;
       display:flex; align-items:center; justify-content:center; font-size:2rem;
     }
-    .card-back  { background:var(--primary); color:#fff; font-size:1.4rem; font-weight:700; }
+    .card-back  { background:var(--primary); color: var(--on-primary); font-size:1.4rem; font-weight:700; }
     .card-face  { background:var(--bg-card); border:1.5px solid var(--border); transform:rotateY(180deg); }
     .card-wrap.matched .card-face { border-color:var(--success); background:color-mix(in srgb,var(--success) 10%,var(--bg-card)); }
     @media(max-width:420px){ .card-inner{width:58px;height:58px;} .card-face,.card-back{font-size:1.6rem;} }
@@ -140,7 +141,7 @@ function newGame() {
     const wrap  = document.createElement('div');
     wrap.className = 'card-wrap';
     wrap.dataset.idx = i;
-    wrap.innerHTML = `<div class="card-inner"><div class="card-back">?</div><div class="card-face">${emoji}</div></div>`;
+    wrap.innerHTML = `<div class="card-inner"><div class="card-back">?</div><div class="card-face">${escHtml(emoji)}</div></div>`;
     wrap.addEventListener('click', () => flipCard(i, emoji, wrap));
     grid.appendChild(wrap);
     return { emoji, el: wrap, face: false, matched: false };

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>SVG to PNG Converter — Rasterize SVG | Office Tools</title>
   <meta name="description" content="Convert SVG to PNG, JPG or WebP at any resolution. Paste SVG code or drop a file, set the scale and background, then download a raster image — all in your browser, no upload.">
   <meta name="keywords" content="svg to png, convert svg, rasterize svg, svg to jpg, svg to image, export svg, svg converter online, svg to webp">
@@ -178,7 +179,7 @@ async function render() {
     outCanvas = c;
     preview.src = c.toDataURL('image/png');
     preview.style.display = 'block';
-    el('dimInfo').innerHTML = `Source <b>${Math.round(size.w)} × ${Math.round(size.h)}</b> → output <b>${targetW} × ${targetH}</b> px`;
+    el('dimInfo').innerHTML = `Source <b>${Math.round(size.w)} × ${Math.round(size.h)}</b> → output <b>${escHtml(targetW)} × ${escHtml(targetH)}</b> px`;
     dlBtn.style.display = '';
   } catch (e) {
     statusEl.textContent = '✗ ' + (e.message || 'Render failed.');

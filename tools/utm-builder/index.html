@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Campaign URL Builder — Office Tools</title>
   <meta name="description" content="Build UTM-tagged URLs for Google Analytics and other analytics platforms. Add source, medium, campaign, term, and content parameters. Includes link history and QR code output.">
   <meta name="keywords" content="UTM builder, UTM parameters, Google Analytics campaign URL, UTM generator, campaign tracking URL, UTM link creator">
@@ -269,7 +270,7 @@
 </div>
 </main>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous" integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU"></script>
 <script src="../../js/common.js"></script>
 <script>
 let savedHistory = [];
@@ -340,7 +341,7 @@ function buildUrl() {
     const LABELS = { utm_source:'Source', utm_medium:'Medium', utm_campaign:'Campaign', utm_term:'Keyword', utm_content:'Content', utm_id:'Campaign ID' };
     grid.innerHTML = Object.entries(activeParams).map(([k,v]) => `
       <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:.6rem .85rem">
-        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted)">${LABELS[k] || k}</div>
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted)">${escHtml(LABELS[k] || k)}</div>
         <div style="font-weight:700;margin-top:.2rem;color:var(--primary);word-break:break-all;font-size:.88rem">${escHtml(v)}</div>
       </div>`).join('');
     document.getElementById('breakdownCard').classList.remove('hidden');
@@ -409,7 +410,7 @@ function renderHistory() {
     <div class="history-row">
       <span class="history-url">${escHtml(h.url)}</span>
       <div style="display:flex;gap:.3rem;flex-shrink:0">
-        <button class="btn btn-ghost btn-sm" onclick="copyText('${escHtml(h.url)}',this)">Copy</button>
+        <button class="btn btn-ghost btn-sm" data-url="${escHtml(h.url)}" onclick="copyText(this.dataset.url,this)">Copy</button>
         <button class="btn btn-ghost btn-sm" onclick="loadFromHistory(${i})">Load</button>
       </div>
     </div>`).join('');

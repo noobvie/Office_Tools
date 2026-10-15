@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Compound Interest Calculator — Office Tools</title>
   <meta name="description" content="Calculate compound interest with regular contributions. See your future balance, total interest earned, and a year-by-year growth chart. Free online investment calculator.">
   <meta name="keywords" content="compound interest calculator, investment calculator, savings growth, future value, monthly contribution, interest compounding, retirement calculator, ROI">
@@ -205,7 +206,7 @@ function compute() {
 
 function renderTable() {
   $('amortBody').innerHTML = series.filter(s => s.year > 0).map(s =>
-    `<tr><td>${s.year}</td><td>${fmtUSD(s.deposited)}</td><td>${fmtUSD(s.interest)}</td><td>${fmtUSD(s.balance)}</td></tr>`
+    `<tr><td>${escHtml(s.year)}</td><td>${fmtUSD(s.deposited)}</td><td>${fmtUSD(s.interest)}</td><td>${fmtUSD(s.balance)}</td></tr>`
   ).join('');
 }
 

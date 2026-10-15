@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>File Drop — Send Files Between Devices, Like AirDrop for Any OS | Office Tools</title>
   <meta name="description" content="Send files and text between any two devices — Windows, macOS, Linux, Android, iPhone — right in the browser. Like AirDrop, but cross-platform: peer-to-peer WebRTC transfer, end-to-end encrypted, files are never uploaded to a server. Same Wi-Fi auto-discovery or 6-digit code for remote devices. Free, no login, no install.">
   <meta name="keywords" content="file drop, airdrop alternative, send file mac to windows, cross platform file transfer, browser file transfer, p2p file sharing, webrtc file transfer, snapdrop alternative, pairdrop alternative, share files between devices, phone to pc file transfer, local file sharing, wifi file transfer, no upload file sharing, encrypted file transfer">
@@ -45,7 +46,7 @@
       white-space: nowrap;
     }
     .fd-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; }
-    .fd-dot.on  { background: #4caf8e; box-shadow: 0 0 6px #4caf8e; }
+    .fd-dot.on  { background: var(--success); box-shadow: 0 0 6px var(--success); }
     .fd-dot.off { background: var(--danger, #e05260); }
 
     /* ── Peers grid ── */
@@ -158,7 +159,7 @@
     .fd-tr-sub  { font-size: .74rem; color: var(--text-muted); margin-top: .1rem; }
     .fd-tr-bar  { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 50px; height: 8px; overflow: hidden; margin-top: .35rem; }
     .fd-tr-fill { height: 100%; background: var(--primary); border-radius: 50px; width: 0%; transition: width .15s linear; }
-    .fd-tr-fill.done { background: #4caf8e; }
+    .fd-tr-fill.done { background: var(--success); }
     .fd-tr-fill.err  { background: var(--danger, #e05260); }
     .fd-tr-cancel {
       background: transparent; border: 1.5px solid var(--border);
@@ -650,6 +651,9 @@ function teardownPeer(peerId, reason) {
 
 /* ── Transfer UI ── */
 let fidCounter = 0;
+/* A received fid comes from the remote peer and is used inside id="…" (escHtml here does not escape quotes),
+   so an offer is accepted only with fids shaped like ours ('s' + counter). */
+const FD_FID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 function transferRow(fid, dirIcon, name, subInit) {
   document.getElementById('transfersCard').style.display = 'block';
   const list = document.getElementById('transferList');
@@ -660,10 +664,10 @@ function transferRow(fid, dirIcon, name, subInit) {
     <div class="fd-tr-icon">${dirIcon}</div>
     <div class="fd-tr-main">
       <div class="fd-tr-name">${escHtml(name)}</div>
-      <div class="fd-tr-sub" id="trsub-${fid}">${escHtml(subInit)}</div>
-      <div class="fd-tr-bar"><div class="fd-tr-fill" id="trfill-${fid}"></div></div>
+      <div class="fd-tr-sub" id="trsub-${escHtml(fid)}">${escHtml(subInit)}</div>
+      <div class="fd-tr-bar"><div class="fd-tr-fill" id="trfill-${escHtml(fid)}"></div></div>
     </div>
-    <button class="fd-tr-cancel" id="trbtn-${fid}">✖ Cancel</button>`;
+    <button class="fd-tr-cancel" id="trbtn-${escHtml(fid)}">✖ Cancel</button>`;
   list.prepend(row);
   return row;
 }
@@ -829,7 +833,7 @@ function handleControl(peerId, m) {
       const files = (Array.isArray(m.files) ? m.files : []).slice(0, 200).map(f => ({
         fid: String(f.fid), name: String(f.name || 'file').slice(0, 255),
         size: Math.max(0, Number(f.size) || 0), mime: String(f.mime || '')
-      }));
+      })).filter(f => FD_FID_RE.test(f.fid));
       if (!files.length) break;
       pendingOffer = { peerId, files };
       showOfferPrompt(peerId, files);
@@ -866,7 +870,7 @@ function showOfferPrompt(peerId, files) {
   document.getElementById('offerTitle').textContent = `📥 ${name} wants to send you ${files.length} file${files.length > 1 ? 's' : ''}`;
   document.getElementById('offerFiles').innerHTML =
     files.slice(0, 12).map(f => `<li>📄 ${escHtml(f.name)} <span style="color:var(--text-muted)">(${fmtSize(f.size)})</span></li>`).join('') +
-    (files.length > 12 ? `<li>… and ${files.length - 12} more</li>` : '');
+    (files.length > 12 ? `<li>… and ${escHtml(files.length - 12)} more</li>` : '');
   const total = files.reduce((a, f) => a + f.size, 0);
   document.getElementById('offerTotal').textContent = 'Total: ' + fmtSize(total);
   const warn = document.getElementById('offerWarn');

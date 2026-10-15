@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Loan &amp; Mortgage Calculator — Office Tools</title>
   <meta name="description" content="Calculate monthly loan payments, total interest, and see a full amortization breakdown. Works for mortgages, car loans, and personal loans. Free, instant, no login.">
   <meta name="keywords" content="loan calculator, mortgage calculator, monthly payment calculator, amortization schedule, interest calculator, EMI calculator">
@@ -128,7 +129,7 @@
     </div>
   </div>
 
-  <div class="card mt-2" style="border-left:3px solid var(--warning,#f59e0b);background:var(--surface2,#1e1e1e)">
+  <div class="card mt-2" style="border-left:3px solid var(--warning,#f59e0b);background:var(--bg-secondary)">
     <p style="font-size:.78rem;color:var(--text-muted);margin:0;line-height:1.6">
       <strong style="color:var(--text)">⚠ Disclaimer:</strong>
       Results shown are <strong>estimates based on simple fixed-rate calculations</strong> and may not reflect
@@ -206,7 +207,7 @@ function compute() {
       balance = Math.max(0, balance - prinPmt);
     }
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>Year ${yr}</td><td>${fmtUSD(yrPrincipal)}</td><td>${fmtUSD(yrInterest)}</td><td>${fmtUSD(balance)}</td>`;
+    tr.innerHTML = `<td>Year ${escHtml(yr)}</td><td>${fmtUSD(yrPrincipal)}</td><td>${fmtUSD(yrInterest)}</td><td>${fmtUSD(balance)}</td>`;
     tbody.appendChild(tr);
   }
 }

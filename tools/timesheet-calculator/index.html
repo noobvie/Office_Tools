@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Work Hours & Timesheet Calculator — Office Tools</title>
   <meta name="description" content="Add up your weekly work hours from clock-in and clock-out times, minus breaks. Get daily and weekly totals, overtime over 40 hours, and gross pay from an hourly rate. Free online timesheet calculator.">
   <meta name="keywords" content="timesheet calculator, work hours calculator, time card calculator, hours worked, clock in clock out, overtime calculator, weekly hours, payroll hours, hourly pay">
@@ -100,7 +101,7 @@ const tbody = document.getElementById('tsBody');
 DAYS.forEach((d, i) => {
   const tr = document.createElement('tr');
   tr.innerHTML = `
-    <td class="day">${d}</td>
+    <td class="day">${escHtml(d)}</td>
     <td><input type="time" id="start-${i}"></td>
     <td><input type="time" id="end-${i}"></td>
     <td><input type="number" id="brk-${i}" min="0" step="5" value="0" style="width:80px;"></td>

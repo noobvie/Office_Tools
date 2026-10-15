@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Chat Room — Free Temporary Group Chat, No Sign Up | Office Tools</title>
   <meta name="description" content="Create a private group chat room in one click — share the code and anyone, anywhere joins instantly. No registration, no app. Send messages and files up to 2 GB. Everything is deleted the moment the last person leaves.">
   <meta name="keywords" content="chat room, temporary chat, anonymous chat, group chat no registration, disposable chat room, private chat link, share files in chat, ephemeral chat, room code chat, throwaway chat room, no sign up chat, encrypted temporary chat">
@@ -76,7 +77,7 @@
       border: 1px solid var(--border); color: var(--text);
     }
     .cr-chip.me { border-color: var(--primary); color: var(--primary); }
-    .cr-dot { width: 7px; height: 7px; border-radius: 50%; background: #4caf8e; }
+    .cr-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
 
     /* ── Messages ── */
     .cr-log {
@@ -127,7 +128,7 @@
       font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
     }
     .cr-icon-btn:hover { border-color: var(--primary); }
-    .cr-send { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .cr-send { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
 
     /* ── Upload progress ── */
     .cr-uploads { display: flex; flex-direction: column; gap: .4rem; margin-top: .5rem; }
@@ -149,7 +150,7 @@
     }
     .cr-status { display: inline-flex; align-items: center; gap: .35rem; font-size: .76rem; color: var(--text-muted); }
     .cr-sdot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
-    .cr-sdot.on { background: #4caf8e; box-shadow: 0 0 6px #4caf8e; }
+    .cr-sdot.on { background: var(--success); box-shadow: 0 0 6px var(--success); }
     .cr-sdot.off { background: var(--danger, #e05260); }
   </style>
 </head>
@@ -415,7 +416,7 @@ function addFile(f) {
   const url = `${API}/api/chat/${encodeURIComponent(myRoom)}/file/${encodeURIComponent(f.id)}`;
   el.innerHTML =
     `<div class="cr-msg-meta">${escHtml(f.by)} · ${fmtTime(f.ts)}</div>` +
-    `<a class="cr-file" href="${url}" download="${escHtml(f.name)}">` +
+    `<a class="cr-file" href="${escHtml(url)}" download="${escHtml(f.name)}">` +
       `<span class="cr-file-ic">${fileIcon(f.name)}</span>` +
       `<span><span class="cr-file-name">${escHtml(f.name)}</span><br>` +
       `<span class="cr-file-sub">${fmtSize(f.size)} · click to download</span></span>` +

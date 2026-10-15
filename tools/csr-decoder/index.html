@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>CSR Decoder — Office Tools</title>
   <meta name="description" content="Decode any PEM-formatted Certificate Signing Request (CSR) online. Extracts subject (CN, O, OU, C, L, ST), public key info, SANs, signature algorithm, and SHA-256/SHA-1/MD5 fingerprints.">
   <meta name="keywords" content="CSR decoder, certificate signing request, decode CSR online, SSL certificate decoder, PEM decoder, CSR analyzer, X.509 CSR, SAN extractor">
@@ -231,7 +232,7 @@
 </div>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/node-forge@1.3.1/dist/forge.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/node-forge@1.3.1/dist/forge.min.js" integrity="sha384-xE6n3RBMZWgwAhyzoIMfY7HN3oDBa/+HBwFFNyxsdY8kseup7C4Blx1yDzprEESV" crossorigin="anonymous"></script>
 <script src="../../js/common.js"></script>
 <script>
 // ── Helpers ───────────────────────────────────────────────────────────
@@ -509,7 +510,7 @@ function decode() {
     sanCard.style.display = '';
     document.getElementById('sanList').innerHTML = sans.map(s => `
       <div class="san-row">
-        <span class="san-type ${s.cls}">${s.type}</span>
+        <span class="san-type ${escHtml(s.cls)}">${escHtml(s.type)}</span>
         <span class="san-val">${escHtml(s.value)}</span>
         <button class="btn btn-ghost btn-sm kv-copy" data-val="${escAttr(s.value)}" style="margin-left:auto">Copy</button>
       </div>`).join('');
@@ -524,7 +525,7 @@ function decode() {
     { algo: 'MD5',     val: fpMd5 },
   ].map(({ algo, val }) => `
     <div class="fp-row">
-      <span class="fp-algo">${algo}</span>
+      <span class="fp-algo">${escHtml(algo)}</span>
       <span class="fp-val">${escHtml(val)}</span>
       <button class="btn btn-ghost btn-sm kv-copy" data-val="${escAttr(val)}" style="flex-shrink:0">Copy</button>
     </div>`).join('');

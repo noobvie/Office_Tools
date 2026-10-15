@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>IP Location Lookup — Office Tools</title>
   <meta name="description" content="Geolocate any IPv4, IPv6 address, or domain name. Returns country, city, region, ISP, ASN, timezone, and detects VPN, proxy, hosting, and mobile network flags.">
   <meta name="keywords" content="IP location lookup, IP geolocation, IP address lookup, domain lookup, VPN detection, IP to country, trace IP address, ASN lookup">
@@ -58,15 +59,11 @@
       display: inline-block; border-radius: 20px;
       padding: .18rem .65rem; font-size: .74rem; font-weight: 700;
     }
-    .tbadge-vpn      { background: #fee2e2; color: #dc2626; }
-    .tbadge-proxy    { background: #fef3c7; color: #d97706; }
-    .tbadge-hosting  { background: #dbeafe; color: #2563eb; }
-    .tbadge-mobile   { background: #d1fae5; color: #059669; }
+    .tbadge-vpn      { background: var(--danger-dim); color: var(--danger); }
+    .tbadge-proxy    { background: var(--warning-dim); color: var(--warning); }
+    .tbadge-hosting  { background: var(--bg-secondary); color: var(--text); border: 1px solid var(--border); }
+    .tbadge-mobile   { background: var(--success-dim); color: var(--success); }
     .tbadge-regular  { background: var(--primary-dim); color: var(--primary); }
-    [data-theme="dark"] .tbadge-vpn     { background: #450a0a; color: #fca5a5; }
-    [data-theme="dark"] .tbadge-proxy   { background: #451a03; color: #fcd34d; }
-    [data-theme="dark"] .tbadge-hosting { background: #1e3a5f; color: #93c5fd; }
-    [data-theme="dark"] .tbadge-mobile  { background: #064e3b; color: #6ee7b7; }
     [data-theme="matrix"] .tbadge-vpn, [data-theme="matrix"] .tbadge-proxy,
     [data-theme="matrix"] .tbadge-hosting, [data-theme="matrix"] .tbadge-mobile,
     [data-theme="matrix"] .tbadge-regular { background: var(--primary-dim); color: var(--primary); }
@@ -246,7 +243,7 @@ function renderHistory() {
   card.style.display = '';
   list.innerHTML = hist.map((h, i) => `
     <div class="history-item" data-ip="${escAttr(h.ip)}">
-      <span class="history-flag">${h.flag}</span>
+      <span class="history-flag">${escHtml(h.flag)}</span>
       <span class="history-ip">${escHtml(h.ip)}</span>
       <span class="history-loc">${escHtml(h.loc)}</span>
       <button class="history-del" data-i="${i}" title="Remove">&#10005;</button>
@@ -325,7 +322,7 @@ async function lookup(query) {
   // Detect connection type
   const types = [{ cls: 'tbadge-regular', label: isV6 ? 'IPv6' : 'IPv4' }];
 
-  const typeBadges = types.map(t => `<span class="tbadge ${t.cls}">${t.label}</span>`).join('');
+  const typeBadgesHtml = types.map(t => `<span class="tbadge ${escHtml(t.cls)}">${escHtml(t.label)}</span>`).join('');
 
   // Info cells
   function cell(label, val, mono = false, copyable = true) {
@@ -371,10 +368,10 @@ async function lookup(query) {
     <div class="card mt-2">
 
       <div class="ip-hero">
-        <div class="flag">${flag}</div>
+        <div class="flag">${escHtml(flag)}</div>
         <div class="ip-addr">${escHtml(ip)}</div>
         <div class="ip-sub">${escHtml(city ? city + ', ' : '')}${escHtml(region ? region + ', ' : '')}${escHtml(data.country || '')}</div>
-        <div class="type-badges">${typeBadges}</div>
+        <div class="type-badges">${typeBadgesHtml}</div>
       </div>
 
       <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin:.5rem 0 .25rem">

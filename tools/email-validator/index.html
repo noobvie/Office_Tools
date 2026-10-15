@@ -31,9 +31,9 @@
     }
     .ctrl-row input[type="text"]:focus { border-color: var(--primary); }
     .verdict { display: flex; align-items: center; gap: .6rem; margin-top: .9rem; padding: .8rem 1rem; border-radius: var(--radius); font-weight: 700; font-size: .95rem; }
-    .verdict.ok   { background: rgba(34,197,94,.13); color: #16a34a; }
+    .verdict.ok   { background: rgba(34,197,94,.13); color: var(--success); }
     .verdict.bad  { background: var(--danger-dim); color: var(--danger); }
-    .verdict.warn { background: rgba(234,179,8,.14); color: #b8860b; }
+    .verdict.warn { background: rgba(234,179,8,.14); color: var(--warning); }
     .verdict .big { font-size: 1.3rem; }
     .check-grid { display: grid; grid-template-columns: 1fr; gap: .4rem; margin-top: .9rem; }
     .check-row { display: flex; align-items: center; gap: .6rem; padding: .55rem .8rem; border: 1.5px solid var(--border); border-radius: var(--radius); font-size: .87rem; background: var(--bg-card); }
@@ -143,20 +143,20 @@ function render(d) {
   else if (d.disposable)    { cls = 'warn'; icon = '⚠️'; msg = 'Disposable / throwaway address'; }
   else if (d.role_based)    { cls = 'warn'; icon = '⚠️'; msg = 'Valid, but role-based (not a person)'; }
 
-  const checks = [
+  const checksHtml = [
     row(d.syntax_valid, 'Valid syntax', `${escHtml(d.local)} @ ${escHtml(d.domain)}`),
     row(d.has_mx ? true : (d.accepts_mail ? 'warn' : false), 'Has MX records', d.has_mx ? `${d.mx.length} server${d.mx.length === 1 ? '' : 's'}` : (d.accepts_mail ? 'A-record fallback' : 'none')),
     row(!d.disposable, d.disposable ? 'Disposable provider' : 'Not disposable', null),
     row(!d.role_based, d.role_based ? 'Role-based mailbox' : 'Personal-style mailbox', null),
   ].join('');
 
-  const mx = d.mx && d.mx.length
-    ? `<div class="mx-list"><strong style="color:var(--text)">MX servers</strong>${d.mx.map(m => `<div>${m.priority}&nbsp;&nbsp;${escHtml(m.host)}</div>`).join('')}</div>`
+  const mxHtml = d.mx && d.mx.length
+    ? `<div class="mx-list"><strong style="color:var(--text)">MX servers</strong>${d.mx.map(m => `<div>${escHtml(m.priority)}&nbsp;&nbsp;${escHtml(m.host)}</div>`).join('')}</div>`
     : '';
 
   el.innerHTML =
-    `<div class="verdict ${cls}"><span class="big">${icon}</span><span>${escHtml(msg)}</span></div>` +
-    `<div class="check-grid">${checks}</div>${mx}` +
+    `<div class="verdict ${escHtml(cls)}"><span class="big">${icon}</span><span>${escHtml(msg)}</span></div>` +
+    `<div class="check-grid">${checksHtml}</div>${mxHtml}` +
     `<p style="color:var(--text-muted);font-size:.76rem;margin-top:.8rem">Note: syntax + MX + reputation only — no SMTP mailbox probe, so it can't confirm a specific inbox exists.</p>`;
 }
 

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>CSS Gradient Generator — Office Tools</title>
   <meta name="description" content="Create linear and radial CSS gradients visually. Add color stops, set the angle, pick colors, and copy the ready-to-use CSS. Free online gradient maker — runs in your browser.">
   <meta name="keywords" content="CSS gradient generator, linear gradient, radial gradient, gradient maker, CSS background generator, color stops, gradient CSS, web design gradient">
@@ -27,7 +28,7 @@
     .seg { display: inline-flex; border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
     .seg button { padding: .45rem .95rem; border: none; background: none; cursor: pointer;
       font-size: .85rem; font-weight: 700; color: var(--text); }
-    .seg button.active { background: var(--primary); color: #fff; }
+    .seg button.active { background: var(--primary); color: var(--on-primary); }
     .field-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: .35rem; }
     .stop-row { display: flex; align-items: center; gap: .6rem; margin-bottom: .6rem; flex-wrap: wrap; }
     .stop-row input[type=color] { width: 46px; height: 38px; border: 1px solid var(--border);
@@ -129,9 +130,9 @@ function renderStops() {
     const row = document.createElement('div');
     row.className = 'stop-row';
     row.innerHTML =
-      `<input type="color" value="${s.color}" data-i="${i}" data-k="color">` +
-      `<input type="range" min="0" max="100" value="${s.pos}" data-i="${i}" data-k="pos">` +
-      `<span class="stop-pos">${s.pos}%</span>` +
+      `<input type="color" value="${escHtml(s.color)}" data-i="${i}" data-k="color">` +
+      `<input type="range" min="0" max="100" value="${escHtml(s.pos)}" data-i="${i}" data-k="pos">` +
+      `<span class="stop-pos">${escHtml(s.pos)}%</span>` +
       `<button class="stop-del" data-del="${i}" ${stops.length <= 2 ? 'disabled style="opacity:.35;cursor:not-allowed"' : ''}>✕</button>`;
     wrap.appendChild(row);
   });

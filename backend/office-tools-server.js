@@ -808,7 +808,7 @@ function _sendmailNotify(to, subject, body) {
   proc.on('error',  err  => console.error(`[sendmail] spawn error → ${err.message}`));
   proc.on('close',  code => {
     if (code !== 0) console.error(`[sendmail] exited ${code} stderr: ${stderr.trim()}`);
-    else            console.log(`[sendmail] delivered to ${to}`);
+    else            console.log('[sendmail] delivered');
   });
 }
 
@@ -1933,7 +1933,7 @@ const server = app.listen(PORT, HOST, () => {
   console.log(`Office Tools server running on ${HOST ? HOST + ':' : 'port '}${PORT}`);
   const _cfgEmail = (process.env.NOTIFY_EMAIL || '').trim();
   if (!_cfgEmail) console.warn('[config] NOTIFY_EMAIL not set — feedback emails will not be sent');
-  else            console.log(`[config] Feedback emails → ${_cfgEmail}`);
+  else            console.log('[config] Feedback emails enabled');
 });
 attachDropSignaling(server);
 attachChatSignaling(server);

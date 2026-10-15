@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Pomodoro Timer — Office Tools</title>
   <meta name="description" content="Free online Pomodoro Timer with 25-minute focus intervals, customizable short and long breaks, session counter, and desktop notifications. Boost deep-work productivity with the proven Pomodoro Technique.">
   <meta name="keywords" content="pomodoro timer, online focus timer, free pomodoro, productivity timer, 25 minute timer, work break timer, study timer, pomodoro technique">
@@ -92,7 +93,7 @@
     }
     .ctrl-btn:hover { background: var(--bg-secondary); }
     .ctrl-btn:active { transform: scale(.93); }
-    .ctrl-btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; width: 64px; height: 64px; font-size: 1.5rem; }
+    .ctrl-btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); width: 64px; height: 64px; font-size: 1.5rem; }
     .ctrl-btn.primary:hover { background: var(--primary-h); }
 
     /* Sessions */
@@ -421,8 +422,8 @@ function renderLog() {
   if(empty) empty.style.display = 'none';
   container.innerHTML = (empty ? empty.outerHTML : '') + log.map(l =>
     `<div class="log-item">
-      <span>${l.mode} — <em>${escHtml(l.task)}</em></span>
-      <span class="log-time">${l.time}</span>
+      <span>${escHtml(l.mode)} — <em>${escHtml(l.task)}</em></span>
+      <span class="log-time">${escHtml(l.time)}</span>
     </div>`
   ).join('');
 }

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Photo Collage &amp; Grid Maker — Combine Images | Office Tools</title>
   <meta name="description" content="Combine several photos into one collage or grid. Choose columns, spacing, background color, corner rounding and output size, then download a single image — no upload.">
   <meta name="keywords" content="photo collage maker, image grid maker, combine images, merge photos into one, picture collage, photo grid, join images, montage maker">
@@ -142,7 +143,7 @@ function renderThumbs() {
   imgs.forEach((it, i) => {
     const d = document.createElement('div');
     d.className = 'thumb'; d.draggable = true; d.dataset.i = i;
-    d.innerHTML = `<img src="${it.url}"><button class="rm" title="Remove">✕</button><span class="ord">${i + 1}</span>`;
+    d.innerHTML = `<img src="${escHtml(it.url)}"><button class="rm" title="Remove">✕</button><span class="ord">${i + 1}</span>`;
     d.querySelector('.rm').addEventListener('click', e => { e.stopPropagation(); URL.revokeObjectURL(it.url); imgs.splice(i, 1); renderThumbs(); controls.style.display = imgs.length ? '' : 'none'; render(); });
     d.addEventListener('dragstart', () => { d.classList.add('dragging'); dragIdx = i; });
     d.addEventListener('dragend', () => d.classList.remove('dragging'));

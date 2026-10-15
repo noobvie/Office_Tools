@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>JWT Decoder — Office Tools</title>
   <meta name="description" content="Decode and inspect JSON Web Tokens (JWT) instantly. View header, payload, and signature. Check expiry time and claims — fully local, token never leaves your browser.">
   <meta name="keywords" content="JWT decoder, JSON web token decoder, JWT inspector, decode JWT online, JWT payload viewer, JWT expiry checker">
@@ -49,9 +50,9 @@
     .jwt-sig  { word-break: break-all; font-size: .8rem; opacity: .7; }
     .ts-hint  { font-size: .75rem; color: var(--text-muted); margin-left: .25rem; }
     .status-badge { display: inline-block; padding: .25rem .65rem; border-radius: 999px; font-size: .78rem; font-weight: 700; }
-    .status-valid    { background: rgba(34,197,94,.15); color: #16a34a; }
-    .status-expired  { background: rgba(239,68,68,.15); color: var(--danger); }
-    .status-nbf      { background: rgba(249,115,22,.15); color: #ea580c; }
+    .status-valid    { background: var(--success-dim); color: var(--success); }
+    .status-expired  { background: var(--danger-dim); color: var(--danger); }
+    .status-nbf      { background: var(--warning-dim); color: var(--warning); }
   </style>
 </head>
 <body>

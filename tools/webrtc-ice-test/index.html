@@ -51,7 +51,7 @@
     .badge-host  { background: var(--border); color: var(--text); }
     .badge-srflx { background: var(--primary-dim); color: var(--primary); }
     .badge-prflx { background: var(--primary-dim); color: var(--primary); }
-    .badge-relay { background: #16a34a22; color: #16a34a; }
+    .badge-relay { background: var(--success-dim); color: var(--success); }
     .summary { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
     .sum-pill {
       display: flex; align-items: center; gap: .4rem; padding: .4rem .8rem;
@@ -60,10 +60,10 @@
     }
     .sum-pill .n { font-family: 'Courier New', monospace; font-size: .95rem; color: var(--text); }
     .sum-pill.on { border-color: var(--primary); color: var(--primary); }
-    .sum-pill.on-relay { border-color: #16a34a; color: #16a34a; }
+    .sum-pill.on-relay { border-color: var(--success); color: var(--success); }
     .box-error { background: var(--danger-dim); color: var(--danger); border-radius: var(--radius); padding: .65rem .9rem; font-size: .86rem; font-weight: 600; margin-top: .75rem; }
     .box-info  { background: var(--primary-dim); color: var(--primary); border-radius: var(--radius); padding: .6rem .9rem; font-size: .82rem; margin-top: .75rem; }
-    .box-ok    { background: #16a34a1a; color: #16a34a; border-radius: var(--radius); padding: .65rem .9rem; font-size: .86rem; font-weight: 600; margin-top: .75rem; }
+    .box-ok    { background: var(--success-dim); color: var(--success); border-radius: var(--radius); padding: .65rem .9rem; font-size: .86rem; font-weight: 600; margin-top: .75rem; }
     .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: .4rem; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .hint { font-size: .76rem; color: var(--text-muted); margin-top: .45rem; }
@@ -329,9 +329,9 @@ function verdict() {
   return null;
 }
 
-function showAppend(cls, msg) {
+function showAppend(cls, msgHtml) {
   const d = document.createElement('div');
-  d.className = cls; d.innerHTML = msg;
+  d.className = cls; d.innerHTML = msgHtml;
   $('iceOut').appendChild(d);
 }
 

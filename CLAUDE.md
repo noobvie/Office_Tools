@@ -24,7 +24,7 @@ cd yt-server && npm install && npm start
 **Mechanical sweep — run before committing anything under `tools/`, `js/`, `index.html`, `sitemap.xml`:**
 ```bash
 node scripts/check-tools.js            # the gate: exit 1 on any finding not in the baseline (~1 s)
-node scripts/check-tools.js --strict   # everything, baseline ignored — the full debt
+node scripts/check-tools.js --strict   # baseline ignored; passes today (baseline is empty, only ACCEPTED rows are skipped)
 node scripts/check-tools.js --verbose  # also list the baselined findings
 node scripts/check-tools.js --update-baseline   # accept the current findings; commit the JSON and say why
 ```
@@ -37,6 +37,13 @@ live in `scripts/check-tools.baseline.json` (a ratchet: new ones fail, fixed one
 stale so the debt only shrinks). Policy tables (`HUB_CAT_MAP`, `FILE_HOST_ALLOW`) are at the top of
 the script — adding a third-party host or a hub category is an edit there, not a baseline entry.
 `scripts/check-html.js` is the theme-init subset and still runs alone.
+
+**Rules the sweep enforces (keep them true):**
+- **SRI:** every CDN `<script>`/`<link>` is pinned to an exact version with `integrity` + `crossorigin="anonymous"`; injected loaders set `integrity`/`crossOrigin` too (speech-voice fetches with `integrity` and imports a blob: URL). Hash: `curl -s URL | openssl dgst -sha384 -binary | openssl base64 -A` → `sha384-…`. jsDelivr *generates* some `.min.js` (docx, jsqr) with unstable bytes — confirm the file exists in `data.jsdelivr.com/v1/packages/npm/<pkg>@<ver>?structure=flat` before hashing.
+- **escHtml:** every interpolation of non-literal data into `innerHTML` goes through `escHtml` (common.js; it does NOT escape `'`). In an `onclick` JS string use `data-*` + `this.dataset`. Rendering HTML you did not write (marked output, pasted HTML) goes through `otSetSafeHtml`. A page-local `escHtml` without `"` shadows common.js — never put it in an attribute. Peer/network ids are validated at the source (file-drop `FD_FID_RE`).
+- **Colours:** no `#hex` in a tool's CSS — use theme tokens; ink on a solid accent fill is `var(--on-primary)`, badges are `--X-dim` background + `--X` text. Every `var(--x)` must be defined in all four theme blocks of `css/style.css`.
+- **Accepted residuals** (the `ACCEPTED` table in check-tools.js — file-level, so review those files by eye): intrinsic colours (game boards, syntax/category scales, white paper/QR/iframe surfaces, transparency checkerboards, donate.html brand palette) and server/sample `console.log`. SRI cannot cover tesseract.js's worker/core/wasm and `tessdata` language files, transformers.js's onnx wasm + HuggingFace weights, or the pdf.js worker (pinned only). Known broken, not fixed: photo-editor Remove Background (`@imgly/background-removal` 404) and image-upscale's `esrgan-slim` model (falls back to Upscaler's default).
+- **Analytics:** GA4 (`OT_GA_ID` in common.js) is kept site-wide, disclosed in `pages/privacy.html`; skipped on localhost/file:. No other tracker — the `hosts` rule fails any other.
 
 **Deploy to server:**
 ```bash
@@ -229,7 +236,7 @@ Most tools are 100% browser-local. Backend is only required for: URL Shortener, 
 3. **Register the tool in the `OT_TOOLS` array in `js/common.js`** (`{ name, path, cat, icon, desc }`, plus `isNew: true` for the New-Tools panel). This single registration is what powers the **left sidebar, header search, breadcrumb name, and the auto-injected "Related Tools" section** (`autoRelatedTools()`) — a tool missing from `OT_TOOLS` silently gets none of these. Related tools need no per-page markup: `autoRelatedTools()` injects them at runtime for any registered tool that has a `.page-tags` anchor (only ~8 of 115 tools override with an explicit `id="related-tools"`; the rest rely on auto). The `cat` string (emoji + label) must **exactly match** an existing category's string, or the tool lands in a category of one.
 4. Add a `<url>` entry to `sitemap.xml` (`https://tools.grin.money/tools/<name>/`, today's date as `lastmod`)
 5. If it needs backend APIs, add routes to `office-tools-server.js` before `// ── Start ──`
-6. Tools must be mobile-responsive, use CSS variables (not hardcoded colors), and include no external analytics or cookies
+6. Tools must be mobile-responsive, use CSS variables (not hardcoded colors), and add no analytics or cookies of their own (the only analytics is the site-wide GA4 loader in `js/common.js`, disclosed in `pages/privacy.html` — change one, change the other)
 7. `node scripts/check-tools.js` passes with **no new findings** — steps 2–4 and rule 6 are what it
    enforces, and a new tool must not add to the baseline (a favicon `<link>`, SRI on every CDN
    script, and `escHtml` on every interpolation are cheaper on day one than ever again)

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Fake Data Generator — Office Tools</title>
   <meta name="description" content="Generate realistic fake test data including full names, email addresses, phone numbers, and postal addresses. Download as CSV or JSON for development, testing, and demos.">
   <meta name="keywords" content="fake data generator, test data generator, random name generator, mock data, dummy data, fake email generator, sample data CSV JSON">
@@ -343,7 +344,7 @@ function renderTable() {
 
   const head = document.getElementById('tableHead');
   const body = document.getElementById('tableBody');
-  head.innerHTML = '<tr>' + activeFields.map(f => `<th>${f}</th>`).join('') + '</tr>';
+  head.innerHTML = '<tr>' + activeFields.map(f => `<th>${escHtml(f)}</th>`).join('') + '</tr>';
   body.innerHTML = generatedData.map(row =>
     '<tr>' + activeFields.map(f => `<td>${escHtml(row[f])}</td>`).join('') + '</tr>'
   ).join('');

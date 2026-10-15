@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>TDEE & Calorie Calculator (BMR) — Office Tools</title>
   <meta name="description" content="Calculate your BMR and TDEE — daily calories to maintain, lose or gain weight. Uses the Mifflin-St Jeor formula with metric or imperial units and activity level. Free online calorie calculator.">
   <meta name="keywords" content="TDEE calculator, BMR calculator, calorie calculator, daily calories, maintenance calories, Mifflin-St Jeor, weight loss calories, macros, basal metabolic rate">
@@ -22,7 +23,7 @@
   <style>
     .seg { display:inline-flex; border:1.5px solid var(--border); border-radius:2rem; overflow:hidden; }
     .seg button { padding:.4rem 1rem; border:none; background:none; cursor:pointer; color:var(--text); font-size:.85rem; }
-    .seg button.active { background:var(--primary); color:#fff; font-weight:700; }
+    .seg button.active { background:var(--primary); color: var(--on-primary); font-weight:700; }
     .pair { display:grid; grid-template-columns:1fr 80px; gap:.4rem; }
     .big-out { text-align:center; padding:1rem; background:var(--bg-secondary); border:1.5px solid var(--border); border-radius:var(--radius); margin-top:1rem; }
     .big-out .v { font-size:2.4rem; font-weight:800; color:var(--primary); font-family:'Courier New',monospace; line-height:1.1; }
@@ -169,7 +170,7 @@ function calc() {
     ['Weight gain (+0.5 kg/wk)',       tdee + 550]
   ];
   document.getElementById('goalBody').innerHTML = goals.map(([n,v]) =>
-    `<tr><td>${escHtml(n)}</td><td class="val">${v>0?round(v).toLocaleString():'—'}</td></tr>`).join('');
+    `<tr><td>${escHtml(n)}</td><td class="val">${v > 0 ? escHtml(round(v).toLocaleString()) : '—'}</td></tr>`).join('');
 }
 
 document.querySelectorAll('#card input, #card select').forEach(el => el.addEventListener('input', calc));

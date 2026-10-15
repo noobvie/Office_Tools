@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Image Converter — Office Tools</title>
   <meta name="description" content="Convert HEIC/HEIF (iPhone photos) to JPG, PNG, or WebP. Compress images with a quality slider and resize with aspect-ratio lock. Batch processing, runs locally — no uploads.">
   <meta name="keywords" content="image converter, HEIC to JPG, HEIF to PNG, compress image online, resize image, convert image format, WebP converter, HEIC converter">
@@ -247,7 +248,7 @@
 </div>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/heic-to@1.5.2/dist/iife/heic-to.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/heic-to@1.5.2/dist/iife/heic-to.js" integrity="sha384-cVm8gaWQ5+URpoh6ACKXpm8TuyoHkfIDDBkxvDoUdIZ18w8nV5en0lVQvWMwO/6S" crossorigin="anonymous"></script>
 <script src="../../js/common.js"></script>
 <script>
 // ── Shared helpers ─────────────────────────────────────────────────────
@@ -410,7 +411,7 @@ async function updateComp() {
     compSaveLbl.innerHTML = `<span class="size-shrink">▼ ${pct}% smaller</span>`;
   } else {
     const grow = ((compBlob.size / compFile.size - 1) * 100).toFixed(1);
-    compSaveLbl.innerHTML = `<span class="size-grow">▲ ${grow}% larger</span>`;
+    compSaveLbl.innerHTML = `<span class="size-grow">▲ ${escHtml(grow)}% larger</span>`;
   }
 }
 

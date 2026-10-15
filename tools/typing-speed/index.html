@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Typing Speed Test — Office Tools</title>
   <meta name="description" content="Test your typing speed in WPM (words per minute) and accuracy with real-time error tracking, a grade rating, and multiple text passages. Free online typing test.">
   <meta name="keywords" content="typing speed test, WPM test, words per minute, typing accuracy, free typing test online, keyboard speed test, touch typing">
@@ -39,7 +40,7 @@
     .char { display: inline; }
     .char.correct { color: var(--success); }
     .char.incorrect { color: var(--danger); background: rgba(239,68,68,.15); border-radius: 2px; }
-    .char.current { background: var(--primary); color: #fff; border-radius: 2px; }
+    .char.current { background: var(--primary); color: var(--on-primary); border-radius: 2px; }
     .char.untyped  { color: var(--text-muted); }
 
     #typingInput {
@@ -378,7 +379,7 @@ function renderPassage() {
   const display = document.getElementById('passageDisplay');
   display.innerHTML = passage.split('').map((ch, i) => {
     let cls = i === charIndex ? 'current' : 'untyped';
-    return `<span class="char ${cls}" id="c${i}">${ch === ' ' ? '&nbsp;' : escHtml(ch)}</span>`;
+    return `<span class="char ${escHtml(cls)}" id="c${i}">${ch === ' ' ? '&nbsp;' : escHtml(ch)}</span>`;
   }).join('');
 }
 
@@ -479,8 +480,8 @@ function renderHistory() {
   if(empty) empty.style.display = 'none';
   container.innerHTML = (empty ? empty.outerHTML : '') + history.map(h =>
     `<div class="history-row">
-      <span><strong>${h.wpm} WPM</strong> · ${h.acc}% accuracy</span>
-      <span class="text-muted">${h.errors} errors · ${h.time}</span>
+      <span><strong>${escHtml(h.wpm)} WPM</strong> · ${escHtml(h.acc)}% accuracy</span>
+      <span class="text-muted">${escHtml(h.errors)} errors · ${escHtml(h.time)}</span>
     </div>`).join('');
 }
 

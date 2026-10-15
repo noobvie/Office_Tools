@@ -36,9 +36,9 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .verdict { display: flex; align-items: center; gap: .7rem; margin-top: .9rem; padding: .9rem 1.1rem; border-radius: var(--radius); font-weight: 700; font-size: 1.15rem; }
-    .verdict-up   { background: rgba(46,204,113,.12); color: #2ecc71; border: 1px solid rgba(46,204,113,.4); }
+    .verdict-up   { background: var(--success-dim); color: var(--success); border: 1px solid var(--success); }
     .verdict-down { background: var(--danger-dim); color: var(--danger); border: 1px solid var(--danger); }
-    .verdict-warn { background: rgba(241,196,15,.12); color: #f1c40f; border: 1px solid rgba(241,196,15,.4); }
+    .verdict-warn { background: var(--warning-dim); color: var(--warning); border: 1px solid var(--warning); }
     .verdict .dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; background: currentColor; box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 25%, transparent); }
 
     .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem; margin-top: .85rem; }
@@ -146,19 +146,19 @@ async function checkSite() {
 
     const label = d.ok ? 'UP — the site is responding' : `UP — server responded with ${d.status}`;
     const cls = statusClass(d.status);
-    const stats = [];
-    stats.push(`<div class="stat"><div class="stat-label">HTTP status</div><div class="stat-value">${escHtml(d.status)}</div></div>`);
-    stats.push(`<div class="stat"><div class="stat-label">Response time</div><div class="stat-value">${escHtml(d.responseMs)} ms</div></div>`);
-    if (d.server)      stats.push(`<div class="stat"><div class="stat-label">Server</div><div class="stat-value">${escHtml(d.server)}</div></div>`);
-    if (d.contentType) stats.push(`<div class="stat"><div class="stat-label">Content type</div><div class="stat-value">${escHtml(d.contentType.split(';')[0])}</div></div>`);
-    if (d.redirected)  stats.push(`<div class="stat"><div class="stat-label">Redirected to</div><div class="stat-value">${escHtml(d.finalUrl)}</div></div>`);
+    const statRows = [];
+    statRows.push(`<div class="stat"><div class="stat-label">HTTP status</div><div class="stat-value">${escHtml(d.status)}</div></div>`);
+    statRows.push(`<div class="stat"><div class="stat-label">Response time</div><div class="stat-value">${escHtml(d.responseMs)} ms</div></div>`);
+    if (d.server)      statRows.push(`<div class="stat"><div class="stat-label">Server</div><div class="stat-value">${escHtml(d.server)}</div></div>`);
+    if (d.contentType) statRows.push(`<div class="stat"><div class="stat-label">Content type</div><div class="stat-value">${escHtml(d.contentType.split(';')[0])}</div></div>`);
+    if (d.redirected)  statRows.push(`<div class="stat"><div class="stat-label">Redirected to</div><div class="stat-value">${escHtml(d.finalUrl)}</div></div>`);
     if (d.cert) {
       const warn = d.cert.daysLeft <= 14 ? ' style="color:var(--danger)"' : '';
-      stats.push(`<div class="stat"><div class="stat-label">SSL expires</div><div class="stat-value"${warn}>${escHtml(d.cert.daysLeft)} days${d.cert.issuer ? ' · ' + escHtml(d.cert.issuer) : ''}</div></div>`);
+      statRows.push(`<div class="stat"><div class="stat-label">SSL expires</div><div class="stat-value"${warn}>${escHtml(d.cert.daysLeft)} days${d.cert.issuer ? ' · ' + escHtml(d.cert.issuer) : ''}</div></div>`);
     }
 
-    el.innerHTML = `<div class="verdict ${cls}"><span class="dot"></span> ${escHtml(label)}</div>
-      <div class="stat-grid">${stats.join('')}</div>
+    el.innerHTML = `<div class="verdict ${escHtml(cls)}"><span class="dot"></span> ${escHtml(label)}</div>
+      <div class="stat-grid">${statRows.join('')}</div>
       <div style="font-size:.8rem;color:var(--text-muted);margin-top:.6rem">Checked from our server. If you still can't reach it, the issue is likely on your network (ISP, DNS, VPN or firewall).</div>`;
   } catch (err) {
     el.innerHTML = `<div class="box-error">Network error: ${escHtml(err.message)} — is the backend running?</div>`;

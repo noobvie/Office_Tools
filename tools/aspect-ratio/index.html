@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Aspect Ratio Calculator — Office Tools</title>
   <meta name="description" content="Find the missing width or height from a known aspect ratio. Includes common presets (16:9, 4:3, 1:1, 21:9) and supports any custom ratio. Free, instant.">
   <meta name="keywords" content="aspect ratio calculator, image aspect ratio, 16:9 ratio, resize calculator, video resolution, width height calculator">
@@ -185,7 +186,7 @@ const presetGrid = document.getElementById('presetGrid');
 PRESETS.forEach(p => {
   const btn = document.createElement('div');
   btn.className = 'preset-btn';
-  btn.innerHTML = `<div class="ratio">${p.ratio}</div><div class="name">${p.name}</div>`;
+  btn.innerHTML = `<div class="ratio">${escHtml(p.ratio)}</div><div class="name">${escHtml(p.name)}</div>`;
   btn.addEventListener('click', () => {
     document.getElementById('ratioW').value = p.w;
     document.getElementById('ratioH').value = p.h;

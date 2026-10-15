@@ -40,6 +40,9 @@
  *   sitemap    lastmod is a real date and not in the future; the hub, donate and privacy pages
  *              are present.
  *
+ * ACCEPTED  table in this file — deliberate, permanent exceptions (intrinsic colours, server
+ * console output); never counted, not even under --strict.
+ *
  * BASELINE  scripts/check-tools.baseline.json — a count per finding fingerprint
  * (rule|file|message, line numbers stripped, so an edit above a finding does not
  * "create" one). The default run fails only on findings above their baselined count,
@@ -100,6 +103,28 @@ const FILE_HOST_ALLOW = {
   'tools/yt-downloader/index.html': ['www.youtube.com', 'www.googleapis.com'],
   // The ONE sanctioned analytics loader (OT_GA_ID). Anywhere else it is a finding.
   'js/common.js':                   ['www.googletagmanager.com'],
+};
+
+/** Findings accepted on purpose, per rule and file — dropped before the baseline and under
+ *  --strict, so --strict can pass. File-level, so a NEW leak inside an accepted file is
+ *  invisible: review those files by eye. Adding a row is a policy decision. */
+const ACCEPTED = {
+  // Palettes that must not follow the theme: game boards/pieces, syntax and category scales,
+  // network identity colours, paper/canvas/iframe/QR surfaces that stay white, transparency
+  // checkerboards, ink over arbitrary images, donate.html's own brand palette.
+  colours: [
+    'pages/donate.html',
+    ...['2048', 'chess', 'gomoku', 'simon-says', 'json-editor', 'markdown-editor', 'jwt-decoder',
+        'bmi-calculator', 'pomodoro', 'port-checker', 'morse-code', 'regex-tester', 'qr-generator',
+        'pdf-sign', 'web-proxy', 'temp-inbox', 'meta-tag-generator', 'svg-to-png', 'photo-editor',
+        'screenshot-beautifier', 'favicon-generator', 'color-picker', 'pdf-toolkit', 'image-upscale',
+        'yt-downloader', 'barcode-generator', 'image-redact', 'image-to-pdf', 'pdf-enhance',
+        'pdf-to-images', 'pdf-watermark', 'utm-builder', 'color-converter', 'image-collage',
+    ].map(t => `tools/${t}/index.html`),
+  ],
+  // Server stdout is the systemd journal; there is no logger. markdown-editor's hit is sample
+  // code inside a template string.
+  console: ['backend/office-tools-server.js', 'yt-server/server.js', 'tools/markdown-editor/index.html'],
 };
 
 /** Third-party analytics/tracking hosts: a finding wherever they appear (subject only to
@@ -666,6 +691,11 @@ let baseline = {};
 if (exists(BASELINE_FILE)) {
   try { baseline = JSON.parse(read(BASELINE_FILE)); }
   catch (e) { console.error(`cannot parse ${rel(BASELINE_FILE)}: ${e.message}`); process.exit(2); }
+}
+// drop deliberately accepted findings (ACCEPTED) before anything is counted
+let acceptedCount = 0;
+for (let i = findings.length - 1; i >= 0; i--) {
+  if ((ACCEPTED[findings[i].rule] || []).includes(findings[i].file)) { findings.splice(i, 1); acceptedCount++; }
 }
 const current = {};
 for (const f of findings) { const k = fingerprint(f); current[k] = (current[k] || 0) + 1; }

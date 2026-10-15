@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Port Checker — Test If TCP Ports Are Open on IPv4, IPv6 or Hostname | Office Tools</title>
   <meta name="description" content="Check if TCP ports are open on any IPv4 address, IPv6 address, or hostname. Dual-stack: tests both IPv4 and IPv6 simultaneously. Presets for SSH, RDP, HTTP, HTTPS, MySQL, FTP and all Grin mainnet & testnet ports. Free, no login required.">
   <meta name="keywords" content="port checker, IPv6 port checker, check if port is open, TCP port scanner, open port test, firewall port check, port scan online, is port open, check open ports, IPv6 port scan, dual stack port test, IPv4 IPv6 port checker, check IPv6 port, Grin node ports, Grin wallet ports, SSH port 22, RDP port 3389, HTTP port 80, HTTPS port 443, MySQL port 3306, FTP port 21, Grin mainnet ports, Grin testnet ports, network diagnostics, firewall test">
@@ -141,8 +142,8 @@
     }
     .check-row .btn { min-width: 160px; }
     .btn-stop {
-      background: var(--danger, #e05260);
-      color: #fff;
+      background: var(--danger);
+      color: var(--on-primary);
       border-color: var(--danger, #e05260);
     }
     .btn-stop:hover { opacity: .85; }
@@ -199,7 +200,7 @@
     .results-table tr:last-child td { border-bottom: none; }
     .results-table .port-col { font-family: 'Courier New', monospace; font-weight: 700; color: var(--primary); }
     .results-table .svc-col  { color: var(--text-muted); font-size: .82rem; }
-    .status-open    { color: #4caf8e; font-weight: 700; }
+    .status-open    { color: var(--success); font-weight: 700; }
     .status-closed  { color: var(--danger, #e05260); font-weight: 700; }
     .status-pending { color: var(--text-muted); }
 
@@ -210,7 +211,7 @@
       padding: .6rem 0 .3rem;
       font-size: .84rem;
     }
-    .sum-open   { color: #4caf8e; font-weight: 700; }
+    .sum-open   { color: var(--success); font-weight: 700; }
     .sum-closed { color: var(--danger, #e05260); font-weight: 700; }
     .sum-pending { color: var(--text-muted); }
 
@@ -284,8 +285,8 @@
       color: var(--primary);
     }
     .chip-v6 {
-      border-color: #4caf8e;
-      color: #4caf8e;
+      border-color: var(--success);
+      color: var(--success);
     }
 
     /* ── Results table Address column ── */
@@ -607,16 +608,16 @@ async function runChecks() {
   // Resolved address chips
   const chips = addresses.map(a => {
     const cls = a.family === 'IPv6' ? 'chip-v6' : 'chip-v4';
-    return `<span class="resolved-chip ${cls}"><code>${escHtml(a.ip)}</code> <span>${a.family || 'IP'}</span></span>`;
+    return `<span class="resolved-chip ${escHtml(cls)}"><code>${escHtml(a.ip)}</code> <span>${escHtml(a.family || 'IP')}</span></span>`;
   }).join('');
   // Warn when the user typed a hostname (not a bare IP) — the resolved IP may belong to a proxy
   const isHostname = !/^[\d.:[\]]+$/.test(host);
-  const proxyWarning = isHostname
+  const proxyWarningHtml = isHostname
     ? `<div style="margin-top:.45rem;font-size:.78rem;color:var(--text-muted);border-left:2px solid var(--primary);padding-left:.5rem;">
         ⚠️ This hostname may resolve to a CDN or reverse proxy (e.g. Cloudflare). Port results reflect the <em>proxy</em>, not the origin server. For accurate results use the server's direct IPv4 or IPv6 address.
        </div>`
     : '';
-  addrDiv.innerHTML = `<div style="font-size:.78rem;color:var(--text-muted);margin-bottom:.3rem">Resolved Addresses:</div><div class="resolved-chips">${chips}</div>${proxyWarning}`;
+  addrDiv.innerHTML = `<div style="font-size:.78rem;color:var(--text-muted);margin-bottom:.3rem">Resolved Addresses:</div><div class="resolved-chips">${chips}</div>${proxyWarningHtml}`;
 
   // Pre-render all rows as "checking"
   tbody.innerHTML = '';
@@ -629,15 +630,15 @@ async function runChecks() {
       const svcName = PORT_NAMES[port] || (customPortSet.has(port) ? 'Custom' : '—');
       tr.innerHTML = `
         <td class="addr-col"><code>${escHtml(addresses[ai].ip)}</code></td>
-        <td class="port-col">${port}</td>
-        <td class="svc-col">${svcName}</td>
-        <td class="status-pending" id="${rowId}">⏳ checking…</td>
+        <td class="port-col">${escHtml(port)}</td>
+        <td class="svc-col">${escHtml(svcName)}</td>
+        <td class="status-pending" id="${escHtml(rowId)}">⏳ checking…</td>
       `;
       tbody.appendChild(tr);
     }
   }
   tbl.classList.toggle('single-addr', addresses.length === 1);
-  summary.innerHTML = `<span class="sum-pending">Checking ${totalTests} test${totalTests > 1 ? 's' : ''}…</span>`;
+  summary.innerHTML = `<span class="sum-pending">Checking ${escHtml(totalTests)} test${totalTests > 1 ? 's' : ''}…</span>`;
 
   let openCount = 0, closedCount = 0, stoppedCount = 0, testsDone = 0;
 
@@ -686,14 +687,14 @@ async function runChecks() {
   const addrChips = addresses.map(a => {
     const cls   = a.family === 'IPv6' ? 'chip-v6' : 'chip-v4';
     const label = a.family === 'IPv6' ? 'IPv6' : 'IPv4';
-    return `<span style="display:inline-flex;align-items:center;gap:.25rem;padding:.1rem .4rem;border:1px solid;border-radius:4px;font-size:.75rem;" class="${cls}"><code style="font-size:.7rem">${escHtml(a.ip)}</code> ${label}</span>`;
+    return `<span style="display:inline-flex;align-items:center;gap:.25rem;padding:.1rem .4rem;border:1px solid;border-radius:4px;font-size:.75rem;" class="${escHtml(cls)}"><code style="font-size:.7rem">${escHtml(a.ip)}</code> ${escHtml(label)}</span>`;
   }).join('');
 
-  const stoppedPart = stoppedCount > 0 ? `<span class="sum-pending">⏹ Stopped: ${stoppedCount}</span>` : '';
+  const stoppedPartHtml = stoppedCount > 0 ? `<span class="sum-pending">⏹ Stopped: ${stoppedCount}</span>` : '';
   summary.innerHTML = `
-    <span class="sum-open">✅ Open: ${openCount}</span>
-    <span class="sum-closed">❌ Closed / Filtered: ${closedCount}</span>
-    ${stoppedPart}
+    <span class="sum-open">✅ Open: ${escHtml(openCount)}</span>
+    <span class="sum-closed">❌ Closed / Filtered: ${escHtml(closedCount)}</span>
+    ${stoppedPartHtml}
     <span class="sum-pending">Host: <strong>${escHtml(host)}</strong></span>
     <span class="sum-pending">${addrChips}</span>
   `;

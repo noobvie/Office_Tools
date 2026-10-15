@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Hash Generator — Office Tools</title>
   <meta name="description" content="Generate SHA-1, SHA-256, SHA-384, SHA-512, and HMAC cryptographic hashes from text or any file. Uses the Web Crypto API — 100% local, nothing is uploaded to any server.">
   <meta name="keywords" content="hash generator, SHA-256, SHA-512 hash, HMAC generator, file hash checker, checksum generator, cryptographic hash online">
@@ -223,7 +224,7 @@ async function hashText(text) {
 function renderHashRows(hashes, container) {
   container.innerHTML = ALGOS.map(algo => `
     <div class="hash-row">
-      <span class="hash-algo">${algo}</span>
+      <span class="hash-algo">${escHtml(algo)}</span>
       <span class="hash-val">${escHtml(hashes[algo])}</span>
       <button class="btn btn-ghost btn-sm" onclick="copyText('${escHtml(hashes[algo])}', this)">Copy</button>
     </div>

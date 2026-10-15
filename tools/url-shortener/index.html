@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>URL Shortener — Office Tools</title>
   <meta name="description" content="Create short links from long URLs with optional custom aliases and configurable expiry (1 day to forever). Self-hosted — your data stays on your server.">
   <meta name="keywords" content="URL shortener, short link, custom URL shortener, link shortener, shorten URL, self-hosted link shortener, URL alias">
@@ -237,8 +238,8 @@ function renderHistory() {
     <div class="hist-item">
       <span class="hist-orig" title="${escHtml(h.long_url)}">${escHtml(h.long_url)}</span>
       <a class="hist-short" href="${escHtml(shortUrl(h.code))}" target="_blank" rel="noopener">/s/#${escHtml(h.code)}</a>
-      <span class="hist-exp">${h.expires ? new Date(h.expires).toLocaleDateString() : '∞'}</span>
-      <button class="btn btn-secondary btn-sm" onclick="copyText('${shortUrl(h.code)}', this)">Copy</button>
+      <span class="hist-exp">${h.expires ? escHtml(new Date(h.expires).toLocaleDateString()) : '∞'}</span>
+      <button class="btn btn-secondary btn-sm" data-url="${escHtml(shortUrl(h.code))}" onclick="copyText(this.dataset.url, this)">Copy</button>
     </div>`).join('');
 }
 

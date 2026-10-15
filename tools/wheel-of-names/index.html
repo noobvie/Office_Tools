@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Wheel of Names — Office Tools</title>
   <meta name="description" content="Spin an animated wheel to randomly pick a winner from any list of names. Remove winners after each spin or keep all entries. Perfect for giveaways, raffles, and classrooms.">
   <meta name="keywords" content="wheel of names, random name picker, spinning wheel online, winner picker, random selector, name spinner, giveaway picker, raffle wheel">
@@ -394,7 +395,7 @@ function renderHistory() {
     return;
   }
   el.innerHTML = history.slice(0,20).map((h,i) =>
-    `<div class="history-item"><span class="place">#${h.spin}</span><span>${escHtml(h.name)}</span></div>`
+    `<div class="history-item"><span class="place">#${escHtml(h.spin)}</span><span>${escHtml(h.name)}</span></div>`
   ).join('');
 }
 

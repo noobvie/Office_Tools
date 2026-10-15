@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Discount Calculator — Sale Price &amp; Percent Off — Office Tools</title>
   <meta name="description" content="Calculate the sale price and amount saved from a percent-off discount. Stack multiple discounts, find the original price, or work out the discount percentage. Free online tool.">
   <meta name="keywords" content="discount calculator, percent off calculator, sale price calculator, how much will I save, stacked discount, original price calculator, markdown calculator">
@@ -128,7 +129,7 @@ function renderStacks() {
     row.className = 'stack-row';
     row.innerHTML =
       `<span style="font-size:.85rem;color:var(--text-muted)">then</span>` +
-      `<input type="number" class="form-input" min="0" max="100" step="1" value="${v}" data-i="${i}"> ` +
+      `<input type="number" class="form-input" min="0" max="100" step="1" value="${escHtml(v)}" data-i="${i}"> ` +
       `<span style="font-size:.85rem;color:var(--text-muted)">% off</span>` +
       `<button class="stack-del" data-del="${i}">✕</button>`;
     wrap.appendChild(row);

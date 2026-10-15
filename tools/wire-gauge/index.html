@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Wire Gauge Calculator — AWG to mm, mm² & Amps — Office Tools</title>
   <meta name="description" content="Convert AWG wire gauge to diameter (mm), cross-section (mm²) and typical current rating. Or enter the amps you need and find the right gauge. Free online AWG calculator.">
   <meta name="keywords" content="wire gauge calculator, AWG to mm, AWG to mm2, wire gauge chart, amps to wire gauge, AWG ampacity, wire size calculator, AWG diameter, cable size">
@@ -119,7 +120,7 @@ function showSpecs() {
     <div class="spec"><div class="k">Diameter</div><div class="v">${fmt(d,4)} mm</div></div>
     <div class="spec"><div class="k">Diameter</div><div class="v">${fmt(d/25.4,4)} in</div></div>
     <div class="spec"><div class="k">Cross-section</div><div class="v">${fmt(a,4)} mm²</div></div>
-    <div class="spec"><div class="k">Ampacity (ref.)</div><div class="v">${amp!=null?amp+' A':'—'}</div></div>`;
+    <div class="spec"><div class="k">Ampacity (ref.)</div><div class="v">${amp != null ? escHtml(amp + ' A') : '—'}</div></div>`;
   highlight(g);
 }
 
@@ -134,8 +135,8 @@ function suggest() {
   for (let i = ordered.length - 1; i >= 0; i--) {
     if (ampOf(ordered[i]) >= need) pick = ordered[i];
   }
-  if (!pick) { out.innerHTML = `No listed gauge handles ${need} A — use a thicker conductor / busbar than AWG 0000.`; highlight(null); return; }
-  out.innerHTML = `Use <strong>AWG ${pick}</strong> or thicker — rated ≈ ${ampOf(pick)} A (${fmt(areaMm2(pick),3)} mm²).`;
+  if (!pick) { out.innerHTML = `No listed gauge handles ${escHtml(need)} A — use a thicker conductor / busbar than AWG 0000.`; highlight(null); return; }
+  out.innerHTML = `Use <strong>AWG ${escHtml(pick)}</strong> or thicker — rated ≈ ${ampOf(pick)} A (${fmt(areaMm2(pick),3)} mm²).`;
   highlight(pick);
 }
 

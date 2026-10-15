@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>VPN / IP Leak Test — WebRTC &amp; IPv6 Leak Check | Office Tools</title>
   <meta name="description" content="Check whether your VPN is leaking your real IP. Tests your public IPv4/IPv6, detects WebRTC leaks that expose your true address, and flags IPv6 leaks — runs in your browser.">
   <meta name="keywords" content="vpn leak test, webrtc leak test, ip leak test, check vpn, am i leaking my ip, ipv6 leak, webrtc ip leak, vpn security check, is my vpn working">
@@ -39,9 +40,9 @@
     .cand { display: flex; align-items: center; gap: .6rem; background: var(--bg-secondary); border-radius: var(--radius); padding: .5rem .75rem; font-size: .85rem; }
     .cand .ip { font-family: 'Courier New', monospace; font-weight: 700; word-break: break-all; flex: 1; }
     .pill { font-size: .72rem; font-weight: 700; padding: .12rem .55rem; border-radius: 50px; white-space: nowrap; }
-    .pill.good { background: var(--success); color: #fff; }
+    .pill.good { background: var(--success); color: var(--on-primary); }
     .pill.info { background: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border); }
-    .pill.bad  { background: var(--danger); color: #fff; }
+    .pill.bad  { background: var(--danger); color: var(--on-primary); }
 
     .loading-pulse { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); animation: pulse-anim .8s ease-in-out infinite alternate; margin-right: .4rem; }
     @keyframes pulse-anim { to { opacity: .2; transform: scale(.7); } }
@@ -244,7 +245,7 @@ function renderPublic(v4, v6, geo4, geo6) {
     <div class="meta">${ip ? escHtml(geoLabel(geo) || '—') : 'Not reachable on this network'}</div>
   </div>`;
   $('pubRow').innerHTML = box('IPv4', v4, geo4) + box('IPv6', v6, geo6);
-  $('pubNote').innerHTML = (v4 && v6)
+  $('pubNote').textContent = (v4 && v6)
     ? 'Your browser is reachable over both IPv4 and IPv6.'
     : v4 ? 'IPv6 was not detected — only IPv4 is exposed.' : v6 ? 'Only IPv6 was detected.' : '';
 }
@@ -252,7 +253,7 @@ function renderPublic(v4, v6, geo4, geo6) {
 function renderWebRtc(rtc, v4, v6) {
   const list = $('candList');
   if (!rtc.supported) {
-    list.innerHTML = '<div class="cand"><span class="ip">WebRTC is disabled or unavailable in this browser</span><span class="pill good">Can\'t leak ✓</span></div>';
+    list.innerHTML = `<div class="cand"><span class="ip">WebRTC is disabled or unavailable in this browser</span><span class="pill good">Can't leak ✓</span></div>`;
     $('rtcVerdict').innerHTML = '✓ WebRTC is off — it cannot expose your IP. This is the safest state.';
     return { leak: false, publicFound: [], blocked: true };
   }
@@ -312,7 +313,7 @@ function renderIpv6(v4, v6, geo4, geo6) {
 
 function setVerdict(cls, icon, title, text) {
   const v = $('verdict'); v.className = 'verdict ' + cls;
-  $('vIcon').innerHTML = icon; $('vTitle').textContent = title; $('vText').innerHTML = text;
+  $('vIcon').innerHTML = icon; $('vTitle').textContent = title; $('vText').textContent = text;
 }
 function renderVerdict(rtc, v6, v4, v6addr) {
   if (rtc.leak || v6.leak) {

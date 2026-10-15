@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Fuel & Trip Cost Calculator — Office Tools</title>
   <meta name="description" content="Work out the fuel cost of a trip from distance, fuel economy and fuel price. Supports miles/km, US/UK mpg or L/100km, and per-gallon or per-litre pricing. Split the cost between passengers. Free online tool.">
   <meta name="keywords" content="fuel cost calculator, trip cost calculator, gas cost calculator, fuel economy, mpg, L/100km, cost per mile, fuel price, road trip cost, petrol cost">
@@ -145,8 +146,8 @@ function calc() {
   grid.innerHTML = `
     <div class="out big"><div class="k">Total fuel cost</div><div class="v">${money(total)}</div></div>
     <div class="out"><div class="k">Fuel needed</div><div class="v">${fmt(litres)} L</div><div class="k">${fmt(galUS)} gal (US)</div></div>
-    <div class="out"><div class="k">Cost per ${distUnit}</div><div class="v">${money(perUnit)}</div></div>
-    ${people>1 ? `<div class="out"><div class="k">Per person (${people})</div><div class="v">${money(total/people)}</div></div>` : ''}`;
+    <div class="out"><div class="k">Cost per ${escHtml(distUnit)}</div><div class="v">${money(perUnit)}</div></div>
+    ${people>1 ? `<div class="out"><div class="k">Per person (${escHtml(people)})</div><div class="v">${money(total/people)}</div></div>` : ''}`;
 }
 
 ['dist','distUnit','eff','effUnit','price','priceUnit','people','roundTrip'].forEach(id =>

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>AI JSON Schema Builder — Office Tools</title>
   <meta name="description" content="Generate JSON Schema from any JSON input, or build schemas visually. Export in OpenAI and Anthropic function calling formats for AI tool definitions.">
   <meta name="keywords" content="JSON schema builder, JSON schema generator, OpenAI function calling, Anthropic tool use, AI tool definition, JSON schema draft-07, JSON schema validator">
@@ -301,7 +302,7 @@ function renderFieldList() {
   list.innerHTML = fields.map((f, i) => `
     <div class="field-row">
       <span style="font-weight:700;font-family:monospace">${escHtml(f.name)}</span>
-      <span style="color:var(--text-muted);font-size:.8rem">${f.type}</span>
+      <span style="color:var(--text-muted);font-size:.8rem">${escHtml(f.type)}</span>
       <span style="font-size:.8rem;color:var(--text-muted)">${escHtml(f.description || '—')}</span>
       <label style="font-size:.78rem;display:flex;align-items:center;gap:.3rem;white-space:nowrap">
         <input type="checkbox" ${f.required ? 'checked' : ''} onchange="toggleRequired(${i},this.checked)"> required

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Tip Calculator — Split Bill &amp; Tip — Office Tools</title>
   <meta name="description" content="Calculate tip amount, split the bill among friends, and find the total per person. Quick tip buttons for 10%, 15%, 18%, 20%, and 25%. Free online tip calculator.">
   <meta name="keywords" content="tip calculator, split bill calculator, restaurant tip, tip percentage calculator, bill splitter, how much to tip">
@@ -25,7 +26,7 @@
     .tip-btn { padding: .45rem .85rem; border: 1.5px solid var(--border); border-radius: 2rem;
       background: none; cursor: pointer; font-size: .88rem; font-weight: 700;
       color: var(--text); transition: all var(--transition); }
-    .tip-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .tip-btn.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
     .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top: .75rem; }
     .res-stat { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: .85rem 1rem; }
     .res-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
@@ -114,7 +115,7 @@
     </div>
   </div>
 
-  <div class="card mt-2" style="border-left:3px solid var(--warning,#f59e0b);background:var(--surface2,#1e1e1e)">
+  <div class="card mt-2" style="border-left:3px solid var(--warning,#f59e0b);background:var(--bg-secondary)">
     <p style="font-size:.78rem;color:var(--text-muted);margin:0;line-height:1.6">
       <strong style="color:var(--text)">⚠ Disclaimer:</strong>
       Calculated amounts are <strong>estimates only</strong>. Tipping customs, service charges, and tax rules

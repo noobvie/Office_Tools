@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Text Diff — Office Tools</title>
   <meta name="description" content="Compare two blocks of text side-by-side with color-highlighted additions and deletions. Perfect for comparing code versions, contracts, or documents. Free, no upload required.">
   <meta name="keywords" content="text diff tool, online diff checker, compare text online, text comparison, code diff, document compare, diff viewer">
@@ -58,15 +59,11 @@
       word-break: break-all;
       flex: 1;
     }
-    .diff-add    { background: #d1fae5; color: #064e3b; }
-    .diff-add .diff-line-num    { background: #a7f3d0; }
-    .diff-remove { background: #fee2e2; color: #450a0a; }
-    .diff-remove .diff-line-num { background: #fecaca; }
+    .diff-add    { background: var(--success-dim); color: var(--text); }
+    .diff-add .diff-line-num    { background: color-mix(in srgb, var(--success) 30%, var(--success-dim)); }
+    .diff-remove { background: var(--danger-dim); color: var(--text); }
+    .diff-remove .diff-line-num { background: color-mix(in srgb, var(--danger) 30%, var(--danger-dim)); }
     .diff-equal  { }
-    [data-theme="dark"] .diff-add    { background: #064e3b; color: #a7f3d0; }
-    [data-theme="dark"] .diff-add .diff-line-num    { background: #065f46; }
-    [data-theme="dark"] .diff-remove { background: #450a0a; color: #fecaca; }
-    [data-theme="dark"] .diff-remove .diff-line-num { background: #7f1d1d; }
 
     .diff-sign {
       padding: 0 .5rem;
@@ -85,10 +82,8 @@
     .diff-stat { display: flex; align-items: center; gap: .35rem; font-size: .85rem; }
 
     .char-diff-wrap { position: relative; }
-    .char-add    { background: #6ee7b7; border-radius: 2px; }
-    .char-remove { background: #fca5a5; border-radius: 2px; text-decoration: line-through; }
-    [data-theme="dark"] .char-add    { background: #065f46; color: #a7f3d0; }
-    [data-theme="dark"] .char-remove { background: #7f1d1d; color: #fecaca; }
+    .char-add    { background: color-mix(in srgb, var(--success) 45%, transparent); border-radius: 2px; }
+    .char-remove { background: color-mix(in srgb, var(--danger) 45%, transparent); border-radius: 2px; text-decoration: line-through; }
 
     .empty-diff {
       text-align: center;
@@ -304,7 +299,7 @@ document.getElementById('diffBtn').addEventListener('click', () => {
         lineNum++;
         const row = document.createElement('div');
         row.className = 'diff-line ' + (part.added ? 'diff-add' : part.removed ? 'diff-remove' : 'diff-equal');
-        row.innerHTML = `<span class="diff-line-num">${lineNum}</span><span class="diff-sign">${part.added ? '+' : part.removed ? '−' : ' '}</span><span class="diff-line-content">${escHtmlLocal(line)}</span>`;
+        row.innerHTML = `<span class="diff-line-num">${escHtml(lineNum)}</span><span class="diff-sign">${escHtml(part.added ? '+' : part.removed ? '−' : ' ')}</span><span class="diff-line-content">${escHtmlLocal(line)}</span>`;
         container.appendChild(row);
         if (part.added) added++;
         else if (part.removed) removed++;

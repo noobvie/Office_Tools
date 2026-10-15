@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Robots.txt Generator — Allow/Disallow Rules — Office Tools</title>
   <meta name="description" content="Generate a valid robots.txt file with allow and disallow rules per user-agent, crawl-delay, and sitemap line. Presets for allow-all and block-all. Copy or download instantly.">
   <meta name="keywords" content="robots.txt generator, robots txt, disallow rules, user-agent, crawl-delay, sitemap line, block crawlers, SEO robots, googlebot rules">
@@ -113,25 +114,25 @@ function render() {
     div.innerHTML =
       `<div class="group-head">` +
         `<span class="field-label" style="margin:0">User-agent</span>` +
-        `<input type="text" class="form-input" value="${g.ua.replace(/"/g,'&quot;')}" data-g="${gi}" data-k="ua" style="flex:1">` +
-        `<button class="x-btn" data-delg="${gi}" ${groups.length<=1?'disabled style="opacity:.35"':''}>✕</button>` +
+        `<input type="text" class="form-input" value="${escHtml(g.ua)}" data-g="${Number(gi)}" data-k="ua" style="flex:1">` +
+        `<button class="x-btn" data-delg="${Number(gi)}" ${groups.length<=1?'disabled style="opacity:.35"':''}>✕</button>` +
       `</div>` +
-      `<div data-rules="${gi}"></div>` +
-      `<button class="btn btn-sm" data-addrule="${gi}" style="margin-top:.3rem">+ Add rule</button>` +
+      `<div data-rules="${Number(gi)}"></div>` +
+      `<button class="btn btn-sm" data-addrule="${Number(gi)}" style="margin-top:.3rem">+ Add rule</button>` +
       `<div style="margin-top:.5rem"><label class="field-label">Crawl-delay (optional, seconds)</label>` +
-        `<input type="number" class="form-input" value="${g.delay}" data-g="${gi}" data-k="delay" min="0" style="max-width:140px"></div>`;
+        `<input type="number" class="form-input" value="${escHtml(g.delay)}" data-g="${Number(gi)}" data-k="delay" min="0" style="max-width:140px"></div>`;
     wrap.appendChild(div);
-    const rwrap = div.querySelector(`[data-rules="${gi}"]`);
+    const rwrap = div.querySelector(`[data-rules="${Number(gi)}"]`);
     g.rules.forEach((r, ri) => {
       const row = document.createElement('div');
       row.className = 'rule-row';
       row.innerHTML =
-        `<select class="form-input" data-g="${gi}" data-r="${ri}" data-k="type">` +
+        `<select class="form-input" data-g="${Number(gi)}" data-r="${Number(ri)}" data-k="type">` +
           `<option ${r.type==='Disallow'?'selected':''}>Disallow</option>` +
           `<option ${r.type==='Allow'?'selected':''}>Allow</option>` +
         `</select>` +
-        `<input type="text" class="form-input" value="${(r.path||'').replace(/"/g,'&quot;')}" placeholder="/path/" data-g="${gi}" data-r="${ri}" data-k="path" style="flex:1">` +
-        `<button class="x-btn" data-delr="${gi}.${ri}">✕</button>`;
+        `<input type="text" class="form-input" value="${escHtml(r.path || '')}" placeholder="/path/" data-g="${Number(gi)}" data-r="${Number(ri)}" data-k="path" style="flex:1">` +
+        `<button class="x-btn" data-delr="${Number(gi)}.${Number(ri)}">✕</button>`;
       rwrap.appendChild(row);
     });
   });

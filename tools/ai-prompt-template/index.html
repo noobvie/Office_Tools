@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>AI Prompt Template Builder — Office Tools</title>
   <meta name="description" content="Build reusable AI prompt templates with {{variable}} placeholders. Fill in variables, preview the final prompt, and save templates to your browser.">
   <meta name="keywords" content="prompt template, AI prompt builder, prompt engineering, LLM prompt, prompt variables, prompt reuse, ChatGPT prompt template">
@@ -297,7 +298,7 @@ function renderSavedList() {
     const date = new Date(item.savedAt).toLocaleDateString();
     return `<div class="saved-item" data-idx="${i}">
       <span class="saved-name" title="${escHtml(item.name)}">${escHtml(item.name)}</span>
-      <span class="saved-date">${date}</span>
+      <span class="saved-date">${escHtml(date)}</span>
       <button class="btn btn-secondary btn-sm" onclick="loadTemplate(${i})">Load</button>
       <button class="btn btn-ghost btn-sm" onclick="deleteTemplate(${i})">✕</button>
     </div>`;

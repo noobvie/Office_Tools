@@ -33,14 +33,14 @@
     .ctrl-row input.sel { flex: 0 0 160px; min-width: 120px; }
     .score-wrap { display: flex; align-items: center; gap: 1rem; margin-top: .9rem; }
     .score-ring { font-size: 1.8rem; font-weight: 900; width: 78px; height: 78px; border-radius: 50%; display: grid; place-items: center; flex: none; border: 4px solid var(--border); }
-    .score-ring.good { border-color: #16a34a; color: #16a34a; }
-    .score-ring.mid  { border-color: #b8860b; color: #b8860b; }
+    .score-ring.good { border-color: var(--success); color: var(--success); }
+    .score-ring.mid  { border-color: var(--warning); color: var(--warning); }
     .score-ring.bad  { border-color: var(--danger); color: var(--danger); }
     .rec { margin-top: .7rem; border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
     .rec-head { display: flex; align-items: center; gap: .55rem; padding: .6rem .85rem; background: var(--bg-secondary); font-weight: 700; font-size: .9rem; }
     .rec-head .ic { font-size: 1rem; }
     .rec-head .tag { margin-left: auto; font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; padding: .12rem .5rem; border-radius: 999px; font-weight: 800; }
-    .rec-head .tag.ok  { background: rgba(34,197,94,.15); color: #16a34a; }
+    .rec-head .tag.ok  { background: var(--success-dim); color: var(--success); }
     .rec-head .tag.no  { background: var(--danger-dim); color: var(--danger); }
     .rec-body { padding: .65rem .85rem; font-family: 'Courier New', monospace; font-size: .78rem; color: var(--text); word-break: break-all; white-space: pre-wrap; }
     .rec-body.empty { color: var(--text-muted); font-style: italic; font-family: inherit; }
@@ -168,8 +168,8 @@ function render(d) {
 
   el.innerHTML =
     `<div class="score-wrap">
-       <div class="score-ring ${ringCls}">${score}</div>
-       <div><div style="font-weight:800;font-size:1.05rem;color:var(--text)">${verdict}</div>
+       <div class="score-ring ${escHtml(ringCls)}">${score}</div>
+       <div><div style="font-weight:800;font-size:1.05rem;color:var(--text)">${escHtml(verdict)}</div>
        <div style="color:var(--text-muted);font-size:.82rem">Config score for <code>${escHtml(d.domain)}</code> (out of 100)</div></div>
      </div>` +
     block('📥', 'MX — mail servers',  d.mx.found,    mxHtml, d.mx.found ? '' : 'No MX record — this domain cannot receive email.') +

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Markdown Editor — Office Tools</title>
   <meta name="description" content="Write Markdown with a live side-by-side HTML preview, formatting toolbar shortcuts, and one-click export. Supports GitHub Flavored Markdown. Free, no account needed.">
   <meta name="keywords" content="markdown editor online, live markdown preview, markdown to HTML, GFM editor, markdown live editor, markdown renderer">
@@ -253,7 +254,7 @@
 </div>
 </main>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js" crossorigin="anonymous" integrity="sha384-/TQbtLCAerC3jgaim+N78RZSDYV7ryeoBCVqTuzRrFec2akfBkHS7ACQ3PQhvMVi"></script>
 <script src="../../js/common.js"></script>
 <script>
 const input   = document.getElementById('mdInput');
@@ -261,9 +262,13 @@ const preview = document.getElementById('mdPreview');
 
 marked.setOptions({ gfm: true, breaks: true });
 
+// The preview is scrubbed (otSetSafeHtml) so pasted markdown cannot run script on this site;
+// Copy HTML and Download HTML hand back marked's own output, unscrubbed, as the user wrote it.
+let mdHtml = '';
 function render() {
   const md = input.value;
-  preview.innerHTML = marked.parse(md);
+  mdHtml = marked.parse(md);
+  otSetSafeHtml(preview, mdHtml);
   // Word count
   const words = md.trim() ? md.trim().split(/\s+/).length : 0;
   document.getElementById('wcWords').textContent = words + ' words';
@@ -397,7 +402,7 @@ console.log(greet('World'));
 });
 
 document.getElementById('copyMdBtn').addEventListener('click', function() { copyText(input.value, this); });
-document.getElementById('copyHtmlBtn').addEventListener('click', function() { copyText(preview.innerHTML, this); });
+document.getElementById('copyHtmlBtn').addEventListener('click', function() { copyText(mdHtml, this); });
 
 document.getElementById('downloadMdBtn').addEventListener('click', () => {
   const a = document.createElement('a');
@@ -405,7 +410,7 @@ document.getElementById('downloadMdBtn').addEventListener('click', () => {
   a.download = 'document.md'; a.click();
 });
 document.getElementById('downloadHtmlBtn').addEventListener('click', () => {
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Document</title></head><body style="font-family:sans-serif;max-width:800px;margin:2rem auto;padding:0 1rem">${preview.innerHTML}</body></html>`;
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Document</title></head><body style="font-family:sans-serif;max-width:800px;margin:2rem auto;padding:0 1rem">${mdHtml}</body></html>`;
   const a = document.createElement('a');
   a.href = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
   a.download = 'document.html'; a.click();

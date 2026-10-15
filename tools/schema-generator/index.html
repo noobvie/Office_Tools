@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Schema.org JSON-LD Generator — Structured Data — Office Tools</title>
   <meta name="description" content="Generate Schema.org structured data as JSON-LD for Article, Product, FAQ, LocalBusiness, Organization and more. Copy a valid script tag for rich results. Free JSON-LD generator.">
   <meta name="keywords" content="JSON-LD generator, schema.org generator, structured data, rich results, Article schema, Product schema, FAQ schema, LocalBusiness schema, rich snippets">
@@ -154,13 +155,13 @@ function renderFields() {
     const cur = v[type + '.' + key];
     const div = document.createElement('div');
     div.className = 'field';
-    let input;
-    if (kind === 'textarea') input = `<textarea class="form-input" rows="2" data-k="${key}">${(cur||'').replace(/</g,'&lt;')}</textarea>`;
+    let inputHtml;
+    if (kind === 'textarea') inputHtml = `<textarea class="form-input" rows="2" data-k="${key}">${escHtml(cur || '')}</textarea>`;
     else if (kind.startsWith('select:')) {
       const opts = kind.slice(7).split(',').map(o => `<option ${o===cur?'selected':''}>${o}</option>`).join('');
-      input = `<select class="form-input" data-k="${key}">${opts}</select>`;
-    } else input = `<input type="${kind}" class="form-input" value="${(cur||'').replace(/"/g,'&quot;')}" data-k="${key}">`;
-    div.innerHTML = `<label class="field-label">${label}</label>${input}`;
+      inputHtml = `<select class="form-input" data-k="${key}">${opts}</select>`;
+    } else inputHtml = `<input type="${kind}" class="form-input" value="${escHtml(cur || '')}" data-k="${key}">`;
+    div.innerHTML = `<label class="field-label">${escHtml(label)}</label>${inputHtml}`;
     wrap.appendChild(div);
   });
   wrap.querySelectorAll('[data-k]').forEach(el => el.addEventListener('input', e => {
@@ -176,10 +177,10 @@ function renderFAQ(wrap) {
     d.className = 'faq-item';
     d.innerHTML =
       `<div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem">` +
-        `<input type="text" class="form-input" value="${(f.q||'').replace(/"/g,'&quot;')}" placeholder="Question" data-fq="${i}" style="flex:1">` +
+        `<input type="text" class="form-input" value="${escHtml(f.q || '')}" placeholder="Question" data-fq="${i}" style="flex:1">` +
         `<button class="x-btn" data-delfaq="${i}" ${faqs.length<=1?'disabled style="opacity:.35"':''}>✕</button>` +
       `</div>` +
-      `<textarea class="form-input" rows="2" placeholder="Answer" data-fa="${i}">${(f.a||'').replace(/</g,'&lt;')}</textarea>`;
+      `<textarea class="form-input" rows="2" placeholder="Answer" data-fa="${i}">${escHtml(f.a || '')}</textarea>`;
     box.appendChild(d);
   });
   wrap.appendChild(box);

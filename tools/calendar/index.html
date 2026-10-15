@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>World Calendar — Office Tools</title>
   <meta name="description" content="Free online world calendar: view and compare dates in Gregorian, Chinese Lunar (农历), and Islamic Hijri calendars. Navigate any month and click any day for a full date comparison across all three systems.">
   <meta name="keywords" content="world calendar, chinese lunar calendar, islamic hijri calendar, gregorian calendar, calendar converter, 农历, hijri calendar online, lunar calendar 2026, chinese new year date">
@@ -38,7 +39,7 @@
     .cal-tab.active {
       border-color: var(--primary);
       background: var(--primary);
-      color: #fff;
+      color: var(--on-primary);
     }
 
     /* ── Navigation ── */
@@ -99,10 +100,10 @@
     .cal-cell.selected { background: var(--primary) !important; }
     .cal-cell.selected .cal-primary,
     .cal-cell.selected .cal-secondary,
-    .cal-cell.selected .cal-tertiary { color: #fff !important; }
+    .cal-cell.selected .cal-tertiary { color: var(--on-primary) !important; }
     .cal-cell.weekend-col .cal-primary { color: var(--danger, #e53e3e); }
     .cal-cell.today .cal-primary { color: var(--primary); }
-    .cal-cell.selected .cal-primary { color: #fff; }
+    .cal-cell.selected .cal-primary { color: var(--on-primary); }
 
     .cal-primary {
       font-size: 1rem; font-weight: 700; line-height: 1.2; color: var(--text);
@@ -503,12 +504,12 @@ function renderDateInfo(date) {
   const islCls = activeTab === 'islamic'   ? ' active-cal' : '';
 
   document.getElementById('dateInfoGrid').innerHTML = `
-    <div class="date-info-cal${grCls}">
+    <div class="date-info-cal${escHtml(grCls)}">
       <div class="date-info-cal-label">🌍 Gregorian</div>
       <div class="date-info-cal-main">${MONTH_NAMES[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}</div>
       <div class="date-info-cal-sub">${DOW_NAMES[date.getDay()]}</div>
     </div>
-    <div class="date-info-cal${chCls}">
+    <div class="date-info-cal${escHtml(chCls)}">
       <div class="date-info-cal-label">🐉 Chinese Lunar</div>
       <div class="date-info-cal-main">${escHtml(chYear)}年 ${escHtml(ch.monthDisplay)} ${escHtml(ch.dayDisplay)}</div>
       <div class="date-info-cal-sub">
@@ -516,7 +517,7 @@ function renderDateInfo(date) {
         ${isCNY ? '<br>🎊 Chinese New Year' : ''}
       </div>
     </div>
-    <div class="date-info-cal${islCls}">
+    <div class="date-info-cal${escHtml(islCls)}">
       <div class="date-info-cal-label">☪️ Islamic Hijri</div>
       <div class="date-info-cal-main">${escHtml(isl.dayDisplay)} ${escHtml(isl.monthDisplay)} ${escHtml(isl.yearDisplay)} AH</div>
       <div class="date-info-cal-sub">

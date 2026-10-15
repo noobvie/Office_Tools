@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Speech to Text &amp; Text to Speech — Free, EN/FR/ES, No Upload | Office Tools</title>
   <meta name="description" content="Transcribe your microphone or audio files to text, or convert text to speech in English, French, and Spanish — entirely in your browser. No upload, no server, 100% private.">
   <meta name="keywords" content="speech to text online free, voice to text browser, text to speech English French Spanish, transcribe audio browser, no upload speech recognition, whisper ai browser, microphone transcription, TTS online free, audio transcription tool">
@@ -99,14 +100,14 @@
       font-weight: 600;
     }
     .browser-badge.warn {
-      background: var(--warning-dim, #fef3c7);
-      color: #92400e;
-      border: 1px solid #fde68a;
+      background: var(--warning-dim);
+      color: var(--text);
+      border: 1px solid var(--warning);
     }
     .browser-badge.ok {
-      background: var(--success-dim, #d1fae5);
-      color: #065f46;
-      border: 1px solid #6ee7b7;
+      background: var(--success-dim);
+      color: var(--text);
+      border: 1px solid var(--success);
     }
 
     /* ── Transcript box ── */
@@ -203,8 +204,8 @@
       cursor: pointer;
       transition: all .2s;
     }
-    .mic-btn.idle    { background: var(--primary); color: #fff; }
-    .mic-btn.active  { background: var(--danger, #ef4444); color: #fff; animation: pulse 1.2s infinite; }
+    .mic-btn.idle    { background: var(--primary); color: var(--on-primary); }
+    .mic-btn.active  { background: var(--danger); color: var(--on-primary); animation: pulse 1.2s infinite; }
     .mic-btn:disabled { opacity: .5; cursor: not-allowed; animation: none; }
     @keyframes pulse {
       0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger,#ef4444) 40%, transparent); }
@@ -607,10 +608,18 @@
     modelProg.style.display = '';
 
     try {
-      // Dynamically import transformers.js (ESM)
-      const { pipeline, env } = await import(
-        'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js'
+      // import() has no integrity option, so fetch the pinned bundle with one (the browser
+      // refuses a mismatch) and import it from a blob: URL. The model weights and the onnx
+      // wasm that transformers.js fetches itself are not covered.
+      const tfRes = await fetch(
+        'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js',
+        { integrity: 'sha384-Vcjc/igTnNpWsiZipZ+UkMn/2IRLqYYjMGBKd4hAHA+NXZE47u8DF0PpTmE4aW7U', mode: 'cors' }  // openssl dgst -sha384 -binary | openssl base64 -A
       );
+      if (!tfRes.ok) throw new Error('could not download the speech engine (HTTP ' + tfRes.status + ')');
+      const tfUrl = URL.createObjectURL(new Blob([await tfRes.arrayBuffer()], { type: 'text/javascript' }));
+      let tfMod;
+      try { tfMod = await import(tfUrl); } finally { URL.revokeObjectURL(tfUrl); }
+      const { pipeline, env } = tfMod;
       // Use CDN for model files (HuggingFace)
       env.allowLocalModels = false;
 

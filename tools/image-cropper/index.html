@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Image Cropper — Crop Photos Online (Free, No Upload) — Office Tools</title>
   <meta name="description" content="Free online image cropper. Crop JPG, PNG and WebP photos with aspect-ratio presets (1:1, 16:9, 4:3), rotate, flip and zoom. Runs entirely in your browser — no upload.">
   <meta name="keywords" content="image cropper, crop image online, crop photo, crop picture, aspect ratio crop, square crop, 16:9 crop, rotate image, free image crop tool">
@@ -19,7 +20,7 @@
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Image Cropper","description":"Crop JPG, PNG and WebP photos with aspect-ratio presets, rotate, flip and zoom. Runs entirely in your browser.","applicationCategory":"WebApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://tools.grin.money/tools/image-cropper/"}</script>
   <script>(function(){var t=localStorage.getItem("ot-theme");var V=["light","dark","matrix","anime"];document.documentElement.setAttribute("data-theme",V.indexOf(t)>-1?t:"matrix");})();</script>
   <link rel="stylesheet" href="../../css/style.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css" integrity="sha384-6LFfkTKLRlzFtgx8xsWyBdKGpcMMQTkv+dB7rAbugeJAu1Ym2q1Aji1cjHBG12Xh" crossorigin="anonymous">
   <style>
     .drop-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 2.6rem 1rem;
       text-align: center; cursor: pointer; color: var(--text-muted); transition: all var(--transition); }
@@ -31,7 +32,7 @@
     .ratio-row { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: 1rem; }
     .ratio-btn { padding: .4rem .8rem; border: 1.5px solid var(--border); border-radius: 2rem; background: none;
       cursor: pointer; font-size: .82rem; font-weight: 700; color: var(--text); transition: all var(--transition); }
-    .ratio-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .ratio-btn.active { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
     .tool-row { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .75rem; }
     .out-opts { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top: 1rem; }
     .dims { font-size: .8rem; color: var(--text-muted); margin-top: .6rem; text-align: center; }
@@ -127,7 +128,7 @@
 </div>
 </main>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js" integrity="sha384-jrOgQzBlDeUNdmQn3rUt/PZD+pdcRBdWd/HWRqRo+n2OR2QtGyjSaJC0GiCeH+ir" crossorigin="anonymous"></script>
 <script src="../../js/config.js"></script>
 <script src="../../js/common.js"></script>
 <script>

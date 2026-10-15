@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Random Number Generator — Office Tools</title>
   <meta name="description" content="Generate random integers or decimals within any custom min-max range, in bulk, with an optional no-duplicates mode. Cryptographically secure results, fully client-side.">
   <meta name="keywords" content="random number generator, random integer, random decimal, bulk random numbers, no duplicates, number randomizer online, dice roller">
@@ -260,11 +261,11 @@ document.getElementById('bGenBtn').addEventListener('click', () => {
     ? ((sorted[nums.length/2-1] + sorted[nums.length/2]) / 2).toFixed(1)
     : sorted[Math.floor(nums.length/2)];
   document.getElementById('bulkStats').innerHTML = `
-    <div><div class="val">${sMin}</div><div class="lbl">Min</div></div>
-    <div><div class="val">${sMax}</div><div class="lbl">Max</div></div>
-    <div><div class="val">${mean}</div><div class="lbl">Mean</div></div>
-    <div><div class="val">${median}</div><div class="lbl">Median</div></div>
-    <div><div class="val">${sum}</div><div class="lbl">Sum</div></div>
+    <div><div class="val">${escHtml(sMin)}</div><div class="lbl">Min</div></div>
+    <div><div class="val">${escHtml(sMax)}</div><div class="lbl">Max</div></div>
+    <div><div class="val">${escHtml(mean)}</div><div class="lbl">Mean</div></div>
+    <div><div class="val">${escHtml(median)}</div><div class="lbl">Median</div></div>
+    <div><div class="val">${escHtml(sum)}</div><div class="lbl">Sum</div></div>
   `;
   document.getElementById('bCopyAll').onclick = () => copyText(nums.join('\n'), document.getElementById('bCopyAll'));
   document.getElementById('bCopyCsv').onclick = () => copyText(nums.join(', '), document.getElementById('bCopyCsv'));
@@ -275,13 +276,13 @@ document.getElementById('diceBtn').addEventListener('click', () => {
   const sides = parseInt(document.getElementById('diceType').value);
   const count = Math.min(20, Math.max(1, parseInt(document.getElementById('diceCount').value) || 1));
   const rolls = Array.from({length: count}, () => randInt(1, sides));
-  document.getElementById('diceNums').innerHTML = rolls.map(r => `<span class="num-chip">${r}</span>`).join('');
+  document.getElementById('diceNums').innerHTML = rolls.map(r => `<span class="num-chip">${escHtml(r)}</span>`).join('');
   const total = rolls.reduce((a,b)=>a+b,0);
   document.getElementById('diceStats').innerHTML = `
-    <div><div class="val">${total}</div><div class="lbl">Total</div></div>
-    <div><div class="val">${Math.min(...rolls)}</div><div class="lbl">Min Roll</div></div>
-    <div><div class="val">${Math.max(...rolls)}</div><div class="lbl">Max Roll</div></div>
-    <div><div class="val">${(total/count).toFixed(1)}</div><div class="lbl">Average</div></div>
+    <div><div class="val">${escHtml(total)}</div><div class="lbl">Total</div></div>
+    <div><div class="val">${escHtml(Math.min(...rolls))}</div><div class="lbl">Min Roll</div></div>
+    <div><div class="val">${escHtml(Math.max(...rolls))}</div><div class="lbl">Max Roll</div></div>
+    <div><div class="val">${escHtml((total/count).toFixed(1))}</div><div class="lbl">Average</div></div>
   `;
   document.getElementById('diceResult').classList.remove('hidden');
 });

@@ -40,7 +40,7 @@
     .empty-state { padding: 2.2rem 1rem; text-align: center; color: var(--text-muted); }
     .empty-state .dotspin { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; vertical-align: middle; margin-right: .5rem; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .box-warn { background: rgba(234,179,8,.12); color: #b8860b; border: 1.5px solid rgba(234,179,8,.4); border-radius: var(--radius); padding: .7rem .95rem; font-size: .84rem; margin-top: .75rem; }
+    .box-warn { background: var(--warning-dim); color: var(--text); border: 1.5px solid var(--warning); border-radius: var(--radius); padding: .7rem .95rem; font-size: .84rem; margin-top: .75rem; }
     .box-error { background: var(--danger-dim); color: var(--danger); border-radius: var(--radius); padding: .65rem .9rem; font-size: .86rem; font-weight: 600; margin-top: .75rem; }
     @media (max-width: 560px) { .addr-box { min-width: 100%; } }
   </style>
@@ -150,7 +150,7 @@ async function createInbox() {
 function activate(addr, ttl) {
   addrBox.textContent = addr; addrBox.classList.remove('empty');
   document.getElementById('copyBtn').disabled = false;
-  meta.innerHTML = ttl ? `<span>⏳ Expires in ${ttl} minutes of inactivity</span>` : '';
+  meta.innerHTML = ttl ? `<span>⏳ Expires in ${escHtml(ttl)} minutes of inactivity</span>` : '';
   document.getElementById('inbox').style.display = '';
   document.getElementById('controls').style.display = '';
   startAuto();

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Word Counter — Office Tools</title>
   <meta name="description" content="Count words, characters (with and without spaces), sentences, paragraphs, and estimated reading time in real time. Includes keyword density analysis for bloggers and SEO writers.">
   <meta name="keywords" content="word counter, character counter, online word count, reading time estimator, keyword density, sentence counter, letter counter">
@@ -157,7 +158,7 @@ function analyze(text) {
       <span style="min-width:90px;font-weight:600">${escHtml(word)}</span>
       <div class="kw-bar-wrap"><div class="kw-bar" style="width:${pct}%"></div></div>
       <span class="kw-count">${count}x</span>
-      <span class="text-muted" style="min-width:42px;text-align:right;font-size:.8rem">${density}%</span>
+      <span class="text-muted" style="min-width:42px;text-align:right;font-size:.8rem">${escHtml(density)}%</span>
     </div>`;
   }).join('');
 }

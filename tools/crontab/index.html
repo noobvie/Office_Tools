@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Crontab Explainer — Office Tools</title>
   <meta name="description" content="Parse and explain any cron expression in plain English. Shows the next 10 scheduled run times. Free online Crontab Explainer — no install, no signup, no learning curve.">
   <meta name="keywords" content="crontab explainer, cron expression parser, cron to English, cron schedule, next cron run, crontab helper, cron syntax checker">
@@ -196,7 +197,7 @@
 </div>
 </main>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/cronstrue/2.50.0/cronstrue.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cronstrue/2.50.0/cronstrue.min.js" crossorigin="anonymous" integrity="sha384-P12rFDtunG/jm5M9w/IpztJFVcSBQeGLm5JZiezAC2GdDEkG8LckCSVkbwraRKkd"></script>
 <script src="../../js/common.js"></script>
 <script>
 const PRESETS = [
@@ -222,7 +223,7 @@ const presetGrid = document.getElementById('presetGrid');
 PRESETS.forEach(p => {
   const div = document.createElement('div');
   div.className = 'preset-item';
-  div.innerHTML = `<div class="expr">${p.expr}</div><div class="desc">${p.desc}</div>`;
+  div.innerHTML = `<div class="expr">${escHtml(p.expr)}</div><div class="desc">${escHtml(p.desc)}</div>`;
   div.addEventListener('click', () => {
     document.getElementById('cronInput').value = p.expr;
     doExplain();

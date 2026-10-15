@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <title>Sign PDF — Add a Signature to a PDF Free | Office Tools</title>
   <meta name="description" content="Sign a PDF in your browser. Draw, type or upload a signature, drag it onto the page, resize it and download the signed PDF — no upload, no account.">
   <meta name="keywords" content="sign pdf, esign pdf, add signature to pdf, pdf signature online, draw signature pdf, electronic signature, fill and sign pdf, free pdf signer">
@@ -142,8 +143,8 @@
 </div>
 </main>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js" integrity="sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI" crossorigin="anonymous"></script>
 <script src="../../js/config.js"></script>
 <script src="../../js/common.js"></script>
 <script>
@@ -252,7 +253,7 @@ bindDrop(el('sigDrop'), el('sigFile'), async files => {
   try { f = await otNormalizeImage(f); } catch (e) { return; }   // iPhone HEIC → PNG in-browser
   const url = URL.createObjectURL(f);
   sigPrev.style.display = 'flex';
-  sigPrev.innerHTML = `<img src="${url}" style="max-height:80px;max-width:100%">`;
+  sigPrev.innerHTML = `<img src="${escHtml(url)}" style="max-height:80px;max-width:100%">`;
   sigPrev.dataset.url = url;
 });
 
@@ -312,7 +313,7 @@ placeBtn.addEventListener('click', async () => {
   overlay.style.left = (dispW * 0.5 - w / 2) + 'px';
   overlay.style.top = (dispH * 0.7) + 'px';
   overlay.style.width = w + 'px'; overlay.style.height = h + 'px';
-  overlay.innerHTML = `<img src="${sigDataUrl}"><div class="sig-resize"></div>`;
+  overlay.innerHTML = `<img src="${escHtml(sigDataUrl)}"><div class="sig-resize"></div>`;
   stageInner.appendChild(overlay);
   enableDragResize(overlay, ratio);
   applyBtn.disabled = false;
