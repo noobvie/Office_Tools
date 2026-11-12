@@ -27,7 +27,9 @@
 // Test seam: createSafeFetcher({ classify, isSelf, resolve }). A test widens `classify` to
 // allow its own fixture port, or names a fixture as `isSelf` to watch the own-address
 // refusal; there is deliberately NO env var or global that turns the guard off (SELF_IPS
-// only ADDS addresses to refuse).
+// only ADDS addresses to refuse). The one narrow exception is per call, not global:
+// resolvePublicTarget's `allowSelf`, which the portcheck routes set for ports the
+// operator listed in PROBE_SELF_PORTS, and which never admits a non-public address.
 
 const net   = require('net');
 const dns   = require('dns');
@@ -679,12 +681,16 @@ function createSafeFetcher({ classify = (ip) => isPublicIp(ip), isSelf = (ip) =>
   // window). Unlike the HTTP fetches above, a mixed answer picks its first public
   // address instead of refusing: nothing ever connects to the name, so the private
   // answers are simply never used. `family` 4 | 6 restricts the pick to that family.
+  // `allowSelf: true` lifts ONLY the own-address refusal (isSelf); classify still applies,
+  // so a private / loopback / reserved address stays refused. The portcheck routes pass it
+  // when every requested port is one the operator listed in PROBE_SELF_PORTS.
   // → Promise<ip>; rejects Error with a user-safe message (codes ERR_SSRF_BLOCKED / ENOTFOUND).
-  function resolvePublicTarget(input, { family } = {}) {
+  function resolvePublicTarget(input, { family, allowSelf = false } = {}) {
+    const ok = ip => (allowSelf === true ? classify(ip, undefined) : allowed(ip, undefined));
     return new Promise((resolveP, rejectP) => {
       const host = _bare(String(input ?? '').trim());
       if (net.isIP(host)) {
-        if (!allowed(host, undefined)) return rejectP(Object.assign(new Error('Target is a private or reserved address'), { code: 'ERR_SSRF_BLOCKED' }));
+        if (!ok(host)) return rejectP(Object.assign(new Error('Target is a private or reserved address'), { code: 'ERR_SSRF_BLOCKED' }));
         return resolveP(host);
       }
       // A hostname, or nothing. This also keeps an option-shaped "-f" out of argv.
@@ -696,9 +702,9 @@ function createSafeFetcher({ classify = (ip) => isPublicIp(ip), isSelf = (ip) =>
         const fam = Number(family) === 4 || Number(family) === 6 ? Number(family) : 0;
         const pool = fam ? addrs.filter(a => a.family === fam) : addrs;
         if (!pool.length) return rejectP(Object.assign(new Error(`Host has no IPv${fam} address`), { code: 'ENOTFOUND' }));
-        const ok = pool.find(a => allowed(a.address, undefined));
-        if (!ok) return rejectP(Object.assign(new Error('Host resolves only to private or reserved addresses'), { code: 'ERR_SSRF_BLOCKED' }));
-        resolveP(ok.address);
+        const pick = pool.find(a => ok(a.address));
+        if (!pick) return rejectP(Object.assign(new Error('Host resolves only to private or reserved addresses'), { code: 'ERR_SSRF_BLOCKED' }));
+        resolveP(pick.address);
       });
     });
   }

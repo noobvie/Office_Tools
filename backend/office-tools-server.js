@@ -42,7 +42,7 @@ const { makeTtlCache } = require('./lib/ttl-cache');
 const safeFetch = require('./lib/safe-fetch');
 const proxyRewrite = require('./lib/proxy-rewrite');
 const { makeRedirectsHandler } = require('./lib/redirects-route');
-const { makeInFlight, makeSemaphore, watchClientClose, makeDailyBudget, takeMany, proxySelfBase } = require('./lib/outbound-guards');
+const { makeInFlight, makeSemaphore, watchClientClose, makeDailyBudget, takeMany, proxySelfBase, parsePortList, selfProbeAllowed } = require('./lib/outbound-guards');
 const { newUploadToken, findMemberByToken } = require('./lib/chat-upload-token');
 
 installProcessGuards();
@@ -362,6 +362,16 @@ function publicCors(req, res, next) {
 // It is shared with ping / traceroute, which pass the IP (never the name) to the child.
 const resolvePublicTarget = safeFetch.resolvePublicTarget;
 
+// The server's own public address is refused like any other internal service, except
+// for the ports the operator lists in PROBE_SELF_PORTS (a pool on this same VPS whose
+// public setup page shows its stratum port as reachable). Only these two routes use the
+// exception; a non-public address stays refused whatever the port. Such a probe goes
+// over the loopback path, so it shows whether the service is LISTENING, not whether the
+// firewall lets outsiders in.
+const PROBE_SELF_PORTS = parsePortList(process.env.PROBE_SELF_PORTS);
+const _probeTarget = (host, ports) =>
+  resolvePublicTarget(host, { allowSelf: selfProbeAllowed(ports, PROBE_SELF_PORTS) });
+
 // Per-IP limiter for the public probe endpoints (a setup page may check a few hosts ×
 // ports and reload). Kept separate from ping/resolve (netRL, 10/min). The cap keys on the
 // VISITOR's IP (lib/client-ip.js; an IPv6 visitor's /64), so it's per browsing user — NOT per pool
@@ -468,7 +478,7 @@ app.get('/api/portcheck', publicCors, probeRLMiddleware, async (req, res) => {
   }
 
   let target;
-  try { target = await resolvePublicTarget(hostInput); }
+  try { target = await _probeTarget(hostInput, [port]); }
   catch (e) { return res.status(400).json({ error: e.message }); }
 
   const refused = _probeAdmit(target, 1);
@@ -492,7 +502,7 @@ app.get('/api/portcheckbatch', publicCors, probeRLMiddleware, async (req, res) =
   if (portNums.length > 60) return res.status(400).json({ error: 'Max 60 ports per batch' });
 
   let target;
-  try { target = await resolvePublicTarget(hostInput); }
+  try { target = await _probeTarget(hostInput, portNums); }
   catch (e) { return res.status(400).json({ error: e.message }); }
 
   const refused = _probeAdmit(target, portNums.length);

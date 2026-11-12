@@ -124,4 +124,26 @@ function proxySelfBase(req, origins) {
   return okOrigin ? u.origin + u.pathname : fallback;
 }
 
-module.exports = { makeInFlight, makeSemaphore, watchClientClose, makeDailyBudget, takeMany, proxySelfBase };
+// PROBE_SELF_PORTS: the ports the public port checker may probe on this server's own
+// public address (e.g. a mining pool's stratum port on this same VPS). "3416, 13416" →
+// Set{3416, 13416}; anything that is not a whole number in 1–65535 is dropped, so a typo
+// can only shrink the list. Empty / unset → empty Set (own address always refused).
+function parsePortList(raw) {
+  const out = new Set();
+  for (const part of String(raw ?? '').split(',')) {
+    const s = part.trim();
+    if (!/^\d{1,5}$/.test(s)) continue;
+    const n = Number(s);
+    if (n >= 1 && n <= 65535) out.add(n);
+  }
+  return out;
+}
+
+// true when a probe of `ports` may reach this server's own address: there is at least one
+// port and EVERY one is listed. A batch with any unlisted port is refused as a whole, so
+// the response keeps its { host, results:[{port,open}] } shape with no third state.
+function selfProbeAllowed(ports, allowed) {
+  return Array.isArray(ports) && ports.length > 0 && !!allowed && allowed.size > 0 && ports.every(p => allowed.has(p));
+}
+
+module.exports = { makeInFlight, makeSemaphore, watchClientClose, makeDailyBudget, takeMany, proxySelfBase, parsePortList, selfProbeAllowed };
