@@ -43,6 +43,7 @@ const safeFetch = require('./lib/safe-fetch');
 const proxyRewrite = require('./lib/proxy-rewrite');
 const { makeRedirectsHandler } = require('./lib/redirects-route');
 const { makeInFlight, makeSemaphore, watchClientClose, makeDailyBudget, takeMany, proxySelfBase } = require('./lib/outbound-guards');
+const { newUploadToken, findMemberByToken } = require('./lib/chat-upload-token');
 
 installProcessGuards();
 
@@ -2045,6 +2046,7 @@ function _chatDeleteRoom(room, reason) {
   for (const c of room.members.values()) {
     _chatSend(c, { type: 'room-closed', reason: reason || 'Room closed' });
     c.room = null;
+    c.uploadToken = null;
     try { c.ws.close(1000, 'room closed'); } catch { /* already closing */ }
   }
   room.members.clear();
@@ -2066,6 +2068,7 @@ function _chatCancelEmpty(room) {
 function _chatLeave(c, notify) {
   const room = c.room ? _chatRooms.get(c.room) : null;
   c.room = null;
+  c.uploadToken = null;
   if (!room) return;
   room.members.delete(c.id);
   room.lastActivity = Date.now();
@@ -2082,9 +2085,10 @@ function _chatJoin(c, code) {
   _chatCancelEmpty(room);
   room.members.set(c.id, c);
   c.room = code;
+  c.uploadToken = newUploadToken();
   room.lastActivity = Date.now();
   _chatSend(c, {
-    type: 'joined', code, you: { id: c.id, name: c.name },
+    type: 'joined', code, you: { id: c.id, name: c.name }, uploadToken: c.uploadToken,
     members: _chatMemberList(room),
     files:   _chatFileList(room),
     history: room.history.slice(-CHAT_HISTORY_KEEP),
@@ -2109,7 +2113,7 @@ function attachChatSignaling(server) {
     const ip = clientIp(req);
     const c = {
       ws, ip, key: rateKey(ip), id: genId() + genId(),
-      name: _dropName(), room: null, isAlive: true,
+      name: _dropName(), room: null, uploadToken: null, isAlive: true,
       _msgs: 0, _msgWindow: Date.now(),
     };
     _chatClients.add(c);
@@ -2131,7 +2135,8 @@ function attachChatSignaling(server) {
           const room = _chatRoomNew();
           room.members.set(c.id, c);
           c.room = room.code;
-          _chatSend(c, { type: 'joined', code: room.code, you: { id: c.id, name: c.name }, members: _chatMemberList(room), files: [], history: [] });
+          c.uploadToken = newUploadToken();
+          _chatSend(c, { type: 'joined', code: room.code, you: { id: c.id, name: c.name }, uploadToken: c.uploadToken, members: _chatMemberList(room), files: [], history: [] });
           break;
         }
         case 'join': {
@@ -2238,11 +2243,17 @@ const _chatDownloadRL = makeRateLimiter({ windowMs: 60_000,  max: 600, message: 
 // A request without Content-Length reserves the per-file maximum.
 let _chatInflightBytes = 0;
 
-// POST /api/chat/:code/upload — form fields (before the file part): name, by
+// POST /api/chat/:code/upload?t=<uploadToken> — form fields (before the file part):
+// name, by. The token is the one the `joined` message handed this member; it travels in
+// the query string so it is checked before multer reads a byte of the body, and so the
+// request stays CORS-simple (a custom header would need a preflight and an allowedHeaders
+// entry). The uploader's name comes from the matched member; the `by` field is ignored.
 app.post('/api/chat/:code/upload', _chatUploadRL.middleware, (req, res) => {
   const code = String(req.params.code || '').toUpperCase();
   const room = _chatRooms.get(code);
   if (!room) return res.status(404).json({ error: 'Room not found or already closed.' });
+  const member = findMemberByToken(room.members.values(), typeof req.query.t === 'string' ? req.query.t : '');
+  if (!member) return res.status(403).json({ error: 'Join the room before uploading files.' });
   if (room.files.size >= CHAT_ROOM_MAX_FILES) return res.status(409).json({ error: 'This room has reached its file limit.' });
 
   const cl = parseInt(req.headers['content-length'], 10);
@@ -2289,7 +2300,7 @@ app.post('/api/chat/:code/upload', _chatUploadRL.middleware, (req, res) => {
       return res.status(415).json({ error: 'That file type is blocked (executables and scripts are not allowed).' });
     }
     const id   = genId() + genId();
-    const by   = safeFileName(req.body?.by, CHAT_NAME_MAXLEN) || 'Someone';
+    const by   = safeFileName(member.name, CHAT_NAME_MAXLEN) || 'Someone';
     const f = { id, name, size: req.file.size, mime: req.file.mimetype || 'application/octet-stream', path: req.file.path, by, ts: Date.now() };
     room.files.set(id, f);
     room.bytes += req.file.size;

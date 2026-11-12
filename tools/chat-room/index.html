@@ -287,6 +287,7 @@ function renderText(s) {
 let ws = null, myId = null, myName = null, myRoom = null;
 let members = [];
 let wantRoom = null;         // code we intend to be in (for reconnect rejoin)
+let uploadToken = null;      // from the latest 'joined'; the server issues a new one on every (re)join
 let wsRetry = 0;
 let connected = false;
 
@@ -319,6 +320,7 @@ function connect() {
   };
   ws.onclose = () => {
     setStatus(false);
+    uploadToken = null;   // it died with this connection's membership
     const delay = Math.min(1000 * 2 ** wsRetry++, 15000);
     setTimeout(connect, delay);
   };
@@ -333,6 +335,7 @@ function handle(m) {
     case 'joined':
       myRoom = wantRoom = m.code;
       myId = m.you.id; myName = m.you.name;
+      uploadToken = m.uploadToken || null;
       enterRoom(m);
       break;
     case 'members':
@@ -347,9 +350,9 @@ function handle(m) {
     case 'typing':
       showTyping(m.name); break;
     case 'left':
-      myRoom = wantRoom = null; showLobby(); break;
+      myRoom = wantRoom = uploadToken = null; showLobby(); break;
     case 'room-closed':
-      myRoom = wantRoom = null; showLobby(m.reason || 'Room closed'); break;
+      myRoom = wantRoom = uploadToken = null; showLobby(m.reason || 'Room closed'); break;
     case 'error':
       if (myRoom) addSys('⚠️ ' + m.message);
       else { wantRoom = null; $('lobbyErr').textContent = m.message; }   // stop auto-rejoin loops
@@ -466,7 +469,7 @@ function uploadFile(file) {
   fd.append('file', file);
 
   const xhr = new XMLHttpRequest();
-  xhr.open('POST', `${API}/api/chat/${encodeURIComponent(myRoom)}/upload`);
+  xhr.open('POST', `${API}/api/chat/${encodeURIComponent(myRoom)}/upload?t=${encodeURIComponent(uploadToken || '')}`);
   xhr.upload.onprogress = ev => { if (ev.lengthComputable) fill.style.width = (ev.loaded / ev.total * 100) + '%'; };
   xhr.onload = () => {
     if (xhr.status >= 200 && xhr.status < 300) {
@@ -511,7 +514,7 @@ function saveNameFromLobby() {
   if (nm) { localStorage.setItem('cr-name', nm); wsSend({ type: 'name', name: nm }); }
 }
 
-$('leaveBtn').onclick = () => { wsSend({ type: 'leave' }); myRoom = wantRoom = null; showLobby(); };
+$('leaveBtn').onclick = () => { wsSend({ type: 'leave' }); myRoom = wantRoom = uploadToken = null; showLobby(); };
 $('copyCodeBtn').onclick = () => copyText(myRoom, $('copyCodeBtn'));
 $('copyLinkBtn').onclick = () => copyText(location.origin + location.pathname + '?room=' + myRoom, $('copyLinkBtn'));
 
