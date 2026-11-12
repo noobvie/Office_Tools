@@ -148,9 +148,10 @@ function encode(str, nonAscii) {
 }
 
 function decode(str) {
-  const d = document.createElement('div');
-  d.innerHTML = str;
-  return d.textContent;
+  // <template> content is inert: nothing loads or runs while the entities are decoded.
+  const t = document.createElement('template');
+  t.innerHTML = str;
+  return t.content.textContent;
 }
 
 document.getElementById('encInput').addEventListener('input', () => {

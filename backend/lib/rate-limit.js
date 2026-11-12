@@ -2,46 +2,66 @@
 
 // Shared per-IP fixed-window rate limiter.
 //
-// Replaces the ~9 hand-rolled `_xxxRateMap` / `_xxxAllow` / `xxxRLMiddleware`
-// triples that used to be copy-pasted through office-tools-server.js — identical
-// fixed-window-counter behaviour, defined once.
+// One fixed-window counter, defined once for every route instead of a
+// hand-rolled map per route.
 //
 //   const lim = makeRateLimiter({ windowMs: 60_000, max: 15, message: '…' });
 //   app.get('/x', lim.middleware, handler);   // → 429 { error: message } when over
-//   if (!lim.allow(ip)) …                      // inline form with a caller-chosen key
+//   if (!lim.allow(key)) …                     // inline form with a caller-chosen key
+//   if (lim.blocked(key)) …                    // already over the limit? (does not count)
+//
+// The middleware keys on rateKey(clientIp(req)) (lib/client-ip.js): the visitor's IPv4
+// address, or the /64 of an IPv6 one. Inline callers pass a key built the same way.
+//
+// Memory bound: at most `maxKeys` buckets (default 50 000). When a new key arrives at
+// the cap, expired buckets are swept first; if the map is still full the OLDEST bucket
+// is evicted. Evicting (fail-open) rather than refusing new keys (fail-closed) is
+// deliberate: anyone able to present 50 000 distinct keys inside one window already
+// has 50 000 fresh quotas, so eviction gives them nothing extra — whereas refusing
+// new keys would let that same flood lock every other visitor out for a full window.
 
-// Client IP = first X-Forwarded-For hop (nginx / Cloudflare), else the socket
-// address. Matches the key every former limiter used ('' vs 'unknown' fallbacks
-// were equivalent — each limiter has its own map, so no-IP requests only ever
-// collapse into one bucket within that single limiter).
-function rateLimitIp(req) {
-  return (req.headers['x-forwarded-for'] || '').split(',')[0].trim()
-      || req.socket.remoteAddress || 'unknown';
-}
+const { clientIp, rateKey } = require('./client-ip');
 
-function makeRateLimiter({ windowMs, max, message = 'Rate limit exceeded. Please wait.' }) {
+const DEFAULT_MAX_KEYS = 50_000;
+
+function makeRateLimiter({ windowMs, max, message = 'Rate limit exceeded. Please wait.', maxKeys = DEFAULT_MAX_KEYS }) {
   const map = new Map();
-  // Prune expired buckets every 5 min (same cadence as the originals).
-  setInterval(() => {
-    const now = Date.now();
-    for (const [k, v] of map) if (now > v.resetAt) map.delete(k);
-  }, 300_000);
 
-  function allow(ip) {
+  function sweep(now = Date.now()) {
+    for (const [k, v] of map) if (now > v.resetAt) map.delete(k);
+  }
+  // Prune expired buckets every 5 min; unref'd so it never keeps the process (or a test) alive.
+  const timer = setInterval(() => sweep(), 300_000);
+  timer.unref?.();
+
+  function allow(key) {
+    const k = String(key || 'unknown');
     const now = Date.now();
-    let e = map.get(ip);
-    if (!e || now > e.resetAt) e = { count: 0, resetAt: now + windowMs };
+    let e = map.get(k);
+    if (e && now > e.resetAt) e = null;
+    if (!e) {
+      if (!map.has(k) && map.size >= maxKeys) {
+        sweep(now);
+        while (map.size >= maxKeys) map.delete(map.keys().next().value);
+      }
+      e = { count: 0, resetAt: now + windowMs };
+      map.set(k, e);
+    }
     e.count++;
-    map.set(ip, e);
     return e.count <= max;
   }
 
+  function blocked(key) {
+    const e = map.get(String(key || 'unknown'));
+    return !!e && Date.now() <= e.resetAt && e.count >= max;
+  }
+
   function middleware(req, res, next) {
-    if (!allow(rateLimitIp(req))) return res.status(429).json({ error: message });
+    if (!allow(rateKey(clientIp(req)))) return res.status(429).json({ error: message });
     next();
   }
 
-  return { allow, middleware, map };
+  return { allow, blocked, middleware, map, sweep };
 }
 
-module.exports = { makeRateLimiter, rateLimitIp };
+module.exports = { makeRateLimiter };

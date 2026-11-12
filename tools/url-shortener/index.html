@@ -162,7 +162,7 @@
 </main>
 
 <script src="../../js/config.js"></script>
-<script src="../../js/common.js"></script>
+<script src="../../js/common.js?v=captcha2"></script>
 <script>
 const API      = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
 const HIST_KEY = 'ot-urlshort-history';
@@ -198,25 +198,26 @@ function showError(msg) {
 function clearError() { document.getElementById('errorBox').classList.add('hidden'); }
 
 /* ── CAPTCHA ─────────────────────────────────────────────── */
-let _ca = 0, _cb = 0;
-function refreshCaptcha() {
-  _ca = Math.floor(Math.random() * 9) + 1;
-  _cb = Math.floor(Math.random() * 9) + 1;
-  document.getElementById('captchaLabel').textContent = `What is ${_ca} + ${_cb}?`;
-  document.getElementById('captchaInput').value = '';
-}
+const captcha = otCaptchaCreate(document.getElementById('captchaLabel'), document.getElementById('captchaInput'));
+function refreshCaptcha() { return captcha.refresh(); }
 
 /* ── API ─────────────────────────────────────────────────── */
 async function apiCreate(body) {
   const ans = parseInt(document.getElementById('captchaInput').value, 10);
-  const r = await fetch(`${API}/api/tools/s`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...body, ca: _ca, cb: _cb, ans }),
-  });
-  const d = await r.json();
-  if (!r.ok) { refreshCaptcha(); throw new Error(d.error || 'Server error'); }
-  return d;
+  const cs = await captcha.ensureFresh();
+  if (cs !== 'ok') throw new Error(cs === 'renewed' ? OT_CAPTCHA_EXPIRED_MSG : OT_CAPTCHA_DOWN_MSG);
+  try {
+    const r = await fetch(`${API}/api/tools/s`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...body, ans, ctoken: captcha.token }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Server error');
+    return d;
+  } finally {
+    refreshCaptcha();   // the token is single use, whatever the outcome
+  }
 }
 
 async function codeExists(code) {

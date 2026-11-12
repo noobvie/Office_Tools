@@ -24,8 +24,10 @@
 //   plain IPv4 address against a ::ffff:0:0/96 IPv6 rule. Embedded IPv4 (mapped, NAT64,
 //   6to4) is therefore decoded explicitly and the mapped prefix is never put in a list.
 //
-// Test seam: createSafeFetcher({ classify, resolve }). A test widens `classify` to allow
-// its own fixture port; there is deliberately NO env var or global that turns the guard off.
+// Test seam: createSafeFetcher({ classify, isSelf, resolve }). A test widens `classify` to
+// allow its own fixture port, or names a fixture as `isSelf` to watch the own-address
+// refusal; there is deliberately NO env var or global that turns the guard off (SELF_IPS
+// only ADDS addresses to refuse).
 
 const net   = require('net');
 const dns   = require('dns');
@@ -110,6 +112,53 @@ function isPublicIp(ip) {
   if (w(0) === 0x2002) return _v4Public(b[2], b[3], b[4], b[5]);   // 6to4 → embedded IPv4
   return true;
 }
+
+// ── The server's own addresses ────────────────────────────────
+//
+// isPublicIp() says nothing about WHOSE address it is: the box's own public address is
+// public, so without this check a user URL could reach a service on this host that only
+// the firewall hides from the internet (the same VPS runs a Grin node and mining pool).
+// The set holds every PUBLIC address on a local interface, plus SELF_IPS (comma-separated)
+// for a host behind 1:1 NAT whose public address is on no interface. Non-public addresses
+// are left out on purpose: isPublicIp already refuses them, and keeping loopback out
+// leaves the tests' fixture seam (a classify that admits 127.0.0.1:<port>) working.
+
+// One spelling per address: an IPv4-mapped IPv6 address becomes its IPv4, any other IPv6
+// address its eight uncompressed lower-case groups. null when `ip` is not an IP literal.
+function canonicalIp(ip) {
+  const s = _bare(ip).split('%')[0];
+  if (net.isIPv4(s)) return s;
+  if (!net.isIPv6(s)) return null;
+  const b = _v6Bytes(s);
+  const w = i => (b[i] << 8) | b[i + 1];
+  if (b.slice(0, 10).every(x => x === 0) && w(10) === 0xffff) return `${b[12]}.${b[13]}.${b[14]}.${b[15]}`;
+  const g = [];
+  for (let i = 0; i < 16; i += 2) g.push(w(i).toString(16));
+  return g.join(':');
+}
+
+// interfaces() is os.networkInterfaces-shaped; `extra` is the SELF_IPS string.
+function makeSelfAddresses({ interfaces = () => require('os').networkInterfaces(), extra = process.env.SELF_IPS, refreshMs = 300_000 } = {}) {
+  let set = new Set();
+  function refresh() {
+    let next = new Set();
+    const add = a => { const c = canonicalIp(a); if (c && isPublicIp(c)) next.add(c); };
+    try {
+      for (const list of Object.values(interfaces() || {})) for (const i of list || []) add(i?.address);
+    } catch { next = new Set(set); }   // a failed read keeps the last set, never an empty one
+    for (const a of String(extra || '').split(',')) if (a.trim()) add(a.trim());
+    set = next;
+  }
+  refresh();
+  if (refreshMs > 0) setInterval(refresh, refreshMs).unref?.();
+  return {
+    has(ip) { const c = canonicalIp(ip); return !!c && set.has(c); },
+    refresh,
+    list: () => [...set],
+  };
+}
+
+const SELF_ADDRESSES = makeSelfAddresses();
 
 // ── URL normalisation ─────────────────────────────────────────
 
@@ -292,8 +341,13 @@ function _errText(err) {
 
 // classify(ip, port) → true when the server may connect there. The default ignores the
 //   port; a test passes `(ip, port) => (ip === '127.0.0.1' && port === FIXTURE) || isPublicIp(ip)`.
+// isSelf(ip, port) → true for this server's own address (default: SELF_ADDRESSES, which
+//   ignores the port). It is applied on top of classify everywhere, so a widened test
+//   classify still cannot reach an address isSelf names.
 // resolve(hostname, { all: true, ... }, cb) — dns.lookup-compatible.
-function createSafeFetcher({ classify = (ip) => isPublicIp(ip), resolve = dns.lookup, userAgent = PROXY_UA } = {}) {
+function createSafeFetcher({ classify = (ip) => isPublicIp(ip), isSelf = (ip) => SELF_ADDRESSES.has(ip), resolve = dns.lookup, userAgent = PROXY_UA } = {}) {
+
+  const allowed = (ip, port) => classify(ip, port) && !isSelf(ip, port);
 
   function _blocked(where) {
     return new SafeFetchError('ERR_SSRF_BLOCKED', 'Refusing to connect to a private / internal address', where);
@@ -313,7 +367,7 @@ function createSafeFetcher({ classify = (ip) => isPublicIp(ip), resolve = dns.lo
         }
         // ANY non-public address in the answer refuses the whole host: with Happy
         // Eyeballs the socket may try every address, so "pick a public one" is unsafe.
-        if (addrs.some(a => !classify(a.address, port))) return cb(_blocked(hostname));
+        if (addrs.some(a => !allowed(a.address, port))) return cb(_blocked(hostname));
         if (wantAll) return cb(null, addrs);
         cb(null, addrs[0].address, addrs[0].family);
       });
@@ -347,7 +401,7 @@ function createSafeFetcher({ classify = (ip) => isPublicIp(ip), resolve = dns.lo
       const port = Number(url.port) || (isHttps ? 443 : 80);
       if (!host) return rejectP(new SafeFetchError('ERR_BAD_URL', 'Missing host in URL', url.href));
       // A literal never reaches `lookup` — classify it here or not at all.
-      if (net.isIP(host) && !classify(host, port)) return rejectP(_blocked(url.href));
+      if (net.isIP(host) && !allowed(host, port)) return rejectP(_blocked(url.href));
       if (signal?.aborted) return rejectP(new SafeFetchError('ERR_ABORTED', 'Request aborted', url.href));
 
       let req = null, res = null, decoder = null, timer = null, settled = false;
@@ -588,7 +642,7 @@ function createSafeFetcher({ classify = (ip) => isPublicIp(ip), resolve = dns.lo
       if (url.protocol !== 'https:') return resolveP(null);
       const ip = _bare(remoteAddress);
       const port = Number(url.port) || 443;
-      if (!net.isIP(ip) || !classify(ip, port)) return resolveP(null);
+      if (!net.isIP(ip) || !allowed(ip, port)) return resolveP(null);
       const name = _bare(url.hostname);
       let settled = false, socket = null, timer = null;
       const done = v => {
@@ -630,7 +684,7 @@ function createSafeFetcher({ classify = (ip) => isPublicIp(ip), resolve = dns.lo
     return new Promise((resolveP, rejectP) => {
       const host = _bare(String(input ?? '').trim());
       if (net.isIP(host)) {
-        if (!classify(host, undefined)) return rejectP(Object.assign(new Error('Target is a private or reserved address'), { code: 'ERR_SSRF_BLOCKED' }));
+        if (!allowed(host, undefined)) return rejectP(Object.assign(new Error('Target is a private or reserved address'), { code: 'ERR_SSRF_BLOCKED' }));
         return resolveP(host);
       }
       // A hostname, or nothing. This also keeps an option-shaped "-f" out of argv.
@@ -642,7 +696,7 @@ function createSafeFetcher({ classify = (ip) => isPublicIp(ip), resolve = dns.lo
         const fam = Number(family) === 4 || Number(family) === 6 ? Number(family) : 0;
         const pool = fam ? addrs.filter(a => a.family === fam) : addrs;
         if (!pool.length) return rejectP(Object.assign(new Error(`Host has no IPv${fam} address`), { code: 'ENOTFOUND' }));
-        const ok = pool.find(a => classify(a.address, undefined));
+        const ok = pool.find(a => allowed(a.address, undefined));
         if (!ok) return rejectP(Object.assign(new Error('Host resolves only to private or reserved addresses'), { code: 'ERR_SSRF_BLOCKED' }));
         resolveP(ok.address);
       });
@@ -658,6 +712,9 @@ module.exports = {
   PROXY_UA,
   SafeFetchError,
   isPublicIp,
+  canonicalIp,
+  makeSelfAddresses,
+  isSelfIp: ip => SELF_ADDRESSES.has(ip),
   normalizeUserUrl,
   createSafeFetcher,
   guardedLookup:  _default.guardedLookup,

@@ -597,7 +597,7 @@ curl -s http://127.0.0.1:9000/health   # "cookies" should change from "none" to 
         await handleSingle(raw, parsed.videoId);
       }
     } catch (e) {
-      resultsArea.innerHTML = renderAlert('error', '❌ ' + (e.message || 'Something went wrong.'));
+      resultsArea.innerHTML = renderAlert('error', '❌ ' + escHtml(e.message || 'Something went wrong.'));
     } finally {
       fetchBtn.disabled = false;
     }
@@ -826,6 +826,8 @@ curl -s http://127.0.0.1:9000/health   # "cookies" should change from "none" to 
     server_busy:      'The server is already downloading as much as it can — try again in a moment.',
     unsupported_host: 'Only YouTube links are supported.',
     invalid_url:      'That does not look like a valid URL.',
+    unsupported_url:  'Only single YouTube video links are supported (not playlists, channels or searches).',
+    invalid_option:   'That quality or format option is not supported — reload the page and try again.',
     missing_url:      'Please enter a YouTube URL.',
   };
 

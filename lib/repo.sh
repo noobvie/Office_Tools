@@ -25,15 +25,30 @@ sync_frontend() {
     local domain="${1:-}"
     section "Syncing frontend → $WEB_ROOT"
     mkdir -p "$WEB_ROOT"
-    rsync -a --delete \
+    # Explicit exclude list of everything in the repo that is not part of the site.
+    # A leading / anchors a pattern to the repo root (js/auth.js must not also match a
+    # tools/<x>/js/auth.js). --delete-excluded also removes copies an earlier deploy
+    # already published: plain --delete leaves excluded paths on the receiver alone.
+    # No page fetches a .json from the site (nginx already 404s *.json), so *.json goes.
+    # yt-server/ is synced to its own directory by setup_yt_server/sync_yt_server.
+    rsync -a --delete --delete-excluded \
         --exclude='.git' \
         --exclude='.gitignore' \
+        --exclude='/.gitattributes' \
+        --exclude='/.claude/' \
         --exclude='backend' \
         --exclude='deploy.sh' \
         --exclude='undeploy.sh' \
         --exclude='lib' \
+        --exclude='/yt-server/' \
+        --exclude='/scripts/' \
+        --exclude='/flowcharts/' \
+        --exclude='/admin/' \
+        --exclude='/add_keywords.py' \
+        --exclude='/js/auth.js' \
         --exclude='*.sh' \
         --exclude='*.md' \
+        --exclude='*.json' \
         "$REPO_DIR/" "$WEB_ROOT/"
     chown -R www-data:www-data "$WEB_ROOT"
     chmod -R 755 "$WEB_ROOT"

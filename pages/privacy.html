@@ -67,10 +67,15 @@
     <tbody>
       <tr><td>URL Shortener</td><td>The URL you shorten + optional alias</td><td>Until expiry you set</td></tr>
       <tr><td>Pastebin</td><td>The text/code you paste</td><td>Until expiry / burn-after-read</td></tr>
-      <tr><td>File Share</td><td>The file you upload</td><td>Auto-deleted (≈7 days)</td></tr>
+      <tr><td>File Share</td><td>The file you upload</td><td>Auto-deleted after the 1–50 days you choose</td></tr>
       <tr><td>Port Checker, Ping, Traceroute</td><td>The host/IP you enter</td><td>Not stored — run and discarded</td></tr>
+      <tr><td>URL Expander, Web Proxy, Website Status</td><td>The URL you enter — our server fetches it for you (and, for URL Expander, follows its redirects)</td><td>Not stored by the application</td></tr>
       <tr><td>Domain Checker</td><td>The domain you query (WHOIS/RDAP/DNS)</td><td>Not stored</td></tr>
       <tr><td>DNS &amp; Reverse DNS Lookup</td><td>The domain/IP — resolved via Cloudflare DNS-over-HTTPS</td><td>Not stored by us</td></tr>
+      <tr><td>Email Validator, Email Deliverability, Disposable Email Detector, DNSBL Checker</td><td>The email address, domain or IP you enter</td><td>Not stored</td></tr>
+      <tr><td>Temp Inbox</td><td>The throwaway address created for you and the mail it receives</td><td>Deleted automatically after a short time (default 60 minutes)</td></tr>
+      <tr><td>File Drop</td><td>Connection set-up messages only; the server sees your IP address to pair devices on the same network (or with the same room code). The files themselves go directly from browser to browser and never touch our server</td><td>Not stored</td></tr>
+      <tr><td>Chat Room</td><td>Messages are relayed through our server; file attachments are stored on it temporarily so everyone in the room can download them</td><td>Messages are not stored; attachments are deleted when the last person leaves the room</td></tr>
       <tr><td>YouTube Downloader</td><td>The video/playlist URL — sent to our self-hosted cobalt server</td><td>Not stored</td></tr>
       <tr><td>Feedback form</td><td>Your message + the page you sent it from</td><td>Stored so we can read it</td></tr>
     </tbody>
@@ -96,6 +101,10 @@
     <li><strong>CDNs (jsDelivr, unpkg, Cloudflare)</strong> — deliver libraries used by tools such as OCR, PDF, and image tools</li>
     <li><strong>Cloudflare DNS-over-HTTPS</strong> — powers the DNS Lookup tool</li>
     <li><strong>Public price / IP / geolocation APIs</strong> — power the Currency, What-Is-My-IP, and IP Location tools</li>
+    <li><strong>STUN servers (Google, Cloudflare)</strong> — File Drop, VPN Leak Test and WebRTC ICE Test contact them to discover your public network address; they see your IP address, not your files</li>
+    <li><strong>YouTube / Google</strong> — the YouTube Downloader loads video thumbnails and titles from YouTube. If you enter your own YouTube Data API key (needed for playlists), it is stored only in your browser and sent only to Google</li>
+    <li><strong>Hugging Face and tessdata.projectnaptha.com</strong> — the Speech &amp; Voice tool downloads its speech-recognition model from Hugging Face, and the OCR tools (OCR, PDF to Text, PDF Enhance) download language data from tessdata.projectnaptha.com. Only the download request is made; your audio, images and documents are not uploaded</li>
+    <li><strong>OpenStreetMap</strong> — the map in IP Location is an OpenStreetMap embed, which receives the coordinates being displayed and your IP address</li>
   </ul>
 
   <h2>5. How to opt out</h2>

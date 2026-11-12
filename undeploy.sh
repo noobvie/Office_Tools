@@ -30,9 +30,48 @@ SVC_API="/etc/systemd/system/office-tools-api.service"
 SVC_COBALT="/etc/systemd/system/office-tools-cobalt.service"
 SVC_POT="/etc/systemd/system/office-tools-pot.service"
 CRON_YTDLP="/etc/cron.weekly/yt-dlp-update"
+CRON_YTCOOKIE="/etc/cron.d/office-tools-ytcookie"            # lib/youtube.sh setup_cookie_keepalive
+LOGROTATE_YTCOOKIE="/etc/logrotate.d/office-tools-ytcookie"  # same
 
+# nginx: Debian layout (sites-available + sites-enabled symlink) and RHEL layout
+# (conf.d), main site and the ip4./ip6. echo vhost (lib/os.sh detect_os, lib/nginx.sh).
 NGINX_AVAIL="/etc/nginx/sites-available/office-tools"
 NGINX_ENABLED="/etc/nginx/sites-enabled/office-tools"
+NGINX_RHEL="/etc/nginx/conf.d/office-tools.conf"
+NGINX_IPECHO_AVAIL="/etc/nginx/sites-available/office-tools-ipecho"
+NGINX_IPECHO_ENABLED="/etc/nginx/sites-enabled/office-tools-ipecho"
+NGINX_IPECHO_RHEL="/etc/nginx/conf.d/office-tools-ipecho.conf"
+NGINX_SNIPPET_DIR="/etc/nginx/office-tools"   # OT_NGINX_SNIPPET_DIR in lib/nginx.sh
+
+# coturn config paths written by lib/backend.sh setup_turn (Debian, then RHEL/EPEL)
+TURN_CONFS=("/etc/turnserver.conf" "/etc/coturn/turnserver.conf")
+TURN_MARKER="# Office Tools — File Drop TURN relay (managed by deploy.sh)"
+
+# Same rule as valid_domain in lib/config.sh (this script runs standalone, without lib/).
+valid_domain() {
+    local d="${1:-}"
+    if [[ -z "$d" || ${#d} -gt 253 || "$d" == *..* || "$d" != *.* ]]; then
+        return 1
+    fi
+    if [[ ! "$d" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$ ]]; then
+        return 1
+    fi
+    return 0
+}
+
+# True when coturn is running on a config this repo wrote: only then is stopping it ours
+# to do. The marker is the first line of the turnserver.conf heredoc in lib/backend.sh.
+turn_is_ours() {
+    local f first
+    for f in "${TURN_CONFS[@]}"; do
+        [[ -f "$f" ]] || continue
+        first=$(head -n1 "$f" 2>/dev/null) || true
+        if [[ "$first" == "$TURN_MARKER" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
 
 echo ""
 echo -e "${BOLD}${RED}╔══════════════════════════════════════════════════╗${RESET}"
@@ -52,15 +91,25 @@ if [[ -f "$DEPLOY_CONF" ]]; then
     fi
 fi
 
+# The domain names a /etc/letsencrypt path that is deleted below, so only a strictly
+# valid hostname is accepted (an empty value or ".." would point at a parent directory).
 while true; do
     echo -ne "${BOLD}Domain name${RESET} used during deployment (e.g. tools.example.com): "
     read -r DOMAIN
-    [[ -n "$DOMAIN" ]] && break
-    warn "Domain cannot be empty."
+    DOMAIN="${DOMAIN,,}"
+    if valid_domain "$DOMAIN"; then break; fi
+    warn "Not a valid hostname: '${DOMAIN}' (e.g. tools.example.com)"
 done
 
-LETSENCRYPT_DIR="/etc/letsencrypt/live/${DOMAIN}"
-LETSENCRYPT_RENEWAL="/etc/letsencrypt/renewal/${DOMAIN}.conf"
+LETSENCRYPT_DIR="/etc/letsencrypt/live/${DOMAIN:?}"
+LETSENCRYPT_RENEWAL="/etc/letsencrypt/renewal/${DOMAIN:?}.conf"
+# ip4./ip6. echo hosts use the last two labels of the domain (_ipecho_apex in lib/nginx.sh)
+IPECHO_APEX="$(echo "$DOMAIN" | awk -F. '{ if (NF>=2) print $(NF-1)"."$NF; else print $0 }')"
+IPECHO_CERTS=("ip4.${IPECHO_APEX}" "ip6.${IPECHO_APEX}")
+
+NGINX_FILES=("$NGINX_AVAIL" "$NGINX_ENABLED" "$NGINX_RHEL"
+             "$NGINX_IPECHO_AVAIL" "$NGINX_IPECHO_ENABLED" "$NGINX_IPECHO_RHEL")
+EXTRA_FILES=("$CRON_YTCOOKIE" "$LOGROTATE_YTCOOKIE")
 
 # ─── Build removal checklist ──────────────────────────────────────────────────
 echo ""
@@ -84,16 +133,25 @@ done
 # Systemd unit files
 echo ""
 echo -e "${BOLD}  Systemd unit files${RESET}"
-for f in "$SVC_API" "$SVC_COBALT" "$SVC_POT" "$CRON_YTDLP"; do
+for f in "$SVC_API" "$SVC_COBALT" "$SVC_POT" "$CRON_YTDLP" "${EXTRA_FILES[@]}"; do
     [[ -f "$f" ]] && echo -e "    ${RED}✗${RESET}  $f" || echo -e "    ${DIM}–  $f  (not found)${RESET}"
 done
 
 # Nginx
 echo ""
 echo -e "${BOLD}  Nginx config${RESET}"
-for f in "$NGINX_AVAIL" "$NGINX_ENABLED"; do
+for f in "${NGINX_FILES[@]}" "$NGINX_SNIPPET_DIR"; do
     [[ -e "$f" ]] && echo -e "    ${RED}✗${RESET}  $f" || echo -e "    ${DIM}–  $f  (not found)${RESET}"
 done
+
+# TURN relay
+echo ""
+echo -e "${BOLD}  TURN relay (coturn)${RESET}"
+if turn_is_ours; then
+    echo -e "    ${RED}✗${RESET}  coturn service stopped + disabled  ${DIM}(its config was written by deploy.sh; package kept)${RESET}"
+else
+    echo -e "    ${DIM}–  coturn not configured by deploy.sh — left alone${RESET}"
+fi
 
 # SSL certificate
 echo ""
@@ -104,6 +162,11 @@ if [[ -d "$LETSENCRYPT_DIR" ]]; then
 else
     echo -e "    ${DIM}–  No certificate found for ${DOMAIN} — will skip${RESET}"
 fi
+for c in "${IPECHO_CERTS[@]}"; do
+    if [[ -d "/etc/letsencrypt/live/${c}" ]]; then
+        echo -e "    ${RED}✗${RESET}  /etc/letsencrypt/live/${c}  ${DIM}(ip-echo host)${RESET}"
+    fi
+done
 
 # Directories
 echo ""
@@ -119,7 +182,8 @@ done
 
 echo ""
 echo -e "${BOLD}  What is ${GREEN}NOT${RESET}${BOLD} removed by this script:${RESET}"
-echo -e "    ${GREEN}•${RESET}  nginx, certbot, Node.js system packages  ${DIM}(installed system-wide)${RESET}"
+echo -e "    ${GREEN}•${RESET}  nginx, certbot, Node.js, coturn packages ${DIM}(installed system-wide)${RESET}"
+echo -e "    ${GREEN}•${RESET}  Firewall rules (80/443, 3478, 49152-65535) ${DIM}(remove by hand if unused)${RESET}"
 echo -e "    ${GREEN}•${RESET}  Other nginx virtual hosts / sites        ${DIM}(unrelated to Office Tools)${RESET}"
 echo ""
 
@@ -152,8 +216,19 @@ for svc in office-tools-api office-tools-cobalt office-tools-pot; do
     fi
 done
 
-# ─── 2. Remove systemd unit files ────────────────────────────────────────────
-for f in "$SVC_API" "$SVC_COBALT" "$SVC_POT" "$CRON_YTDLP"; do
+# coturn: only when it runs on the config deploy.sh wrote — its secret was shared with the
+# API server being removed, so nothing else can be using it.
+if turn_is_ours; then
+    info "Stopping and disabling coturn (configured by deploy.sh)…"
+    systemctl stop    coturn 2>/dev/null || true
+    systemctl disable coturn 2>/dev/null || true
+    success "coturn stopped and disabled (package and its config file kept)"
+else
+    skip "coturn not configured by deploy.sh"
+fi
+
+# ─── 2. Remove systemd unit files, cron and logrotate entries ─────────────────
+for f in "$SVC_API" "$SVC_COBALT" "$SVC_POT" "$CRON_YTDLP" "${EXTRA_FILES[@]}"; do
     if [[ -f "$f" ]]; then
         rm -f "$f"
         success "Removed $f"
@@ -166,14 +241,22 @@ systemctl daemon-reload
 success "systemd daemon reloaded"
 
 # ─── 3. Remove nginx config ───────────────────────────────────────────────────
-for f in "$NGINX_ENABLED" "$NGINX_AVAIL"; do
-    if [[ -e "$f" ]]; then
+# Vhosts first, then the snippet directory they include, so no remaining conf can
+# reference a missing file.
+for f in "${NGINX_FILES[@]}"; do
+    if [[ -e "$f" || -L "$f" ]]; then
         rm -f "$f"
         success "Removed $f"
     else
         skip "$f not found"
     fi
 done
+if [[ -d "$NGINX_SNIPPET_DIR" ]]; then
+    rm -rf "${NGINX_SNIPPET_DIR:?}"
+    success "Removed $NGINX_SNIPPET_DIR"
+else
+    skip "$NGINX_SNIPPET_DIR not found"
+fi
 
 # Test nginx config before reloading (other sites may still be running)
 if nginx -t 2>/dev/null; then
@@ -187,20 +270,31 @@ fi
 # ─── 4. Delete SSL certificate ───────────────────────────────────────────────
 if [[ -d "$LETSENCRYPT_DIR" ]]; then
     info "Deleting Let's Encrypt certificate for ${DOMAIN}…"
-    certbot delete --cert-name "${DOMAIN}" --non-interactive 2>/dev/null || {
+    if ! certbot delete --cert-name "${DOMAIN}" --non-interactive 2>/dev/null; then
         warn "certbot delete failed — removing manually…"
-        rm -rf "$LETSENCRYPT_DIR"
-        rm -f  "$LETSENCRYPT_RENEWAL"
-    }
+        # DOMAIN passed valid_domain at the prompt; :? refuses to run on an empty value.
+        rm -rf "/etc/letsencrypt/live/${DOMAIN:?}"
+        rm -f  "/etc/letsencrypt/renewal/${DOMAIN:?}.conf"
+    fi
     success "SSL certificate removed"
 else
     skip "No Let's Encrypt certificate found for ${DOMAIN}"
 fi
+# ip4./ip6. echo-host certificates (best-effort; certbot only, no manual deletion)
+for c in "${IPECHO_CERTS[@]}"; do
+    if [[ -d "/etc/letsencrypt/live/${c}" ]]; then
+        if certbot delete --cert-name "$c" --non-interactive 2>/dev/null; then
+            success "SSL certificate removed for $c"
+        else
+            warn "certbot delete failed for $c — remove it with: certbot delete --cert-name $c"
+        fi
+    fi
+done
 
 # ─── 5. Remove directories ───────────────────────────────────────────────────
 for d in "$OPT_DIR" "$WEB_ROOT" "$LOG_DIR"; do
     if [[ -d "$d" ]]; then
-        rm -rf "$d"
+        rm -rf "${d:?}"
         success "Removed $d"
     else
         skip "$d not found"

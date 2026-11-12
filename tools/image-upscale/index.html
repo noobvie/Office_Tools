@@ -346,13 +346,6 @@ const AI_CDN = {
            sri: 'sha384-vE8hbVJ4lezako5rlvE7bY0BVzWlFhZncPlckrqNwcUQpVtgbENTgZ8TBbnPjZre' },
   ups:   { src: 'https://cdn.jsdelivr.net/npm/upscaler@1.0.0-beta.19/dist/browser/umd/upscaler.min.js',
            sri: 'sha384-pZ3l1NgemraExJ0i9RM7LtP5gyzKTP7sUD1IWACiWMT8RkpU9RJVSK4BtAkF+y9Q' },
-  // This URL answers 404 (esrgan-slim has no beta.19 release), so the catch in ensureAI always
-  // falls back to Upscaler's bundled model. No hash exists to record; do not point it at a
-  // different version without adding one.
-  model: { src: 'https://cdn.jsdelivr.net/npm/@upscalerjs/esrgan-slim@1.0.0-beta.19/dist/umd/x4.min.js', sri: null },
-  // UMD global the model script exposes — first match wins; if none, the
-  // Upscaler default model is used instead.
-  modelGlobals: ['ESRGANSlim4x', 'ESRGANSlim', 'esrganSlim4x', 'esrganSlim'],
 };
 let _aiUpscaler = null, _aiLoading = null;
 
@@ -372,15 +365,10 @@ async function ensureAI(onStatus) {
     onStatus && onStatus('Loading AI engine…');
     if (!window.tf)       await loadScript(AI_CDN.tf);
     if (!window.Upscaler) await loadScript(AI_CDN.ups);
-    let model = null;
-    try {
-      await loadScript(AI_CDN.model);
-      for (const g of AI_CDN.modelGlobals) { if (window[g]) { model = window[g]; break; } }
-    } catch { /* fall back to Upscaler's bundled default model */ }
     try { if (window.tf && window.tf.ready) await window.tf.ready(); } catch {}
     const Up = window.Upscaler;
     if (!Up) throw new Error('Upscaler library did not load');
-    _aiUpscaler = model ? new Up({ model }) : new Up();
+    _aiUpscaler = new Up();   // Upscaler's bundled default model
     return _aiUpscaler;
   })();
   return _aiLoading;

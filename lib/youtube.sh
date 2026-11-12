@@ -103,7 +103,7 @@ setup_pot_provider() {
             || warn "git fetch failed — building current checkout"
     else
         info "Cloning bgutil-ytdlp-pot-provider…"
-        rm -rf "$POT_SERVER_DIR"
+        rm -rf "${POT_SERVER_DIR:?}"
         git clone -q https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git "$POT_SERVER_DIR" \
             || { warn "clone failed — PO-token provider not installed (YouTube may serve bot-check 403s)"; return 0; }
     fi
@@ -172,6 +172,18 @@ POTEOF
 }
 
 # ─── yt-server (YouTube download backend) ─────────────────────────────────────
+# Keys every yt-server .env must have; added only when absent, so an operator value wins.
+# The unit loads this file (EnvironmentFile=); server.js reads HOST and binds 0.0.0.0
+# without it. Loopback because nginx (proxy_pass http://127.0.0.1:9000) is the only
+# client and the server trusts forwarded addresses only from a loopback peer.
+_yt_env_defaults() {
+    env_ensure "$YT_SERVER_DIR/.env" HOST 127.0.0.1 \
+        || warn "Could not add HOST to $YT_SERVER_DIR/.env — yt-server keeps listening on all interfaces"
+    env_ensure "$YT_SERVER_DIR/.env" NODE_ENV production \
+        || warn "Could not add NODE_ENV to $YT_SERVER_DIR/.env"
+    return 0
+}
+
 setup_yt_server() {
     section "Setting up yt-server (YouTube download backend)"
 
@@ -184,6 +196,7 @@ setup_yt_server() {
     # truncating write here would wipe operator keys (YTDLP_COOKIES most of all, whose
     # loss looks exactly like YouTube blocking the server again, with nothing logged).
     env_ensure "$YT_SERVER_DIR/.env" PORT 9000
+    _yt_env_defaults
     chmod 600 "$YT_SERVER_DIR/.env"
     chmod +x "$YT_SERVER_DIR/ytcookie-keepalive.sh" 2>/dev/null || true
     chown -R www-data:www-data "$YT_SERVER_DIR"
@@ -272,6 +285,8 @@ sync_yt_server() {
     rsync -a --exclude='.env' --exclude='cookies.txt' --exclude='cookies.status' \
         "$REPO_DIR/yt-server/" "$YT_SERVER_DIR/"
     cd "$YT_SERVER_DIR" && npm install --omit=dev && cd /
+    _yt_env_defaults
+    chmod 600 "$YT_SERVER_DIR/.env" 2>/dev/null || true
     chmod +x "$YT_SERVER_DIR/ytcookie-keepalive.sh" 2>/dev/null || true
     chown -R www-data:www-data "$YT_SERVER_DIR"
     setup_cookie_keepalive

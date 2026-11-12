@@ -491,7 +491,7 @@ async function loadBuildThumbnails(startFrom) {
     if (src.type === 'pdf') {
       if (!buildPdfjsDocs[si]) {
         const buf = await src.file.arrayBuffer();
-        buildPdfjsDocs[si] = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+        buildPdfjsDocs[si] = await pdfjsLib.getDocument({ data: new Uint8Array(buf), isEvalSupported: false }).promise;
       }
       const pdfDoc = buildPdfjsDocs[si];
       src.pageCount = pdfDoc.numPages;
@@ -748,7 +748,7 @@ bindDrop(splitDrop, splitFileEl, async files => {
   splitPdfFile = f;
   // Quick page count via pdf.js
   const buf = await f.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  const pdf = await pdfjsLib.getDocument({ data: buf, isEvalSupported: false }).promise;
   splitTotalPages = pdf.numPages;
   document.getElementById('splitInfo').textContent =
     `"${f.name}" — ${splitTotalPages} page${splitTotalPages !== 1 ? 's' : ''}, ${fmtSz(f.size)}`;
@@ -898,7 +898,7 @@ document.getElementById('compressBtn').addEventListener('click', async () => {
   try {
     const { PDFDocument } = PDFLib;
     const buf = await compressPdfFile.arrayBuffer();
-    const pdfjs = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+    const pdfjs = await pdfjsLib.getDocument({ data: new Uint8Array(buf), isEvalSupported: false }).promise;
     const numPages = pdfjs.numPages;
     const outDoc = await PDFDocument.create();
 

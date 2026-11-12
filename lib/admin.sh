@@ -175,8 +175,14 @@ _admin_list_urls() {
 _admin_backup_db() {
     local backup_dir="/opt/office-tools/backups"
     local db_file="/opt/office-tools/data/tools.db"
-    mkdir -p "$backup_dir"
     section "Backup Database"
+
+    # Backups hold every paste, short URL and share record: root-only directory and files.
+    if ! mkdir -p "$backup_dir" || ! chmod 700 "$backup_dir"; then
+        warn "Could not create $backup_dir with mode 700 — backup not taken."
+        press_enter; return 0
+    fi
+    chmod 600 "${backup_dir}"/tools_backup_*.db 2>/dev/null || true
 
     if [[ ! -f "$db_file" ]]; then
         warn "SQLite database not found at $db_file — backend not installed or not yet started."
@@ -185,11 +191,38 @@ _admin_backup_db() {
 
     local ts; ts=$(date +%Y%m%d_%H%M%S)
     local backup_file="${backup_dir}/tools_backup_${ts}.db"
+    local ok=false
 
-    info "Copying SQLite database (tools.db)…"
-    cp "$db_file" "$backup_file" \
-        && success "Backup saved: $backup_file" \
-        || warn "Backup failed — check disk space and permissions"
+    # sqlite3's .backup takes a consistent copy of a live database (WAL contents
+    # included); a plain cp of the main file can miss committed pages still in -wal.
+    # The CLI is optional — cp is the fallback when it is not installed.
+    if command -v sqlite3 &>/dev/null; then
+        info "Backing up SQLite database (sqlite3 .backup)…"
+        if ( umask 077; sqlite3 "$db_file" ".backup '${backup_file}'" ); then
+            ok=true
+        else
+            warn "sqlite3 .backup failed — falling back to a file copy"
+            rm -f "$backup_file"
+        fi
+        # sqlite3 runs as root: if it had to create -wal/-shm, give them back to the
+        # database's owner so the service can still open the database.
+        local _side
+        for _side in "${db_file}-wal" "${db_file}-shm"; do
+            if [[ -e "$_side" ]]; then chown --reference="$db_file" "$_side" 2>/dev/null || true; fi
+        done
+    fi
+    if [[ "$ok" != true ]]; then
+        info "Copying SQLite database (tools.db)…"
+        if ( umask 077; cp "$db_file" "$backup_file" ); then
+            ok=true
+        fi
+    fi
+    if [[ "$ok" == true ]]; then
+        chmod 600 "$backup_file" 2>/dev/null || true
+        success "Backup saved: $backup_file"
+    else
+        warn "Backup failed — check disk space and permissions"
+    fi
 
     # Show last 5 backups
     echo ""
@@ -245,12 +278,26 @@ _admin_restore_db() {
     systemctl stop office-tools-api 2>/dev/null || true
     sleep 1
 
-    info "Restoring backup…"
-    cp "$chosen" "$db_file" \
-        && success "Restore complete" \
-        || warn "Restore failed — check the backup file integrity"
+    # The database must stay owned by the user the API unit runs as, or the service
+    # can open it read-only at best. Read that user from the unit itself.
+    local svc_user svc_group
+    svc_user=$(systemctl show -p User --value office-tools-api 2>/dev/null) || true
+    svc_group=$(systemctl show -p Group --value office-tools-api 2>/dev/null) || true
+    svc_user="${svc_user:-www-data}"
+    svc_group="${svc_group:-$svc_user}"
 
-    chown root:root "$db_file" 2>/dev/null || true
+    info "Restoring backup…"
+    # A -wal left by the replaced database would be replayed onto the restored file and
+    # corrupt it; the service is stopped, so these belong to the database being discarded.
+    rm -f "${db_file}-wal" "${db_file}-shm"
+    if cp "$chosen" "$db_file"; then
+        success "Restore complete"
+    else
+        warn "Restore failed — check the backup file integrity"
+    fi
+
+    chown "${svc_user}:${svc_group}" "$db_file" 2>/dev/null \
+        || warn "Could not chown $db_file to ${svc_user}:${svc_group} — the API may not be able to write it"
 
     info "Restarting API server…"
     systemctl start office-tools-api 2>/dev/null \

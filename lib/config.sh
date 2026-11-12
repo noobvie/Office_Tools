@@ -7,9 +7,57 @@
 # ─── Config helpers ────────────────────────────────────────────────────────────
 DOMAIN=""; EMAIL=""; SETUP_BACKEND="n"
 
+# A hostname the scripts may put in server_name, sed, deploy.conf and a
+# /etc/letsencrypt path: lowercase labels of [a-z0-9-] (no leading/trailing hyphen,
+# ≤63 chars each), at least one dot, ≤253 chars. Rejects "", "..", "/", quotes, spaces.
+valid_domain() {
+    local d="${1:-}"
+    if [[ -z "$d" || ${#d} -gt 253 || "$d" == *..* || "$d" != *.* ]]; then
+        return 1
+    fi
+    if [[ ! "$d" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$ ]]; then
+        return 1
+    fi
+    return 0
+}
+
+# Loose address check — enough to keep quotes, spaces and shell syntax out of
+# deploy.conf and certbot's -m argument; deliverability is certbot's business.
+valid_email() {
+    local e="${1:-}"
+    if [[ ${#e} -gt 254 || ! "$e" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; then
+        return 1
+    fi
+    return 0
+}
+
+# Value of KEY="..." (or KEY=...) in deploy.conf. The file is parsed, never sourced,
+# so nothing in it can run as root.
+_conf_get() {
+    local key="$1" line
+    line=$(grep -E "^${key}=" "$DEPLOY_CONF" 2>/dev/null | tail -n1) || true
+    line="${line#*=}"
+    line="${line#\"}"; line="${line%\"}"
+    printf '%s' "$line"
+}
+
 load_conf() {
     DOMAIN=""; EMAIL=""; SETUP_BACKEND="n"
-    [[ -f "$DEPLOY_CONF" ]] && source "$DEPLOY_CONF" || true
+    if [[ ! -f "$DEPLOY_CONF" ]]; then
+        return 0
+    fi
+    DOMAIN="$(_conf_get DOMAIN)"
+    EMAIL="$(_conf_get EMAIL)"
+    SETUP_BACKEND="$(_conf_get SETUP_BACKEND)"
+    SETUP_BACKEND="${SETUP_BACKEND:-n}"
+    DOMAIN="${DOMAIN,,}"
+    # An invalid saved domain is treated as "not configured" rather than used in a path,
+    # a vhost or a certbot call; Option 2 sets a valid one.
+    if [[ -n "$DOMAIN" ]] && ! valid_domain "$DOMAIN"; then
+        warn "deploy.conf holds an invalid domain ('${DOMAIN}') — ignored. Set it again with Option 2."
+        DOMAIN=""
+    fi
+    return 0
 }
 
 save_conf() {
@@ -32,7 +80,15 @@ env_ensure() {
     if [[ ! -f "$file" ]]; then
         install -m 600 /dev/null "$file" || return 1
     fi
-    grep -qE "^[[:space:]]*${key}=" "$file" || printf '%s=%s\n' "$key" "$val" >> "$file"
+    if grep -qE "^[[:space:]]*${key}=" "$file"; then
+        return 0
+    fi
+    # A hand-edited file may lack a final newline; appending then would glue the new key
+    # onto the operator's last line.
+    if [[ -s "$file" && -n "$(tail -c1 "$file")" ]]; then
+        printf '\n' >> "$file" || return 1
+    fi
+    printf '%s=%s\n' "$key" "$val" >> "$file" || return 1
 }
 
 

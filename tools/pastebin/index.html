@@ -232,18 +232,13 @@
 </main>
 
 <script src="../../js/config.js"></script>
-<script src="../../js/common.js"></script>
+<script src="../../js/common.js?v=captcha2"></script>
 <script>
 const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
 
 /* ── CAPTCHA ─────────────────────────────────────────────── */
-let _ca = 0, _cb = 0;
-function refreshCaptcha() {
-  _ca = Math.floor(Math.random() * 9) + 1;
-  _cb = Math.floor(Math.random() * 9) + 1;
-  document.getElementById('captchaLabel').textContent = `What is ${_ca} + ${_cb}?`;
-  document.getElementById('captchaInput').value = '';
-}
+const captcha = otCaptchaCreate(document.getElementById('captchaLabel'), document.getElementById('captchaInput'));
+function refreshCaptcha() { return captcha.refresh(); }
 
 /* ── Helpers ─────────────────────────────────────────────── */
 function genCode(len = 10) {
@@ -304,18 +299,22 @@ document.getElementById('createBtn').addEventListener('click', async () => {
   const btn = document.getElementById('createBtn');
   btn.textContent = 'Creating…'; btn.disabled = true;
 
+  let sentToken = false;
   try {
+    const cs = await captcha.ensureFresh();
+    if (cs !== 'ok') throw new Error(cs === 'renewed' ? OT_CAPTCHA_EXPIRED_MSG : OT_CAPTCHA_DOWN_MSG);
     const code    = genCode(10);
     const expires = calcExpiry(expDays);
 
+    sentToken = true;
     const r = await fetch(`${API}/api/tools/p`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code, title, content, syntax, expires, burn_after_read: burn,
-        ca: _ca, cb: _cb, ans: captchaAns }),
+        ans: captchaAns, ctoken: captcha.token }),
     });
     const d = await r.json();
-    if (!r.ok) { refreshCaptcha(); throw new Error(d.error || 'Server error'); }
+    if (!r.ok) throw new Error(d.error || 'Server error');
 
     const shareUrl = `${location.origin}/tools/pastebin/?id=${code}`;
     document.getElementById('pasteShareUrl').textContent = shareUrl;
@@ -331,6 +330,7 @@ document.getElementById('createBtn').addEventListener('click', async () => {
     errBox.textContent = err.message || 'Something went wrong. Please try again.';
     errBox.classList.remove('hidden');
   } finally {
+    if (sentToken) refreshCaptcha();   // the token is single use, whatever the outcome
     btn.textContent = 'Create Paste'; btn.disabled = false;
   }
 });

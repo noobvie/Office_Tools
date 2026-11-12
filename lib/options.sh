@@ -88,7 +88,10 @@ opt_2_add_domain() {
         echo -ne "$_prompt"
         read -r _new
         [[ "$_new" == "0" ]] && return 0
-        if [[ -n "$_new" ]]; then DOMAIN="$_new"; break
+        _new="${_new,,}"
+        if [[ -n "$_new" ]]; then
+            if valid_domain "$_new"; then DOMAIN="$_new"; break; fi
+            warn "Not a valid hostname: '${_new}' (e.g. tools.example.com)"
         elif [[ -n "$DOMAIN" ]]; then break
         else warn "Domain cannot be empty."; fi
     done
@@ -101,7 +104,9 @@ opt_2_add_domain() {
         echo -ne "$_eprompt"
         read -r _new
         [[ "$_new" == "0" ]] && return 0
-        if [[ -n "$_new" ]]; then EMAIL="$_new"; break
+        if [[ -n "$_new" ]]; then
+            if valid_email "$_new"; then EMAIL="$_new"; break; fi
+            warn "Not a valid email address: '${_new}'"
         elif [[ -n "$EMAIL" ]]; then break
         else warn "Email cannot be empty."; fi
     done
@@ -227,12 +232,13 @@ opt_3_remove_switch() {
             warn "nginx config test failed — check /etc/nginx/ manually"
         fi
 
-        # Remove SSL cert
-        if [[ -d "/etc/letsencrypt/live/${DOMAIN}" ]]; then
-            certbot delete --cert-name "$DOMAIN" --non-interactive 2>/dev/null || {
-                rm -rf "/etc/letsencrypt/live/${DOMAIN}"
-                rm -f  "/etc/letsencrypt/renewal/${DOMAIN}.conf"
-            }
+        # Remove SSL cert. The manual fallback deletes a path built from DOMAIN, so it runs
+        # only for a validated, non-empty name (an empty one would be live/ itself).
+        if valid_domain "$DOMAIN" && [[ -d "/etc/letsencrypt/live/${DOMAIN}" ]]; then
+            if ! certbot delete --cert-name "$DOMAIN" --non-interactive 2>/dev/null; then
+                rm -rf "/etc/letsencrypt/live/${DOMAIN:?}"
+                rm -f  "/etc/letsencrypt/renewal/${DOMAIN:?}.conf"
+            fi
             success "SSL certificate removed for $DOMAIN"
         fi
 
@@ -247,11 +253,17 @@ opt_3_remove_switch() {
         while true; do
             echo -ne "  ${BOLD}New domain name${RESET}: "
             read -r _new
-            [[ -n "$_new" ]] && break
-            warn "Domain cannot be empty."
+            _new="${_new,,}"
+            if valid_domain "$_new"; then break; fi
+            warn "Not a valid hostname: '${_new}' (e.g. tools.example.com)"
         done
-        echo -ne "  ${BOLD}Email for SSL${RESET} (Enter = keep [$EMAIL]): "
-        read -r _em; [[ -n "$_em" ]] && EMAIL="$_em"
+        while true; do
+            echo -ne "  ${BOLD}Email for SSL${RESET} (Enter = keep [$EMAIL]): "
+            read -r _em
+            if [[ -z "$_em" && -n "$EMAIL" ]]; then break; fi
+            if valid_email "$_em"; then EMAIL="$_em"; break; fi
+            warn "Not a valid email address: '${_em}'"
+        done
 
         echo ""
         echo -e "  Will remove: ${BOLD}${DOMAIN}${RESET}"

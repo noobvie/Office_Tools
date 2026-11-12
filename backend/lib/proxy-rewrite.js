@@ -21,7 +21,14 @@
 // cannot run script as tools.grin.money or read its storage.
 
 function absolutize(ref, base) { try { return new URL(ref, base).href; } catch { return null; } }
-function proxify(absUrl, selfBase) { return `${selfBase}?url=${encodeURIComponent(absUrl)}&self=${encodeURIComponent(selfBase)}`; }
+// selfBase is written into quoted HTML attributes and CSS url(), so every character that
+// could end the value or open markup is percent-encoded (the route validates it as well).
+function _attrSafe(s) {
+  return String(s).replace(/["'<>`\\()\x00-\x20\x7f]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0'));
+}
+function proxify(absUrl, selfBase) {
+  return `${_attrSafe(selfBase)}?url=${encodeURIComponent(absUrl)}&self=${_attrSafe(encodeURIComponent(selfBase))}`;
+}
 
 // Drop every <script>…</script> (and an unclosed one through to the end, as a browser would).
 function stripScriptElements(html) {

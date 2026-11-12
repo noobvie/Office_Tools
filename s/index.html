@@ -54,17 +54,29 @@
     }
     if (!r.ok) throw new Error('Service unavailable');
     const record = await r.json();
-    const dest   = record.long_url;
+    let u;
+    try {
+      u = new URL(record.long_url);
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') u = null;
+    } catch { u = null; }
+    if (!u) {
+      show('⚠️', '<p><strong>This link is not valid.</strong></p>');
+      document.title = 'Invalid Link — Office Tools';
+      return;
+    }
 
     show('✅', `<p>Redirecting to:</p>
-      <p style="word-break:break-all;font-size:.85rem;color:var(--text-muted)">${dest}</p>
-      <p class="text-muted" style="font-size:.8rem">If you are not redirected, <a href="${dest}">click here</a>.</p>`);
+      <p id="dest" style="word-break:break-all;font-size:.85rem;color:var(--text-muted)"></p>
+      <p class="text-muted" style="font-size:.8rem">If you are not redirected, <a id="dest-link" rel="noopener noreferrer">click here</a>.</p>`);
+    document.getElementById('dest').textContent = u.href;
+    document.getElementById('dest-link').href = u.href;
 
-    setTimeout(() => { window.location.replace(dest); }, 600);
+    setTimeout(() => { window.location.replace(u.href); }, 600);
 
   } catch (err) {
     show('⚠️', `<p><strong>Could not reach the link service.</strong></p>
-      <p class="text-muted" style="font-size:.85rem">${err.message}</p>`);
+      <p id="err-msg" class="text-muted" style="font-size:.85rem"></p>`);
+    document.getElementById('err-msg').textContent = err.message;
   }
 })();
 </script>

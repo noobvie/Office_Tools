@@ -237,18 +237,13 @@
 </main>
 
 <script src="../../js/config.js"></script>
-<script src="../../js/common.js"></script>
+<script src="../../js/common.js?v=captcha2"></script>
 <script>
 const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
 
 /* ── CAPTCHA ─────────────────────────────────────────────── */
-let _ca = 0, _cb = 0;
-function refreshCaptcha() {
-  _ca = Math.floor(Math.random() * 9) + 1;
-  _cb = Math.floor(Math.random() * 9) + 1;
-  document.getElementById('captchaLabel').textContent = `What is ${_ca} + ${_cb}?`;
-  document.getElementById('captchaInput').value = '';
-}
+const captcha = otCaptchaCreate(document.getElementById('captchaLabel'), document.getElementById('captchaInput'));
+function refreshCaptcha() { return captcha.refresh(); }
 
 const ALLOWED_EXT   = ['.zip', '.tar', '.gz', '.bz2', '.rar'];
 const ALLOWED_MIME  = ['application/zip','application/x-zip-compressed',
@@ -370,14 +365,20 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
     return showUploadError('Please answer the math question first.');
   }
 
+  const cs = await captcha.ensureFresh();
+  if (cs !== 'ok') {
+    btn.disabled = false;
+    document.getElementById('progressBox').classList.add('hidden');
+    return showUploadError(cs === 'renewed' ? OT_CAPTCHA_EXPIRED_MSG : OT_CAPTCHA_DOWN_MSG);
+  }
+
   const fd = new FormData();
   fd.append('code',          code);
   fd.append('original_name', selectedFile.name);
   fd.append('file_size',     selectedFile.size);
   fd.append('expires',       expires);
-  fd.append('ca',            _ca);
-  fd.append('cb',            _cb);
   fd.append('ans',           captchaAns);
+  fd.append('ctoken',        captcha.token);
   fd.append('file',          selectedFile, selectedFile.name);
 
   try {
@@ -418,8 +419,8 @@ document.getElementById('uploadBtn').addEventListener('click', async () => {
 
   } catch (err) {
     showUploadError(err.message || 'Upload failed. Please try again.');
-    refreshCaptcha();
   } finally {
+    refreshCaptcha();   // the token is single use, whatever the outcome
     btn.disabled = false;
     document.getElementById('progressBox').classList.add('hidden');
     document.getElementById('progressBar').style.width = '0';

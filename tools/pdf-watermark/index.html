@@ -194,7 +194,7 @@ bindDrop(drop, fileEl, async files => {
   if (f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name)) { alert('Please choose a PDF file.'); return; }
   srcName = noExt(f.name);
   pdfBytes = new Uint8Array(await f.arrayBuffer());
-  try { pdfDoc = await pdfjsLib.getDocument({ data: pdfBytes.slice() }).promise; }
+  try { pdfDoc = await pdfjsLib.getDocument({ data: pdfBytes.slice(), isEvalSupported: false }).promise; }
   catch { alert('Could not open this PDF — it may be encrypted or corrupt.'); return; }
   curPage = 1; workspace.style.display = '';
   await renderPreview();

@@ -245,7 +245,7 @@ bindDrop(drop, fileEl, async files => {
   srcName = noExt(f.name);
   pdfBytes = new Uint8Array(await f.arrayBuffer());
   try {
-    pdfDoc = await pdfjsLib.getDocument({ data: pdfBytes.slice() }).promise;
+    pdfDoc = await pdfjsLib.getDocument({ data: pdfBytes.slice(), isEvalSupported: false }).promise;
   } catch (e) {
     alert('Could not open this PDF — it may be encrypted or corrupt. ' + (e.message || ''));
     return;

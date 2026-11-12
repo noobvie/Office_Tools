@@ -130,7 +130,7 @@ function escHtml(s) {
 /* Render user-supplied HTML (a markdown/HTML preview) into `el` without running it.
    DOMParser documents are inert (no script, no resource loads), so the scrub happens before anything is live;
    the nodes are then MOVED into the page, never serialised and re-parsed (that round trip is how mutation-XSS works).
-   Dropped: active/embedding elements, every on* attribute, and href/src/action values that are javascript:, vbscript:
+   Dropped: active/embedding elements, every on* attribute, id and name (they would shadow the host page's globals and elements), and href/src/action values that are javascript:, vbscript:
    or data: (data:image/png|jpeg|gif|webp on <img src> stays). Links keep working; scripts, handlers and forms do not. */
 function otSetSafeHtml(el, html) {
   const doc = new DOMParser().parseFromString(String(html ?? ''), 'text/html');
@@ -143,7 +143,7 @@ function otSetSafeHtml(el, html) {
       const val = a.value.replace(/[\u0000- ]+/g, '').toLowerCase();   // browsers ignore control chars/whitespace inside a scheme
       const badUrl = URL_ATTRS.includes(name) && /^(?:javascript|vbscript|data):/.test(val)
         && !(n.localName === 'img' && name === 'src' && /^data:image\/(?:png|jpe?g|gif|webp);/.test(val));
-      if (name.startsWith('on') || name === 'srcdoc' || badUrl) n.removeAttribute(a.name);
+      if (name.startsWith('on') || name === 'srcdoc' || name === 'id' || name === 'name' || badUrl) n.removeAttribute(a.name);
     }
   });
   el.replaceChildren(...doc.body.childNodes);
@@ -661,12 +661,52 @@ function initSupportPill() {
   pill.addEventListener('click', openFeedbackModal);
 }
 
+/* ---------- Math CAPTCHA (server-issued challenge) ----------
+   The server issues { a, b, token } at GET /api/captcha; the token is single use and valid 10 minutes, so
+   a form sends its answer as `ans` and the token as `ctoken`, then asks for a fresh challenge after every
+   submit attempt. One instance per question label, so a page form and the feedback modal never share a token.
+   Nothing is fetched until refresh() is called, which each form does when it is shown. */
+const OT_CAPTCHA_MAX_AGE_MS = 9 * 60 * 1000;   // refresh before the server's 10-minute expiry can bite
+function otCaptchaCreate(labelEl, inputEl) {
+  const base = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
+  let token = '', issuedAt = 0, seq = 0;
+  const cap = {
+    get token() { return token; },
+    async refresh() {
+      const mine = ++seq;
+      token = '';
+      labelEl.textContent = 'Loading question…';
+      if (inputEl) inputEl.value = '';
+      try {
+        const r = await fetch(base + '/api/captcha', { cache: 'no-store' });
+        const d = await r.json();
+        const a = Number(d.a), b = Number(d.b);
+        if (!r.ok || !Number.isInteger(a) || !Number.isInteger(b) || !d.token) throw new Error('bad challenge');
+        if (mine !== seq) return false;          // a newer refresh owns the label now
+        token = String(d.token); issuedAt = Date.now();
+        labelEl.textContent = 'What is ' + a + ' + ' + b + '?';
+        return true;
+      } catch {
+        if (mine === seq) labelEl.textContent = 'Question unavailable — backend not reachable.';
+        return false;
+      }
+    },
+    stale() { return !token || Date.now() - issuedAt > OT_CAPTCHA_MAX_AGE_MS; },
+    /* 'ok' = token usable; 'renewed' = it had expired, a new question is shown and the old answer was cleared;
+       'unavailable' = no challenge could be fetched. */
+    async ensureFresh() {
+      if (!cap.stale()) return 'ok';
+      await cap.refresh();
+      return token ? 'renewed' : 'unavailable';
+    },
+  };
+  return cap;
+}
+const OT_CAPTCHA_EXPIRED_MSG = 'The security question expired — please answer the new one.';
+const OT_CAPTCHA_DOWN_MSG = 'Could not load the security question — the backend may be unavailable.';
+
 function openFeedbackModal() {
   if (document.getElementById('ot-feedback-modal')) return;
-
-  // Generate simple math CAPTCHA
-  const ca = Math.floor(Math.random() * 9) + 1;
-  const cb = Math.floor(Math.random() * 9) + 1;
 
   const backdrop = document.createElement('div');
   backdrop.className = 'ot-modal-backdrop';
@@ -677,7 +717,7 @@ function openFeedbackModal() {
       <p>Report a broken tool, suggest a feature, or leave any comment. No login needed &mdash; or reach me directly on the <a href="https://forum.grin.mw/u/hellogrin" target="_blank" rel="noopener" style="color:var(--primary)">Grin forum @hellogrin</a>.</p>
       <textarea id="ot-fb-msg" placeholder="Describe the issue or suggestion… (min 10 characters)" maxlength="2000"></textarea>
       <div style="display:flex;align-items:center;gap:.6rem;font-size:.88rem">
-        <label for="ot-fb-captcha" style="white-space:nowrap;color:var(--text-muted)">What is ${escHtml(ca)} + ${escHtml(cb)}?</label>
+        <label id="ot-fb-captcha-label" for="ot-fb-captcha" style="white-space:nowrap;color:var(--text-muted)">Loading question…</label>
         <input id="ot-fb-captcha" type="number" min="0" max="99" placeholder="Answer"
           style="width:80px;padding:.35rem .6rem;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--bg-secondary);color:var(--text);font-size:.9rem;font-family:inherit;outline:none">
       </div>
@@ -694,6 +734,9 @@ function openFeedbackModal() {
   const captcha  = backdrop.querySelector('#ot-fb-captcha');
   const status   = backdrop.querySelector('#ot-fb-status');
   const sendBtn  = backdrop.querySelector('#ot-fb-send');
+
+  const cap = otCaptchaCreate(backdrop.querySelector('#ot-fb-captcha-label'), captcha);
+  cap.refresh();
 
   msg.focus();
 
@@ -723,12 +766,20 @@ function openFeedbackModal() {
     status.textContent = '';
     status.className = 'ot-modal-status';
 
+    const cs = await cap.ensureFresh();
+    if (cs !== 'ok') {
+      status.textContent = cs === 'renewed' ? OT_CAPTCHA_EXPIRED_MSG : OT_CAPTCHA_DOWN_MSG;
+      status.className = 'ot-modal-status fail';
+      sendBtn.disabled = false; sendBtn.textContent = 'Send';
+      return;
+    }
+
     const API = window.OT_CONFIG?.API_SERVER_URL || 'http://localhost:3001';
     try {
       const r = await fetch(`${API}/api/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, page: window.location.pathname, ca, cb, ans: parseInt(ans, 10) }),
+        body: JSON.stringify({ message: text, page: window.location.pathname, ans: parseInt(ans, 10), ctoken: cap.token }),
       });
       if (r.ok) {
         status.textContent = '✓ Sent! Thank you for the feedback.';
@@ -740,11 +791,13 @@ function openFeedbackModal() {
         status.textContent = err.error || 'Failed to send. Try again.';
         status.className = 'ot-modal-status fail';
         sendBtn.disabled = false; sendBtn.textContent = 'Send';
+        cap.refresh();
       }
     } catch {
       status.textContent = 'Network error. Check your connection.';
       status.className = 'ot-modal-status fail';
       sendBtn.disabled = false; sendBtn.textContent = 'Send';
+      cap.refresh();
     }
   });
 }

@@ -47,9 +47,10 @@ HOST=127.0.0.1 PORT=3999 TOOLS_DB=/tmp/t.db UPLOADS_DIR=/tmp/up npm start
 |----------|---------|-------------|
 | `PORT` | `3001` | Server listen port |
 | `HOST` | *(unset = all interfaces)* | Listen address; set `127.0.0.1` for local tests |
-| `CORS_ORIGINS` | `http://localhost:8080` | Comma-separated allowed origins |
+| `CORS_ORIGINS` | `http://localhost:8080` | Comma-separated allowed origins (also the WebSocket Origin allowlist for `/drop-ws` and `/chat-ws`) |
 | `TOOLS_DB` | `/opt/office-tools/data/tools.db` | SQLite DB path |
-| `UPLOADS_DIR` | `/opt/office-tools/data/uploads` | File share upload directory |
+| `UPLOADS_DIR` | `/opt/office-tools/data/uploads` | File share upload directory (`chat/` inside it is emptied at every start) |
+| `TOOLS_DIR` | *(optional)* | Directory whose sub-dirs are the valid tool ids for `/api/tools/view`; else `/var/www/office-tools/tools`, else `../tools` |
 | `GEMINI_API_KEY` | *(optional)* | Enables AI domain name suggestions |
 
 ---
@@ -105,6 +106,7 @@ API_SERVER_URL: 'https://yourdomain.com/tools-api',
 
 | Method | Path | Description |
 |--------|------|-------------|
+| GET | `/api/captcha` | Issue a math challenge `{ a, b, token }` (30/min); creates and feedback post `ans` + `ctoken` |
 | POST | `/api/tools/s` | Create short URL |
 | GET | `/api/tools/s/:code` | Resolve short URL |
 | POST | `/api/tools/p` | Create paste |
@@ -133,7 +135,14 @@ API_SERVER_URL: 'https://yourdomain.com/tools-api',
 
 | File | Role |
 |------|------|
-| `rate-limit.js` | `makeRateLimiter({ windowMs, max, message })` → `.middleware` / `.allow(key)` |
+| `rate-limit.js` | `makeRateLimiter({ windowMs, max, message, maxKeys })` → `.middleware` / `.allow(key)` / `.blocked(key)`; at most 50 000 buckets (oldest evicted) |
+| `client-ip.js` | `clientIp(req)` (X-Real-IP only from a loopback peer, i.e. via nginx) and `rateKey(ip)` (IPv4, or the IPv6 /64) — the only place a client IP is derived |
+| `captcha.js` | `makeCaptcha()` → `issue()` / `verify(ans, token)`: HMAC token, 10 min, single use |
+| `sanitize.js` | `str`, `stripCtl`, `cleanHeaderText`, `safeFileName`, `validMailbox` |
+| `shares.js` | Short URL / paste / file share input rules and `sweepExpired(db)` (every 10 min: expired rows and their files are deleted) |
+| `http-guards.js` | `guardAsyncRoutes(app)`, `asyncRoute`, `finalErrorHandler`, `installProcessGuards` |
+| `ttl-cache.js` | Bounded TTL cache (domain / email lookups) |
+| `fs-safe.js` | `emptyDirInside(dir, parent)` — start-up cleanup that can only delete inside `parent` |
 | `safe-fetch.js` | SSRF-safe outbound HTTP — **every** request to a user-influenced address |
 | `proxy-rewrite.js` | HTML/CSS rewriting for `/api/net/proxy` (linear-time patterns only) |
 | `redirects-route.js` | `makeRedirectsHandler({ fetcher, maxInFlight, traceOpts })` for `/api/net/redirects` |

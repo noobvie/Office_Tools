@@ -33,7 +33,7 @@
 │       │   ├── office-tools-server.js
 │       │   ├── node_modules/
 │       │   ├── package.json
-│       │   └── .env                  ← PORT, CORS_ORIGINS
+│       │   └── .env                  ← PORT, HOST=127.0.0.1, CORS_ORIGINS, TURN_*
 │       │
 │       ├── data/
 │       │   ├── tools.db              ← SQLite: short_urls, pastes, file_shares
@@ -42,12 +42,17 @@
 │       └── yt-server/               ← yt-dlp Node.js proxy
 │           ├── server.js
 │           ├── node_modules/
-│           └── package.json
+│           ├── package.json
+│           └── .env                  ← PORT, HOST=127.0.0.1, operator keys (never rewritten)
 │
 ├── etc/
 │   ├── nginx/
 │   │   ├── sites-available/office-tools   ← nginx config written by deploy.sh
-│   │   └── sites-enabled/office-tools     ← symlink
+│   │   ├── sites-enabled/office-tools     ← symlink
+│   │   │   (RHEL: conf.d/office-tools.conf instead of the two above)
+│   │   └── office-tools/                  ← snippets included inside each server block
+│   │       ├── realip.conf                ← Cloudflare ranges → real visitor $remote_addr
+│   │       └── security-headers.conf      ← HSTS, nosniff, X-Frame-Options, …
 │   │
 │   ├── letsencrypt/live/<domain>/
 │   │   ├── fullchain.pem              ← SSL cert (auto-renewed by certbot)
@@ -75,7 +80,10 @@
 | `*.md` | Documentation |
 | `/.*` | Hidden files, `.git`, etc. |
 
-The `backend/` folder is excluded from the web root sync by `rsync --exclude=backend/`.
+The web root sync (`sync_frontend` in `lib/repo.sh`) excludes everything that is not part of
+the site — `backend/`, `yt-server/`, `scripts/`, `flowcharts/`, `admin/`, `lib/`, `*.sh`,
+`*.md`, `*.json` and the rest of its explicit list — and `--delete-excluded` removes copies
+an earlier deploy published.
 
 ---
 
@@ -84,13 +92,20 @@ The `backend/` folder is excluded from the web root sync by `rsync --exclude=bac
 ```
 office-tools-api.service
   ExecStart: node /opt/office-tools/backend/office-tools-server.js
-  Listens:   127.0.0.1:3001   (localhost only)
+  Listens:   127.0.0.1:3001   (localhost only — HOST=127.0.0.1 in .env)
   Env file:  /opt/office-tools/backend/.env
 
-office-tools-cobalt.service  (optional — YouTube download backend)
-  ExecStart: pnpm start (cobalt API)
-  Listens:   127.0.0.1:9000   (localhost only)
+office-tools-cobalt.service  (YouTube download backend)
+  ExecStart: node /opt/office-tools/yt-server/server.js
+  Listens:   127.0.0.1:9000   (localhost only — HOST=127.0.0.1 in .env)
+  Env file:  /opt/office-tools/yt-server/.env
+
+office-tools-pot.service     (bgutil PO-token provider)
+  Listens:   *:4416           (no bind option; blocked by ufw only when ufw is active)
 ```
+
+Both `HOST` keys are added by `env_ensure` on every install/update run when absent; an
+operator-set value is kept. Without `HOST` either server binds all interfaces.
 
 ---
 
@@ -101,7 +116,9 @@ office-tools-cobalt.service  (optional — YouTube download backend)
 | 80 | nginx (HTTP → HTTPS redirect) | Yes, public |
 | 443 | nginx (HTTPS) | Yes, public |
 | 3001 | Node.js API server | No, localhost only |
-| 9000 | cobalt yt-server (optional) | No, localhost only |
+| 9000 | yt-server | No, localhost only |
+| 4416 | PO-token provider | Listens on all interfaces; firewalled only if ufw is active |
+| 3478, 49152–65535/udp | coturn TURN relay (File Drop) | Yes, public |
 
 ---
 
@@ -111,8 +128,9 @@ office-tools-cobalt.service  (optional — YouTube download backend)
 # CORS — must match your domain
 CORS_ORIGINS=https://tools.example.com
 
-# Server port
+# Server port and bind address (loopback: only nginx reaches it)
 PORT=3001
+HOST=127.0.0.1
 ```
 
 ---

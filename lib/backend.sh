@@ -75,14 +75,28 @@ no-tcp-relay
 no-multicast-peers
 min-port=49152
 max-port=65535
-# SSRF hardening — never relay to loopback/private/link-local ranges
+# Abuse limits, sized so File Drop never meets them in normal use. The backend mints the
+# TURN username as the credential's expiry second, so one user-quota bucket is one page's
+# credential (plus anyone who fetched in the same second). Each RTCPeerConnection holds
+# up to 2 allocations (udp + tcp transport): user-quota=64 still allows ~30 peers on one
+# page at once. total-quota=1200 bounds relay ports in use box-wide (range above = 16k).
+# max-bps is BYTES per second per session: 12500000 = 100 Mbit/s, above typical home
+# uplinks, so a relayed transfer is not slowed. stale-nonce makes nonces expire.
+user-quota=64
+total-quota=1200
+max-bps=12500000
+stale-nonce
+# SSRF hardening — never relay to loopback/private/link-local/reserved ranges
 denied-peer-ip=0.0.0.0-0.255.255.255
 denied-peer-ip=10.0.0.0-10.255.255.255
 denied-peer-ip=100.64.0.0-100.127.255.255
 denied-peer-ip=127.0.0.0-127.255.255.255
 denied-peer-ip=169.254.0.0-169.254.255.255
 denied-peer-ip=172.16.0.0-172.31.255.255
+denied-peer-ip=192.0.0.0-192.0.0.255
 denied-peer-ip=192.168.0.0-192.168.255.255
+denied-peer-ip=198.18.0.0-198.19.255.255
+denied-peer-ip=240.0.0.0-255.255.255.255
 denied-peer-ip=::1
 denied-peer-ip=fc00::-fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
 denied-peer-ip=fe80::-febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff
@@ -198,6 +212,10 @@ setup_backend_first() {
     cat > "$BACKEND_DIR/.env" << ENVEOF
 # Office Tools backend config
 PORT=3001
+# Loopback only: nginx is the sole client (proxy_pass http://127.0.0.1:3001), and the
+# server trusts X-Real-IP only from a loopback peer.
+HOST=127.0.0.1
+NODE_ENV=production
 CORS_ORIGINS=https://${domain}
 NOTIFY_EMAIL=${notify_email}
 NOTIFY_EMAIL_2=${notify_email2}
@@ -248,6 +266,14 @@ sync_backend() {
     section "Syncing backend files"
     rsync -a --exclude='.env' "$REPO_DIR/backend/" "$BACKEND_DIR/"
     cd "$BACKEND_DIR" && npm install --omit=dev && cd /
+    # Installs whose .env predates these keys get them here; an operator-set value is kept.
+    # Loopback bind: nginx is the sole client and X-Real-IP is trusted only from loopback.
+    if [[ -f "$BACKEND_DIR/.env" ]]; then
+        env_ensure "$BACKEND_DIR/.env" HOST 127.0.0.1 \
+            || warn "Could not add HOST to $BACKEND_DIR/.env — the API keeps listening on all interfaces"
+        env_ensure "$BACKEND_DIR/.env" NODE_ENV production \
+            || warn "Could not add NODE_ENV to $BACKEND_DIR/.env"
+    fi
     # Ensure SQLite data directory exists and is owned by the service user
     mkdir -p /opt/office-tools/data/uploads
     chown -R www-data:www-data /opt/office-tools/data

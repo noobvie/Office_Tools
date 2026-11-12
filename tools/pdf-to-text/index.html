@@ -547,7 +547,7 @@ async function loadPdf(file) {
     // the worker rather than being copied - `buf` is detached here afterwards and
     // must not be reused. The worker still holds one full copy of the file, plus
     // parsing structures on top, which is what the gates above are protecting.
-    pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    pdf = await pdfjsLib.getDocument({ data: buf, isEvalSupported: false }).promise;
   } catch (e) {
     abandonLoad();
     alert('Could not read PDF: ' + e.message);
