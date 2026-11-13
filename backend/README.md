@@ -52,6 +52,8 @@ HOST=127.0.0.1 PORT=3999 TOOLS_DB=/tmp/t.db UPLOADS_DIR=/tmp/up npm start
 | `UPLOADS_DIR` | `/opt/office-tools/data/uploads` | File share upload directory (`chat/` inside it is emptied at every start) |
 | `TOOLS_DIR` | *(optional)* | Directory whose sub-dirs are the valid tool ids for `/api/tools/view`; else `/var/www/office-tools/tools`, else `../tools` |
 | `GEMINI_API_KEY` | *(optional)* | Enables AI domain name suggestions |
+| `GEMINI_MODEL` | `gemini-3.5-flash-lite` | Gemini model id for AI suggestions (`[a-z0-9.-]`; an invalid value falls back to the default) |
+| `PROBE_SELF_PORTS` | *(empty)* | Ports the port checker may probe on this server's own public address (comma-separated); empty = own address refused |
 
 ---
 
@@ -87,13 +89,25 @@ systemctl enable --now office-tools-api
 
 ## Nginx Reverse Proxy
 
+The block `deploy.sh` writes (lib/nginx.sh; the WebSocket and chat-upload locations add
+their own settings on top of these headers):
+
 ```nginx
-location /tools-api/ {
-    proxy_pass http://127.0.0.1:3001/api/;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
+location ^~ /tools-api/ {
+    proxy_pass         http://127.0.0.1:3001/;
+    proxy_http_version 1.1;
+    proxy_set_header   Host              $host;
+    proxy_set_header   X-Real-IP         $remote_addr;
+    proxy_set_header   X-Forwarded-For   $remote_addr;
+    proxy_set_header   CF-Connecting-IP  "";
+    proxy_set_header   X-Forwarded-Proto $scheme;
 }
 ```
+
+The backend reads the client address from `X-Real-IP` only when the TCP peer is loopback
+(i.e. this nginx); from any other peer it uses the socket address and ignores the header
+(`lib/client-ip.js`). Behind Cloudflare, nginx's `real_ip` module turns `CF-Connecting-IP`
+into `$remote_addr` first, which is why the header itself is blanked towards the backend.
 
 Then update `js/config.js`:
 ```js

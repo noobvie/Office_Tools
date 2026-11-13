@@ -739,6 +739,19 @@ app.get('/api/domain/availability', domainRLMiddleware, async (req, res) => {
 
 // POST /api/domain/ai-suggest  { keyword: string, context?: string }
 const _GEMINI_KEY = process.env.GEMINI_API_KEY || '';
+// Google retires model ids, so the id is operator-set (GEMINI_MODEL). The default is a
+// Flash-Lite model listed as stable in Google's Gemini API model list (checked
+// 2026-11-12); its thinking defaults to "minimal", which matters because thinking tokens
+// count against maxOutputTokens below. The id goes into the URL path, hence the strict pattern; an
+// invalid value falls back to the default with a warning.
+const _GEMINI_MODEL_DEFAULT = 'gemini-3.5-flash-lite';
+const _GEMINI_MODEL = (() => {
+  const m = String(process.env.GEMINI_MODEL || '').trim();
+  if (!m) return _GEMINI_MODEL_DEFAULT;
+  if (/^[a-z0-9.\-]+$/.test(m) && m.length <= 64) return m;
+  console.warn(`[config] GEMINI_MODEL is not a valid model id — using ${_GEMINI_MODEL_DEFAULT}`);
+  return _GEMINI_MODEL_DEFAULT;
+})();
 // Every call spends the operator's Gemini quota, so on top of the shared domain limiter
 // (15/min) the route has its own 5/min per visitor and a server-wide daily budget
 // (AI_SUGGEST_DAILY_MAX, default 500 calls per UTC day).
@@ -773,7 +786,7 @@ Example: ["example.com","coolapp.io","mybrand.co"]`;
     const r = await fetch(
       // The key travels in the x-goog-api-key header (Gemini REST's documented form), not
       // in the URL, where proxies and error reports would record it.
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent',
+      `https://generativelanguage.googleapis.com/v1beta/models/${_GEMINI_MODEL}:generateContent`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': _GEMINI_KEY },
@@ -857,12 +870,15 @@ function _sseBusy(res, what) {
 // the child closing, a spawn error, or a synchronous spawn throw (it is idempotent, so
 // 'error' followed by 'close' is fine). A client that leaves kills the child, whose
 // 'close' then releases; the spawn `timeout` kills it at the deadline the same way.
+// The client gets a generic line; the detail (e.g. "spawn ping ENOENT") goes to the log.
+const _SSE_SPAWN_FAIL = 'Error: this tool is temporarily unavailable on the server.';
 function _sseRunChild(res, gone, release, cmd, args, timeout) {
   let proc;
   try { proc = spawn(cmd, args, { timeout }); }
   catch (err) {
     release();
-    res.write(`data: ${JSON.stringify('Error: ' + err.message)}\n\n`);
+    console.error(`[net] ${cmd} spawn failed:`, err?.message);
+    res.write(`data: ${JSON.stringify(_SSE_SPAWN_FAIL)}\n\n`);
     res.write('data: "[DONE]"\n\n');
     return res.end();
   }
@@ -874,7 +890,8 @@ function _sseRunChild(res, gone, release, cmd, args, timeout) {
   proc.on('close', () => { release(); gone.dispose(); res.write('data: "[DONE]"\n\n'); res.end(); });
   proc.on('error', err => {
     release();
-    res.write(`data: ${JSON.stringify('Error: ' + err.message)}\n\n`);
+    console.error(`[net] ${cmd} spawn failed:`, err?.message);
+    res.write(`data: ${JSON.stringify(_SSE_SPAWN_FAIL)}\n\n`);
     res.write('data: "[DONE]"\n\n');
     res.end();
   });

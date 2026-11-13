@@ -29,7 +29,7 @@ NGINX_ENABLED_PATH=""   # empty = not used (RHEL writes directly to conf.d)
 # Every function lives in lib/. All modules are sourced up-front, before any of
 # them runs, so definition order never matters (bash resolves globals at call
 # time). Add a new module by appending its basename to this list.
-for _lib in ui config os repo nginx backend youtube cookies options admin; do
+for _lib in ui config os repo nginx systemd backend youtube cookies options admin; do
     _libf="$SCRIPT_DIR/lib/${_lib}.sh"
     [[ -r "$_libf" ]] || { echo "[FATAL] missing library: $_libf" >&2; exit 1; }
     # shellcheck source=/dev/null

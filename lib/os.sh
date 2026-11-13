@@ -91,6 +91,18 @@ pkg_install() {
     fi
 }
 
+# Production dependencies of the Node project in the current directory. npm ci installs
+# exactly what the committed package-lock.json pins; it deletes node_modules first and
+# refuses a lockfile out of sync with package.json, so when it fails the plain install
+# runs and puts a working node_modules back. Returns npm install's status in that case.
+npm_install_prod() {
+    if npm ci --omit=dev; then
+        return 0
+    fi
+    warn "npm ci failed in $(pwd) — falling back to npm install (versions may differ from package-lock.json)"
+    npm install --omit=dev
+}
+
 install_base_packages() {
     section "Installing base packages"
     if [[ "$OS_FAMILY" == "debian" ]]; then

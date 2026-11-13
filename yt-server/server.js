@@ -9,11 +9,16 @@
  *  1. Node.js 18+
  *     https://nodejs.org/
  *
- *  2. yt-dlp  (the actual downloader engine)
- *     Linux:    sudo pip3 install yt-dlp          ← deploy.sh handles this automatically
- *               (also sets up a weekly cron job to keep yt-dlp current)
- *     Windows:  winget install yt-dlp  OR  pip install yt-dlp
- *     macOS:    brew install yt-dlp
+ *  2. yt-dlp  (the actual downloader engine) — with its JavaScript pieces
+ *     YouTube makes yt-dlp solve JavaScript challenges. That takes the yt-dlp-ejs scripts
+ *     and a JS runtime; without them yt-dlp still runs, with formats missing.
+ *     Linux:    sudo pip3 install -U --pre "yt-dlp[default,deno]"
+ *               ← deploy.sh handles this automatically (nightly channel, daily cron).
+ *               [default] brings yt-dlp-ejs, [deno] brings the Deno runtime.
+ *     Windows:  winget install yt-dlp  (the official build bundles yt-dlp-ejs)
+ *     macOS:    brew install yt-dlp deno
+ *     No Deno? This server names its own Node binary as a fallback runtime — see
+ *     YTDLP_JS_RUNTIMES below.
  *
  *  3. FFmpeg  (required for: MP3 audio conversion, 1080p+ video muxing)
  *     Without ffmpeg: video is limited to a single-file stream (usually 720p),
@@ -79,6 +84,12 @@
  *                        list works against the PO-token plugin. The real bot-detection fix is
  *                        the bgutil-ytdlp-pot-provider plugin + its token server (see below).
  *                        Set only as a temporary emergency override.
+ *   YTDLP_JS_RUNTIMES   Extra JS runtime for yt-dlp, as RUNTIME[:PATH]
+ *                                                       (default: "" = this server's own Node)
+ *                       yt-dlp enables only Deno by itself and prefers it when it is
+ *                       installed; the runtime named here is what it falls back to. Node
+ *                       must be 22+. "none" passes no --js-runtimes flag at all — needed
+ *                       for a yt-dlp older than 2025.11.12, which rejects the flag.
  *   POT_PROVIDER_URL    bgutil PO-token provider server (default: "http://127.0.0.1:4416")
  *                       deploy.sh installs this as the office-tools-pot service. The yt-dlp
  *                       plugin auto-detects it at the default URL — this setting is only used
@@ -171,6 +182,8 @@ const HEALTH_CACHE_MS = 60 * 1000;
 // Bot detection is handled by the bgutil-ytdlp-pot-provider plugin (installed by
 // deploy.sh), which yt-dlp auto-detects — keep this empty unless firefighting.
 const YTDLP_PLAYER_CLIENT   = process.env.YTDLP_PLAYER_CLIENT   || '';
+// Fallback JS runtime for YouTube's player challenges — see jsRuntimeArgs.
+const JS_RUNTIME_ARGS       = jsRuntimeArgs(process.env.YTDLP_JS_RUNTIMES, process.execPath);
 // bgutil PO-token provider server — used only for the /health reachability probe.
 const POT_PROVIDER_URL      = process.env.POT_PROVIDER_URL      || 'http://127.0.0.1:4416';
 // Optional cookie fallback for age-restricted videos or IP bans.
@@ -247,10 +260,27 @@ function validateDownloadOptions(body) {
   return { options };
 }
 
-/* yt-dlp argv: --ignore-config first (a planted yt-dlp.conf could otherwise add --exec),
-   and `--` before the URL so it can never be read as an option. */
-function ytdlpArgs(options, url) {
-  return ['--ignore-config', ...options, '--', url];
+/* --js-runtimes argv for the YTDLP_JS_RUNTIMES setting.
+   yt-dlp solves YouTube's JavaScript challenges in an external runtime and enables only
+   Deno by itself. On a host without Deno it would otherwise extract with formats missing
+   and say so only in a warning, which every call here silences (--no-warnings). Naming a
+   second runtime costs nothing when Deno is there: yt-dlp prefers Deno, and skips a
+   runtime whose binary it cannot find.
+     unset/empty → node:<nodePath>, the Node binary running this server
+     "none"      → no flag
+     other       → passed through as RUNTIME[:PATH] */
+function jsRuntimeArgs(raw, nodePath) {
+  const s = String(raw ?? '').trim();
+  if (s.toLowerCase() === 'none') return [];
+  return ['--js-runtimes', s || `node:${nodePath}`];
+}
+
+/* yt-dlp argv for every call that reaches YouTube: --ignore-config first (a planted
+   yt-dlp.conf could otherwise add --exec), then the JS runtime (here, not at the call
+   sites, so no call can be added without it), and `--` before the URL so it can never
+   be read as an option. */
+function ytdlpArgs(options, url, runtimeArgs = JS_RUNTIME_ARGS) {
+  return ['--ignore-config', ...runtimeArgs, ...options, '--', url];
 }
 
 /* Replace absolute filesystem paths with "<path>" in text shown to visitors. yt-dlp
@@ -634,7 +664,7 @@ function getVideoInfo(url) {
     });
     proc.on('error', e => {
       exited = true;
-      finish(new Error('yt-dlp not found — install: pip3 install yt-dlp  (' + e.message + ')'));
+      finish(new Error('yt-dlp not found — install: pip3 install -U --pre "yt-dlp[default,deno]"  (' + e.message + ')'));
     });
   });
 }
@@ -860,7 +890,8 @@ function main() {
     console.log(`  In the yt-downloader tool, select "Local" backend (default when deployed via nginx /yt-api/).\n`);
 
     const { ytdlp, ffmpeg: ffmpegOk, pot: potVer, ok } = await cachedHealth();
-    console.log(`  yt-dlp  : ${ok ? `✓ ${ytdlp}` : '✗ NOT FOUND — install: pip install yt-dlp'}`);
+    console.log(`  yt-dlp  : ${ok ? `✓ ${ytdlp}` : '✗ NOT FOUND — install: pip install -U --pre "yt-dlp[default,deno]"'}`);
+    console.log(`  JS run. : Deno when installed${JS_RUNTIME_ARGS.length ? `, else ${JS_RUNTIME_ARGS[1]}` : ' (no fallback: YTDLP_JS_RUNTIMES=none)'}`);
     console.log(`  ffmpeg  : ${ffmpegOk ? '✓ found'  : '✗ NOT FOUND — MP3 and 1080p will not work (install ffmpeg)'}`);
     console.log(`  PO-token: ${potVer ? `✓ provider v${potVer} at ${POT_PROVIDER_URL}` : `✗ provider NOT reachable at ${POT_PROVIDER_URL} — YouTube may serve bot-check 403s (deploy.sh installs office-tools-pot)`}`);
     console.log(`  Limits  : ${MAX_CONCURRENT > 0 ? MAX_CONCURRENT : '∞'} concurrent · ${RATE_MAX > 0 ? `${RATE_MAX} per client / ${Math.round(RATE_WINDOW_MS / 1000)}s` : 'no rate limit'} · height cap ${qualityCap() || 'none'}`);
@@ -872,6 +903,6 @@ function main() {
 if (require.main === module) main();
 
 module.exports = {
-  validateDownloadOptions, REQUEST_OPTIONS, ytdlpArgs, scrubPaths, isJobTempFile,
+  validateDownloadOptions, REQUEST_OPTIONS, ytdlpArgs, jsRuntimeArgs, scrubPaths, isJobTempFile,
   rateKey, infoRefusal, parseFilesizeLimit,
 };

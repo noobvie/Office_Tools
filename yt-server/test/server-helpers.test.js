@@ -6,7 +6,8 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const {
-  validateDownloadOptions, ytdlpArgs, scrubPaths, isJobTempFile, rateKey, infoRefusal, parseFilesizeLimit,
+  validateDownloadOptions, ytdlpArgs, jsRuntimeArgs, scrubPaths, isJobTempFile, rateKey, infoRefusal,
+  parseFilesizeLimit,
 } = require('../server');
 
 test('every body the page sends is accepted', () => {
@@ -41,6 +42,20 @@ test('yt-dlp argv: --ignore-config first, -- right before the URL', () => {
   const a = ytdlpArgs(['-j', '--no-playlist'], '-https://x');
   assert.equal(a[0], '--ignore-config');
   assert.deepEqual(a.slice(-2), ['--', '-https://x']);
+});
+
+test('JS runtime: own Node by default, operator value passed through, "none" drops the flag', () => {
+  assert.deepEqual(jsRuntimeArgs(undefined, '/usr/bin/node'), ['--js-runtimes', 'node:/usr/bin/node']);
+  assert.deepEqual(jsRuntimeArgs('  ', '/usr/bin/node'), ['--js-runtimes', 'node:/usr/bin/node']);
+  assert.deepEqual(jsRuntimeArgs(' deno:/opt/deno ', '/usr/bin/node'), ['--js-runtimes', 'deno:/opt/deno']);
+  assert.deepEqual(jsRuntimeArgs('None', '/usr/bin/node'), []);
+});
+
+test('yt-dlp argv: the JS runtime rides on every call, between --ignore-config and the options', () => {
+  // As loaded (YTDLP_JS_RUNTIMES unset): the Node binary running the tests.
+  assert.deepEqual(ytdlpArgs(['-j'], 'https://x'),
+    ['--ignore-config', '--js-runtimes', `node:${process.execPath}`, '-j', '--', 'https://x']);
+  assert.deepEqual(ytdlpArgs(['-j'], 'https://x', []), ['--ignore-config', '-j', '--', 'https://x']);
 });
 
 test('absolute paths are scrubbed, URLs and messages kept', () => {

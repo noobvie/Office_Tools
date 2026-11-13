@@ -50,16 +50,25 @@
 │   │   ├── sites-available/office-tools   ← nginx config written by deploy.sh
 │   │   ├── sites-enabled/office-tools     ← symlink
 │   │   │   (RHEL: conf.d/office-tools.conf instead of the two above)
+│   │   ├── conf.d/00-office-tools-http.conf ← http level: limit zones, Referer map,
+│   │   │                                      office_tools_noquery log_format (sorts
+│   │   │                                      before the vhosts that use them)
 │   │   └── office-tools/                  ← snippets included inside each server block
 │   │       ├── realip.conf                ← Cloudflare ranges → real visitor $remote_addr
-│   │       └── security-headers.conf      ← HSTS, nosniff, X-Frame-Options, …
+│   │       ├── security-headers.conf      ← HSTS, nosniff, X-Frame-Options, …
+│   │       ├── csp-static.conf            ← CSP for static-file locations only (not the APIs)
+│   │       ├── limits-tools-api.conf      ← limit_req/limit_conn in the /tools-api/ locations
+│   │       └── limits-yt-api.conf         ← limit_req in the /yt-api/ location
 │   │
 │   ├── letsencrypt/live/<domain>/
 │   │   ├── fullchain.pem              ← SSL cert (auto-renewed by certbot)
 │   │   └── privkey.pem
 │   │
 │   └── systemd/system/
-│       └── office-tools-api.service   ← Node.js API server
+│       ├── office-tools-{api,cobalt,pot}.service
+│       └── office-tools-{api,cobalt,pot}.service.d/10-hardening.conf  ← sandboxing drop-ins
+│
+├── var/log/nginx/office-tools.access.log  ← site access log, request line without query string
 │
 └── usr/bin/
     ├── nginx
@@ -107,6 +116,14 @@ office-tools-pot.service     (bgutil PO-token provider)
 Both `HOST` keys are added by `env_ensure` on every install/update run when absent; an
 operator-set value is kept. Without `HOST` either server binds all interfaces.
 
+Each unit gets `/etc/systemd/system/<unit>.service.d/10-hardening.conf` (`lib/systemd.sh`),
+rewritten on every install/update run. The API server gets only `ProtectSystem=full`,
+`PrivateTmp=yes`, `TasksMax=512`: the seccomp-based settings would imply `NoNewPrivileges`
+for a `User=` service, and it runs sendmail (setgid postdrop) and ping. yt-server adds the
+Protect*/Restrict*/LockPersonality set and `TasksMax=1024`; the PO-token provider gets that
+set without `PrivateTmp` or a task limit. A unit that cannot start inside its sandbox
+(exit 226/227/228) has the drop-in removed and runs unhardened, with a warning.
+
 ---
 
 ## Ports summary
@@ -150,6 +167,6 @@ HOST=127.0.0.1
     3. patch js/config.js with saved domain
     4. rewrite nginx config
     5. nginx -t && systemctl reload nginx
-    6. if backend exists: npm install + restart office-tools-api
+    6. if backend exists: npm ci (npm install if ci fails) + restart office-tools-api
     7. SSL cert: skipped if still valid
 ```

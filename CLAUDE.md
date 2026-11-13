@@ -11,7 +11,7 @@ npm start          # production
 npm run dev        # nodemon watch mode
 node --check office-tools-server.js  # syntax check only
 npm test           # node:test suite (backend/test/), zero dependencies
-HOST=127.0.0.1 PORT=3999 npm start   # local smoke test: bind loopback only (HOST unset = all interfaces, the default)
+HOST=127.0.0.1 PORT=3999 npm start   # local smoke test: bind loopback only (HOST unset = all interfaces in the code; `deploy.sh` writes `HOST=127.0.0.1` into both services' `.env`)
 ```
 
 **YT server (port 9000):**
@@ -42,7 +42,7 @@ the script — adding a third-party host or a hub category is an edit there, not
 - **SRI:** every CDN `<script>`/`<link>` is pinned to an exact version with `integrity` + `crossorigin="anonymous"`; injected loaders set `integrity`/`crossOrigin` too (speech-voice fetches with `integrity` and imports a blob: URL). Hash: `curl -s URL | openssl dgst -sha384 -binary | openssl base64 -A` → `sha384-…`. jsDelivr *generates* some `.min.js` (docx, jsqr) with unstable bytes — confirm the file exists in `data.jsdelivr.com/v1/packages/npm/<pkg>@<ver>?structure=flat` before hashing.
 - **escHtml:** every interpolation of non-literal data into `innerHTML` goes through `escHtml` (common.js; it does NOT escape `'`). In an `onclick` JS string use `data-*` + `this.dataset`. Rendering HTML you did not write (marked output, pasted HTML) goes through `otSetSafeHtml`. A page-local `escHtml` without `"` shadows common.js — never put it in an attribute. Peer/network ids are validated at the source (file-drop `FD_FID_RE`).
 - **Colours:** no `#hex` in a tool's CSS — use theme tokens; ink on a solid accent fill is `var(--on-primary)`, badges are `--X-dim` background + `--X` text. Every `var(--x)` must be defined in all four theme blocks of `css/style.css`.
-- **Accepted residuals** (the `ACCEPTED` table in check-tools.js — file-level, so review those files by eye): intrinsic colours (game boards, syntax/category scales, white paper/QR/iframe surfaces, transparency checkerboards, donate.html brand palette) and server/sample `console.log`. SRI cannot cover tesseract.js's worker/core/wasm and `tessdata` language files, transformers.js's onnx wasm + HuggingFace weights, or the pdf.js worker (pinned only). Known broken, not fixed: photo-editor Remove Background (`@imgly/background-removal` 404) and image-upscale's `esrgan-slim` model (falls back to Upscaler's default).
+- **Accepted residuals** (the `ACCEPTED` table in check-tools.js — file-level, so review those files by eye): intrinsic colours (game boards, syntax/category scales, white paper/QR/iframe surfaces, transparency checkerboards, donate.html brand palette) and server/sample `console.log`. SRI cannot cover tesseract.js's worker/core/wasm and `tessdata` language files, transformers.js's onnx wasm + HuggingFace weights, or the pdf.js worker (pinned only). Known broken, not fixed: photo-editor Remove Background (`@imgly/background-removal` 404). image-upscale uses Upscaler's default model only.
 - **Analytics:** GA4 (`OT_GA_ID` in common.js) is kept site-wide, disclosed in `pages/privacy.html`; skipped on localhost/file:. No other tracker — the `hosts` rule fails any other.
 
 **Deploy to server:**
@@ -103,6 +103,8 @@ const myRL = makeRateLimiter({ windowMs: 60_000, max: 15, message: '…' });
 app.get('/x', myRL.middleware, handler);   // 429 { error: message } when over
 if (!myRL.allow(ip)) …                       // inline form with a caller-chosen key
 ```
+**Client IP** — never read `X-Forwarded-For` or `CF-Connecting-IP`. Use `clientIp(req)` from `backend/lib/client-ip.js` (trusts nginx's `X-Real-IP` only from a loopback peer; nginx maps Cloudflare's header to `$remote_addr` via `/etc/nginx/office-tools/realip.conf`) and `rateKey(ip)` for any limiter or per-IP cap key (IPv6 → /64). `makeRateLimiter().middleware` already does both. Async routes are wrapped by `guardAsyncRoutes` (`lib/http-guards.js`); coerce request values with `str()` from `lib/sanitize.js`, never `.trim()` a raw `req.query.x`. The create/feedback routes use the server-issued CAPTCHA in `lib/captcha.js` (`GET /api/captcha` → `ans` + `ctoken`).
+
 One ordering gotcha: `myRL.middleware` is a `const`, so a route registered **above** the
 `makeRateLimiter` line can't reference it (temporal dead zone at startup). `netRLMiddleware`
 is the live example — it's used by `/api/resolve` earlier in the file, so it's kept as a
@@ -119,7 +121,7 @@ req.on('close', () => proc.kill());
 
 **DNS queries** go through Cloudflare DoH (`https://cloudflare-dns.com/dns-query?name=&type=`, `Accept: application/dns-json`). Allowed types are whitelisted in `_DNS_ALLOWED_TYPES`.
 
-**SQLite** uses `better-sqlite3` (synchronous). Tables: `short_urls`, `pastes`, `file_shares`. DB path defaults to `/opt/office-tools/data/tools.db`.
+**SQLite** uses Node's built-in `node:sqlite` (synchronous, no npm package). Tables: `short_urls`, `pastes`, `file_shares`. DB path defaults to `/opt/office-tools/data/tools.db`.
 
 **child_process / host input** — always sanitize host strings with a strict character whitelist before passing to `spawn()`: `/^[a-zA-Z0-9.\-:\[\]_]+$/`, then resolve with `resolvePublicTarget` and hand the child the pinned IP, never the name (ping/traceroute do this).
 
@@ -131,8 +133,7 @@ skips the check after hop 1); it classifies IP literals itself, because Node nev
 its `lookup` honours the `{all:true}` shape that `autoSelectFamily` uses; and its byte cap counts DECODED bytes
 (a gzip bomb). `isPublicIp` is the ONE classifier — never add a second list. Fixed-host calls (DoH, rdap,
 hackertarget, ip-api, Gemini) stay on `fetch`. Any new regex over fetched HTML must be linear — see the
-header of `lib/proxy-rewrite.js`. ⚠ "URLs are never logged" is true of the backend only: nginx's default
-`access_log` still writes `?url=` for `/tools-api/api/net/(redirects|uptime|proxy)` (open, deploy-level).
+header of `lib/proxy-rewrite.js`. The backend never logs URLs, and the deployed vhost logs to `/var/log/nginx/office-tools.access.log` with the query string and the referer query removed (`office_tools_noquery` in `lib/nginx.sh`). ⚠ Codes that are part of the PATH (temp-inbox address, paste/file codes) are still logged.
 
 ### Theme system
 
@@ -180,7 +181,7 @@ IPv6 addresses are accepted with or without brackets (`[::1]` and `::1`); strip 
 the Upgrade headers the generic `/tools-api/` block lacks). Uses the `ws` package attached to the
 `app.listen` server handle (`attachDropSignaling`). Pure handshake relay: SDP/ICE JSON only — file
 bytes go browser↔browser over WebRTC DataChannels and never touch the server. Peers are grouped by
-public IP (`CF-Connecting-IP` first — behind Cloudflare the socket IP is a CF edge) plus optional
+public IP (`clientIp(req)` — see **Client IP** above; nginx resolves the Cloudflare visitor address) plus optional
 6-digit room codes for cross-network pairing. Server pings every 30 s (Cloudflare idles silent
 WebSockets out at ~100 s). Large incoming files stream to disk via the page-scoped service worker
 `tools/file-drop/sw.js` (virtual `dl/<id>` URLs, ack-based backpressure); no-SW/iOS falls back to
@@ -204,7 +205,8 @@ object (the "Both at once" card), where a family with no connectivity reads `nul
 
 **`portcheck` / `portcheckbatch` are a PUBLIC service** (open CORS `*`, not the `CORS_ORIGINS` allowlist that guards every other route) so any external page — e.g. a Grin solo-pool setup page on any domain — can verify its own stratum port. Two safeguards make this safe and must stay in place:
 - **SSRF guard** (`resolvePublicTarget` in `backend/lib/safe-fetch.js`, classifying with `isPublicIp`, the one classifier every outbound route shares; `/api/net/ping` and `/api/net/traceroute` use the same function and hand the child process the resolved IP, never the name): rejects loopback/private/link-local/CGNAT/reserved/IPv4-mapped targets and resolves hostnames to a validated **public** IP *before* connecting, so the endpoint can't be used to probe the server's own internal network or cloud metadata (`169.254.169.254`). DNS-rebinding is defeated by connecting to the resolved IP, not the raw hostname.
-- **Rate limit** `probeRLMiddleware`: 40 req/min per IP (separate from `netRLMiddleware`'s 10/min on ping/resolve/ptr). Raising this is only safe while the SSRF guard is intact.
+- **Rate limit** `probeRLMiddleware`: `PROBE_RATE_PER_MIN` per visitor (code default 600, clamped 10–2000; `deploy.sh` writes 600), separate from `netRLMiddleware`'s 10/min on ping/resolve/ptr. On top of it: a per-DESTINATION cap (`PROBE_TARGET_PER_10MIN`, default 1200 port-probes) and a global socket cap (`PROBE_MAX_SOCKETS`). Raising any of these is only safe while the SSRF guard is intact.
+- **Own address:** every outbound tool refuses the server's own public IPs (`makeSelfAddresses` in `safe-fetch.js`, plus `SELF_IPS` behind 1:1 NAT). The port checker alone can be allowed named ports against it with `PROBE_SELF_PORTS` (e.g. a pool's stratum ports on this same box); empty = refused.
 
 Consumed by the Grin Node Toolkit solo-mining setup page (`web/07_mining_pool_solo/setup-solo-mining.html`, configured via its `data/config.json` → `portcheck_api`) to render live "🟢 reachable / 🔴 unreachable" pills.
 
@@ -224,6 +226,17 @@ restarts, probes). `yt-server/.env` holds operator settings and is **never rewri
 installer — use `env_ensure`, never `cat > .env`, or a re-run silently drops the cookie path.
 `ytcookie-keepalive.sh` (cron, 6-hourly, as `www-data`) rotates the session and writes
 `cookies.status`, which is the only source for `/health`'s `file:ok` / `file:expired`.
+
+**yt-dlp stack** — the pip commands live in ONE generated script, `/opt/office-tools/yt-update.sh`
+(written by `install_ytdlp` in `lib/youtube.sh`); deploy runs it and so does
+`/etc/cron.daily/yt-dlp-update`. It installs **nightly** `yt-dlp[default,deno]` — `[default]` brings
+`yt-dlp-ejs` (the scripts that solve YouTube's JS challenges), `[deno]` the runtime they run in —
+then the PO-token plugin, then `pot-update.sh`, which rebuilds the provider only when the plugin
+version differs from `pot-server/.ot-built-version`. Never go back to a bare `pip install yt-dlp`:
+it still runs, with formats missing, and `--no-warnings` hides the only message that says so.
+`ytdlpArgs()` in `server.js` adds `--js-runtimes node:<its own binary>` to every call as the
+fallback for a host without Deno (`YTDLP_JS_RUNTIMES` overrides it, `none` drops it). git inside
+`pot-server/` runs as `www-data` (`_pot_git`), the tree's owner.
 
 ### What needs the backend vs. what doesn't
 

@@ -67,7 +67,124 @@ add_header X-Content-Type-Options    "nosniff"                always;
 add_header Referrer-Policy           "strict-origin-when-cross-origin" always;
 add_header Permissions-Policy        "camera=(), microphone=(self), geolocation=()" always;
 HDREOF
+
+    # Static-site CSP. Included only in the locations that serve the site's own files, never
+    # in a /tools-api/ or /yt-api/ location: the web-proxy route sends its own sandbox CSP,
+    # and a second policy with base-uri would change how a proxied page resolves <base>.
+    # The policy restricts nothing the pages load (scripts, styles, images, connections,
+    # frames are all unrestricted); no page uses <object>, <embed> or <base>.
+    cat > "$OT_NGINX_SNIPPET_DIR/csp-static.conf" << 'CSPEOF' \
+        || { warn "Could not write $OT_NGINX_SNIPPET_DIR/csp-static.conf"; return 1; }
+# Office Tools — Content-Security-Policy for the static site (managed by deploy.sh)
+# Included after security-headers.conf in each location that serves the site's files.
+add_header Content-Security-Policy "object-src 'none'; base-uri 'self'; frame-ancestors 'self'" always;
+CSPEOF
+
+    # Coarse per-visitor limits for the API locations. The zones are defined at http level
+    # in OT_NGINX_HTTP_CONF. Sized above every legitimate pattern: the app's own limiters
+    # allow 240/min web-proxy fetches and up to 2000/min port probes per visitor, a proxied
+    # page sends dozens of requests at once, and the app caps proxy fetches in flight at
+    # 128 box-wide, so 200 connections per address never cuts one visitor's page view.
+    cat > "$OT_NGINX_SNIPPET_DIR/limits-tools-api.conf" << 'LIMAPIEOF' \
+        || { warn "Could not write $OT_NGINX_SNIPPET_DIR/limits-tools-api.conf"; return 1; }
+# Office Tools — request/connection limits for /tools-api/ locations (managed by deploy.sh)
+# Zones: office_tools_api, office_tools_conn (defined in conf.d/00-office-tools-http.conf).
+limit_req         zone=office_tools_api burst=400 nodelay;
+limit_conn        office_tools_conn 200;
+limit_req_status  429;
+limit_conn_status 429;
+LIMAPIEOF
+
+    # /yt-api/ sees a handful of requests per download; no connection limit, because a
+    # playlist download keeps one /yt-api/stream/:id open per item for its whole length.
+    cat > "$OT_NGINX_SNIPPET_DIR/limits-yt-api.conf" << 'LIMYTEOF' \
+        || { warn "Could not write $OT_NGINX_SNIPPET_DIR/limits-yt-api.conf"; return 1; }
+# Office Tools — request limit for the /yt-api/ location (managed by deploy.sh)
+# Zone: office_tools_yt (defined in conf.d/00-office-tools-http.conf).
+limit_req         zone=office_tools_yt burst=40 nodelay;
+limit_req_status  429;
+LIMYTEOF
     return 0
+}
+
+# ─── http-level definitions ────────────────────────────────────────────────────
+# limit_req_zone, limit_conn_zone, map and log_format are valid only in the http context,
+# so they live in conf.d, which the stock nginx.conf of both Debian/Ubuntu and RHEL-family
+# includes inside http {} (RHEL already loads the main vhost from there). The 00- prefix
+# sorts it before office-tools.conf and office-tools-ipecho.conf, which on RHEL share this
+# directory, and Debian includes conf.d/ before sites-enabled/: a vhost's access_log names
+# a log_format that must already be defined when nginx reads it.
+OT_NGINX_HTTP_CONF="/etc/nginx/conf.d/00-office-tools-http.conf"
+OT_NGINX_ACCESS_LOG="/var/log/nginx/office-tools.access.log"
+
+_nginx_http_conf_body() {
+    cat << 'HTTPCONFEOF'
+# Office Tools — http-level definitions (managed by deploy.sh)
+# Every name starts with office_tools_ so nothing here can clash with another site on this
+# server, and nothing here applies to a request until an Office Tools vhost refers to it.
+
+# Per-visitor limits, used only by the /tools-api/ and /yt-api/ locations (snippets in
+# /etc/nginx/office-tools/). The key is the visitor: the realip include in each Office
+# Tools server block rewrites $remote_addr in the post-read phase, before the limit
+# modules run. 1 MB holds about 16,000 IPv4 states.
+limit_req_zone  $binary_remote_addr zone=office_tools_api:20m rate=40r/s;
+limit_req_zone  $binary_remote_addr zone=office_tools_yt:5m   rate=5r/s;
+limit_conn_zone $binary_remote_addr zone=office_tools_conn:20m;
+
+# Access log without query strings: nginx's predefined "combined" format with the request
+# line rebuilt from $uri, which is the normalised and possibly internally rewritten path
+# (a directory URL is logged as the index.html it was served from). The tool APIs and
+# pages take addresses, URLs and ids in the query string. The Referer is cut at its "?"
+# for the same reason; an absent Referer is logged as "-", as in "combined".
+map $http_referer $office_tools_referer {
+    default                             "-";
+    "~^(?<office_tools_ref_path>[^?]+)" $office_tools_ref_path;
+}
+log_format office_tools_noquery '$remote_addr - $remote_user [$time_local] '
+                                '"$request_method $uri $server_protocol" $status $body_bytes_sent '
+                                '"$office_tools_referer" "$http_user_agent"';
+HTTPCONFEOF
+}
+
+# Writes OT_NGINX_HTTP_CONF and confirms nginx loads it. Must succeed before a vhost that
+# uses its names is written: a vhost naming an unknown log_format fails `nginx -t`.
+# Returns 1 on failure, leaving the live config as it was; errexit is off when a caller
+# guards it, so each step is checked here.
+_nginx_write_http_conf() {
+    local tmp="${OT_NGINX_HTTP_CONF}.new" dump=""
+    # Not *.conf, so nginx never reads the half-written file.
+    if ! _nginx_http_conf_body > "$tmp"; then
+        rm -f "$tmp"
+        warn "Could not write $tmp"
+        return 1
+    fi
+    if ! mv -f "$tmp" "$OT_NGINX_HTTP_CONF"; then
+        rm -f "$tmp"
+        warn "Could not install $OT_NGINX_HTTP_CONF"
+        return 1
+    fi
+    # nginx -T prints the whole config only when it passes the test, with a
+    # "# configuration file <path>:" header per file read. Captured first: grep -q on
+    # the pipe could end it early and fail the pipeline under pipefail.
+    dump=$(nginx -T 2>/dev/null) || dump=""
+    if [[ "$dump" == *"# configuration file ${OT_NGINX_HTTP_CONF}:"* ]]; then
+        return 0
+    fi
+    # Either the config fails the test or nginx.conf does not include conf.d/*.conf.
+    # Without the file, a passing test means this file was the problem: leave it out so
+    # no other site's reload is blocked by it.
+    rm -f "$OT_NGINX_HTTP_CONF"
+    if nginx -t 2>/dev/null; then
+        warn "$OT_NGINX_HTTP_CONF is not loaded by nginx.conf (no 'include /etc/nginx/conf.d/*.conf;'"
+        warn "inside http {}) or fails nginx -t — removed it; the Office Tools vhost was not changed."
+        return 1
+    fi
+    # The config fails without it too, so the failure is elsewhere (or an existing Office
+    # Tools vhost needs it): put it back so this run changes nothing.
+    _nginx_http_conf_body > "$OT_NGINX_HTTP_CONF" \
+        || warn "Could not restore $OT_NGINX_HTTP_CONF"
+    warn "nginx -t fails on this server's current config — fix that first (run: nginx -t)."
+    return 1
 }
 
 # ─── nginx config writers ──────────────────────────────────────────────────────
@@ -83,6 +200,7 @@ _nginx_enable() {
 write_nginx_http() {
     local domain="$1"
     _nginx_write_snippets || die "Could not write nginx snippets in $OT_NGINX_SNIPPET_DIR"
+    _nginx_write_http_conf || die "Could not set up $OT_NGINX_HTTP_CONF — nginx config left unchanged"
     cat > "$NGINX_CONF_PATH" << NGINXEOF
 # Office Tools — managed by deploy.sh (HTTP — certbot will add SSL)
 server {
@@ -91,6 +209,8 @@ server {
     server_name ${domain};
     server_tokens off;
     include ${OT_NGINX_SNIPPET_DIR}/realip.conf;
+    # Own file and format (no query strings); format defined in ${OT_NGINX_HTTP_CONF}.
+    access_log ${OT_NGINX_ACCESS_LOG} office_tools_noquery;
 
     # File Share's multer limit is 100 MB; the chat location below sets its own larger cap.
     client_max_body_size 110M;
@@ -112,7 +232,11 @@ server {
     location ~ ^(/tools/[^/.]+|/pages/[^/.]+)$ { return 301 \$uri/; }
     # Serve flat-file pages (pages/<x>.html) at their canonical directory URL /pages/<x>/
     # (donate/privacy live as pages/<x>.html but their canonical + sitemap use /pages/<x>/)
-    location ~ ^/pages/([^/]+)/$ { try_files /pages/\$1.html /pages/\$1/index.html =404; }
+    # The locations that serve the site's own files carry its CSP; the API locations never do.
+    location ~ ^/pages/([^/]+)/$ {
+        include ${OT_NGINX_SNIPPET_DIR}/csp-static.conf;
+        try_files /pages/\$1.html /pages/\$1/index.html =404;
+    }
 
     # Permanently removed pages — 410 Gone de-indexes faster/cleaner than a 404.
     # Add formerly-public URLs here when a tool/page is retired.
@@ -122,11 +246,15 @@ server {
     location ^~ /api/         { return 410; }   # old donate/wallet backend — live API is under /tools-api/
     location ~ ^/(playlist|shorts)(/|\$) { return 410; }   # retired YouTube routes
 
-    location / { try_files \$uri/index.html \$uri \$uri.html =404; }
+    location / {
+        include ${OT_NGINX_SNIPPET_DIR}/csp-static.conf;
+        try_files \$uri/index.html \$uri \$uri.html =404;
+    }
 
     # File Drop signaling — WebSocket upgrade (exact match wins over ^~ /tools-api/)
     location = /tools-api/drop-ws {
         proxy_pass            http://127.0.0.1:3001/drop-ws;
+        include               ${OT_NGINX_SNIPPET_DIR}/limits-tools-api.conf;
         proxy_http_version    1.1;
         proxy_set_header      Upgrade           \$http_upgrade;
         proxy_set_header      Connection        "upgrade";
@@ -140,6 +268,7 @@ server {
     # Chat Room signaling — WebSocket upgrade (exact match wins over ^~ /tools-api/)
     location = /tools-api/chat-ws {
         proxy_pass            http://127.0.0.1:3001/chat-ws;
+        include               ${OT_NGINX_SNIPPET_DIR}/limits-tools-api.conf;
         proxy_http_version    1.1;
         proxy_set_header      Upgrade           \$http_upgrade;
         proxy_set_header      Connection        "upgrade";
@@ -154,6 +283,7 @@ server {
     # (longer prefix wins over ^~ /tools-api/; streamed, unbuffered)
     location ^~ /tools-api/api/chat/ {
         proxy_pass            http://127.0.0.1:3001/api/chat/;
+        include               ${OT_NGINX_SNIPPET_DIR}/limits-tools-api.conf;
         proxy_http_version    1.1;
         proxy_set_header      Host              \$host;
         proxy_set_header      X-Real-IP         \$remote_addr;
@@ -168,6 +298,7 @@ server {
     }
     location ^~ /tools-api/ {
         proxy_pass            http://127.0.0.1:3001/;
+        include               ${OT_NGINX_SNIPPET_DIR}/limits-tools-api.conf;
         proxy_http_version    1.1;
         proxy_set_header      Host              \$host;
         proxy_set_header      X-Real-IP         \$remote_addr;
@@ -181,6 +312,7 @@ server {
     }
     location ^~ /yt-api/ {
         proxy_pass              http://127.0.0.1:9000/;
+        include                 ${OT_NGINX_SNIPPET_DIR}/limits-yt-api.conf;
         proxy_http_version      1.1;
         proxy_set_header        Host              \$host;
         proxy_set_header        X-Real-IP         \$remote_addr;
@@ -206,6 +338,7 @@ write_nginx_https() {
     local ssl_key="/etc/letsencrypt/live/${domain}/privkey.pem"
 
     _nginx_write_snippets || die "Could not write nginx snippets in $OT_NGINX_SNIPPET_DIR"
+    _nginx_write_http_conf || die "Could not set up $OT_NGINX_HTTP_CONF — nginx config left unchanged"
     cat > "$NGINX_CONF_PATH" << NGINXEOF
 # Office Tools — managed by deploy.sh
 
@@ -214,6 +347,7 @@ server {
     listen [::]:80;
     server_name ${domain};
     server_tokens off;
+    access_log ${OT_NGINX_ACCESS_LOG} office_tools_noquery;
     return 301 https://\$host\$request_uri;
 }
 
@@ -223,6 +357,8 @@ server {
     server_name ${domain};
     server_tokens off;
     include ${OT_NGINX_SNIPPET_DIR}/realip.conf;
+    # Own file and format (no query strings); format defined in ${OT_NGINX_HTTP_CONF}.
+    access_log ${OT_NGINX_ACCESS_LOG} office_tools_noquery;
 
     ssl_certificate     ${ssl_cert};
     ssl_certificate_key ${ssl_key};
@@ -260,7 +396,14 @@ server {
     location ~ ^(/tools/[^/.]+|/pages/[^/.]+)$ { return 301 \$uri/; }
     # Serve flat-file pages (pages/<x>.html) at their canonical directory URL /pages/<x>/
     # (donate/privacy live as pages/<x>.html but their canonical + sitemap use /pages/<x>/)
-    location ~ ^/pages/([^/]+)/$ { try_files /pages/\$1.html /pages/\$1/index.html =404; }
+    # The locations that serve the site's own files carry its CSP; the API locations never
+    # do. A location with its own add_header inherits none, so each one re-includes
+    # security-headers.conf; the API locations inherit the server-level copy unchanged.
+    location ~ ^/pages/([^/]+)/$ {
+        include ${OT_NGINX_SNIPPET_DIR}/security-headers.conf;
+        include ${OT_NGINX_SNIPPET_DIR}/csp-static.conf;
+        try_files /pages/\$1.html /pages/\$1/index.html =404;
+    }
 
     # Permanently removed pages — 410 Gone de-indexes faster/cleaner than a 404.
     # Add formerly-public URLs here when a tool/page is retired.
@@ -270,29 +413,37 @@ server {
     location ^~ /api/         { return 410; }   # old donate/wallet backend — live API is under /tools-api/
     location ~ ^/(playlist|shorts)(/|\$) { return 410; }   # retired YouTube routes
 
-    location / { try_files \$uri/index.html \$uri \$uri.html =404; }
+    location / {
+        include ${OT_NGINX_SNIPPET_DIR}/security-headers.conf;
+        include ${OT_NGINX_SNIPPET_DIR}/csp-static.conf;
+        try_files \$uri/index.html \$uri \$uri.html =404;
+    }
 
     # The shared scripts are unversioned (every page loads ../../js/common.js), so a
     # long-cached copy would keep serving an old one after a deploy: always revalidate.
     # Exact-match locations win over the static-asset regex below.
     location = /js/common.js {
         include ${OT_NGINX_SNIPPET_DIR}/security-headers.conf;
+        include ${OT_NGINX_SNIPPET_DIR}/csp-static.conf;
         add_header Cache-Control "no-cache";
     }
     location = /js/config.js {
         include ${OT_NGINX_SNIPPET_DIR}/security-headers.conf;
+        include ${OT_NGINX_SNIPPET_DIR}/csp-static.conf;
         add_header Cache-Control "no-cache";
     }
 
     location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg|woff2|woff)$ {
         expires 7d;
         include ${OT_NGINX_SNIPPET_DIR}/security-headers.conf;
+        include ${OT_NGINX_SNIPPET_DIR}/csp-static.conf;
         add_header Cache-Control "public, immutable";
     }
 
     # File Drop signaling — WebSocket upgrade (exact match wins over ^~ /tools-api/)
     location = /tools-api/drop-ws {
         proxy_pass            http://127.0.0.1:3001/drop-ws;
+        include               ${OT_NGINX_SNIPPET_DIR}/limits-tools-api.conf;
         proxy_http_version    1.1;
         proxy_set_header      Upgrade           \$http_upgrade;
         proxy_set_header      Connection        "upgrade";
@@ -306,6 +457,7 @@ server {
     # Chat Room signaling — WebSocket upgrade (exact match wins over ^~ /tools-api/)
     location = /tools-api/chat-ws {
         proxy_pass            http://127.0.0.1:3001/chat-ws;
+        include               ${OT_NGINX_SNIPPET_DIR}/limits-tools-api.conf;
         proxy_http_version    1.1;
         proxy_set_header      Upgrade           \$http_upgrade;
         proxy_set_header      Connection        "upgrade";
@@ -320,6 +472,7 @@ server {
     # (longer prefix wins over ^~ /tools-api/; streamed, unbuffered)
     location ^~ /tools-api/api/chat/ {
         proxy_pass            http://127.0.0.1:3001/api/chat/;
+        include               ${OT_NGINX_SNIPPET_DIR}/limits-tools-api.conf;
         proxy_http_version    1.1;
         proxy_set_header      Host              \$host;
         proxy_set_header      X-Real-IP         \$remote_addr;
@@ -334,6 +487,7 @@ server {
     }
     location ^~ /tools-api/ {
         proxy_pass            http://127.0.0.1:3001/;
+        include               ${OT_NGINX_SNIPPET_DIR}/limits-tools-api.conf;
         proxy_http_version    1.1;
         proxy_set_header      Host              \$host;
         proxy_set_header      X-Real-IP         \$remote_addr;
@@ -347,6 +501,7 @@ server {
     }
     location ^~ /yt-api/ {
         proxy_pass              http://127.0.0.1:9000/;
+        include                 ${OT_NGINX_SNIPPET_DIR}/limits-yt-api.conf;
         proxy_http_version      1.1;
         proxy_set_header        Host              \$host;
         proxy_set_header        X-Real-IP         \$remote_addr;

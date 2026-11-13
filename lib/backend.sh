@@ -229,7 +229,7 @@ ENVEOF
     # sync_backend so existing deployments get it on update, not just here.
     _provision_turn "$domain"
 
-    cd "$BACKEND_DIR" && npm install --omit=dev && cd /
+    cd "$BACKEND_DIR" && npm_install_prod && cd /
     success "Backend files ready at $BACKEND_DIR"
 
     # Systemd service
@@ -253,11 +253,13 @@ StandardError=journal
 [Install]
 WantedBy=multi-user.target
 PAYEOF
+    svc_write_hardening office-tools-api
 
     systemctl daemon-reload
     systemctl enable office-tools-api
     systemctl start office-tools-api || \
         warn "API server failed to start — check: journalctl -u office-tools-api"
+    svc_verify_hardening office-tools-api
 
     success "Backend service enabled and started"
 }
@@ -265,7 +267,7 @@ PAYEOF
 sync_backend() {
     section "Syncing backend files"
     rsync -a --exclude='.env' "$REPO_DIR/backend/" "$BACKEND_DIR/"
-    cd "$BACKEND_DIR" && npm install --omit=dev && cd /
+    cd "$BACKEND_DIR" && npm_install_prod && cd /
     # Installs whose .env predates these keys get them here; an operator-set value is kept.
     # Loopback bind: nginx is the sole client and X-Real-IP is trusted only from loopback.
     if [[ -f "$BACKEND_DIR/.env" ]]; then
@@ -281,7 +283,9 @@ sync_backend() {
     # existing deployments pick up TURN on a normal update, before the restart
     # below so the API loads the freshly-seeded TURN_SECRET/TURN_URLS.
     _provision_turn "${DOMAIN:-}"
+    svc_write_hardening office-tools-api
     systemctl restart office-tools-api 2>/dev/null || true
+    svc_verify_hardening office-tools-api
     success "Backend synced and service restarted"
 }
 

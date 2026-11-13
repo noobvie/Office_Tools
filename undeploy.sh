@@ -29,7 +29,13 @@ LOG_DIR="/var/log/office-tools"      # deploy logs
 SVC_API="/etc/systemd/system/office-tools-api.service"
 SVC_COBALT="/etc/systemd/system/office-tools-cobalt.service"
 SVC_POT="/etc/systemd/system/office-tools-pot.service"
-CRON_YTDLP="/etc/cron.weekly/yt-dlp-update"
+# Hardening drop-in directories (lib/systemd.sh svc_write_hardening)
+SVC_DROPIN_DIRS=("/etc/systemd/system/office-tools-api.service.d"
+                 "/etc/systemd/system/office-tools-cobalt.service.d"
+                 "/etc/systemd/system/office-tools-pot.service.d")
+CRON_YTDLP="/etc/cron.daily/yt-dlp-update"                  # lib/youtube.sh install_ytdlp
+# Where the same updater lives on a server last deployed before it moved to cron.daily.
+CRON_YTDLP_WEEKLY="/etc/cron.weekly/yt-dlp-update"
 CRON_YTCOOKIE="/etc/cron.d/office-tools-ytcookie"            # lib/youtube.sh setup_cookie_keepalive
 LOGROTATE_YTCOOKIE="/etc/logrotate.d/office-tools-ytcookie"  # same
 
@@ -42,6 +48,8 @@ NGINX_IPECHO_AVAIL="/etc/nginx/sites-available/office-tools-ipecho"
 NGINX_IPECHO_ENABLED="/etc/nginx/sites-enabled/office-tools-ipecho"
 NGINX_IPECHO_RHEL="/etc/nginx/conf.d/office-tools-ipecho.conf"
 NGINX_SNIPPET_DIR="/etc/nginx/office-tools"   # OT_NGINX_SNIPPET_DIR in lib/nginx.sh
+# http-level zones, map and log_format the vhosts refer to (OT_NGINX_HTTP_CONF in lib/nginx.sh)
+NGINX_HTTP_CONF="/etc/nginx/conf.d/00-office-tools-http.conf"
 
 # coturn config paths written by lib/backend.sh setup_turn (Debian, then RHEL/EPEL)
 TURN_CONFS=("/etc/turnserver.conf" "/etc/coturn/turnserver.conf")
@@ -109,7 +117,7 @@ IPECHO_CERTS=("ip4.${IPECHO_APEX}" "ip6.${IPECHO_APEX}")
 
 NGINX_FILES=("$NGINX_AVAIL" "$NGINX_ENABLED" "$NGINX_RHEL"
              "$NGINX_IPECHO_AVAIL" "$NGINX_IPECHO_ENABLED" "$NGINX_IPECHO_RHEL")
-EXTRA_FILES=("$CRON_YTCOOKIE" "$LOGROTATE_YTCOOKIE")
+EXTRA_FILES=("$CRON_YTDLP_WEEKLY" "$CRON_YTCOOKIE" "$LOGROTATE_YTCOOKIE")
 
 # ─── Build removal checklist ──────────────────────────────────────────────────
 echo ""
@@ -136,11 +144,14 @@ echo -e "${BOLD}  Systemd unit files${RESET}"
 for f in "$SVC_API" "$SVC_COBALT" "$SVC_POT" "$CRON_YTDLP" "${EXTRA_FILES[@]}"; do
     [[ -f "$f" ]] && echo -e "    ${RED}✗${RESET}  $f" || echo -e "    ${DIM}–  $f  (not found)${RESET}"
 done
+for d in "${SVC_DROPIN_DIRS[@]}"; do
+    [[ -d "$d" ]] && echo -e "    ${RED}✗${RESET}  $d/" || echo -e "    ${DIM}–  $d/  (not found)${RESET}"
+done
 
 # Nginx
 echo ""
 echo -e "${BOLD}  Nginx config${RESET}"
-for f in "${NGINX_FILES[@]}" "$NGINX_SNIPPET_DIR"; do
+for f in "${NGINX_FILES[@]}" "$NGINX_SNIPPET_DIR" "$NGINX_HTTP_CONF"; do
     [[ -e "$f" ]] && echo -e "    ${RED}✗${RESET}  $f" || echo -e "    ${DIM}–  $f  (not found)${RESET}"
 done
 
@@ -185,6 +196,7 @@ echo -e "${BOLD}  What is ${GREEN}NOT${RESET}${BOLD} removed by this script:${RE
 echo -e "    ${GREEN}•${RESET}  nginx, certbot, Node.js, coturn packages ${DIM}(installed system-wide)${RESET}"
 echo -e "    ${GREEN}•${RESET}  Firewall rules (80/443, 3478, 49152-65535) ${DIM}(remove by hand if unused)${RESET}"
 echo -e "    ${GREEN}•${RESET}  Other nginx virtual hosts / sites        ${DIM}(unrelated to Office Tools)${RESET}"
+echo -e "    ${GREEN}•${RESET}  /var/log/nginx/office-tools.access.log*  ${DIM}(nginx's own log directory; delete by hand)${RESET}"
 echo ""
 
 # ─── Prompt 2: Confirm ────────────────────────────────────────────────────────
@@ -236,13 +248,21 @@ for f in "$SVC_API" "$SVC_COBALT" "$SVC_POT" "$CRON_YTDLP" "${EXTRA_FILES[@]}"; 
         skip "$f not found"
     fi
 done
+for d in "${SVC_DROPIN_DIRS[@]}"; do
+    if [[ -d "$d" ]]; then
+        rm -rf "${d:?}"
+        success "Removed $d"
+    else
+        skip "$d not found"
+    fi
+done
 
 systemctl daemon-reload
 success "systemd daemon reloaded"
 
 # ─── 3. Remove nginx config ───────────────────────────────────────────────────
-# Vhosts first, then the snippet directory they include, so no remaining conf can
-# reference a missing file.
+# Vhosts first, then the snippet directory they include and the http-level file whose
+# zones and log_format they name, so no remaining conf can reference a missing one.
 for f in "${NGINX_FILES[@]}"; do
     if [[ -e "$f" || -L "$f" ]]; then
         rm -f "$f"
@@ -256,6 +276,12 @@ if [[ -d "$NGINX_SNIPPET_DIR" ]]; then
     success "Removed $NGINX_SNIPPET_DIR"
 else
     skip "$NGINX_SNIPPET_DIR not found"
+fi
+if [[ -f "$NGINX_HTTP_CONF" ]]; then
+    rm -f "$NGINX_HTTP_CONF"
+    success "Removed $NGINX_HTTP_CONF"
+else
+    skip "$NGINX_HTTP_CONF not found"
 fi
 
 # Test nginx config before reloading (other sites may still be running)

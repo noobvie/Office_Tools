@@ -23,7 +23,7 @@
 #  to the operator as expired cookies.
 #
 #  Manual run:  runuser -u www-data -- /opt/office-tools/yt-server/ytcookie-keepalive.sh
-#  Env overrides: YTCOOKIE_PROBE_URL, YTDLP (path to binary)
+#  Env overrides: YTCOOKIE_PROBE_URL, YTDLP (path to binary), YTDLP_JS_RUNTIMES
 # ═══════════════════════════════════════════════════════════════════════════════
 
 set -uo pipefail
@@ -42,6 +42,16 @@ _env_get() {
 COOKIES="${YTDLP_COOKIES:-$(_env_get YTDLP_COOKIES)}"
 YTDLP_BIN="${YTDLP:-$(_env_get YTDLP)}"
 YTDLP_BIN="${YTDLP_BIN:-yt-dlp}"
+
+# The fallback JS runtime, as server.js passes it (jsRuntimeArgs), so the probe extracts
+# the way a real download does: yt-dlp uses Deno when it is installed, else this one.
+# "none" passes no flag. The server names its own Node binary; from cron, `node` on PATH
+# is that same binary.
+JS_RUNTIME="${YTDLP_JS_RUNTIMES:-$(_env_get YTDLP_JS_RUNTIMES)}"
+JS_ARGS=()
+if [[ "${JS_RUNTIME,,}" != "none" ]]; then
+    JS_ARGS=(--js-runtimes "${JS_RUNTIME:-node}")
+fi
 
 # The probe target. Any ordinary public video works — it is only ever fetched with
 # --simulate (metadata, no download). Pick one that is unlikely to be deleted or made
@@ -78,6 +88,7 @@ command -v "$YTDLP_BIN" &>/dev/null || {
 # --simulate: metadata only, no download. Uses the same cookie file the server does,
 # so success here means the server's next real download authenticates the same way.
 err_out="$(timeout 120 "$YTDLP_BIN" \
+    ${JS_ARGS[@]+"${JS_ARGS[@]}"} \
     --cookies "$COOKIES" \
     --simulate --no-warnings --no-playlist \
     --print '%(id)s' \
